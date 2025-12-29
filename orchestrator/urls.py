@@ -1,0 +1,83 @@
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import (
+    InstanceViewSet, 
+    InstanceListView, 
+    InstanceCreateView, 
+    InstanceDetailView,
+    instance_deploy,
+    instance_stop,
+    instance_restart,
+    instance_logs_api,
+    instance_console_exec,
+    instance_install_requirements,
+    instance_configure_domain,
+    instance_generate_ssl,
+    instance_install_module,
+    instance_update_name,
+    instance_delete,
+    instance_duplicate,
+    metrics_view,
+    settings_view,
+    generate_ssl_certificate,
+    instance_backup,
+    instance_restore,
+    instance_backups_list,
+    backup_download,
+    backup_delete,
+    user_list,
+    user_create,
+    user_edit,
+    user_delete,
+    user_profile,
+    user_change_password,
+    home,
+    dashboard,
+    blog_list,
+    blog_detail
+)
+from .auth_views import register
+
+router = DefaultRouter()
+router.register(r'api/instances', InstanceViewSet, basename='api-instance')
+
+urlpatterns = [
+    path('accounts/register/', register, name='register'),
+    path('accounts/', include('django.contrib.auth.urls')),
+    path('', home, name='home'),
+    path('blog/', blog_list, name='blog-list'),
+    path('blog/<slug:slug>/', blog_detail, name='blog-detail'),
+    
+    # Dashboard routes (protected area)
+    path('instances/', InstanceListView.as_view(), name='instance-list'),
+    path('instance/new/', InstanceCreateView.as_view(), name='instance-create'),
+    path('instance/<int:pk>/', InstanceDetailView.as_view(), name='instance-detail'),
+    path('instance/<int:pk>/deploy/', instance_deploy, name='instance-deploy'),
+    path('instance/<int:pk>/stop/', instance_stop, name='instance-stop'),
+    path('instance/<int:pk>/restart/', instance_restart, name='instance-restart'),
+    path('instance/<int:pk>/delete/', instance_delete, name='instance-delete'),
+    path('instance/<int:pk>/duplicate/', instance_duplicate, name='instance-duplicate'),
+    path('instance/<int:pk>/backup/', instance_backup, name='instance-backup'),
+    path('instance/<int:pk>/backups/', instance_backups_list, name='instance-backups'),
+    path('instance/<int:pk>/restore/', instance_restore, name='instance-restore'),
+    path('backup/<int:backup_id>/download/', backup_download, name='backup-download'),
+    path('backup/<int:backup_id>/delete/', backup_delete, name='backup-delete'),
+    path('instance/<int:pk>/logs/', instance_logs_api, name='instance-logs-api'),
+    path('instance/<int:pk>/console/', instance_console_exec, name='instance-console-exec'),
+    path('instance/<int:pk>/install-requirements/', instance_install_requirements, name='instance-install-requirements'),
+    path('instance/<int:pk>/configure-domain/', instance_configure_domain, name='instance-configure-domain'),
+    path('instance/<int:pk>/generate-ssl/', instance_generate_ssl, name='instance-generate-ssl'),
+    path('instance/<int:pk>/install-module/', instance_install_module, name='instance-install-module'),
+    path('instance/<int:pk>/update-name/', instance_update_name, name='instance-update-name'),
+    path('metrics/', metrics_view, name='metrics'),
+    path('settings/', settings_view, name='settings'),
+    path('settings/generate-ssl/', generate_ssl_certificate, name='generate-ssl'),
+    path('users/', user_list, name='user-list'),
+    path('users/new/', user_create, name='user-create'),
+    path('users/<int:user_id>/edit/', user_edit, name='user-edit'),
+    path('users/<int:user_id>/delete/', user_delete, name='user-delete'),
+    path('profile/', user_profile, name='user-profile'),
+    path('profile/change-password/', user_change_password, name='change-password'),
+    
+    path('', include(router.urls)),
+]

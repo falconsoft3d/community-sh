@@ -1,0 +1,77 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold tracking-tight">Duplicate Instance</h1>
+        <p class="text-muted-foreground mt-2">Create an exact copy of "{{ instance.name }}"</p>
+    </div>
+
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="p-6">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 mb-6">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="info" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-blue-900">What will be copied?</h4>
+                            <ul class="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
+                                <li>Complete database (PostgreSQL dump)</li>
+                                <li>Filestore (attached files)</li>
+                                <li>New Git branch from "<strong>{{ instance.github_branch|default:"main" }}</strong>"
+                                </li>
+                                <li>Instance configuration</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="new_name" class="text-sm font-medium leading-none">
+                        New instance name
+                        <span class="text-destructive">*</span>
+                    </label>
+                    <input type="text" id="new_name" name="new_name" required value="{{ instance.name }}-1"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="e.g.: {{ instance.name }}-1">
+                    <p class="text-sm text-muted-foreground">
+                        This name will be used for:
+                    </p>
+                    <ul class="text-sm text-muted-foreground list-disc list-inside ml-4">
+                        <li>Subdomain: <code class="bg-muted px-1 py-0.5 rounded">[name].localhost</code></li>
+                        <li>Git branch: <code class="bg-muted px-1 py-0.5 rounded">[name]</code></li>
+                        <li>Docker containers</li>
+                    </ul>
+                </div>
+
+                <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="alert-triangle" class="h-5 w-5 text-yellow-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-yellow-900">Warning</h4>
+                            <p class="text-sm text-yellow-700 mt-1">
+                                This process may take several minutes depending on database and file size.
+                                Do not close this window during the process.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 pt-4">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <i data-lucide="copy" class="mr-2 h-4 w-4"></i>
+                        Create Copy
+                    </button>
+                    <a href="{% url 'instance-detail' instance.pk %}"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

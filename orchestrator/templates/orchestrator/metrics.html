@@ -1,0 +1,117 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Métricas del Sistema</h1>
+            <p class="text-muted-foreground mt-2">Monitoreo de recursos y estado del servidor</p>
+        </div>
+    </div>
+
+    <!-- System Metrics Grid -->
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <!-- CPU Usage -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                <h3 class="tracking-tight text-sm font-medium">Uso de CPU</h3>
+                <i data-lucide="cpu" class="h-4 w-4 text-muted-foreground"></i>
+            </div>
+            <div class="p-6 pt-0">
+                <div class="text-2xl font-bold">{{ metrics.cpu_percent }}%</div>
+                <p class="text-xs text-muted-foreground">{{ metrics.cpu_count }} núcleos</p>
+            </div>
+        </div>
+
+        <!-- Memory Usage -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                <h3 class="tracking-tight text-sm font-medium">Uso de RAM</h3>
+                <i data-lucide="memory-stick" class="h-4 w-4 text-muted-foreground"></i>
+            </div>
+            <div class="p-6 pt-0">
+                <div class="text-2xl font-bold">{{ metrics.memory_percent }}%</div>
+                <p class="text-xs text-muted-foreground">{{ metrics.memory_used_gb }} GB / {{ metrics.memory_total_gb }}
+                    GB</p>
+            </div>
+        </div>
+
+        <!-- Disk Usage -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                <h3 class="tracking-tight text-sm font-medium">Uso de Disco</h3>
+                <i data-lucide="hard-drive" class="h-4 w-4 text-muted-foreground"></i>
+            </div>
+            <div class="p-6 pt-0">
+                <div class="text-2xl font-bold">{{ metrics.disk_percent }}%</div>
+                <p class="text-xs text-muted-foreground">{{ metrics.disk_used_gb }} GB / {{ metrics.disk_total_gb }} GB
+                </p>
+            </div>
+        </div>
+
+        <!-- Active Containers -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
+                <h3 class="tracking-tight text-sm font-medium">Contenedores Activos</h3>
+                <i data-lucide="box" class="h-4 w-4 text-muted-foreground"></i>
+            </div>
+            <div class="p-6 pt-0">
+                <div class="text-2xl font-bold">{{ metrics.containers_running }}</div>
+                <p class="text-xs text-muted-foreground">{{ metrics.containers_total }} total</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instances Status -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 pb-4">
+            <h3 class="font-semibold leading-none tracking-tight">Instance Status</h3>
+            <p class="text-sm text-muted-foreground">Distribution of instances by state</p>
+        </div>
+        <div class="p-6 pt-0">
+            <div class="grid gap-4 md:grid-cols-4">
+                <div class="flex flex-col">
+                    <span class="text-2xl font-bold text-green-600">{{ metrics.instances_running }}</span>
+                    <span class="text-xs text-muted-foreground">Running</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-2xl font-bold text-yellow-600">{{ metrics.instances_deploying }}</span>
+                    <span class="text-xs text-muted-foreground">Deploying</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-2xl font-bold text-gray-600">{{ metrics.instances_stopped }}</span>
+                    <span class="text-xs text-muted-foreground">Stopped</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-2xl font-bold text-red-600">{{ metrics.instances_error }}</span>
+                    <span class="text-xs text-muted-foreground">Error</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Docker Info -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 pb-4">
+            <h3 class="font-semibold leading-none tracking-tight">Información de Docker</h3>
+            <p class="text-sm text-muted-foreground">Detalles del ambiente Docker</p>
+        </div>
+        <div class="p-6 pt-0">
+            <div class="grid gap-4 md:grid-cols-3">
+                <div class="flex flex-col space-y-1">
+                    <span class="text-sm font-medium">Versión</span>
+                    <span class="text-sm text-muted-foreground">{{ metrics.docker_version }}</span>
+                </div>
+                <div class="flex flex-col space-y-1">
+                    <span class="text-sm font-medium">Imágenes</span>
+                    <span class="text-sm text-muted-foreground">{{ metrics.docker_images }}</span>
+                </div>
+                <div class="flex flex-col space-y-1">
+                    <span class="text-sm font-medium">Redes</span>
+                    <span class="text-sm text-muted-foreground">{{ metrics.docker_networks }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

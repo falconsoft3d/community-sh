@@ -1,0 +1,296 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6 max-w-3xl">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Configuración</h1>
+            <p class="text-muted-foreground mt-2">Administra las integraciones y ajustes de la plataforma</p>
+        </div>
+    </div>
+
+    <!-- GitHub Integration -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 border-b">
+            <div class="flex items-center gap-2">
+                <i data-lucide="github" class="h-5 w-5"></i>
+                <h3 class="font-semibold leading-none tracking-tight">Integración con GitHub</h3>
+            </div>
+            <p class="text-sm text-muted-foreground">Conecta tu cuenta de GitHub para desplegar repositorios
+                automáticamente</p>
+        </div>
+        <div class="p-6">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                {% if messages %}
+                {% for message in messages %}
+                <div class="rounded-md bg-green-50 border border-green-200 p-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="check-circle" class="h-4 w-4 text-green-600"></i>
+                        <span class="text-sm text-green-800">{{ message }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                <div class="space-y-2">
+                    <label for="personal_access_token" class="text-sm font-medium leading-none">
+                        Personal Access Token
+                        <span class="text-destructive">*</span>
+                    </label>
+                    <input type="password" id="personal_access_token" name="personal_access_token"
+                        value="{{ config.personal_access_token|default:'' }}"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                    <p class="text-sm text-muted-foreground">
+                        Crea un token en
+                        <a href="https://github.com/settings/tokens" target="_blank"
+                            class="text-primary hover:underline">
+                            GitHub Settings → Developer settings → Personal access tokens
+                        </a>
+                        con permisos de <code class="bg-muted px-1 py-0.5 rounded">repo</code>
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="default_organization" class="text-sm font-medium leading-none">
+                        Organización predeterminada (opcional)
+                    </label>
+                    <input type="text" id="default_organization" name="default_organization"
+                        value="{{ config.default_organization|default:'' }}"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="mi-organizacion">
+                    <p class="text-sm text-muted-foreground">
+                        Si trabajas con una organización específica, puedes establecerla aquí
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="webhook_secret" class="text-sm font-medium leading-none">
+                        Webhook Secret (opcional)
+                    </label>
+                    <input type="password" id="webhook_secret" name="webhook_secret"
+                        value="{{ config.webhook_secret|default:'' }}"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="webhook-secret-123">
+                    <p class="text-sm text-muted-foreground">
+                        Secret para validar webhooks de GitHub
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="registration_enabled" name="registration_enabled" {% if config.registration_enabled %}checked{% endif %}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
+                        <label for="registration_enabled" class="text-sm font-medium leading-none cursor-pointer">
+                            Habilitar registro de usuarios
+                        </label>
+                    </div>
+                    <p class="text-sm text-muted-foreground">
+                        Cuando está deshabilitado, los nuevos usuarios no podrán registrarse
+                    </p>
+                </div>
+
+                {% if config.personal_access_token %}
+                <div class="rounded-lg border border-green-200 bg-green-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="check-circle" class="h-5 w-5 text-green-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-green-900">GitHub conectado</h4>
+                            <p class="text-sm text-green-700 mt-1">
+                                Tu cuenta está conectada correctamente. Ahora puedes clonar repositorios privados.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="flex items-center gap-4 pt-4">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <i data-lucide="save" class="mr-2 h-4 w-4"></i>
+                        Guardar Configuración
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Domain and SSL Configuration -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 border-b">
+            <div class="flex items-center gap-2">
+                <i data-lucide="globe" class="h-5 w-5"></i>
+                <h3 class="font-semibold leading-none tracking-tight">Configuración de Dominio y SSL</h3>
+            </div>
+            <p class="text-sm text-muted-foreground">Configura el dominio principal y habilita SSL/HTTPS</p>
+        </div>
+        <div class="p-6">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                
+                <div class="space-y-2">
+                    <label for="main_domain" class="text-sm font-medium leading-none">
+                        Dominio Principal
+                    </label>
+                    <input type="text" id="main_domain" name="main_domain"
+                        value="{{ config.main_domain|default:'' }}"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="ejemplo.com">
+                    <p class="text-sm text-muted-foreground">
+                        Dominio principal de tu aplicación (sin https://)
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="ssl_enabled" name="ssl_enabled" {% if config.ssl_enabled %}checked{% endif %}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
+                        <label for="ssl_enabled" class="text-sm font-medium leading-none cursor-pointer">
+                            Habilitar SSL/HTTPS
+                        </label>
+                    </div>
+                    <p class="text-sm text-muted-foreground">
+                        Activa el protocolo HTTPS para conexiones seguras
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="ssl_certificate_path" class="text-sm font-medium leading-none">
+                        Ruta del Certificado SSL
+                    </label>
+                    <input type="text" id="ssl_certificate_path" name="ssl_certificate_path"
+                        value="{{ config.ssl_certificate_path|default:'' }}"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="/etc/ssl/certs/certificate.crt" readonly>
+                    <p class="text-sm text-muted-foreground">
+                        Ruta completa al archivo del certificado SSL (se autocompletará al generar con Let's Encrypt)
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="ssl_key_path" class="text-sm font-medium leading-none">
+                        Ruta de la Clave Privada SSL
+                    </label>
+                    <input type="text" id="ssl_key_path" name="ssl_key_path"
+                        value="{{ config.ssl_key_path|default:'' }}"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="/etc/ssl/private/private.key" readonly>
+                    <p class="text-sm text-muted-foreground">
+                        Ruta completa al archivo de la clave privada SSL (se autocompletará al generar con Let's Encrypt)
+                    </p>
+                </div>
+
+                <!-- Let's Encrypt Auto-generation -->
+                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="shield-plus" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-blue-900 mb-2">Generar Certificado Automáticamente con Let's Encrypt</h4>
+                            <p class="text-sm text-blue-700 mb-3">
+                                Genera un certificado SSL gratuito y automáticamente configurado usando Let's Encrypt/Certbot.
+                            </p>
+                            <button type="button" 
+                                onclick="document.getElementById('letsencrypt-form').style.display = document.getElementById('letsencrypt-form').style.display === 'none' ? 'block' : 'none'"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 h-9 px-4 py-2">
+                                <i data-lucide="key" class="mr-2 h-4 w-4"></i>
+                                Generar Certificado SSL
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Let's Encrypt Form (Hidden by default) -->
+                <div id="letsencrypt-form" style="display: none;" class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
+                    <h4 class="text-sm font-medium">Configuración de Let's Encrypt</h4>
+                    <p class="text-sm text-muted-foreground">
+                        <strong>Nota:</strong> Tu dominio debe estar apuntando a este servidor y el puerto 80 debe estar disponible.
+                    </p>
+                    <form method="post" action="{% url 'generate-ssl' %}" onsubmit="return confirm('¿Estás seguro de generar un nuevo certificado SSL? Asegúrate de que tu dominio esté configurado correctamente.');">
+                        {% csrf_token %}
+                        <div class="space-y-4">
+                            <div class="space-y-2">
+                                <label for="letsencrypt_domain" class="text-sm font-medium leading-none">
+                                    Dominio <span class="text-destructive">*</span>
+                                </label>
+                                <input type="text" id="letsencrypt_domain" name="domain"
+                                    value="{{ config.main_domain|default:'' }}"
+                                    required
+                                    class="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    placeholder="ejemplo.com">
+                            </div>
+                            <div class="space-y-2">
+                                <label for="letsencrypt_email" class="text-sm font-medium leading-none">
+                                    Email <span class="text-destructive">*</span>
+                                </label>
+                                <input type="email" id="letsencrypt_email" name="email"
+                                    value="{{ user.email|default:'' }}"
+                                    required
+                                    class="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    placeholder="tu@email.com">
+                                <p class="text-sm text-muted-foreground">
+                                    Email para notificaciones de renovación de Let's Encrypt
+                                </p>
+                            </div>
+                            <button type="submit"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2">
+                                <i data-lucide="play" class="mr-2 h-4 w-4"></i>
+                                Generar Certificado Ahora
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {% if config.ssl_enabled and config.main_domain %}
+                <div class="rounded-lg border border-green-200 bg-green-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="shield-check" class="h-5 w-5 text-green-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-green-900">SSL Configurado</h4>
+                            <p class="text-sm text-green-700 mt-1">
+                                Tu dominio {{ config.main_domain }} está configurado con SSL/HTTPS
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="flex items-center gap-4 pt-4">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <i data-lucide="save" class="mr-2 h-4 w-4"></i>
+                        Guardar Configuración
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Instructions Card -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 border-b">
+            <h3 class="font-semibold leading-none tracking-tight">Cómo obtener un GitHub Personal Access Token</h3>
+        </div>
+        <div class="p-6">
+            <ol class="list-decimal list-inside space-y-2 text-sm">
+                <li>Ve a <a href="https://github.com/settings/tokens" target="_blank"
+                        class="text-primary hover:underline">GitHub Settings → Developer settings → Personal access
+                        tokens</a></li>
+                <li>Haz clic en "Generate new token" (classic)</li>
+                <li>Dale un nombre descriptivo (ej: "Community SH")</li>
+                <li>Selecciona los siguientes permisos:
+                    <ul class="list-disc list-inside ml-6 mt-1 space-y-1">
+                        <li><code class="bg-muted px-1 py-0.5 rounded">repo</code> - Acceso completo a repositorios
+                            privados</li>
+                        <li><code class="bg-muted px-1 py-0.5 rounded">read:org</code> - Leer información de
+                            organizaciones (opcional)</li>
+                    </ul>
+                </li>
+                <li>Haz clic en "Generate token"</li>
+                <li>Copia el token y pégalo arriba (guárdalo en un lugar seguro, no podrás verlo de nuevo)</li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %}

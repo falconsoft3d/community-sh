@@ -1,0 +1,154 @@
+:root {
+    --odoo-purple: #714B67;
+    --odoo-purple-dark: #5a3b52;
+    --odoo-accent: #00A09D;
+    --odoo-bg-gray: #f9f9f9;
+    --sidebar-bg: #2b2d30;
+    --sidebar-text: #adb5bd;
+    --sidebar-active: #ffffff;
+    --text-main: #374151;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--odoo-bg-gray);
+    color: var(--text-main);
+    font-size: 0.9rem;
+}
+
+/* Navbar */
+.navbar-custom {
+    background-color: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    height: 60px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    color: var(--odoo-purple) !important;
+    font-size: 1.25rem;
+}
+
+/* Sidebar */
+#sidebarMenu {
+    background-color: var(--sidebar-bg) !important;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    padding-top: 0;
+}
+
+.sidebar-logo {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    padding-left: 1rem;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    background-color: #212326;
+    border-bottom: 1px solid #3e4044;
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: var(--sidebar-text);
+    padding: 10px 15px;
+    border-left: 3px solid transparent;
+}
+
+.sidebar .nav-link:hover {
+    color: #fff;
+    background-color: rgba(255,255,255,0.05);
+}
+
+.sidebar .nav-link.active {
+    color: var(--sidebar-active);
+    background-color: rgba(113, 75, 103, 0.2); /* Tint of purple */
+    border-left-color: var(--odoo-purple);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--odoo-purple);
+    border-color: var(--odoo-purple);
+}
+
+.btn-primary:hover {
+    background-color: var(--odoo-purple-dark);
+    border-color: var(--odoo-purple-dark);
+}
+
+.btn-success {
+    background-color: var(--odoo-accent);
+    border-color: var(--odoo-accent);
+}
+
+.btn-success:hover {
+    background-color: #008f8c;
+    border-color: #008f8c;
+}
+
+/* Cards */
+.card {
+    border: none;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    border-radius: 0.5rem;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 600;
+}
+
+/* Tables */
+.table {
+    background-color: #fff;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    margin-bottom: 0;
+}
+
+.table thead th {
+    border-top: none;
+    background-color: #f8f9fa;
+    color: #6c757d;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 1rem;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    color: #495057;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+/* Auth Pages */
+.auth-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    background-color: #f1f5f9;
+}
+
+.auth-card {
+    max-width: 400px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.auth-brand {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: var(--odoo-purple);
+    font-weight: 800;
+    font-size: 2rem;
+}

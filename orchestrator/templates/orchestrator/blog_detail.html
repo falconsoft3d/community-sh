@@ -1,0 +1,95 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content_full %}
+<!-- Navbar -->
+<nav
+    class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div class="container flex h-14 max-w-screen-2xl items-center">
+        <div class="mr-4 flex">
+            <a href="{% url 'home' %}" class="mr-6 flex items-center space-x-2">
+                <i data-lucide="container" class="h-6 w-6 text-primary"></i>
+                <span class="font-bold text-xl">Community SH</span>
+            </a>
+        </div>
+        <div class="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+            <nav class="flex items-center space-x-6">
+                <a href="{% url 'blog-list' %}" class="text-sm font-medium transition-colors hover:text-primary">
+                    ← Back to Blog
+                </a>
+                <a href="{% url 'login' %}" class="text-sm font-medium transition-colors hover:text-primary">
+                    Sign In
+                </a>
+            </nav>
+        </div>
+    </div>
+</nav>
+
+<article class="container max-w-3xl mx-auto py-12">
+    <header class="mb-8">
+        <h1 class="text-4xl font-bold tracking-tight mb-4">{{ post.title }}</h1>
+        <div class="flex items-center gap-4 text-sm text-muted-foreground">
+            <span class="flex items-center gap-1">
+                <i data-lucide="calendar" class="h-4 w-4"></i>
+                {{ post.created_at|date:"M d, Y" }}
+            </span>
+            <span class="flex items-center gap-1">
+                <i data-lucide="user" class="h-4 w-4"></i>
+                {{ post.author.get_full_name|default:post.author.username }}
+            </span>
+            <span class="flex items-center gap-1">
+                <i data-lucide="clock" class="h-4 w-4"></i>
+                {{ post.reading_time }} min read
+            </span>
+        </div>
+    </header>
+
+    <div class="prose prose-slate max-w-none
+                prose-headings:font-bold prose-headings:tracking-tight
+                prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
+                prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+                prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+                prose-pre:bg-muted prose-pre:border
+                prose-img:rounded-lg prose-img:border
+                prose-blockquote:border-l-primary">
+        {{ post.html_content|safe }}
+    </div>
+
+    <footer class="mt-12 pt-8 border-t">
+        <a href="{% url 'blog-list' %}"
+            class="inline-flex items-center text-sm font-medium text-primary hover:underline">
+            <i data-lucide="arrow-left" class="mr-1 h-4 w-4"></i>
+            Back to Blog
+        </a>
+    </footer>
+</article>
+
+<style>
+    /* Custom styling for markdown content */
+    .prose pre {
+        background-color: hsl(var(--muted));
+        padding: 1rem;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+    }
+
+    .prose code {
+        font-size: 0.875em;
+    }
+
+    .prose table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .prose th,
+    .prose td {
+        border: 1px solid hsl(var(--border));
+        padding: 0.5rem;
+    }
+
+    .prose th {
+        background-color: hsl(var(--muted));
+        font-weight: 600;
+    }
+</style>
+{% endblock %}

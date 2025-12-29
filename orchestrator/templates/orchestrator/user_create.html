@@ -1,0 +1,114 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6 max-w-2xl">
+    <div class="flex items-center justify-between">
+        <div>
+            <nav class="text-sm text-muted-foreground mb-1">
+                <a href="{% url 'user-list' %}" class="hover:text-foreground">Usuarios</a>
+                <span class="mx-1">/</span>
+                <span class="text-foreground font-medium">Crear Usuario</span>
+            </nav>
+            <h1 class="text-3xl font-bold tracking-tight">Crear Nuevo Usuario</h1>
+        </div>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="rounded-md {% if message.tags == 'error' %}bg-red-50 border border-red-200{% else %}bg-blue-50 border border-blue-200{% endif %} p-3">
+        <div class="flex items-center gap-2">
+            <i data-lucide="{% if message.tags == 'error' %}alert-circle{% else %}info{% endif %}" class="h-4 w-4 {% if message.tags == 'error' %}text-red-600{% else %}text-blue-600{% endif %}"></i>
+            <span class="text-sm {% if message.tags == 'error' %}text-red-800{% else %}text-blue-800{% endif %}">{{ message }}</span>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 border-b">
+            <h3 class="font-semibold leading-none tracking-tight">Información del Usuario</h3>
+            <p class="text-sm text-muted-foreground">Completa los datos del nuevo usuario</p>
+        </div>
+        <div class="p-6">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <div class="space-y-2">
+                    <label for="username" class="text-sm font-medium leading-none">
+                        Nombre de Usuario <span class="text-destructive">*</span>
+                    </label>
+                    <input type="text" id="username" name="username" required
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="usuario123">
+                    <p class="text-sm text-muted-foreground">
+                        Debe ser único en el sistema
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="email" class="text-sm font-medium leading-none">
+                        Email
+                    </label>
+                    <input type="email" id="email" name="email"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="usuario@ejemplo.com">
+                </div>
+
+                <div class="space-y-2">
+                    <label for="password" class="text-sm font-medium leading-none">
+                        Contraseña <span class="text-destructive">*</span>
+                    </label>
+                    <input type="password" id="password" name="password" required
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="••••••••">
+                    <p class="text-sm text-muted-foreground">
+                        Debe ser segura
+                    </p>
+                </div>
+
+                <div class="space-y-4 pt-4 border-t">
+                    <h4 class="text-sm font-medium">Permisos</h4>
+                    
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="is_staff" name="is_staff"
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary mt-1">
+                        <div class="flex-1">
+                            <label for="is_staff" class="text-sm font-medium leading-none cursor-pointer">
+                                Staff
+                            </label>
+                            <p class="text-sm text-muted-foreground mt-1">
+                                Permite acceso al panel de administración de Django
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="is_superuser" name="is_superuser"
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary mt-1">
+                        <div class="flex-1">
+                            <label for="is_superuser" class="text-sm font-medium leading-none cursor-pointer">
+                                Superusuario
+                            </label>
+                            <p class="text-sm text-muted-foreground mt-1">
+                                Otorga todos los permisos sin restricciones
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 pt-4">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <i data-lucide="save" class="mr-2 h-4 w-4"></i>
+                        Crear Usuario
+                    </button>
+                    <a href="{% url 'user-list' %}"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

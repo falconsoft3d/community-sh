@@ -1,0 +1,154 @@
+{% extends "orchestrator/base.html" %}
+
+{% block title %}Mi Perfil{% endblock %}
+
+{% block content %}
+<div class="p-8 max-w-4xl">
+    <h1 class="text-3xl font-bold mb-6">Mi Perfil</h1>
+
+    {% if messages %}
+    <div class="mb-6">
+        {% for message in messages %}
+        <div class="rounded-lg border px-4 py-3 text-sm {% if message.tags == 'success' %}bg-green-50 border-green-200 text-green-800{% else %}bg-red-50 border-red-200 text-red-800{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Avatar Section -->
+        <div class="lg:col-span-1">
+            <div class="rounded-lg border bg-card p-6">
+                <h2 class="text-lg font-semibold mb-4">Foto de Perfil</h2>
+                <div class="flex flex-col items-center">
+                    <div class="h-32 w-32 rounded-full bg-secondary flex items-center justify-center overflow-hidden mb-4">
+                        {% if user.profile.avatar %}
+                        <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" 
+                             class="h-full w-full object-cover" id="avatar-preview">
+                        {% else %}
+                        <span class="text-4xl font-bold" id="avatar-preview">{{ user.username|slice:":1"|upper }}</span>
+                        {% endif %}
+                    </div>
+                    <form method="post" enctype="multipart/form-data" class="w-full">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="avatar">
+                        <div class="mb-4">
+                            <label for="id_avatar" class="block text-sm font-medium mb-2">
+                                Cambiar Foto
+                            </label>
+                            <input type="file" name="avatar" id="id_avatar" accept="image/*"
+                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                   onchange="previewAvatar(event)">
+                        </div>
+                        <button type="submit"
+                                class="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                            Guardar Foto
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Information -->
+        <div class="lg:col-span-2">
+            <div class="rounded-lg border bg-card p-6 mb-6">
+                <h2 class="text-lg font-semibold mb-4">Información Personal</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="profile">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="id_first_name" class="block text-sm font-medium mb-2">
+                                Nombre
+                            </label>
+                            <input type="text" name="first_name" id="id_first_name" value="{{ user.first_name }}"
+                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label for="id_last_name" class="block text-sm font-medium mb-2">
+                                Apellido
+                            </label>
+                            <input type="text" name="last_name" id="id_last_name" value="{{ user.last_name }}"
+                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="id_email" class="block text-sm font-medium mb-2">
+                            Email
+                        </label>
+                        <input type="email" name="email" id="id_email" value="{{ user.email }}"
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div class="mb-4">
+                        <label for="id_phone" class="block text-sm font-medium mb-2">
+                            Teléfono
+                        </label>
+                        <input type="text" name="phone" id="id_phone" value="{{ user.profile.phone|default:'' }}"
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div class="mb-4">
+                        <label for="id_bio" class="block text-sm font-medium mb-2">
+                            Biografía
+                        </label>
+                        <textarea name="bio" id="id_bio" rows="4"
+                                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ user.profile.bio|default:'' }}</textarea>
+                    </div>
+                    <button type="submit"
+                            class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        Guardar Cambios
+                    </button>
+                </form>
+            </div>
+
+            <!-- Change Password -->
+            <div class="rounded-lg border bg-card p-6">
+                <h2 class="text-lg font-semibold mb-4">Cambiar Contraseña</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="password">
+                    <div class="mb-4">
+                        <label for="id_current_password" class="block text-sm font-medium mb-2">
+                            Contraseña Actual
+                        </label>
+                        <input type="password" name="current_password" id="id_current_password" required
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div class="mb-4">
+                        <label for="id_new_password1" class="block text-sm font-medium mb-2">
+                            Nueva Contraseña
+                        </label>
+                        <input type="password" name="new_password1" id="id_new_password1" required
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div class="mb-4">
+                        <label for="id_new_password2" class="block text-sm font-medium mb-2">
+                            Confirmar Nueva Contraseña
+                        </label>
+                        <input type="password" name="new_password2" id="id_new_password2" required
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <button type="submit"
+                            class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        Cambiar Contraseña
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function previewAvatar(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('avatar-preview');
+            preview.innerHTML = `<img src="${e.target.result}" alt="Preview" class="h-full w-full object-cover">`;
+        }
+        reader.readAsDataURL(file);
+    }
+}
+</script>
+{% endblock %}

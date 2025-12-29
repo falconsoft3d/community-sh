@@ -1,0 +1,54 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content_full %}
+<div class="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+    <div class="w-full max-w-sm space-y-6">
+        <div class="flex flex-col space-y-2 text-center">
+            <i data-lucide="package-2" class="mx-auto h-10 w-10"></i>
+            <h1 class="text-2xl font-semibold tracking-tight">Create an account</h1>
+            <p class="text-sm text-muted-foreground">Enter your email below to create your account</p>
+        </div>
+
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 pt-0 mt-6">
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+
+                    {% for field in form %}
+                    <div class="space-y-2">
+                        <label
+                            class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                        </label>
+
+                        <input
+                            class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            name="{{ field.name }}" id="{{ field.id_for_label }}"
+                            type="{{ field.field.widget.input_type|default:'text' }}"
+                            value="{{ field.value|default:'' }}" {% if field.field.required %}required{% endif %}>
+
+                        {% if field.help_text %}
+                        <p class="text-[0.8rem] text-muted-foreground">{{ field.help_text }}</p>
+                        {% endif %}
+                        {% if field.errors %}
+                        <p class="text-[0.8rem] font-medium text-destructive">{{ field.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <button
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
+                        type="submit">
+                        Create Account
+                    </button>
+                </form>
+            </div>
+        </div>
+        <p class="px-8 text-center text-sm text-muted-foreground">
+            <a href="{% url 'login' %}" class="hover:text-brand underline underline-offset-4">Already have an account?
+                Sign In</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

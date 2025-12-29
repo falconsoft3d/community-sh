@@ -1,0 +1,85 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex items-center justify-between">
+    <h1 class="text-lg font-semibold md:text-2xl">Dashboard</h1>
+    <a href="{% url 'instance-create' %}"
+        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+        <i data-lucide="plus" class="mr-2 h-4 w-4"></i> New Instance
+    </a>
+</div>
+
+<!-- Instances Table -->
+<div class="rounded-md border bg-card text-card-foreground shadow-sm mt-6">
+    <div class="p-6 pb-2">
+        <h2 class="text-lg font-semibold">Your Instances</h2>
+        <p class="text-sm text-muted-foreground mt-1">Manage your Odoo instances</p>
+    </div>
+    <div class="relative w-full overflow-auto">
+        <table class="w-full caption-bottom text-sm text-left">
+            <thead class="[&_tr]:border-b">
+                <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Version</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Link</th>
+                </tr>
+            </thead>
+            <tbody class="[&_tr:last-child]:border-0">
+                {% for instance in instances %}
+                <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer"
+                    onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
+                    <td class="p-4 align-middle font-medium">
+                        {{ instance.name }}
+                        {% if instance.github_repo %}
+                        <div class="text-xs text-muted-foreground mt-0.5">{{ instance.github_repo }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="p-4 align-middle">
+                        <div
+                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
+                            {{ instance.odoo_version }}
+                        </div>
+                    </td>
+                    <td class="p-4 align-middle">
+                        {% if instance.status == 'running' %}
+                        <div
+                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-100 text-green-800">
+                            <i data-lucide="check-circle" class="h-3 w-3 mr-1"></i>
+                            Running</div>
+                        {% elif instance.status == 'deploying' %}
+                        <div
+                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-yellow-100 text-yellow-800">
+                            <i data-lucide="loader" class="h-3 w-3 mr-1 animate-spin"></i>
+                            Deploying</div>
+                        {% else %}
+                        <div
+                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">
+                            {{ instance.status|title }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="p-4 align-middle">
+                        {% if instance.status == 'running' %}
+                        <a href="{{ instance.url }}" target="_blank"
+                            class="inline-flex items-center text-sm text-primary hover:underline">
+                            <i data-lucide="external-link" class="mr-1 h-3 w-3"></i>
+                            Open
+                        </a>
+                        {% else %}
+                        <span class="text-sm text-muted-foreground">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="p-8 text-center text-muted-foreground">
+                        <i data-lucide="inbox" class="h-12 w-12 mx-auto mb-2 opacity-50"></i>
+                        <p>No instances yet. Create your first instance to get started!</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

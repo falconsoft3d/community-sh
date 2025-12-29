@@ -1,0 +1,138 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6 max-w-2xl">
+    <div class="flex items-center justify-between">
+        <div>
+            <nav class="text-sm text-muted-foreground mb-1">
+                <a href="{% url 'user-list' %}" class="hover:text-foreground">Usuarios</a>
+                <span class="mx-1">/</span>
+                <span class="text-foreground font-medium">{{ user_to_edit.username }}</span>
+            </nav>
+            <h1 class="text-3xl font-bold tracking-tight">Editar Usuario</h1>
+        </div>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="rounded-md {% if message.tags == 'success' %}bg-green-50 border border-green-200{% elif message.tags == 'error' %}bg-red-50 border border-red-200{% else %}bg-blue-50 border border-blue-200{% endif %} p-3">
+        <div class="flex items-center gap-2">
+            <i data-lucide="{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}alert-circle{% else %}info{% endif %}" class="h-4 w-4 {% if message.tags == 'success' %}text-green-600{% elif message.tags == 'error' %}text-red-600{% else %}text-blue-600{% endif %}"></i>
+            <span class="text-sm {% if message.tags == 'success' %}text-green-800{% elif message.tags == 'error' %}text-red-800{% else %}text-blue-800{% endif %}">{{ message }}</span>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 border-b">
+            <h3 class="font-semibold leading-none tracking-tight">Información del Usuario</h3>
+            <p class="text-sm text-muted-foreground">Actualiza los datos de {{ user_to_edit.username }}</p>
+        </div>
+        <div class="p-6">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+
+                <div class="space-y-2">
+                    <label for="username" class="text-sm font-medium leading-none">
+                        Nombre de Usuario
+                    </label>
+                    <input type="text" id="username" name="username" value="{{ user_to_edit.username }}" disabled
+                        class="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm ring-offset-background text-muted-foreground cursor-not-allowed">
+                    <p class="text-sm text-muted-foreground">
+                        El nombre de usuario no se puede cambiar
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="email" class="text-sm font-medium leading-none">
+                        Email
+                    </label>
+                    <input type="email" id="email" name="email" value="{{ user_to_edit.email }}"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="usuario@ejemplo.com">
+                </div>
+
+                <div class="space-y-2">
+                    <label for="new_password" class="text-sm font-medium leading-none">
+                        Nueva Contraseña
+                    </label>
+                    <input type="password" id="new_password" name="new_password"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="Dejar en blanco para mantener la actual">
+                    <p class="text-sm text-muted-foreground">
+                        Solo completa este campo si deseas cambiar la contraseña
+                    </p>
+                </div>
+
+                <div class="space-y-4 pt-4 border-t">
+                    <h4 class="text-sm font-medium">Estado y Permisos</h4>
+                    
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="is_active" name="is_active" {% if user_to_edit.is_active %}checked{% endif %}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary mt-1">
+                        <div class="flex-1">
+                            <label for="is_active" class="text-sm font-medium leading-none cursor-pointer">
+                                Usuario Activo
+                            </label>
+                            <p class="text-sm text-muted-foreground mt-1">
+                                Desactiva para bloquear el acceso del usuario
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="is_staff" name="is_staff" {% if user_to_edit.is_staff %}checked{% endif %}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary mt-1">
+                        <div class="flex-1">
+                            <label for="is_staff" class="text-sm font-medium leading-none cursor-pointer">
+                                Staff
+                            </label>
+                            <p class="text-sm text-muted-foreground mt-1">
+                                Permite acceso al panel de administración de Django
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="is_superuser" name="is_superuser" {% if user_to_edit.is_superuser %}checked{% endif %}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary mt-1">
+                        <div class="flex-1">
+                            <label for="is_superuser" class="text-sm font-medium leading-none cursor-pointer">
+                                Superusuario
+                            </label>
+                            <p class="text-sm text-muted-foreground mt-1">
+                                Otorga todos los permisos sin restricciones
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="info" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <p class="text-sm text-blue-700">
+                                <strong>Fecha de registro:</strong> {{ user_to_edit.date_joined|date:"d/m/Y H:i" }}<br>
+                                <strong>Último acceso:</strong> {{ user_to_edit.last_login|date:"d/m/Y H:i"|default:"Nunca" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 pt-4">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <i data-lucide="save" class="mr-2 h-4 w-4"></i>
+                        Guardar Cambios
+                    </button>
+                    <a href="{% url 'user-list' %}"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content_full %}
+<!-- Navbar -->
+<nav
+    class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div class="container flex h-14 max-w-screen-2xl items-center">
+        <div class="mr-4 flex">
+            <a href="{% url 'home' %}" class="mr-6 flex items-center space-x-2">
+                <i data-lucide="container" class="h-6 w-6 text-primary"></i>
+                <span class="font-bold text-xl">Community SH</span>
+            </a>
+        </div>
+        <div class="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+            <nav class="flex items-center space-x-6">
+                <a href="{% url 'blog-list' %}" class="text-sm font-medium text-primary">
+                    Blog
+                </a>
+                <a href="https://github.com/falconsoft3d/community-sh" target="_blank"
+                    class="text-sm font-medium transition-colors hover:text-primary">
+                    GitHub
+                </a>
+                <a href="{% url 'login' %}" class="text-sm font-medium transition-colors hover:text-primary">
+                    Sign In
+                </a>
+            </nav>
+        </div>
+    </div>
+</nav>
+
+<div class="container max-w-4xl mx-auto py-12">
+    <div class="space-y-8">
+        <div>
+            <h1 class="text-4xl font-bold tracking-tight">Blog</h1>
+            <p class="text-muted-foreground mt-2">Tutorials, guides, and updates about Community SH</p>
+        </div>
+
+        {% if posts %}
+        <div class="space-y-8">
+            {% for post in posts %}
+            <article class="rounded-xl border bg-card p-6 hover:shadow-md transition-shadow">
+                <a href="{% url 'blog-detail' post.slug %}">
+                    <h2 class="text-2xl font-bold mb-2 hover:text-primary transition-colors">{{ post.title }}</h2>
+                </a>
+                <div class="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                    <span class="flex items-center gap-1">
+                        <i data-lucide="calendar" class="h-4 w-4"></i>
+                        {{ post.created_at|date:"M d, Y" }}
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <i data-lucide="user" class="h-4 w-4"></i>
+                        {{ post.author.get_full_name|default:post.author.username }}
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <i data-lucide="clock" class="h-4 w-4"></i>
+                        {{ post.reading_time }} min read
+                    </span>
+                </div>
+                {% if post.excerpt %}
+                <p class="text-muted-foreground mb-4">{{ post.excerpt }}</p>
+                {% endif %}
+                <a href="{% url 'blog-detail' post.slug %}"
+                    class="inline-flex items-center text-sm font-medium text-primary hover:underline">
+                    Read more
+                    <i data-lucide="arrow-right" class="ml-1 h-4 w-4"></i>
+                </a>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-12 rounded-xl border bg-card">
+            <i data-lucide="file-text" class="h-12 w-12 text-muted-foreground mx-auto mb-4"></i>
+            <h3 class="text-lg font-medium">No blog posts yet</h3>
+            <p class="text-sm text-muted-foreground mt-2">Check back soon for tutorials and updates!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

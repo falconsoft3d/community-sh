@@ -1,0 +1,203 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community SH</title>
+
+    <!-- Tailwind CSS (via CDN for development) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Alpine.js for interactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        border: "hsl(var(--border))",
+                        input: "hsl(var(--input))",
+                        ring: "hsl(var(--ring))",
+                        background: "hsl(var(--background))",
+                        foreground: "hsl(var(--foreground))",
+                        primary: {
+                            DEFAULT: "hsl(var(--primary))",
+                            foreground: "hsl(var(--primary-foreground))",
+                        },
+                        secondary: {
+                            DEFAULT: "hsl(var(--secondary))",
+                            foreground: "hsl(var(--secondary-foreground))",
+                        },
+                        destructive: {
+                            DEFAULT: "hsl(var(--destructive))",
+                            foreground: "hsl(var(--destructive-foreground))",
+                        },
+                        muted: {
+                            DEFAULT: "hsl(var(--muted))",
+                            foreground: "hsl(var(--muted-foreground))",
+                        },
+                        accent: {
+                            DEFAULT: "hsl(var(--accent))",
+                            foreground: "hsl(var(--accent-foreground))",
+                        },
+                        card: {
+                            DEFAULT: "hsl(var(--card))",
+                            foreground: "hsl(var(--card-foreground))",
+                        },
+                    },
+                    borderRadius: {
+                        lg: "var(--radius)",
+                        md: "calc(var(--radius) - 2px)",
+                        sm: "calc(var(--radius) - 4px)",
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 222.2 47.4% 11.2%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96.1%;
+            --secondary-foreground: 222.2 47.4% 11.2%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96.1%;
+            --accent-foreground: 222.2 47.4% 11.2%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 222.2 84% 4.9%;
+            --radius: 0.5rem;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-foreground antialiased min-h-screen">
+
+    <div class="flex min-h-screen w-full">
+        {% if user.is_authenticated %}
+        <!-- Sidebar -->
+        <aside class="hidden border-r bg-muted/40 w-64 lg:block">
+            <div class="flex h-full max-h-screen flex-col gap-2">
+                <div class="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+                    <a href="/" class="flex items-center gap-2 font-semibold">
+                        <i data-lucide="package-2" class="h-6 w-6"></i>
+                        <span class="">Community SH</span>
+                    </a>
+                </div>
+                <div class="flex-1">
+                    <nav class="grid items-start px-2 text-sm font-medium lg:px-4">
+                        <a href="{% url 'instance-list' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'instance-list' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="server" class="h-4 w-4"></i>
+                            Instances
+                        </a>
+                        <a href="{% url 'metrics' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'metrics' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
+                            Metrics
+                        </a>
+                        {% if user.is_superuser %}
+                        <a href="{% url 'user-list' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary">
+                            <i data-lucide="users" class="h-4 w-4"></i>
+                            Usuarios
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'settings' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary">
+                            <i data-lucide="settings" class="h-4 w-4"></i>
+                            Settings
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </aside>
+        {% endif %}
+
+        <!-- Main Content -->
+        <div class="flex flex-col w-full">
+            {% if user.is_authenticated %}
+            <header class="flex h-14 items-center gap-4 bg-card shadow-sm px-4 lg:h-[60px] lg:px-6 mx-4 mt-4 mb-2 rounded-lg border">
+                <!-- Mobile Trigger could go here -->
+                <div class="w-full flex-1">
+                    <!-- Breadcrumb or Title -->
+                    <h1 class="font-semibold text-lg">Community SH</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm font-medium">{{ user.username }}</span>
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open"
+                            class="h-8 w-8 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors overflow-hidden">
+                            {% if user.profile.avatar %}
+                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="h-full w-full object-cover">
+                            {% else %}
+                            <span class="text-xs font-bold">{{ user.username|slice:":1"|upper }}</span>
+                            {% endif %}
+                        </button>
+                        <div x-show="open" @click.away="open = false" x-transition
+                            class="absolute right-0 mt-2 w-48 rounded-md border bg-card shadow-lg z-50">
+                            <div class="p-1">
+                                <a href="{% url 'user-profile' %}"
+                                    class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground">
+                                    <i data-lucide="user" class="h-4 w-4"></i>
+                                    Mi Perfil
+                                </a>
+                                <form action="{% url 'logout' %}" method="post">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground">
+                                        <i data-lucide="log-out" class="h-4 w-4"></i>
+                                        Logout
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            {% endif %}
+
+            <main class="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 w-full max-w-7xl mx-auto">
+                {% if user.is_authenticated %}
+                {% block content %}
+                {% endblock %}
+                {% else %}
+                {% block content_full %}
+                {% endblock %}
+                {% endif %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Initialize Icons -->
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

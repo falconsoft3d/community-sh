@@ -1,0 +1,89 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Backups of {{ instance.name }}</h1>
+            <p class="text-muted-foreground mt-2">Manage backups for this instance</p>
+        </div>
+        <a href="{% url 'instance-detail' instance.pk %}"
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+            <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i> Back
+        </a>
+    </div>
+
+    <!-- Create Backup Actions -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
+        <h3 class="font-semibold leading-none tracking-tight mb-4">Create New Backup</h3>
+        <div class="flex gap-3">
+            <a href="{% url 'instance-backup' instance.pk %}?filestore=true"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                <i data-lucide="download" class="mr-2 h-4 w-4"></i> Full Backup (with filestore)
+            </a>
+            <a href="{% url 'instance-backup' instance.pk %}?filestore=false"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                <i data-lucide="database" class="mr-2 h-4 w-4"></i> Database Only
+            </a>
+        </div>
+    </div>
+
+    <!-- Backups List -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 border-b">
+            <h3 class="font-semibold leading-none tracking-tight">Available Backups</h3>
+            <p class="text-sm text-muted-foreground">List of all created backups</p>
+        </div>
+        <div class="p-6">
+            {% if backups %}
+            <div class="space-y-4">
+                {% for backup in backups %}
+                <div class="flex items-center justify-between p-4 rounded-lg border bg-background">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="archive" class="h-5 w-5 text-muted-foreground"></i>
+                            <h4 class="font-medium">{{ backup.filename }}</h4>
+                        </div>
+                        <div class="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                            <span class="flex items-center gap-1">
+                                <i data-lucide="calendar" class="h-3 w-3"></i>
+                                {{ backup.created_at|date:"M d, Y H:i" }}
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i data-lucide="hard-drive" class="h-3 w-3"></i>
+                                {{ backup.file_size_mb }} MB
+                            </span>
+                            <span
+                                class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors border-transparent {% if backup.include_filestore %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                                {% if backup.include_filestore %}With filestore{% else %}DB only{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="{% url 'backup-download' backup.pk %}"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
+                            <i data-lucide="download" class="mr-2 h-4 w-4"></i> Download
+                        </a>
+                        <form action="{% url 'backup-delete' backup.pk %}" method="post"
+                            onsubmit="return confirm('Are you sure you want to delete this backup?')">
+                            {% csrf_token %}
+                            <button type="submit"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-9 px-3">
+                                <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <i data-lucide="archive-x" class="h-12 w-12 text-muted-foreground mx-auto mb-4"></i>
+                <h3 class="text-lg font-medium">No backups available</h3>
+                <p class="text-sm text-muted-foreground mt-2">Create a backup using the buttons above</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
