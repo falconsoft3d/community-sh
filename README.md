@@ -55,5 +55,14 @@ docker-compose down
 docker-compose logs --tail=100 app
 ```
 
+**Eliminar Dockers**
+```bash
+cd /opt/community-sh
+sudo docker compose down
+sudo docker compose down -v
+sudo docker compose down -v --rmi all
+```bash
+
+
 **Made with ❤️ for the Marlon Falcón Hernández**
 
