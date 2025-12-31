@@ -155,9 +155,9 @@
                     <label class="text-sm font-medium leading-none">URL Principal</label>
                     <div>
                         {% if object.status == 'running' %}
-                        <a href="http://{{ object.name }}.localhost" target="_blank"
+                        <a href="{{ object.url }}" target="_blank"
                             class="text-sm text-primary hover:underline flex items-center gap-1">
-                            http://{{ object.name }}.localhost <i data-lucide="external-link" class="h-3 w-3"></i>
+                            {{ object.url }} <i data-lucide="external-link" class="h-3 w-3"></i>
                         </a>
                         {% else %}
                         <span class="text-sm text-muted-foreground">-</span>
@@ -169,10 +169,9 @@
                     <label class="text-sm font-medium leading-none">URL Alternativa</label>
                     <div>
                         {% if object.status == 'running' and object.port %}
-                        <a href="http://{{ request.get_host|cut:':8000' }}:{{ object.port }}" target="_blank"
+                        <a href="{{ object.url }}" target="_blank"
                             class="text-sm text-primary hover:underline flex items-center gap-1">
-                            http://{{ request.get_host|cut:':8000' }}:{{ object.port }} <i data-lucide="external-link"
-                                class="h-3 w-3"></i>
+                            {{ object.url }} <i data-lucide="external-link" class="h-3 w-3"></i>
                         </a>
                         <p class="text-xs text-muted-foreground mt-1">Acceso directo por puerto (disponible
                             inmediatamente)</p>

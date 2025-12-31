@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+import os
+import socket
 
 def get_template_choices():
     """Get template choices from YAML files"""
@@ -60,5 +62,15 @@ class Container(models.Model):
     
     @property
     def url(self):
-        """Get the Traefik URL for this container"""
-        return f"http://{self.name}.localhost"
+        """Get the URL for this container"""
+        # Try environment variable first (set in .env)
+        server_ip = os.environ.get('SERVER_IP')
+        
+        # Fallback: try to get from network
+        if not server_ip:
+            try:
+                server_ip = socket.gethostbyname(socket.gethostname())
+            except:
+                server_ip = 'localhost'
+        
+        return f"http://{server_ip}:{self.port}"

@@ -75,6 +75,7 @@ DB_PASSWORD=${DB_PASSWORD}
 DATABASE_URL=postgres://postgres:${DB_PASSWORD}@db:5432/community_sh
 
 # Network Configuration
+SERVER_IP=${PUBLIC_IP}
 # Server IP: ${PUBLIC_IP}
 # To restrict access, edit ALLOWED_HOSTS above
 # Example: ALLOWED_HOSTS=your-domain.com,www.your-domain.com,${PUBLIC_IP}

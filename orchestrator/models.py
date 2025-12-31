@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import User
+import os
+import socket
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -59,37 +61,24 @@ class Instance(models.Model):
             protocol = "https" if self.ssl_enabled else "http"
             return f"{protocol}://{self.custom_domain}"
         
-        # Try to get server IP from environment or request
-        from django.conf import settings
-        import socket
-        
         # Try environment variable first (set in .env)
         server_ip = os.environ.get('SERVER_IP')
         
         # Fallback: try to get from network
         if not server_ip:
             try:
-                # Get server hostname
                 server_ip = socket.gethostbyname(socket.gethostname())
             except:
-                # Last resort: use localhost
                 server_ip = 'localhost'
         
         # Get port from container if exists
-        if self.container_id:
-            try:
-                import docker
-                client = docker.from_env()
-                container = client.containers.get(self.container_id)
-                # Get mapped port (e.g., 32768 from 8069)
-                ports = container.ports.get('8069/tcp')
-                if ports and len(ports) > 0:
-                    port = ports[0]['HostPort']
-                    return f"http://{server_ip}:{port}"
-            except:
-                pass
+        uri = f"http://{server_ip}"
         
-        return f"http://{server_ip}"
+        # If we have a mapped port, use it
+        if self.port:
+            return f"{uri}:{self.port}"
+            
+        return uri
 
 # Import additional models
 from .config_models import GitHubConfig

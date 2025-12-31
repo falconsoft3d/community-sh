@@ -28,6 +28,10 @@
 Run this command on your fresh server:
 ```bash
 curl -sL https://raw.githubusercontent.com/falconsoft3d/community-sh/main/easy-install.sh | sudo bash
+
+cd /opt/community-sh && sudo docker compose exec app python manage.py createsuperuser
+
+
 ```
 
 **Option 2: Review and Run**

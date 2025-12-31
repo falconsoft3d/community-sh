@@ -95,7 +95,7 @@
                     </div>
                     {% if container.status == 'running' %}
                     <div class="pt-4 border-t space-y-2">
-                        <a href="http://localhost:{{ container.port }}" target="_blank"
+                        <a href="{{ container.url }}" target="_blank"
                             class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                             <i data-lucide="external-link" class="mr-2 h-4 w-4"></i>
                             Open Container
@@ -200,7 +200,7 @@
                                 will be available in a future update.</p>
                             <div class="mt-3 text-sm text-blue-700">
                                 <p><strong>Current access:</strong></p>
-                                <p class="font-mono mt-1">http://localhost:{{ container.port }}</p>
+                                <p class="font-mono mt-1">{{ container.url }}</p>
                             </div>
                         </div>
                     </div>
