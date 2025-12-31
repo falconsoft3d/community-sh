@@ -70,8 +70,11 @@ class Instance(models.Model):
             # so the template can fallback to request.get_host if needed
             return ""
         
+        # Handle IPv6 formatting (wrap in brackets for URL)
+        display_ip = f"[{server_ip}]" if ":" in server_ip and "[" not in server_ip else server_ip
+        
         # Get port from container if exists
-        uri = f"http://{server_ip}"
+        uri = f"http://{display_ip}"
         
         # If we have a mapped port, use it
         if self.port:

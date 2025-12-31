@@ -74,12 +74,16 @@ sudo docker compose up -d
 sleep 15
 ```
 
-# 1. Limpieza (si no la has hecho ya)
+# 1. Full Reinstall
 ```bash
 sudo docker stop $(sudo docker ps -aq) 2>/dev/null
 sudo docker rm $(sudo docker ps -aq) 2>/dev/null
 sudo docker volume rm $(sudo docker volume ls -q) 2>/dev/null
 sudo rm -rf /opt/community-sh
+
+curl -fsSL https://raw.githubusercontent.com/falconsoft3d/community-sh/main/easy-install.sh -o easy-install.sh
+chmod +x easy-install.sh
+sudo ./easy-install.sh
 ```
 
 ## 🔒 SSL/HTTPS Configuration

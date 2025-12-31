@@ -54,7 +54,7 @@ fi
 
 # 4. Auto-configure environment
 echo -e "\n${GREEN}[4/5] Configuring environment...${NC}"
-PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s icanhazip.com 2>/dev/null || hostname -I | awk '{print $1}')
+PUBLIC_IP=$(curl -4 -s ifconfig.me 2>/dev/null || curl -4 -s icanhazip.com 2>/dev/null || hostname -I | awk '{print $1}')
 
 # Generate secrets
 SECRET_KEY=$(openssl rand -base64 50 | tr -d '\n/')

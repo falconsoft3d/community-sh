@@ -69,5 +69,8 @@ class Container(models.Model):
         # Fallback: try to get from network
         if not server_ip:
             return ""
+            
+        # Handle IPv6 formatting (wrap in brackets for URL)
+        display_ip = f"[{server_ip}]" if ":" in server_ip and "[" not in server_ip else server_ip
         
-        return f"http://{server_ip}:{self.port}"
+        return f"http://{display_ip}:{self.port}"
