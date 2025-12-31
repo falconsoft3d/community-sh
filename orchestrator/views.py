@@ -995,12 +995,7 @@ def backup_create_instance(request, backup_id):
             
             from django.contrib import messages
             
-            # Deploy the instance
-            service = DockerService()
-            print(f"Deploying instance {new_name}...")
-            service.deploy_instance(new_instance)
-            
-            # Create new branch in GitHub from original branch
+            # Create new branch in GitHub from original branch BEFORE deploying
             print("=" * 50)
             print("STARTING GITHUB BRANCH CREATION")
             print("=" * 50)
@@ -1065,7 +1060,7 @@ def backup_create_instance(request, backup_id):
                         print(f"Push output: {result.stdout}")
                         print(f"✅ Successfully created GitHub branch '{new_branch}'")
                         
-                        # Update instance with new branch
+                        # Update instance with new branch BEFORE deploying
                         new_instance.github_branch = new_branch
                         new_instance.save()
                         print(f"Updated instance branch to: {new_branch}")
@@ -1096,6 +1091,11 @@ def backup_create_instance(request, backup_id):
             print("=" * 50)
             print("GITHUB BRANCH CREATION FINISHED")
             print("=" * 50)
+            
+            # NOW deploy the instance (it will use the new branch)
+            service = DockerService()
+            print(f"Deploying instance {new_name} with branch {new_instance.github_branch}...")
+            service.deploy_instance(new_instance)
             
             # Wait for containers to be ready
             import time
