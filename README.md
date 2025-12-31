@@ -48,5 +48,5 @@ docker-compose restart app
 docker-compose down
 ```
 
-**Made with ❤️ for the Marlon Falcon Hernandez**
+**Made with ❤️ for the Marlon Falcón Hernández**
 
