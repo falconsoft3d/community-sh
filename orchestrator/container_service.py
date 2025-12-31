@@ -77,6 +77,7 @@ class ContainerService:
 
             docker_container = self.client.containers.run(
                 image=container.image,
+                command=container.command,
                 name=container.name,
                 ports={f'{container.container_port}/tcp': container.port},
                 environment=container.environment,

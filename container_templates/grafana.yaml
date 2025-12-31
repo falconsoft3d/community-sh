@@ -1,0 +1,18 @@
+name: grafana
+display_name: "Grafana"
+description: "The open observability platform"
+icon: "line-chart"
+image: "grafana/grafana:latest"
+container_port: 3000
+default_port: 3000
+environment:
+  GF_SECURITY_ADMIN_PASSWORD: "admin"
+volumes:
+  grafana_data:
+    host: "grafana_data"
+    container: "/var/lib/grafana"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.grafana.rule: "Host(`grafana.localhost`)"
+  traefik.http.services.grafana.loadbalancer.server.port: "3000"

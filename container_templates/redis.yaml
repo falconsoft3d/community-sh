@@ -1,20 +1,15 @@
 name: redis
-display_name: "Redis - Cache Database"
-description: "In-memory data structure store for caching and message brokering"
+display_name: "Redis"
+description: "In-memory data structure store, used as a database, cache, and message broker"
 icon: "database"
-image: "redis:latest"
+image: "redis:alpine"
 container_port: 6379
 default_port: 6379
-
-environment: {}
-
 volumes:
   redis_data:
-    host: "./instances/redis_data"
+    host: "redis_data"
     container: "/data"
-
 network: "traefik"
-
-command: "redis-server --appendonly yes"
-
-labels: {}
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.redis.rule: "Host(`redis.localhost`)"

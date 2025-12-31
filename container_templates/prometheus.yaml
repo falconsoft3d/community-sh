@@ -1,0 +1,16 @@
+name: prometheus
+display_name: "Prometheus"
+description: "Monitoring system and time series database"
+icon: "activity"
+image: "prom/prometheus:latest"
+container_port: 9090
+default_port: 9090
+volumes:
+  prometheus_data:
+    host: "prometheus_data"
+    container: "/prometheus"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.prometheus.rule: "Host(`prometheus.localhost`)"
+  traefik.http.services.prometheus.loadbalancer.server.port: "9090"

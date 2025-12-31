@@ -60,6 +60,7 @@ def container_create(request):
                 environment=template_defaults.get('environment', {}),
                 volumes=template_defaults.get('volumes', {}),
                 network=template_defaults.get('network', 'bridge'),
+                command=template_defaults.get('command', ''),
                 description=description,
                 created_by=request.user
             )

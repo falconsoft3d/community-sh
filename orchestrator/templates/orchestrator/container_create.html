@@ -1,18 +1,7 @@
 {% extends "orchestrator/base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-6 max-w-4xl">
-    <div class="flex items-center gap-4">
-        <a href="{% url 'container-list' %}"
-            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10">
-            <i data-lucide="arrow-left" class="h-4 w-4"></i>
-        </a>
-        <div>
-            <h1 class="text-3xl font-bold tracking-tight">Create Container</h1>
-            <p class="text-muted-foreground mt-2">Choose a template or create a custom container</p>
-        </div>
-    </div>
-
+<div class="max-w-4xl mx-auto">
     <form method="post"
         x-init="{% if first_template %}updateFields('{{ first_template.key }}', {{ first_template.port }}, '{{ first_template.image }}', {{ first_template.container_port }}, '{{ first_template.description|escapejs }}', '{{ first_template.raw_yaml|escapejs }}'){% endif %}"
         x-data="{
@@ -23,6 +12,7 @@
         description: '',
         containerName: '',
         rawYaml: '',
+        search: '',
         editMode: 'simple', // 'simple' or 'yaml'
         suggestName() {
             // Suggest container name based on template
@@ -44,17 +34,54 @@
     }">
         {% csrf_token %}
 
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div class="flex items-center gap-4">
+                <a href="{% url 'container-list' %}"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10">
+                    <i data-lucide="arrow-left" class="h-4 w-4"></i>
+                </a>
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight">Create Container</h1>
+                    <p class="text-muted-foreground mt-1">Choose a template or customize</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <a href="{% url 'container-list' %}"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 shadow-sm">
+                    <i data-lucide="play" class="mr-2 h-4 w-4"></i>
+                    Create Container
+                </button>
+            </div>
+        </div>
+
+
         <!-- Template Selection -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm mb-6">
-            <div class="p-6 border-b">
-                <h3 class="font-semibold text-lg">Select Template</h3>
-                <p class="text-sm text-muted-foreground">Choose a pre-configured template or create a custom container
-                </p>
+            <div class="p-6 border-b flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h3 class="font-semibold text-lg">Select Template</h3>
+                    <p class="text-sm text-muted-foreground">Choose a pre-configured template or create a custom
+                        container
+                    </p>
+                </div>
+                <div class="relative w-full md:w-64">
+                    <i data-lucide="search"
+                        class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"></i>
+                    <input type="text" x-model="search" placeholder="Search templates..."
+                        class="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                </div>
             </div>
             <div class="p-6">
-                <div class="grid md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {% for key, tmpl in templates.items %}
-                    <label class="relative flex cursor-pointer rounded-lg border p-4 hover:bg-accent transition-colors">
+                    <label
+                        x-show="'{{ tmpl.name }}'.toLowerCase().includes(search.toLowerCase()) || '{{ tmpl.description }}'.toLowerCase().includes(search.toLowerCase())"
+                        class="relative flex cursor-pointer rounded-lg border p-4 hover:bg-accent transition-colors">
                         <input type="radio" name="template" value="{{ key }}" x-model="template"
                             @change="updateFields('{{ key }}', {{ tmpl.port }}, '{{ tmpl.image }}', {{ tmpl.container_port }}, '{{ tmpl.description|escapejs }}', '{{ tmpl.raw_yaml|escapejs }}')"
                             class="sr-only peer" {% if forloop.first %}checked{% endif %}>
@@ -65,7 +92,7 @@
                             </div>
                             <div class="flex-1">
                                 <h4 class="font-semibold">{{ tmpl.name }}</h4>
-                                <p class="text-sm text-muted-foreground">{{ tmpl.description }}</p>
+                                <p class="text-sm text-muted-foreground line-clamp-2">{{ tmpl.description }}</p>
                                 <p class="text-xs text-muted-foreground mt-1">Port: {{ tmpl.port }}</p>
                             </div>
                         </div>
@@ -75,7 +102,8 @@
                     </label>
                     {% endfor %}
 
-                    <label class="relative flex cursor-pointer rounded-lg border p-4 hover:bg-accent transition-colors">
+                    <label x-show="'custom'.includes(search.toLowerCase())"
+                        class="relative flex cursor-pointer rounded-lg border p-4 hover:bg-accent transition-colors">
                         <input type="radio" name="template" value="custom" x-model="template"
                             @change="updateFields('custom', 8000, '', 80, '', '')" class="sr-only peer">
                         <div class="flex items-start gap-3 w-full">
@@ -185,17 +213,6 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-4">
-            <button type="submit"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                <i data-lucide="play" class="mr-2 h-4 w-4"></i>
-                Create & Start Container
-            </button>
-            <a href="{% url 'container-list' %}"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                Cancel
-            </a>
-        </div>
     </form>
 </div>
 {% endblock %}

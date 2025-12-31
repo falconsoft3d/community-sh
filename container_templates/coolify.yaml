@@ -1,0 +1,22 @@
+name: coolify
+display_name: "Coolify"
+description: "An open-source & self-hostable alternative to Heroku / Netlify / Vercel"
+icon: "layout"
+image: "ghcr.io/coollabsio/coolify:latest"
+container_port: 8000
+default_port: 8000
+environment:
+  APP_ID: "{container_name}"
+  APP_ENV: "production"
+volumes:
+  coolify_data:
+    host: "coolify_data"
+    container: "/data/coolify"
+  docker_socket:
+    host: "/var/run/docker.sock"
+    container: "/var/run/docker.sock"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.coolify.rule: "Host(`coolify.localhost`)"
+  traefik.http.services.coolify.loadbalancer.server.port: "8000"

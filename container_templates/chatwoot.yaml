@@ -1,0 +1,27 @@
+name: chatwoot
+display_name: "Chatwoot"
+description: "Open-source customer engagement platform"
+icon: "message-circle"
+image: "chatwoot/chatwoot:latest"
+container_port: 3000
+default_port: 3000
+command: "bundle exec rails s -p 3000 -b 0.0.0.0"
+environment:
+  RAILS_ENV: "production"
+  NODE_ENV: "production"
+  POSTGRES_HOST: "postgresql"
+  POSTGRES_DATABASE: "community"
+  POSTGRES_USERNAME: "admin"
+  POSTGRES_PASSWORD: "admin"
+  REDIS_URL: "redis://redis:6379"
+  SECRET_KEY_BASE: "3239482934829348293482934829348293482"
+  FRONTEND_URL: "http://chatwoot.localhost"
+volumes:
+  chatwoot_storage:
+    host: "chatwoot_storage"
+    container: "/app/storage"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.chatwoot.rule: "Host(`chatwoot.localhost`)"
+  traefik.http.services.chatwoot.loadbalancer.server.port: "3000"

@@ -1,0 +1,20 @@
+name: rocketchat
+display_name: "Rocket.Chat"
+description: "The ultimate open source communication platform"
+icon: "message-square"
+image: "rocketchat/rocket.chat:latest"
+container_port: 3000
+default_port: 3000
+environment:
+  MONGO_URL: "mongodb://mongodb:27017/rocketchat"
+  MONGO_OPLOG_URL: "mongodb://mongodb:27017/local"
+  ROOT_URL: "http://rocketchat.localhost"
+volumes:
+  rocketchat_uploads:
+    host: "rocketchat_uploads"
+    container: "/app/uploads"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.rocketchat.rule: "Host(`rocketchat.localhost`)"
+  traefik.http.services.rocketchat.loadbalancer.server.port: "3000"

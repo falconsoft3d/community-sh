@@ -40,6 +40,12 @@ labels:                     # Docker labels (optional)
 - **Redis**: In-memory cache database
 - **MongoDB**: NoSQL document database  
 - **VS Code**: Code editor in the browser (code-server)
+- **Mautic**: Open source marketing automation software
+- **Rocket.Chat**: Open source communication platform
+- **Chatwoot**: Open-source customer engagement platform
+- **Coolify**: Self-hostable Heroku/Netlify alternative
+- **Grafana**: Open observability and dashboard platform
+- **Prometheus**: Monitoring system and time series database
 - **Custom**: Manual configuration template
 
 ## Creating a New Template

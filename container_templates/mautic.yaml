@@ -1,0 +1,22 @@
+name: mautic
+display_name: "Mautic"
+description: "Open source marketing automation software"
+icon: "zap"
+image: "mautic/mautic:latest"
+container_port: 80
+default_port: 8085
+environment:
+  MAUTIC_DB_HOST: "mysql"
+  MAUTIC_DB_USER: "admin"
+  MAUTIC_DB_PASSWORD: "admin"
+  MAUTIC_DB_NAME: "community"
+  MAUTIC_RUN_CRON_JOBS: "true"
+volumes:
+  mautic_data:
+    host: "mautic_data"
+    container: "/var/www/html"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.mautic.rule: "Host(`mautic.localhost`)"
+  traefik.http.services.mautic.loadbalancer.server.port: "80"

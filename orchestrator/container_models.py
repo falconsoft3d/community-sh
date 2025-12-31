@@ -36,6 +36,9 @@ class Container(models.Model):
     
     # Network
     network = models.CharField(max_length=255, blank=True, default='bridge')
+
+    # Command
+    command = models.CharField(max_length=255, blank=True, null=True, help_text="Custom command to run")
     
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='stopped')
