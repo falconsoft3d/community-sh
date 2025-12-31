@@ -45,7 +45,7 @@ docker-compose up -d --build
 docker-compose exec app python manage.py migrate
 ```
 
-**Docker Compose Commands**
+**Docker Compose Commands Local**
 ```bash
 docker-compose up -d --build app
 docker-compose up -d --build
