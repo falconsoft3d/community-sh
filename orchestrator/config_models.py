@@ -15,6 +15,24 @@ class GitHubConfig(models.Model):
     ssl_certificate_path = models.CharField(max_length=500, blank=True, help_text="Path to SSL certificate file")
     ssl_key_path = models.CharField(max_length=500, blank=True, help_text="Path to SSL private key file")
     
+    # Backup configuration
+    auto_backup_frequency = models.CharField(
+        max_length=20, 
+        choices=[
+            ('none', 'Disabled'),
+            ('minutes', 'Every 5 Minutes'),
+            ('hourly', 'Every Hour'),
+            ('daily', 'Daily'),
+            ('weekly', 'Weekly'),
+            ('monthly', 'Monthly'),
+        ],
+        default='none'
+    )
+    auto_backup_retention = models.IntegerField(default=5, help_text="Number of backups to keep per instance")
+    
+    # Features
+    public_website_enabled = models.BooleanField(default=False, help_text="Enable public website for the platform")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

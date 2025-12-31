@@ -4,8 +4,8 @@
 <div class="flex flex-col gap-6">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-3xl font-bold tracking-tight">Métricas del Sistema</h1>
-            <p class="text-muted-foreground mt-2">Monitoreo de recursos y estado del servidor</p>
+            <h1 class="text-3xl font-bold tracking-tight">System Metrics</h1>
+            <p class="text-muted-foreground mt-2">Server resource and status monitoring</p>
         </div>
     </div>
 
@@ -14,7 +14,7 @@
         <!-- CPU Usage -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Uso de CPU</h3>
+                <h3 class="tracking-tight text-sm font-medium">CPU Usage</h3>
                 <i data-lucide="cpu" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
@@ -26,7 +26,7 @@
         <!-- Memory Usage -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Uso de RAM</h3>
+                <h3 class="tracking-tight text-sm font-medium">RAM Usage</h3>
                 <i data-lucide="memory-stick" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
@@ -39,7 +39,7 @@
         <!-- Disk Usage -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Uso de Disco</h3>
+                <h3 class="tracking-tight text-sm font-medium">Disk Usage</h3>
                 <i data-lucide="hard-drive" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
@@ -52,7 +52,7 @@
         <!-- Active Containers -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Contenedores Activos</h3>
+                <h3 class="tracking-tight text-sm font-medium">Active Containers</h3>
                 <i data-lucide="box" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
@@ -93,21 +93,21 @@
     <!-- Docker Info -->
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-col space-y-1.5 p-6 pb-4">
-            <h3 class="font-semibold leading-none tracking-tight">Información de Docker</h3>
-            <p class="text-sm text-muted-foreground">Detalles del ambiente Docker</p>
+            <h3 class="font-semibold leading-none tracking-tight">Docker information</h3>
+            <p class="text-sm text-muted-foreground">Docker environment details</p>
         </div>
         <div class="p-6 pt-0">
             <div class="grid gap-4 md:grid-cols-3">
                 <div class="flex flex-col space-y-1">
-                    <span class="text-sm font-medium">Versión</span>
+                    <span class="text-sm font-medium">Version</span>
                     <span class="text-sm text-muted-foreground">{{ metrics.docker_version }}</span>
                 </div>
                 <div class="flex flex-col space-y-1">
-                    <span class="text-sm font-medium">Imágenes</span>
+                    <span class="text-sm font-medium">Images</span>
                     <span class="text-sm text-muted-foreground">{{ metrics.docker_images }}</span>
                 </div>
                 <div class="flex flex-col space-y-1">
-                    <span class="text-sm font-medium">Redes</span>
+                    <span class="text-sm font-medium">Networks</span>
                     <span class="text-sm text-muted-foreground">{{ metrics.docker_networks }}</span>
                 </div>
             </div>

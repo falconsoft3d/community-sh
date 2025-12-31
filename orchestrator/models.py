@@ -59,6 +59,7 @@ class Instance(models.Model):
 from .config_models import GitHubConfig
 from .backup_models import Backup
 from .blog_models import BlogPost
+from .container_models import Container
 
 class UserProfile(models.Model):
     """Extended user profile with additional information"""
@@ -66,6 +67,10 @@ class UserProfile(models.Model):
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True, help_text="User avatar image")
     bio = models.TextField(blank=True, help_text="User biography")
     phone = models.CharField(max_length=20, blank=True, help_text="Phone number")
+    
+    # Two-Factor Authentication
+    two_factor_enabled = models.BooleanField(default=False, help_text="Enable two-factor authentication")
+    two_factor_secret = models.CharField(max_length=32, blank=True, help_text="TOTP secret key")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

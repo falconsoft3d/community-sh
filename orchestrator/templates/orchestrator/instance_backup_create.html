@@ -1,0 +1,62 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="max-w-md mx-auto">
+    <div class="mb-6">
+        <nav class="text-sm text-muted-foreground mb-1">
+            <a href="{% url 'instance-list' %}" class="hover:text-foreground">Instances</a>
+            <span class="mx-1">/</span>
+            <a href="{% url 'instance-detail' backup.instance.pk %}" class="hover:text-foreground">{{
+                backup.instance.name }}</a>
+            <span class="mx-1">/</span>
+            <span class="text-foreground font-medium">Create from Backup</span>
+        </nav>
+        <h1 class="text-2xl font-bold tracking-tight">Create Instance from Backup</h1>
+        <p class="text-muted-foreground mt-2">
+            Create a new instance using the backup <strong>{{ backup.filename }}</strong>.
+        </p>
+    </div>
+
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <form method="post" class="p-6 space-y-4">
+            {% csrf_token %}
+
+            {% if messages %}
+            <div class="space-y-2">
+                {% for message in messages %}
+                <div
+                    class="text-sm p-3 rounded-md {% if message.tags == 'error' %}bg-red-50 text-red-900 border border-red-200{% else %}bg-green-50 text-green-900 border border-green-200{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="space-y-2">
+                <label for="new_name" class="text-sm font-medium leading-none">
+                    New Instance Name <span class="text-destructive">*</span>
+                </label>
+                <input type="text" id="new_name" name="new_name" required pattern="[a-z0-9-]+"
+                    title="lowercase letters, numbers and hyphens only"
+                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    placeholder="e.g. {{ backup.instance.name }}-restored">
+                <p class="text-xs text-muted-foreground">
+                    Only lowercase letters, numbers, and hyphens allowed.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-4 pt-4">
+                <a href="{% url 'instance-detail' backup.instance.pk %}"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                    <i data-lucide="plus" class="mr-2 h-4 w-4"></i>
+                    Create Instance
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

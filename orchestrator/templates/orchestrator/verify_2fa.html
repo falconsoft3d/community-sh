@@ -1,0 +1,51 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content_full %}
+<div class="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+    <div class="w-full max-w-sm space-y-6">
+        <div class="flex flex-col space-y-2 text-center">
+            <i data-lucide="shield-check" class="mx-auto h-10 w-10 text-primary"></i>
+            <h1 class="text-2xl font-semibold tracking-tight">Two-Factor Authentication</h1>
+            <p class="text-sm text-muted-foreground">Enter the 6-digit code from your authenticator app</p>
+        </div>
+
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 pt-0 mt-6">
+                {% if messages %}
+                {% for message in messages %}
+                <div class="rounded-md bg-red-50 border border-red-200 p-3 mb-4">
+                    <div class="flex items-center gap-2 text-red-800 text-sm">
+                        <i data-lucide="alert-circle" class="h-4 w-4 text-red-600"></i>
+                        {{ message }}
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium leading-none" for="token">
+                            Verification Code
+                        </label>
+                        <input
+                            class="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-2xl text-center tracking-[0.5em] font-mono shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            type="text" name="token" id="token" required maxlength="6" pattern="[0-9]{6}"
+                            autocomplete="one-time-code" autofocus>
+                        <p class="text-[0.8rem] text-muted-foreground">Open your authenticator app to see the code.</p>
+                    </div>
+
+                    <button
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full"
+                        type="submit">
+                        Verify & Sign In
+                    </button>
+                </form>
+            </div>
+        </div>
+        <p class="px-8 text-center text-sm text-muted-foreground">
+            <a href="{% url 'login' %}" class="hover:text-brand underline underline-offset-4">Back to login</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

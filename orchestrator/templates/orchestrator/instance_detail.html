@@ -1,7 +1,7 @@
 {% extends "orchestrator/base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-6" x-data="{ deleteModal: false, step: 1, confirmText: '' }">
+<div class="flex flex-col gap-6" x-data="{ deleteModal: false, step: 1, confirmText: '', activeTab: 'overview' }">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
@@ -49,39 +49,37 @@
         </div>
     </div>
 
-    <!-- Content Grid -->
-    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <!-- Backup & Restore Card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Backup & Restore</h3>
-                <p class="text-sm text-muted-foreground">Manage instance backups</p>
-            </div>
-            <div class="p-6 pt-4 space-y-3">
-                <a href="{% url 'instance-backups' object.pk %}"
-                    class="flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full">
-                    <i data-lucide="archive" class="mr-2 h-4 w-4"></i> Ver Respaldos
-                </a>
-                <div class="border-t pt-3">
-                    <form action="{% url 'instance-restore' object.pk %}" method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <div class="space-y-2">
-                            <label for="backup_file" class="text-sm font-medium leading-none">Restaurar desde
-                                archivo</label>
-                            <input type="file" id="backup_file" name="backup_file" accept=".zip" required
-                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                            <button type="submit"
-                                class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
-                                <i data-lucide="upload" class="mr-2 h-4 w-4"></i> Restore Backup
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <!-- Tabs Navigation -->
+    <div class="border-b border-border overflow-x-auto mb-6">
+        <nav class="-mb-px flex space-x-6 min-w-max">
+            <button @click="activeTab = 'overview'"
+                :class="activeTab === 'overview' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
+                <i data-lucide="layout-dashboard" class="h-4 w-4"></i> Overview
+            </button>
+            <button @click="activeTab = 'console'"
+                :class="activeTab === 'console' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
+                <i data-lucide="terminal-square" class="h-4 w-4"></i> Console
+            </button>
+            <button @click="activeTab = 'backups'"
+                :class="activeTab === 'backups' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
+                <i data-lucide="archive" class="h-4 w-4"></i> Backups
+            </button>
+            <button @click="activeTab = 'settings'"
+                :class="activeTab === 'settings' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
+                <i data-lucide="settings" class="h-4 w-4"></i> Settings
+            </button>
+        </nav>
+    </div>
 
+    <!-- Overview Tab -->
+    <div x-show="activeTab === 'overview'"
+        class="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-in fade-in duration-300">
         <!-- Info Card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm" x-data="{ editingName: false }">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm h-fit" x-data="{ editingName: false }">
             <div class="flex flex-col space-y-1.5 p-6 pb-2">
                 <h3 class="font-semibold leading-none tracking-tight">Information</h3>
                 <p class="text-sm text-muted-foreground">Details about this instance.</p>
@@ -91,17 +89,17 @@
                     <label class="text-sm font-medium leading-none">Nombre</label>
                     <div x-show="!editingName" class="flex items-center gap-2">
                         <span class="text-sm text-muted-foreground">{{ object.name }}</span>
-                        <button @click="editingName = true" 
+                        <button @click="editingName = true"
                             class="text-xs text-primary hover:underline flex items-center gap-1">
                             <i data-lucide="pencil" class="h-3 w-3"></i> Editar
                         </button>
                     </div>
-                    <form x-show="editingName" action="{% url 'instance-update-name' object.pk %}" method="post" class="flex gap-2">
+                    <form x-show="editingName" action="{% url 'instance-update-name' object.pk %}" method="post"
+                        class="flex gap-2">
                         {% csrf_token %}
-                        <input type="text" name="name" value="{{ object.name }}" 
-                               class="flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                               required pattern="[a-z0-9-]+" 
-                               title="Solo letras minúsculas, números y guiones">
+                        <input type="text" name="name" value="{{ object.name }}"
+                            class="flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm" required
+                            pattern="[a-z0-9-]+" title="Solo letras minúsculas, números y guiones">
                         <button type="submit"
                             class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
                             <i data-lucide="check" class="h-3 w-3"></i>
@@ -119,16 +117,19 @@
                     <div class="flex items-center">
                         {% if object.status == 'running' %}
                         <div
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-100 text-green-800">
-                            Running</div>
+                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors border-transparent bg-green-100 text-green-800">
+                            Running
+                        </div>
                         {% elif object.status == 'deploying' %}
                         <div
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-yellow-100 text-yellow-800">
-                            Deploying</div>
+                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors border-transparent bg-yellow-100 text-yellow-800">
+                            Deploying
+                        </div>
                         {% else %}
                         <div
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">
-                            {{ object.status }}</div>
+                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors border-transparent bg-secondary text-secondary-foreground">
+                            {{ object.status }}
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -155,7 +156,7 @@
                             class="text-sm text-primary hover:underline flex items-center gap-1">
                             http://localhost:{{ object.port }} <i data-lucide="external-link" class="h-3 w-3"></i>
                         </a>
-                        <p class="text-xs text-muted-foreground mt-1">Acceso directo por puerto (disponible inmediatamente)</p>
+                        <p class="text-xs text-muted-foreground mt-1">Acceso directo por puerto</p>
                         {% else %}
                         <span class="text-sm text-muted-foreground">-</span>
                         {% endif %}
@@ -187,137 +188,9 @@
             </div>
         </div>
 
-        <!-- Domain & SSL Card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Dominio & SSL</h3>
-                <p class="text-sm text-muted-foreground">Configurar dominio personalizado</p>
-            </div>
-            <div class="p-6 pt-4 space-y-4" x-data="{ showDomainForm: {% if not object.custom_domain %}true{% else %}false{% endif %} }">
-                {% if object.custom_domain %}
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <i data-lucide="globe" class="h-4 w-4 text-primary"></i>
-                            <span class="text-sm font-medium">{{ object.custom_domain }}</span>
-                        </div>
-                        {% if object.ssl_enabled %}
-                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-green-100 text-green-800">
-                            <i data-lucide="shield-check" class="h-3 w-3 mr-1"></i>
-                            SSL Activo
-                        </div>
-                        {% else %}
-                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-yellow-100 text-yellow-800">
-                            <i data-lucide="shield-alert" class="h-3 w-3 mr-1"></i>
-                            Sin SSL
-                        </div>
-                        {% endif %}
-                    </div>
-                    
-                    {% if not object.ssl_enabled %}
-                    <button onclick="document.getElementById('ssl-form-{{ object.pk }}').classList.toggle('hidden')"
-                        class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
-                        <i data-lucide="shield-plus" class="mr-2 h-4 w-4"></i>
-                        Generar Certificado SSL
-                    </button>
-                    
-                    <form id="ssl-form-{{ object.pk }}" action="{% url 'instance-generate-ssl' object.pk %}" method="post" class="hidden space-y-3 pt-2 border-t">
-                        {% csrf_token %}
-                        <div>
-                            <label class="text-sm font-medium mb-2 block">Email para notificaciones</label>
-                            <input type="email" name="email" required
-                                   placeholder="tu@email.com"
-                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                        </div>
-                        <button type="submit"
-                            class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-9 px-4 py-2">
-                            <i data-lucide="lock" class="mr-2 h-4 w-4"></i>
-                            Confirmar y Generar
-                        </button>
-                    </form>
-                    {% else %}
-                    <div class="text-xs text-muted-foreground space-y-1">
-                        <div class="flex items-center gap-2">
-                            <i data-lucide="key" class="h-3 w-3"></i>
-                            <span>Certificado: {{ object.ssl_certificate_path|truncatechars:40 }}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <i data-lucide="mail" class="h-3 w-3"></i>
-                            <span>Email: {{ object.ssl_email }}</span>
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    <button @click="showDomainForm = !showDomainForm"
-                        class="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-2">
-                        <i data-lucide="settings" class="h-3 w-3"></i>
-                        Cambiar dominio
-                    </button>
-                </div>
-                {% endif %}
-                
-                <form x-show="showDomainForm" action="{% url 'instance-configure-domain' object.pk %}" method="post" class="space-y-3">
-                    {% csrf_token %}
-                    <div>
-                        <label class="text-sm font-medium mb-2 block">Dominio Personalizado</label>
-                        <input type="text" name="domain" 
-                               value="{{ object.custom_domain|default:'' }}"
-                               placeholder="ejemplo.com o www.ejemplo.com"
-                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                               required>
-                        <p class="text-xs text-muted-foreground mt-1">
-                            Asegúrate de que tu dominio apunte a este servidor
-                        </p>
-                    </div>
-                    <button type="submit"
-                        class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
-                        <i data-lucide="save" class="mr-2 h-4 w-4"></i>
-                        Guardar Dominio
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Install Module from ZIP Card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Instalar Módulo</h3>
-                <p class="text-sm text-muted-foreground">Agregar al repositorio y desplegar</p>
-            </div>
-            <div class="p-6 pt-4">
-                {% if not object.github_repo %}
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
-                    <p class="text-xs text-yellow-800">
-                        Esta instancia no tiene un repositorio de GitHub configurado. 
-                        Los módulos solo se pueden instalar en instancias con repositorio.
-                    </p>
-                </div>
-                {% else %}
-                <form action="{% url 'instance-install-module' object.pk %}" method="post" enctype="multipart/form-data" class="space-y-3">
-                    {% csrf_token %}
-                    <div>
-                        <label class="text-sm font-medium mb-2 block">Archivo del Módulo</label>
-                        <input type="file" name="module_file" 
-                               accept=".zip"
-                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium"
-                               required>
-                        <p class="text-xs text-muted-foreground mt-1">
-                            El módulo se agregará a <strong>{{ object.github_repo }}</strong> y se desplegará automáticamente
-                        </p>
-                    </div>
-                    <button type="submit"
-                        class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
-                        <i data-lucide="upload" class="mr-2 h-4 w-4"></i>
-                        Subir e Instalar
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-        </div>
-
         <!-- Logs Card -->
         <div
-            class="rounded-xl border bg-card text-card-foreground shadow-sm md:col-span-1 lg:col-span-2 flex flex-col h-[500px]">
+            class="rounded-xl border bg-card text-card-foreground shadow-sm md:col-span-1 lg:col-span-2 flex flex-col h-[600px]">
             <div class="flex flex-col space-y-1.5 p-6 pb-2 border-b">
                 <div class="flex items-center justify-between">
                     <div class="flex flex-col space-y-1">
@@ -336,10 +209,13 @@
                     class="font-mono text-xs text-zinc-300 h-full w-full overflow-y-auto whitespace-pre-wrap">{{ logs }}</pre>
             </div>
         </div>
+    </div>
 
+    <!-- Console Tab -->
+    <div x-show="activeTab === 'console'"
+        class="grid gap-6 md:grid-cols-1 lg:grid-cols-3 animate-in fade-in duration-300">
         <!-- Console Card -->
-        <div
-            class="rounded-xl border bg-card text-card-foreground shadow-sm md:col-span-1 lg:col-span-2 flex flex-col h-[500px]">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm lg:col-span-2 flex flex-col h-[600px]">
             <div class="flex flex-col space-y-1.5 p-6 pb-2 border-b">
                 <div class="flex items-center justify-between">
                     <div class="flex flex-col space-y-1">
@@ -347,142 +223,284 @@
                         <p class="text-sm text-muted-foreground">Ejecuta comandos dentro del contenedor.</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="document.getElementById('requirements-file').click()" 
-                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
+                        <button onclick="document.getElementById('requirements-file').click()"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
                             title="Instalar desde requirements.txt">
                             <i data-lucide="package-plus" class="h-4 w-4 mr-2"></i> Requirements
                         </button>
-                        <input type="file" id="requirements-file" accept=".txt" class="hidden" onchange="handleRequirementsFile(event)">
-                        <button onclick="clearConsole()" 
-                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
+                        <input type="file" id="requirements-file" accept=".txt" class="hidden"
+                            onchange="handleRequirementsFile(event)">
+                        <button onclick="clearConsole()"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
                             <i data-lucide="trash-2" class="h-4 w-4"></i>
                         </button>
                     </div>
                 </div>
                 <div class="flex gap-2 pt-2">
-                    <button onclick="quickCommand('ls -la')" 
+                    <button onclick="quickCommand('ls -la')"
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">ls -la</button>
-                    <button onclick="quickCommand('pip list')" 
+                    <button onclick="quickCommand('pip list')"
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">pip list</button>
-                    <button onclick="quickCommand('pip3 list')" 
+                    <button onclick="quickCommand('pip3 list')"
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">pip3 list</button>
-                    <button onclick="quickCommand('pwd')" 
+                    <button onclick="quickCommand('pwd')"
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">pwd</button>
-                    <button onclick="quickCommand('df -h')" 
+                    <button onclick="quickCommand('df -h')"
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">df -h</button>
                 </div>
             </div>
             <div class="flex-1 bg-zinc-950 p-4 overflow-hidden flex flex-col">
-                <div id="console-output" 
+                <div id="console-output"
                     class="font-mono text-xs text-zinc-300 flex-1 overflow-y-auto whitespace-pre-wrap mb-2"></div>
                 <div class="flex gap-2">
                     <span class="text-green-400 font-mono text-xs">$</span>
-                    <input type="text" 
-                        id="console-input" 
-                        placeholder="Ingresa un comando (ej: pip install requests)"
+                    <input type="text" id="console-input" placeholder="Ingresa un comando (ej: pip install requests)"
                         class="flex-1 bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-300 font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         onkeydown="handleConsoleInput(event)">
-                    <button onclick="executeConsoleCommand()" 
+                    <button onclick="executeConsoleCommand()"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                         <i data-lucide="play" class="mr-2 h-4 w-4"></i> Ejecutar
                     </button>
                 </div>
             </div>
         </div>
+
+        <!-- Install Module from ZIP Card -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm h-fit">
+            <div class="flex flex-col space-y-1.5 p-6 pb-2">
+                <h3 class="font-semibold leading-none tracking-tight">Instalar Módulo</h3>
+                <p class="text-sm text-muted-foreground">Agregar al repositorio y desplegar</p>
+            </div>
+            <div class="p-6 pt-4">
+                {% if not object.github_repo %}
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                    <p class="text-xs text-yellow-800">
+                        Esta instancia no tiene un repositorio de GitHub configurado.
+                    </p>
+                </div>
+                {% else %}
+                <form action="{% url 'instance-install-module' object.pk %}" method="post" enctype="multipart/form-data"
+                    class="space-y-3">
+                    {% csrf_token %}
+                    <div>
+                        <label class="text-sm font-medium mb-2 block">Archivo del Módulo</label>
+                        <input type="file" name="module_file" accept=".zip" required
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium">
+                        <p class="text-xs text-muted-foreground mt-1">
+                            El módulo se agregará a <strong>{{ object.github_repo }}</strong>
+                        </p>
+                    </div>
+                    <button type="submit"
+                        class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
+                        <i data-lucide="upload" class="mr-2 h-4 w-4"></i> Subir e Instalar
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
-<!-- Delete Confirmation Wizard Modal -->
-<div x-show="deleteModal" 
-     x-cloak
-     class="fixed inset-0 z-50 flex items-center justify-center p-4"
-     style="display: none;">
-    <!-- Backdrop -->
-    <div @click="deleteModal = false; step = 1; confirmText = ''" 
-         class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-    
-    <!-- Modal -->
-    <div class="relative bg-card rounded-lg shadow-xl max-w-md w-full border"
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100"
-         x-transition:leave="transition ease-in duration-200"
-         x-transition:leave-start="opacity-100 scale-100"
-         x-transition:leave-end="opacity-0 scale-95">
-        
-        <!-- Step 1: Warning -->
-        <div x-show="step === 1" class="p-6">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-                    <i data-lucide="alert-triangle" class="h-6 w-6 text-destructive"></i>
+    <!-- Backups Tab -->
+    <div x-show="activeTab === 'backups'" class="grid gap-6 animate-in fade-in duration-300">
+        <!-- Backup & Restore Card -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm max-w-2xl">
+            <div class="flex flex-col space-y-1.5 p-6 pb-2">
+                <h3 class="font-semibold leading-none tracking-tight">Backup & Restore</h3>
+                <p class="text-sm text-muted-foreground">Manage instance backups</p>
+            </div>
+            <div class="p-6 pt-4 space-y-3">
+                <a href="{% url 'instance-backups' object.pk %}"
+                    class="flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full">
+                    <i data-lucide="archive" class="mr-2 h-4 w-4"></i> Ver Respaldos y Configuración
+                </a>
+                <div class="border-t pt-3">
+                    <form action="{% url 'instance-restore' object.pk %}" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="space-y-2">
+                            <label for="backup_file" class="text-sm font-medium leading-none">Restaurar desde
+                                archivo</label>
+                            <input type="file" id="backup_file" name="backup_file" accept=".zip" required
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                            <button type="submit"
+                                class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
+                                <i data-lucide="upload" class="mr-2 h-4 w-4"></i> Restore Backup
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <div>
-                    <h3 class="text-lg font-semibold">¿Eliminar Instancia?</h3>
-                    <p class="text-sm text-muted-foreground">Esta acción no se puede deshacer</p>
-                </div>
-            </div>
-            
-            <div class="space-y-3 mb-6">
-                <div class="bg-destructive/5 border border-destructive/20 rounded-lg p-4">
-                    <p class="text-sm font-medium mb-2">Se eliminará permanentemente:</p>
-                    <ul class="text-sm text-muted-foreground space-y-1 ml-4">
-                        <li class="flex items-center gap-2">
-                            <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                            El contenedor Docker <strong class="text-foreground">{{ object.name }}</strong>
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                            Todos los datos y configuraciones
-                        </li>
-                        <li class="flex items-center gap-2">
-                            <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                            Los addons personalizados
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="flex gap-3">
-                <button @click="deleteModal = false; step = 1; confirmText = ''"
-                    class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                    Cancelar
-                </button>
-                <button @click="step = 2"
-                    class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
-                    Continuar
-                </button>
-            </div>
-        </div>
-        
-        <!-- Step 2: Confirmation -->
-        <div x-show="step === 2" class="p-6">
-            <div class="mb-4">
-                <h3 class="text-lg font-semibold mb-2">Confirmar Eliminación</h3>
-                <p class="text-sm text-muted-foreground mb-4">
-                    Escribe <strong class="text-foreground">{{ object.name }}</strong> para confirmar:
-                </p>
-                
-                <input type="text" 
-                       x-model="confirmText"
-                       placeholder="Escribe el nombre de la instancia"
-                       @keyup.enter="if (confirmText === '{{ object.name }}') document.getElementById('deleteForm').submit()"
-                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-            </div>
-            
-            <div class="flex gap-3">
-                <button @click="step = 1; confirmText = ''"
-                    class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                    <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i> Atrás
-                </button>
-                <button @click="if (confirmText === '{{ object.name }}') document.getElementById('deleteForm').submit()"
-                    :disabled="confirmText !== '{{ object.name }}'"
-                    :class="confirmText === '{{ object.name }}' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'opacity-50 cursor-not-allowed'"
-                    class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-10 px-4 py-2">
-                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Eliminar
-                </button>
             </div>
         </div>
     </div>
-</div>
+
+    <!-- Settings Tab -->
+    <div x-show="activeTab === 'settings'" class="grid gap-6 animate-in fade-in duration-300">
+        <!-- Domain & SSL Card -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm max-w-2xl">
+            <div class="flex flex-col space-y-1.5 p-6 pb-2">
+                <h3 class="font-semibold leading-none tracking-tight">Dominio & SSL</h3>
+                <p class="text-sm text-muted-foreground">Configurar dominio personalizado</p>
+            </div>
+            <div class="p-6 pt-4 space-y-4"
+                x-data="{ showDomainForm: {% if not object.custom_domain %}true{% else %}false{% endif %} }">
+                {% if object.custom_domain %}
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="globe" class="h-4 w-4 text-primary"></i>
+                            <span class="text-sm font-medium">{{ object.custom_domain }}</span>
+                        </div>
+                        {% if object.ssl_enabled %}
+                        <div
+                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-green-100 text-green-800">
+                            <i data-lucide="shield-check" class="h-3 w-3 mr-1"></i> SSL Activo
+                        </div>
+                        {% else %}
+                        <div
+                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-yellow-100 text-yellow-800">
+                            <i data-lucide="shield-alert" class="h-3 w-3 mr-1"></i> Sin SSL
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if not object.ssl_enabled %}
+                    <button onclick="document.getElementById('ssl-form-{{ object.pk }}').classList.toggle('hidden')"
+                        class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
+                        <i data-lucide="shield-plus" class="mr-2 h-4 w-4"></i> Generar Certificado SSL
+                    </button>
+
+                    <form id="ssl-form-{{ object.pk }}" action="{% url 'instance-generate-ssl' object.pk %}"
+                        method="post" class="hidden space-y-3 pt-2 border-t">
+                        {% csrf_token %}
+                        <div>
+                            <label class="text-sm font-medium mb-2 block">Email para notificaciones</label>
+                            <input type="email" name="email" required placeholder="tu@email.com"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        </div>
+                        <button type="submit"
+                            class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-9 px-4 py-2">
+                            <i data-lucide="lock" class="mr-2 h-4 w-4"></i> Confirmar y Generar
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="text-xs text-muted-foreground space-y-1">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="key" class="h-3 w-3"></i>
+                            <span>Certificado: {{ object.ssl_certificate_path|truncatechars:40 }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <button @click="showDomainForm = !showDomainForm"
+                        class="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-2">
+                        <i data-lucide="settings" class="h-3 w-3"></i> Cambiar dominio
+                    </button>
+                </div>
+                {% endif %}
+
+                <form x-show="showDomainForm" action="{% url 'instance-configure-domain' object.pk %}" method="post"
+                    class="space-y-3">
+                    {% csrf_token %}
+                    <div>
+                        <label class="text-sm font-medium mb-2 block">Dominio Personalizado</label>
+                        <input type="text" name="domain" value="{{ object.custom_domain|default:'' }}"
+                            placeholder="ejemplo.com"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
+                    </div>
+                    <button type="submit"
+                        class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
+                        <i data-lucide="save" class="mr-2 h-4 w-4"></i> Guardar Dominio
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Wizard Modal -->
+    <div x-show="deleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style="display: none;">
+        <!-- Backdrop -->
+        <div @click="deleteModal = false; step = 1; confirmText = ''"
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+
+        <!-- Modal -->
+        <div class="relative bg-card rounded-lg shadow-xl max-w-md w-full border"
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+
+            <!-- Step 1: Warning -->
+            <div x-show="step === 1" class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <i data-lucide="alert-triangle" class="h-6 w-6 text-destructive"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold">¿Eliminar Instancia?</h3>
+                        <p class="text-sm text-muted-foreground">Esta acción no se puede deshacer</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3 mb-6">
+                    <div class="bg-destructive/5 border border-destructive/20 rounded-lg p-4">
+                        <p class="text-sm font-medium mb-2">Se eliminará permanentemente:</p>
+                        <ul class="text-sm text-muted-foreground space-y-1 ml-4">
+                            <li class="flex items-center gap-2">
+                                <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
+                                El contenedor Docker <strong class="text-foreground">{{ object.name }}</strong>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
+                                Todos los datos y configuraciones
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
+                                Los addons personalizados
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button @click="deleteModal = false; step = 1; confirmText = ''"
+                        class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                        Cancelar
+                    </button>
+                    <button @click="step = 2"
+                        class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
+                        Continuar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Confirmation -->
+            <div x-show="step === 2" class="p-6">
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold mb-2">Confirmar Eliminación</h3>
+                    <p class="text-sm text-muted-foreground mb-4">
+                        Escribe <strong class="text-foreground">{{ object.name }}</strong> para confirmar:
+                    </p>
+
+                    <input type="text" x-model="confirmText" placeholder="Escribe el nombre de la instancia"
+                        @keyup.enter="if (confirmText === '{{ object.name }}') document.getElementById('deleteForm').submit()"
+                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                </div>
+
+                <div class="flex gap-3">
+                    <button @click="step = 1; confirmText = ''"
+                        class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                        <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i> Atrás
+                    </button>
+                    <button
+                        @click="if (confirmText === '{{ object.name }}') document.getElementById('deleteForm').submit()"
+                        :disabled="confirmText !== '{{ object.name }}'"
+                        :class="confirmText === '{{ object.name }}' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'opacity-50 cursor-not-allowed'"
+                        class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-10 px-4 py-2">
+                        <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </div> <!-- Cierre del div principal con x-data -->
 
@@ -522,12 +540,12 @@
         const timestamp = new Date().toLocaleTimeString();
         const colorClass = type === 'command' ? 'text-green-400' : type === 'error' ? 'text-red-400' : 'text-zinc-300';
         const prefix = type === 'command' ? '$ ' : type === 'error' ? '❌ ' : '';
-        
+
         const line = document.createElement('div');
         line.className = `${colorClass} mb-1`;
         line.innerHTML = `<span class="text-zinc-500">[${timestamp}]</span> ${prefix}${text}`;
         consoleOutput.appendChild(line);
-        
+
         // Auto scroll to bottom
         consoleOutput.scrollTop = consoleOutput.scrollHeight;
     }
@@ -542,10 +560,10 @@
 
         // Show command in console
         appendToConsole(command, 'command');
-        
+
         // Clear input
         consoleInput.value = '';
-        
+
         // Show loading
         appendToConsole('Ejecutando...', 'output');
 
@@ -558,21 +576,21 @@
             },
             body: JSON.stringify({ command: command })
         })
-        .then(response => response.json())
-        .then(data => {
-            // Remove "Ejecutando..." message
-            consoleOutput.lastChild.remove();
-            
-            if (data.success) {
-                appendToConsole(data.output || '(sin salida)', 'output');
-            } else {
-                appendToConsole(data.error || 'Error desconocido', 'error');
-            }
-        })
-        .catch(error => {
-            consoleOutput.lastChild.remove();
-            appendToConsole(`Error de conexión: ${error.message}`, 'error');
-        });
+            .then(response => response.json())
+            .then(data => {
+                // Remove "Ejecutando..." message
+                consoleOutput.lastChild.remove();
+
+                if (data.success) {
+                    appendToConsole(data.output || '(sin salida)', 'output');
+                } else {
+                    appendToConsole(data.error || 'Error desconocido', 'error');
+                }
+            })
+            .catch(error => {
+                consoleOutput.lastChild.remove();
+                appendToConsole(`Error de conexión: ${error.message}`, 'error');
+            });
     }
 
     function handleConsoleInput(event) {
@@ -623,17 +641,17 @@
             },
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                appendToConsole(data.output || '✓ Instalación completada', 'output');
-            } else {
-                appendToConsole(data.error || 'Error en la instalación', 'error');
-            }
-        })
-        .catch(error => {
-            appendToConsole(`Error: ${error.message}`, 'error');
-        });
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    appendToConsole(data.output || '✓ Instalación completada', 'output');
+                } else {
+                    appendToConsole(data.error || 'Error en la instalación', 'error');
+                }
+            })
+            .catch(error => {
+                appendToConsole(`Error: ${error.message}`, 'error');
+            });
 
         // Reset file input
         event.target.value = '';

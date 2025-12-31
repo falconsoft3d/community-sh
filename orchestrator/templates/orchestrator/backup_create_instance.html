@@ -1,0 +1,42 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="flex items-center gap-4 mb-6">
+        <a href="{% url 'instance-backups' backup.instance.pk %}"
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10">
+            <i data-lucide="arrow-left" class="h-4 w-4"></i>
+        </a>
+        <h1 class="text-3xl font-bold tracking-tight">Create Instance from Backup</h1>
+    </div>
+
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 border-b">
+            <h3 class="font-semibold leading-none tracking-tight">New Instance Details</h3>
+            <p class="text-sm text-muted-foreground">Original backup: {{ backup.filename }}</p>
+        </div>
+        <div class="p-6">
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+
+                <div class="space-y-2">
+                    <label for="name" class="text-sm font-medium leading-none">New Instance Name</label>
+                    <input type="text" id="name" name="name" required
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="my-new-odoo">
+                    <p class="text-xs text-muted-foreground">Only letters, numbers and hyphens</p>
+                </div>
+
+                <div class="pt-4 flex items-center gap-4">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        Create and Restore
+                    </button>
+                    <a href="{% url 'instance-backups' backup.instance.pk %}"
+                        class="text-sm text-muted-foreground hover:underline">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6 max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">About Community SH</h1>
+            <p class="text-muted-foreground mt-2">Platform details, version history, and release notes</p>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full border border-primary/20">
+            <i data-lucide="tag" class="h-4 w-4"></i>
+            <span class="text-sm font-semibold">v{{ current_version }}</span>
+        </div>
+    </div>
+
+    <!-- Platform Info -->
+    <div class="grid gap-6 md:grid-cols-2">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+            <div class="p-6 border-b bg-muted/30">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="info" class="h-5 w-5 text-primary"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">System Information</h3>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex justify-between items-center py-2 border-b border-border last:border-0 border-dashed">
+                    <span class="text-sm text-muted-foreground">App Name</span>
+                    <span class="text-sm font-medium">Community SH</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-border last:border-0 border-dashed">
+                    <span class="text-sm text-muted-foreground">Author</span>
+                    <div class="flex flex-col items-end">
+                        <span class="text-sm font-medium">Marlon Falcón Hernández</span>
+                        <a href="https://marlonfalcon.com" target="_blank"
+                            class="text-xs text-primary hover:underline">marlonfalcon.com</a>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-border last:border-0 border-dashed">
+                    <span class="text-sm text-muted-foreground">Framework</span>
+                    <span class="text-sm font-medium">Django 6.0</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-border last:border-0 border-dashed">
+                    <span class="text-sm text-muted-foreground">Python Version</span>
+                    <span class="text-sm font-medium">3.14.2</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-border last:border-0 border-dashed">
+                    <span class="text-sm text-muted-foreground">Environment</span>
+                    <span class="text-sm font-medium">Production / Docker</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+            <div class="p-6 border-b bg-muted/30">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="heart" class="h-5 w-5 text-red-500"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Mission</h3>
+                </div>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-muted-foreground leading-relaxed">
+                    Community SH is built to democratize Odoo hosting and management. Our mission is to provide an
+                    open-source, powerful, and easy-to-use orchestrator for Odoo communities worldwide.
+                </p>
+                <div class="mt-6">
+                    <a href="https://github.com/falconsoft3d/community-sh" target="_blank"
+                        class="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
+                        <i data-lucide="github" class="h-4 w-4"></i>
+                        Contribute on GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Version History -->
+    <div class="space-y-4">
+        <h2 class="text-xl font-bold tracking-tight">Version History</h2>
+
+        <div class="space-y-6">
+            {% for release in versions %}
+            <div class="relative pl-8 border-l-2 border-muted pb-6 last:pb-0">
+                <!-- Dot -->
+                <div
+                    class="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-background border-2 {% if forloop.first %}border-primary{% else %}border-muted-foreground/30{% endif %}">
+                </div>
+
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
+                    <h3 class="text-lg font-bold flex items-center gap-2">
+                        Version {{ release.version }}
+                        {% if forloop.first %}
+                        <span
+                            class="text-[10px] uppercase tracking-wider bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold border border-green-200">Latest</span>
+                        {% endif %}
+                    </h3>
+                    <span
+                        class="text-xs text-muted-foreground font-mono bg-muted px-2 py-0.5 rounded flex items-center gap-1">
+                        <i data-lucide="calendar" class="h-3 w-3"></i>
+                        {{ release.date }}
+                    </span>
+                </div>
+
+                <div class="rounded-lg border bg-card p-4 shadow-sm">
+                    <ul class="space-y-2">
+                        {% for note in release.notes %}
+                        <li class="text-sm text-muted-foreground flex items-start gap-2">
+                            <i data-lucide="check-circle-2" class="h-4 w-4 text-primary shrink-0 mt-0.5"></i>
+                            {{ note }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

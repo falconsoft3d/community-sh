@@ -1,0 +1,11 @@
+# Community SH - Automatic Backups Cron Job
+# This job runs every 5 minutes to check if backups should be executed
+# based on the configuration in the database
+
+# Run backup check every 5 minutes
+*/5 * * * * cd /Users/marlonfalcon/Documents/Projects/community-sh && /Users/marlonfalcon/Documents/Projects/community-sh/venv/bin/python manage.py run_auto_backups >> /var/log/community_sh_backups.log 2>&1
+
+# Alternative schedules (choose one based on your needs):
+# Every hour: 0 * * * *
+# Every day at midnight: 0 0 * * *
+# Every week on Monday at midnight: 0 0 * * 1

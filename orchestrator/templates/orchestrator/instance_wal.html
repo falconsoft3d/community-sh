@@ -1,0 +1,274 @@
+{% extends 'orchestrator/base.html' %}
+
+{% block title %}WAL & PITR - {{ instance.name }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">🔄 WAL & Point-in-Time Recovery</h1>
+            <p class="text-gray-600 mt-2">Gestión de puntos de restauración para: <strong>{{ instance.name }}</strong></p>
+        </div>
+        <a href="{% url 'instance-detail' instance.pk %}" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+            ← Volver a Instancia
+        </a>
+    </div>
+
+    <!-- WAL Status Card -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+            <span class="text-2xl mr-2">📊</span>
+            Estado del WAL Archiving
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <div class="text-sm text-blue-600 font-semibold">LSN Actual</div>
+                <div class="text-lg font-mono">{{ wal_status.current_lsn }}</div>
+            </div>
+            
+            <div class="bg-green-50 p-4 rounded-lg">
+                <div class="text-sm text-green-600 font-semibold">Archivos WAL</div>
+                <div class="text-lg">{{ wal_count }} archivos ({{ total_wal_size_mb }} MB)</div>
+            </div>
+            
+            <div class="{% if wal_status.status == 'healthy' %}bg-green-50{% else %}bg-red-50{% endif %} p-4 rounded-lg">
+                <div class="text-sm {% if wal_status.status == 'healthy' %}text-green-600{% else %}text-red-600{% endif %} font-semibold">Estado</div>
+                <div class="text-lg">
+                    {% if wal_status.status == 'healthy' %}
+                        ✅ Saludable
+                    {% else %}
+                        ❌ Error
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Restore Point -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+            <span class="text-2xl mr-2">➕</span>
+            Crear Punto de Restauración
+        </h2>
+        
+        <form method="post" action="{% url 'create-restore-point' instance.pk %}" class="space-y-4">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del Punto</label>
+                    <input type="text" name="name" required 
+                           placeholder="ej: antes-actualizar-modulos"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Descripción (opcional)</label>
+                    <input type="text" name="description" 
+                           placeholder="ej: Antes de actualizar módulos de facturación"
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                💾 Crear Punto de Restauración
+            </button>
+        </form>
+    </div>
+
+    <!-- Restore Points Timeline -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold mb-6 flex items-center">
+            <span class="text-2xl mr-2">⏱️</span>
+            Puntos de Restauración Disponibles
+        </h2>
+        
+        {% if restore_points %}
+        <div class="space-y-4">
+            {% for restore_point in restore_points %}
+            <div class="border-l-4 {% if restore_point.restore_point_type == 'manual' %}border-blue-500{% elif restore_point.restore_point_type == 'pre-deploy' %}border-purple-500{% else %}border-gray-400{% endif %} pl-4 py-3 relative">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-2">
+                            <h3 class="text-lg font-semibold">{{ restore_point.name }}</h3>
+                            <span class="text-xs px-2 py-1 rounded-full 
+                                {% if restore_point.restore_point_type == 'manual' %}bg-blue-100 text-blue-800
+                                {% elif restore_point.restore_point_type == 'pre-deploy' %}bg-purple-100 text-purple-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ restore_point.get_restore_point_type_display }}
+                            </span>
+                            {% if restore_point.is_verified %}
+                            <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
+                                ✓ Verificado
+                            </span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if restore_point.description %}
+                        <p class="text-gray-600 text-sm mb-2">{{ restore_point.description }}</p>
+                        {% endif %}
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-500">Fecha:</span>
+                                <span class="font-mono">{{ restore_point.created_at|date:"d/m/Y H:i" }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">LSN:</span>
+                                <span class="font-mono text-xs">{{ restore_point.wal_lsn }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">WAL File:</span>
+                                <span class="font-mono text-xs">{{ restore_point.wal_file }}</span>
+                            </div>
+                            {% if restore_point.git_commit %}
+                            <div>
+                                <span class="text-gray-500">Git:</span>
+                                <span class="font-mono text-xs">{{ restore_point.git_commit|slice:":7" }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if restore_point.created_by %}
+                        <div class="text-xs text-gray-500 mt-2">
+                            Creado por: {{ restore_point.created_by.username }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="flex gap-2 ml-4">
+                        <form method="post" action="{% url 'restore-to-point' instance.pk %}" 
+                              onsubmit="return confirm('⚠️ ¿Estás seguro de restaurar a este punto? La instancia se detendrá temporalmente.');">
+                            {% csrf_token %}
+                            <input type="hidden" name="restore_point_id" value="{{ restore_point.pk }}">
+                            <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+                                🔄 Restaurar Aquí
+                            </button>
+                        </form>
+                        
+                        <a href="{% url 'verify-restore-point' restore_point.pk %}" 
+                           class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 text-sm">
+                            🔍 Verificar
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-500">
+            <p class="text-lg">No hay puntos de restauración creados</p>
+            <p class="text-sm">Crea tu primer punto de restauración arriba</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Point-in-Time Recovery (PITR) -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold mb-4 flex items-center">
+            <span class="text-2xl mr-2">⏰</span>
+            Restaurar a Fecha/Hora Específica (PITR)
+        </h2>
+        
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <p class="text-sm text-yellow-800">
+                ⚠️ <strong>Advertencia:</strong> Esta operación restaurará la base de datos al estado exacto en la fecha y hora especificada.
+                La instancia se detendrá durante el proceso de restauración.
+            </p>
+        </div>
+        
+        <form method="post" action="{% url 'restore-to-timestamp' instance.pk %}" 
+              onsubmit="return confirm('⚠️ ¿Estás seguro de restaurar a esta fecha/hora? Esta operación no se puede deshacer fácilmente.');">
+            {% csrf_token %}
+            <div class="flex gap-4 items-end">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Fecha y Hora de Restauración</label>
+                    <input type="datetime-local" name="target_datetime" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <p class="text-xs text-gray-500 mt-1">
+                        Selecciona la fecha y hora exacta a la que quieres restaurar
+                    </p>
+                </div>
+                <button type="submit" class="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 h-10">
+                    ⏰ Restaurar a esta Fecha/Hora
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- WAL Archives Management -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold flex items-center">
+                <span class="text-2xl mr-2">📁</span>
+                Archivos WAL Recientes
+            </h2>
+            
+            <form method="post" action="{% url 'cleanup-wal-files' instance.pk %}" class="flex gap-2 items-center"
+                  onsubmit="return confirm('¿Estás seguro de limpiar archivos WAL antiguos?');">
+                {% csrf_token %}
+                <label class="text-sm text-gray-600">Mantener últimos:</label>
+                <select name="keep_days" class="px-3 py-1 border border-gray-300 rounded">
+                    <option value="3">3 días</option>
+                    <option value="7" selected>7 días</option>
+                    <option value="14">14 días</option>
+                    <option value="30">30 días</option>
+                </select>
+                <button type="submit" class="bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700 text-sm">
+                    🗑️ Limpiar Antiguos
+                </button>
+            </form>
+        </div>
+        
+        {% if wal_archives %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Archivo WAL</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Tamaño</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Fecha</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Backup Remoto</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for archive in wal_archives|slice:":20" %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-sm font-mono">{{ archive.wal_file_name }}</td>
+                        <td class="px-4 py-2 text-sm">{{ archive.file_size_mb }} MB</td>
+                        <td class="px-4 py-2 text-sm">{{ archive.created_at|date:"d/m/Y H:i" }}</td>
+                        <td class="px-4 py-2 text-sm">
+                            {% if archive.is_backed_up %}
+                            <span class="text-green-600">✓ Sí</span>
+                            {% else %}
+                            <span class="text-gray-400">- No</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if wal_archives.count > 20 %}
+        <p class="text-sm text-gray-500 mt-4 text-center">
+            Mostrando 20 de {{ wal_archives.count }} archivos WAL
+        </p>
+        {% endif %}
+        
+        {% else %}
+        <p class="text-center py-4 text-gray-500">No hay archivos WAL archivados aún</p>
+        {% endif %}
+    </div>
+
+    <!-- Help Section -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-8">
+        <h3 class="text-lg font-bold text-blue-900 mb-3">💡 ¿Cómo funciona el WAL & PITR?</h3>
+        <div class="space-y-2 text-sm text-blue-800">
+            <p><strong>Puntos de Restauración:</strong> Son marcadores nombrados en el tiempo que puedes crear manualmente. Te permiten volver exactamente a ese punto.</p>
+            <p><strong>PITR (Point-in-Time Recovery):</strong> Te permite restaurar la base de datos a cualquier fecha y hora específica, no solo a puntos nombrados.</p>
+            <p><strong>Archivos WAL:</strong> PostgreSQL registra todas las transacciones en archivos WAL. Estos archivos permiten la recuperación a cualquier punto en el tiempo.</p>
+            <p><strong>Recuperación Ante Pérdida de Datos:</strong> Con WAL habilitado, puedes perder como máximo 30 segundos de datos (configurable).</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -18,5 +18,16 @@ class Backup(models.Model):
         return f"{self.instance.name} - {self.filename}"
     
     @property
+    def formatted_size(self):
+        if self.file_size < 1024:
+            return f"{self.file_size} B"
+        elif self.file_size < 1024 * 1024:
+            return f"{round(self.file_size / 1024, 2)} KB"
+        elif self.file_size < 1024 * 1024 * 1024:
+            return f"{round(self.file_size / (1024 * 1024), 2)} MB"
+        else:
+            return f"{round(self.file_size / (1024 * 1024 * 1024), 2)} GB"
+            
+    @property
     def file_size_mb(self):
         return round(self.file_size / (1024 * 1024), 2)

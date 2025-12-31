@@ -51,7 +51,7 @@
                             </span>
                             <span class="flex items-center gap-1">
                                 <i data-lucide="hard-drive" class="h-3 w-3"></i>
-                                {{ backup.file_size_mb }} MB
+                                {{ backup.formatted_size }}
                             </span>
                             <span
                                 class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors border-transparent {% if backup.include_filestore %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
@@ -64,6 +64,14 @@
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
                             <i data-lucide="download" class="mr-2 h-4 w-4"></i> Download
                         </a>
+                        <form action="{% url 'backup-restore-action' backup.pk %}" method="post"
+                            onsubmit="return confirm('WARNING: This will overwrite the current database and filestore. Are you sure you want to restore this backup?')">
+                            {% csrf_token %}
+                            <button type="submit"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-yellow-600 text-white hover:bg-yellow-700 h-9 px-3">
+                                <i data-lucide="rotate-ccw" class="mr-2 h-4 w-4"></i> Restore
+                            </button>
+                        </form>
                         <form action="{% url 'backup-delete' backup.pk %}" method="post"
                             onsubmit="return confirm('Are you sure you want to delete this backup?')">
                             {% csrf_token %}

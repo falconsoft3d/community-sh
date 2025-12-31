@@ -9,7 +9,8 @@
     </a>
 </div>
 
-<div class="rounded-md border bg-card text-card-foreground shadow-sm mt-4">
+<div class="rounded-md border bg-card text-card-foreground shadow-sm mt-4"
+    x-data="{ confirmModal: false, actionUrl: '', actionName: '', instanceName: '' }">
     <div class="relative w-full overflow-auto">
         <table class="w-full caption-bottom text-sm text-left">
             <thead class="[&_tr]:border-b">
@@ -18,25 +19,28 @@
                     <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Version</th>
                     <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
                     <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Link</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Actions</th>
                 </tr>
             </thead>
             <tbody class="[&_tr:last-child]:border-0">
                 {% for instance in object_list %}
-                <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer"
-                    onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
-                    <td class="p-4 align-middle font-medium">
+                <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                    <td class="p-4 align-middle font-medium cursor-pointer"
+                        onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
                         {{ instance.name }}
                         {% if instance.github_repo %}
                         <div class="text-xs text-muted-foreground mt-0.5">{{ instance.github_repo }}</div>
                         {% endif %}
                     </td>
-                    <td class="p-4 align-middle">
+                    <td class="p-4 align-middle cursor-pointer"
+                        onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
                             {{ instance.odoo_version }}
                         </div>
                     </td>
-                    <td class="p-4 align-middle">
+                    <td class="p-4 align-middle cursor-pointer"
+                        onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
                         {% if instance.status == 'running' %}
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-100 text-green-800">
@@ -51,7 +55,7 @@
                             {{ instance.status }}</div>
                         {% endif %}
                     </td>
-                    <td class="p-4 align-middle" onclick="event.stopPropagation()">
+                    <td class="p-4 align-middle">
                         {% if instance.status == 'running' %}
                         <a href="http://{{ instance.name }}.localhost" target="_blank"
                             class="font-medium text-primary underline-offset-4 hover:underline flex items-center gap-1">
@@ -61,10 +65,94 @@
                         <span class="text-muted-foreground">-</span>
                         {% endif %}
                     </td>
+                    <td class="p-4 align-middle">
+                        <div class="flex items-center gap-2">
+                            {% if instance.status == 'stopped' or instance.status == 'error' %}
+                            <button
+                                @click="confirmModal = true; actionUrl = '{% url 'instance-deploy' instance.pk %}'; actionName = 'Start'; instanceName = '{{ instance.name }}'"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-8 px-3">
+                                <i data-lucide="play" class="h-3 w-3"></i>
+                            </button>
+                            {% elif instance.status == 'running' %}
+                            <button
+                                @click="confirmModal = true; actionUrl = '{% url 'instance-restart' instance.pk %}'; actionName = 'Restart'; instanceName = '{{ instance.name }}'"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
+                                <i data-lucide="rotate-cw" class="h-3 w-3"></i>
+                            </button>
+                            <button
+                                @click="confirmModal = true; actionUrl = '{% url 'instance-stop' instance.pk %}'; actionName = 'Stop'; instanceName = '{{ instance.name }}'"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-yellow-600 text-white hover:bg-yellow-700 h-8 px-3">
+                                <i data-lucide="square" class="h-3 w-3"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    <!-- Confirmation Modal -->
+    <div x-show="confirmModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        @click.self="confirmModal = false">
+        <div class="bg-card rounded-lg shadow-lg p-6 max-w-md w-full mx-4" @click.stop>
+            <h3 class="text-lg font-semibold mb-2">Confirm Action</h3>
+            <p class="text-muted-foreground mb-4">
+                Are you sure you want to <span class="font-semibold" x-text="actionName.toLowerCase()"></span> the
+                instance <span class="font-semibold" x-text="instanceName"></span>?
+            </p>
+            <div class="flex justify-end gap-3">
+                <button @click="confirmModal = false"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    Cancel
+                </button>
+                <button @click="window.location.href = actionUrl"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
+
+{% if is_paginated %}
+<div class="flex items-center justify-center mt-6">
+    <nav class="flex items-center gap-2" role="navigation" aria-label="Pagination">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}"
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 w-9">
+            <i data-lucide="chevron-left" class="h-4 w-4"></i>
+        </a>
+        {% else %}
+        <button disabled
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors opacity-50 cursor-not-allowed border border-input bg-background h-9 w-9">
+            <i data-lucide="chevron-left" class="h-4 w-4"></i>
+        </button>
+        {% endif %}
+
+        <span class="text-sm font-medium">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}"
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 w-9">
+            <i data-lucide="chevron-right" class="h-4 w-4"></i>
+        </a>
+        {% else %}
+        <button disabled
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors opacity-50 cursor-not-allowed border border-input bg-background h-9 w-9">
+            <i data-lucide="chevron-right" class="h-4 w-4"></i>
+        </button>
+        {% endif %}
+    </nav>
+</div>
+{% endif %}
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+</style>
 {% endblock %}

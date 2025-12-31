@@ -83,6 +83,7 @@ def blog_detail(request, slug):
 class InstanceListView(LoginRequiredMixin, ListView):
     model = Instance
     ordering = ['-created_at']
+    paginate_by = 10
 
 class InstanceCreateView(LoginRequiredMixin, CreateView):
     model = Instance
@@ -504,8 +505,21 @@ def settings_view(request):
         config.ssl_enabled = request.POST.get('ssl_enabled') == 'on'
         config.ssl_certificate_path = request.POST.get('ssl_certificate_path', '')
         config.ssl_key_path = request.POST.get('ssl_key_path', '')
-        
+
+        # Update backup configuration
+        config.auto_backup_frequency = request.POST.get('auto_backup_frequency', 'none')
+        try:
+            config.auto_backup_retention = int(request.POST.get('auto_backup_retention', 5))
+        except (ValueError, TypeError):
+            config.auto_backup_retention = 5
+            
         config.save()
+
+        # Update User Profile (2FA)
+        if hasattr(request.user, 'profile'):
+            profile = request.user.profile
+            profile.two_factor_enabled = request.POST.get('two_factor_enabled') == 'on'
+            profile.save()
         
         messages.success(request, 'Configuración guardada exitosamente')
         return redirect('settings')
@@ -819,8 +833,111 @@ def user_change_password(request):
         request.user.save()
         
         # Keep user logged in
+        # Keep user logged in
         update_session_auth_hash(request, request.user)
         
         messages.success(request, 'Contraseña cambiada exitosamente')
     
     return redirect('user-profile')
+
+@login_required
+def backup_restore_action(request, backup_id):
+    """Restore an instance from a backup"""
+    from .backup_models import Backup
+    from .services import DockerService
+    backup = get_object_or_404(Backup, pk=backup_id)
+    instance = backup.instance
+    
+    if request.method == 'POST':
+        service = DockerService()
+        try:
+            # Stop instance first
+            service.stop_instance(instance)
+            # Restore
+            service.restore_instance(instance, backup.file_path)
+            # Start instance
+            service.deploy_instance(instance)
+            messages.success(request, f'Instancia "{instance.name}" restaurada exitosamente.')
+        except Exception as e:
+            messages.error(request, f'Error al restaurar: {str(e)}')
+            
+    return redirect('instance-backups', pk=instance.pk)
+
+@login_required
+def backup_create_instance(request, backup_id):
+    """Create a new instance from an existing backup"""
+    from .backup_models import Backup
+    from .models import Instance
+    backup = get_object_or_404(Backup, pk=backup_id)
+    
+    if request.method == 'POST':
+        new_name = request.POST.get('name')
+        if not new_name:
+            messages.error(request, 'El nombre es requerido')
+            return render(request, 'orchestrator/backup_create_instance.html', {'backup': backup})
+            
+        if Instance.objects.filter(name=new_name).exists():
+            messages.error(request, f'La instancia "{new_name}" ya existe')
+            return render(request, 'orchestrator/backup_create_instance.html', {'backup': backup})
+            
+        try:
+            # Create new instance record based on original
+            original = backup.instance
+            new_instance = Instance.objects.create(
+                name=new_name,
+                repo_url=original.repo_url,
+                branch=original.branch,
+                version=original.version,
+                admin_password=original.admin_password,
+                db_name=new_name.replace('-', '_'),
+                created_by=request.user
+            )
+            
+            from .services import DockerService
+            service = DockerService()
+            # Restore backup into new instance logic
+            service.restore_instance(new_instance, backup.file_path)
+            service.deploy_instance(new_instance)
+            
+            messages.success(request, f'Instancia "{new_name}" creada exitosamente desde respaldo')
+            return redirect('instance-list')
+        except Exception as e:
+            messages.error(request, f'Error al crear instancia: {str(e)}')
+            
+    return render(request, 'orchestrator/backup_create_instance.html', {'backup': backup})
+
+@login_required
+def run_manual_backup(request):
+    """Manually trigger the auto-backup process"""
+    from django.core.management import call_command
+    from django.contrib import messages
+    try:
+        call_command('run_auto_backups')
+        messages.success(request, 'Proceso de backup manual completado correctamente.')
+    except Exception as e:
+        messages.error(request, f'Error al ejecutar backup: {str(e)}')
+    return redirect('settings')
+
+@login_required
+def install_backup_cron(request):
+    """Install the cron job for automatic backups"""
+    import os
+    from django.conf import settings
+    from django.contrib import messages
+    
+    try:
+        manage_py = os.path.join(settings.BASE_DIR, 'manage.py')
+        python_bin = os.path.join(settings.BASE_DIR, 'venv', 'bin', 'python')
+        
+        if not os.path.exists(python_bin):
+            python_bin = 'python3'
+            
+        cron_command = f"*/5 * * * * {python_bin} {manage_py} run_auto_backups >> /var/log/community_sh_backups.log 2>&1"
+        
+        os.system(f'(crontab -l 2>/dev/null; echo "{cron_command}") | crontab -')
+        
+        messages.success(request, 'Cron job de backups instalado correctamente (cada 5 min).')
+    except Exception as e:
+        messages.error(request, f'Error al instalar cron: {str(e)}')
+        
+    return redirect('settings')

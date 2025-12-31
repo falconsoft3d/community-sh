@@ -1,0 +1,142 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6 max-w-4xl">
+    <div class="flex items-center gap-4">
+        <a href="{% url 'container-list' %}"
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 w-10">
+            <i data-lucide="arrow-left" class="h-4 w-4"></i>
+        </a>
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Create Container</h1>
+            <p class="text-muted-foreground mt-2">Choose a template or create a custom container</p>
+        </div>
+    </div>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="rounded-md bg-red-50 border border-red-200 p-3">
+        <div class="flex items-center gap-2">
+            <i data-lucide="alert-circle" class="h-4 w-4 text-red-600"></i>
+            <span class="text-sm text-red-800">{{ message }}</span>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <form method="post" x-data="{ template: 'n8n', customPort: 5678 }">
+        {% csrf_token %}
+
+        <!-- Template Selection -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm mb-6">
+            <div class="p-6 border-b">
+                <h3 class="font-semibold text-lg">Select Template</h3>
+                <p class="text-sm text-muted-foreground">Choose a pre-configured template or create a custom container
+                </p>
+            </div>
+            <div class="p-6">
+                <div class="grid md:grid-cols-2 gap-4">
+                    {% for key, tmpl in templates.items %}
+                    <label class="relative flex cursor-pointer rounded-lg border p-4 hover:bg-accent transition-colors">
+                        <input type="radio" name="template" value="{{ key }}" x-model="template"
+                            @change="customPort = {{ tmpl.port }}" class="sr-only peer" {% if forloop.first %}checked{% endif %}>
+                        <div class="flex items-start gap-3 w-full">
+                            <div
+                                class="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="box" class="h-5 w-5 text-primary"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-semibold">{{ tmpl.name }}</h4>
+                                <p class="text-sm text-muted-foreground">{{ tmpl.description }}</p>
+                                <p class="text-xs text-muted-foreground mt-1">Port: {{ tmpl.port }}</p>
+                            </div>
+                        </div>
+                        <div
+                            class="absolute inset-0 rounded-lg border-2 border-transparent peer-checked:border-primary pointer-events-none">
+                        </div>
+                    </label>
+                    {% endfor %}
+
+                    <label class="relative flex cursor-pointer rounded-lg border p-4 hover:bg-accent transition-colors">
+                        <input type="radio" name="template" value="custom" x-model="template" class="sr-only peer">
+                        <div class="flex items-start gap-3 w-full">
+                            <div
+                                class="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="settings" class="h-5 w-5 text-gray-600"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="font-semibold">Custom</h4>
+                                <p class="text-sm text-muted-foreground">Configure your own container</p>
+                            </div>
+                        </div>
+                        <div
+                            class="absolute inset-0 rounded-lg border-2 border-transparent peer-checked:border-primary pointer-events-none">
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Container Configuration -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm mb-6">
+            <div class="p-6 border-b">
+                <h3 class="font-semibold text-lg">Configuration</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="space-y-2">
+                    <label for="name" class="text-sm font-medium">Container Name <span
+                            class="text-destructive">*</span></label>
+                    <input type="text" id="name" name="name" required
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="my-container">
+                    <p class="text-sm text-muted-foreground">Unique name for your container</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="port" class="text-sm font-medium">Host Port <span
+                            class="text-destructive">*</span></label>
+                    <input type="number" id="port" name="port" x-model="customPort" required
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    <p class="text-sm text-muted-foreground">Port to expose on the host machine</p>
+                </div>
+
+                <div x-show="template === 'custom'" class="space-y-4 pt-4 border-t">
+                    <div class="space-y-2">
+                        <label for="image" class="text-sm font-medium">Docker Image <span
+                                class="text-destructive">*</span></label>
+                        <input type="text" id="image" name="image"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="nginx:latest">
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="container_port" class="text-sm font-medium">Container Port <span
+                                class="text-destructive">*</span></label>
+                        <input type="number" id="container_port" name="container_port"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="80">
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="description" class="text-sm font-medium">Description</label>
+                        <textarea id="description" name="description" rows="3"
+                            class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button type="submit"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                <i data-lucide="play" class="mr-2 h-4 w-4"></i>
+                Create & Start Container
+            </button>
+            <a href="{% url 'container-list' %}"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
