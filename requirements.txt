@@ -14,3 +14,6 @@ markdown>=3.10
 Pillow>=10.0.0
 pyotp>=2.9.0
 qrcode>=7.4.0
+GitPython>=3.1.0
+psycopg2-binary>=2.9.9
+dj-database-url>=2.1.0

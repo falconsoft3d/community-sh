@@ -1,349 +1,141 @@
-# 🚀 Guía de Despliegue en Producción - Community SH
+# 🚀 Docker Deployment Guide - Community SH
 
-## ✅ Checklist Pre-Despliegue
+This guide describes how to deploy Community SH using Docker and Docker Compose. This is the **recommended** method for both development and production.
 
-### 1. Requisitos del Servidor
-- [ ] Ubuntu/Debian 20.04+ o CentOS/RHEL 8+
-- [ ] Python 3.8+
-- [ ] Docker y Docker Compose instalados
-- [ ] Nginx (opcional, como proxy reverso)
-- [ ] Dominio configurado apuntando al servidor
-- [ ] Puertos 80 y 443 abiertos
+## 📋 Prerequisites
 
-### 2. Variables de Entorno
-Crea un archivo `.env` en el directorio raíz:
+- **Server**: Ubuntu 20.04+, Debian 11+, or CentOS 8+
+- **Resources**: Minimum 2 GB RAM (4 GB recommended for Odoo instances), 2 CPU cores
+- **Software**: 
+  - [Docker Engine](https://docs.docker.com/engine/install/)
+  - [Docker Compose](https://docs.docker.com/compose/install/) (or `docker compose` plugin)
 
-```bash
-# Django Settings
-DJANGO_SECRET_KEY=tu_clave_secreta_super_larga_y_aleatoria_aqui
-DEBUG=False
-ALLOWED_HOSTS=tudominio.com,www.tudominio.com
+## 🛠️ Step-by-Step Installation
 
-# Database (opcional, para producción se recomienda PostgreSQL)
-# DATABASE_URL=postgresql://user:password@localhost:5432/communitysh
-
-# Email (opcional, para notificaciones)
-# EMAIL_HOST=smtp.gmail.com
-# EMAIL_PORT=587
-# EMAIL_USE_TLS=True
-# EMAIL_HOST_USER=tu@email.com
-# EMAIL_HOST_PASSWORD=tu_password
-```
-
-### 3. Configuración de Seguridad
-- [ ] Cambiar `SECRET_KEY` por una clave aleatoria única
-- [ ] Establecer `DEBUG=False`
-- [ ] Configurar `ALLOWED_HOSTS` con tu dominio
-- [ ] Configurar firewall (UFW/firewalld)
-- [ ] Instalar y configurar fail2ban
-
-### 4. Base de Datos
-```bash
-# Para desarrollo (SQLite - ya incluido)
-python manage.py migrate
-
-# Para producción (PostgreSQL recomendado)
-# 1. Instalar PostgreSQL
-# 2. Crear base de datos
-# 3. Actualizar settings.py o DATABASE_URL
-# 4. python manage.py migrate
-```
-
-### 5. Archivos Estáticos
-```bash
-# Recolectar archivos estáticos
-python manage.py collectstatic --noinput
-
-# Los archivos se copiarán a ./staticfiles/
-```
-
----
-
-## 🔧 Instalación con install.sh
-
-El script `install.sh` automatiza la instalación:
+### 1. Install Docker
+If you haven't installed Docker yet, execute the following commands (for Ubuntu/Debian):
 
 ```bash
-# Descargar el proyecto
-git clone <tu-repo>
-cd community-sh
-
-# Hacer el script ejecutable
-chmod +x install.sh
-
-# Ejecutar instalación
-./install.sh
-```
-
-**El script hace:**
-1. ✅ Verifica prerequisitos (Docker, Git, Python)
-2. ✅ Crea entorno virtual Python
-3. ✅ Instala dependencias
-4. ✅ Crea red Docker 'web'
-5. ✅ Inicia Traefik (proxy reverso)
-6. ✅ Ejecuta migraciones de base de datos
-7. ✅ Crea usuario administrador
-8. ✅ Crea directorios necesarios (instances, backups, media)
-
----
-
-## 🌐 Opción 1: Despliegue con Gunicorn + Nginx
-
-### Paso 1: Instalar Gunicorn
-```bash
-source venv/bin/activate
-pip install gunicorn
-```
-
-### Paso 2: Crear servicio systemd
-```bash
-sudo nano /etc/systemd/system/communitysh.service
-```
-
-```ini
-[Unit]
-Description=Community SH Gunicorn daemon
-After=network.target
-
-[Service]
-User=tu_usuario
-Group=www-data
-WorkingDirectory=/ruta/completa/a/community-sh
-Environment="PATH=/ruta/completa/a/community-sh/venv/bin"
-ExecStart=/ruta/completa/a/community-sh/venv/bin/gunicorn \
-          --workers 3 \
-          --bind unix:/ruta/completa/a/community-sh/communitysh.sock \
-          config.wsgi:application
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### Paso 3: Configurar Nginx
-```bash
-sudo nano /etc/nginx/sites-available/communitysh
-```
-
-```nginx
-server {
-    listen 80;
-    server_name tudominio.com www.tudominio.com;
-
-    client_max_body_size 100M;
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    
-    location /static/ {
-        alias /ruta/completa/a/community-sh/staticfiles/;
-    }
-
-    location /media/ {
-        alias /ruta/completa/a/community-sh/media/;
-    }
-
-    location / {
-        include proxy_params;
-        proxy_pass http://unix:/ruta/completa/a/community-sh/communitysh.sock;
-    }
-}
-```
-
-### Paso 4: Activar y iniciar servicios
-```bash
-# Activar sitio Nginx
-sudo ln -s /etc/nginx/sites-available/communitysh /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-
-# Iniciar servicio
-sudo systemctl start communitysh
-sudo systemctl enable communitysh
-sudo systemctl status communitysh
-```
-
----
-
-## 🔐 Paso 5: Configurar SSL/HTTPS
-
-### Opción A: Usar la interfaz web (Recomendado)
-1. Accede a `http://tudominio.com/settings/`
-2. En "Configuración de Dominio y SSL"
-3. Click en "Generar Certificado SSL"
-4. Ingresa tu dominio y email
-5. Click "Generar Certificado Ahora"
-
-### Opción B: Manual con Certbot
-```bash
-# Instalar Certbot
+# Update repositories
 sudo apt-get update
-sudo apt-get install certbot python3-certbot-nginx
+sudo apt-get install -y ca-certificates curl gnupg
 
-# Generar certificado
-sudo certbot --nginx -d tudominio.com -d www.tudominio.com
+# Add Docker's official GPG key
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-# Renovación automática (ya está configurado por Certbot)
-sudo certbot renew --dry-run
+# Set up the repository
+echo \
+  "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install Docker Engine
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# Allow running docker without sudo (optional but recommended)
+sudo usermod -aG docker $USER
+# NOTE: Log out and log back in for this to take effect!
 ```
+
+### 2. Clone the Repository
+Clone the project code to your server location (e.g., `/opt/community-sh` or your home directory).
+
+```bash
+git clone https://github.com/your-repo/community-sh.git
+cd community-sh
+```
+
+### 3. Configuration
+The default `docker-compose.yml` is set up to work out-of-the-box, but for production, you **MUST** secure it.
+
+Edit `docker-compose.yml` or create a `.env` file to set secure values:
+
+```bash
+nano docker-compose.yml
+```
+
+**Critical changes for Production:**
+- Change `DJANGO_SECRET_KEY` to a random long string.
+- Change `POSTGRES_PASSWORD` in both `db` service and `DATABASE_URL`.
+- Set `DEBUG=False` in `app` and `cron` services.
+- Update `ALLOWED_HOSTS` to your real domain (e.g. `community.yourdomain.com`).
+- Update Traefik labels if you are using a real domain instead of `localhost`.
+
+### 4. Start the Application
+Run the following command to build and start all containers in detached mode:
+
+```bash
+docker-compose up -d --build
+```
+
+This will start:
+- **db**: PostgreSQL database
+- **app**: Main Django application (port 8000 internally, exposed via Traefik)
+- **cron**: Background task scheduler for backups
+- **traefik**: Reverse proxy (ports 80 and 8080)
+
+### 5. Create Admin User
+Once the containers are running, create your superuser:
+
+```bash
+docker-compose exec app python manage.py createsuperuser
+```
+
+Follow the prompts to set username (e.g., `admin`), email, and password.
 
 ---
 
-## 📦 Opción 2: Despliegue con Docker (TODO)
+## 🚦 Management Commands
 
+### Check Status
+See running containers:
 ```bash
-# Construir imagen
-docker build -t communitysh:latest .
-
-# Ejecutar contenedor
-docker run -d \
-  --name communitysh \
-  -p 8000:8000 \
-  -v $(pwd)/db.sqlite3:/app/db.sqlite3 \
-  -v $(pwd)/media:/app/media \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  --env-file .env \
-  communitysh:latest
+docker-compose ps
 ```
 
----
-
-## 🔄 Actualización del Sistema
-
+### View Logs
+To see logs for all services (follow mode):
 ```bash
-# Detener servicio
-sudo systemctl stop communitysh
+docker-compose logs -f
+```
+To see specific logs (e.g., for the cron job):
+```bash
+docker-compose logs -f cron
+```
 
-# Actualizar código
-cd /ruta/a/community-sh
+### Update Application
+When you have new code changes:
+```bash
+# 1. Pull latest code
 git pull origin main
 
-# Activar entorno virtual
-source venv/bin/activate
+# 2. Rebuild and restart containers
+docker-compose up -d --build
+```
 
-# Actualizar dependencias
-pip install -r requirements.txt
+### Restart a Specific Service
+If you made changes to python code and need to restart the app:
+```bash
+docker-compose restart app
+```
 
-# Ejecutar migraciones
-python manage.py migrate
+### Stop Everything
+```bash
+docker-compose down
+```
 
-# Recolectar estáticos
-python manage.py collectstatic --noinput
-
-# Reiniciar servicio
-sudo systemctl start communitysh
+### Database Backups
+The `cron` container handles automated backups. To run a backup manually:
+```bash
+docker-compose exec app python manage.py run_auto_backups
 ```
 
 ---
 
-## 📊 Monitoreo y Logs
+## 🛡️ SSL Configuration (Production)
+For production with a real domain, Traefik handles SSL automatically with Let's Encrypt. You need to update `docker-compose.yml` to enable the ACME (Let's Encrypt) resolver.
 
-```bash
-# Ver logs del servicio
-sudo journalctl -u communitysh -f
-
-# Ver logs de Nginx
-sudo tail -f /var/log/nginx/access.log
-sudo tail -f /var/log/nginx/error.log
-
-# Ver logs de Docker
-docker-compose logs -f traefik
-```
-
----
-
-## 🛡️ Seguridad Post-Instalación
-
-### 1. Configurar Firewall (UFW)
-```bash
-sudo ufw allow 22/tcp     # SSH
-sudo ufw allow 80/tcp     # HTTP
-sudo ufw allow 443/tcp    # HTTPS
-sudo ufw enable
-sudo ufw status
-```
-
-### 2. Configurar fail2ban
-```bash
-sudo apt-get install fail2ban
-sudo systemctl enable fail2ban
-sudo systemctl start fail2ban
-```
-
-### 3. Backups Automáticos
-Configura backups regulares de:
-- Base de datos: `db.sqlite3`
-- Archivos media: `media/`
-- Backups de instancias: `backups/`
-
-```bash
-# Ejemplo de script de backup
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-tar -czf backup_$DATE.tar.gz db.sqlite3 media/ backups/
-# Subir a S3, Dropbox, etc.
-```
-
----
-
-## 🚨 Solución de Problemas
-
-### Error: "Bad Gateway 502"
-- Verificar que Gunicorn está corriendo: `sudo systemctl status communitysh`
-- Verificar socket: `ls -la communitysh.sock`
-- Revisar logs: `sudo journalctl -u communitysh -n 50`
-
-### Error: Static files no se cargan
-```bash
-python manage.py collectstatic --clear --noinput
-sudo systemctl restart communitysh
-```
-
-### Error: Permission denied en Docker
-```bash
-sudo usermod -aG docker $USER
-# Cerrar sesión y volver a iniciar
-```
-
----
-
-## 📞 Soporte
-
-Si encuentras problemas durante el despliegue:
-1. Revisa los logs del sistema
-2. Verifica las variables de entorno
-3. Consulta la documentación oficial de Django
-4. Abre un issue en el repositorio
-
----
-
-## 🎯 Comandos Rápidos de Referencia
-
-```bash
-# Activar entorno
-source venv/bin/activate
-
-# Ejecutar migraciones
-python manage.py migrate
-
-# Crear superusuario
-python manage.py createsuperuser
-
-# Recolectar estáticos
-python manage.py collectstatic
-
-# Iniciar desarrollo
-python manage.py runserver
-
-# Iniciar producción (Gunicorn)
-sudo systemctl start communitysh
-
-# Reiniciar servicios
-sudo systemctl restart communitysh
-sudo systemctl restart nginx
-
-# Ver logs
-sudo journalctl -u communitysh -f
-```
-
----
-
-**¡Listo! Tu Community SH está en producción 🚀**
+See the [Traefik Documentation](https://doc.traefik.io/traefik/https/acme/) for adding the certificate resolver to the `traefik` service command arguments.

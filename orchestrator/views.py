@@ -462,6 +462,35 @@ def instance_update_name(request, pk):
     return redirect('instance-detail', pk=pk)
 
 @login_required
+def instance_update_database_name(request, pk):
+    """Update instance database name"""
+    instance = get_object_or_404(Instance, pk=pk)
+    
+    if request.method == 'POST':
+        database_name = request.POST.get('database_name', '').strip()
+        
+        # database_name can be empty (auto-detection mode)
+        
+        # Validate format if provided
+        import re
+        if database_name and not re.match(r'^[a-zA-Z0-9_]+$', database_name):
+            messages.error(request, 'El nombre de la base de datos solo puede contener letras, números y guiones bajos')
+            return redirect('instance-detail', pk=pk)
+        
+        old_db = instance.database_name
+        instance.database_name = database_name
+        instance.save()
+        
+        if database_name:
+            messages.success(request, f'Nombre de base de datos actualizado a "{database_name}"')
+        else:
+            messages.success(request, 'Nombre de base de datos borrado (se usará auto-detección)')
+            
+        return redirect('instance-detail', pk=pk)
+    
+    return redirect('instance-detail', pk=pk)
+
+@login_required
 def instance_install_module(request, pk):
     """Upload and install a module ZIP file"""
     instance = get_object_or_404(Instance, pk=pk)

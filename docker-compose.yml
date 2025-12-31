@@ -16,6 +16,63 @@ services:
     networks:
       - web
 
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=community_sh
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    networks:
+      - web
+
+  app:
+    build: .
+    image: community-sh-app
+    restart: always
+    command: python manage.py runserver 0.0.0.0:8000 --insecure
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/community_sh
+      - DJANGO_SECRET_KEY=django-insecure-your-secret-key-here
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,community.local,127.0.0.1
+    volumes:
+      - ./media:/app/media
+      - ./backups:/app/backups
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`localhost`) || Host(`community.local`)"
+      - "traefik.http.routers.app.entrypoints=web"
+      - "traefik.http.services.app.loadbalancer.server.port=8000"
+    depends_on:
+      - db
+    networks:
+      - web
+
+  cron:
+    image: community-sh-app
+    restart: always
+    command: /bin/sh -c "while true; do python manage.py run_auto_backups; sleep 60; done"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/community_sh
+      - DJANGO_SECRET_KEY=django-insecure-your-secret-key-here
+      - DEBUG=False
+    volumes:
+      - ./media:/app/media
+      - ./backups:/app/backups
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - db
+    networks:
+      - web
+
 networks:
   web:
-    external: true
+    driver: bridge
+
+volumes:
+  postgres_data:

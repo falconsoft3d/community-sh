@@ -11,43 +11,45 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # 1. Find configurations with backup enabled
-        configs = GitHubConfig.objects.exclude(auto_backup_frequency='none')
+        configs = GitHubConfig.objects.filter(auto_backup_enabled=True)
         
         if not configs.exists():
             self.stdout.write(self.style.SUCCESS('No active backup configurations found.'))
             return
 
-        # Assuming system-wide single config usually, but handling multiple just in case
-        # In a real scenario you might want to lock this to a specific admin user
-        
         now = timezone.now()
         
         for config in configs:
-            freq = config.auto_backup_frequency
+            unit = config.auto_backup_frequency_unit
+            value = config.auto_backup_frequency_value
             retention = config.auto_backup_retention
             
             should_run = False
             
-            # Simple logic assuming this command is run every 5 minutes via cron
-            if freq == 'minutes':
-                # Run every time (every 5 minutes)
+            # Logic assuming this command is run every 5 minutes
+            if unit == 'minute':
+                # Run every time (every 5 minutes or whatever the loop is)
                 should_run = True
-            elif freq == 'hourly':
-                should_run = True
-            elif freq == 'daily':
-                # Run at midnight (approx)
-                if now.hour == 0:
+            elif unit == 'hour':
+                # Run if we are close to the top of the hour
+                if now.minute < 5:
                     should_run = True
-            elif freq == 'weekly':
+                    # Optional: check value (e.g. every 2 hours)
+                    # if now.hour % value != 0: should_run = False
+            elif unit == 'day':
+                # Run at midnight (approx)
+                if now.hour == 0 and now.minute < 5:
+                    should_run = True
+            elif unit == 'week':
                 # Run on Monday midnight
-                if now.weekday() == 0 and now.hour == 0:
+                if now.weekday() == 0 and now.hour == 0 and now.minute < 5:
                     should_run = True
             
             if should_run:
-                self.stdout.write(f"Running {freq} backup task for config {config}...")
+                self.stdout.write(f"Running {unit} backup task (every {value} {unit}s) for config {config}...")
                 self.perform_backups(retention)
             else:
-                 self.stdout.write(f"Skipping {freq} backup task (not time yet).")
+                 self.stdout.write(f"Skipping {unit} backup task (not time yet).")
 
     def perform_backups(self, retention):
         service = DockerService()
