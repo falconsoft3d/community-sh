@@ -66,19 +66,19 @@ if [ -z "$PUBLIC_IP" ]; then
 fi
 
 echo -e "${GREEN}Detected IP: ${PUBLIC_IP}${NC}"
-read -p "Is this correct? (Y/n): " IP_CONFIRM
+read -p "Is this correct? (Y/n): " IP_CONFIRM < /dev/tty
 if [[ $IP_CONFIRM =~ ^[Nn]$ ]]; then
-    read -p "Enter your server IP address: " PUBLIC_IP
+    read -p "Enter your server IP address: " PUBLIC_IP < /dev/tty
 fi
 
 # Ask for domain (optional)
 echo -e "\n${YELLOW}Domain Configuration (Optional)${NC}"
-read -p "Do you have a domain name? (y/N): " HAS_DOMAIN
+read -p "Do you have a domain name? (y/N): " HAS_DOMAIN < /dev/tty
 
 ALLOWED_HOSTS="${PUBLIC_IP}"
 
 if [[ $HAS_DOMAIN =~ ^[Yy]$ ]]; then
-    read -p "Enter your domain (e.g., example.com): " DOMAIN
+    read -p "Enter your domain (e.g., example.com): " DOMAIN < /dev/tty
     if [ ! -z "$DOMAIN" ]; then
         ALLOWED_HOSTS="${PUBLIC_IP},${DOMAIN},www.${DOMAIN}"
         echo -e "${GREEN}✓ Domain configured: ${DOMAIN}${NC}"
@@ -94,7 +94,7 @@ echo -e "\n${GREEN}[5/6] Configuring environment...${NC}"
 SECRET_KEY=$(openssl rand -base64 50 | tr -d '\n/')
 
 # Ask for database password
-read -p "Enter PostgreSQL password (default: postgres): " DB_PASSWORD
+read -p "Enter PostgreSQL password (default: postgres): " DB_PASSWORD < /dev/tty
 DB_PASSWORD=${DB_PASSWORD:-postgres}
 
 # Create or update .env file
