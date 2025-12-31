@@ -67,6 +67,9 @@ DJANGO_SECRET_KEY=${SECRET_KEY}
 DEBUG=False
 ALLOWED_HOSTS=*
 
+# Host path for Docker mounts
+HOST_WORKDIR=$(pwd)
+
 # Database Configuration
 DB_PASSWORD=${DB_PASSWORD}
 DATABASE_URL=postgres://postgres:${DB_PASSWORD}@db:5432/community_sh
@@ -81,6 +84,11 @@ echo -e "${GREEN}✓ Configuration file created${NC}"
 
 # 5. Start Services
 echo -e "\n${GREEN}[5/5] Starting services...${NC}"
+
+# Ensure instances directory exists and has correct permissions for Docker containers
+mkdir -p instances
+sudo chmod -R 777 instances
+
 sudo docker compose down --remove-orphans 2>/dev/null || true
 sudo docker compose up -d --build
 

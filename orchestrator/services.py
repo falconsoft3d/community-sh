@@ -54,15 +54,45 @@ class DockerService:
             data_path = os.path.join(workspace_path, 'data')
             os.makedirs(data_path, exist_ok=True)
             
+            # Pre-create Odoo internal directories to ensure they exist before bind mount
+            # and have the correct permissions immediately
+            sessions_path = os.path.join(data_path, 'sessions')
+            filestore_path = os.path.join(data_path, 'filestore')
+            os.makedirs(sessions_path, exist_ok=True)
+            os.makedirs(filestore_path, exist_ok=True)
+            
+            # Ensure permissions are correct for Odoo user (UID 101)
+            # We use a recursive method to ensure subdirectories like 'sessions' are also fixed
+            try:
+                # Use shell command for recursive chmod as it's more reliable
+                import subprocess
+                subprocess.run(['chmod', '-R', '777', data_path], check=True)
+                
+                # Also try to chown to 101:101 (default odoo user in docker)
+                # This helps in many Linux environments
+                try:
+                    subprocess.run(['chown', '-R', '101:101', data_path], check=True)
+                except:
+                    pass
+            except Exception as e:
+                print(f"Warning: Could not set recursive permissions on {data_path}: {e}")
+            
+            # Helper to translate container path to host path (for Docker-in-Docker)
+            # Docker daemon running on host needs the host machine paths
+            def get_host_path(local_path):
+                host_workdir = os.environ.get('HOST_WORKDIR', '/opt/community-sh')
+                return local_path.replace(str(settings.BASE_DIR), host_workdir)
+
             volumes = {}
             # Mount data directory for Odoo filestore and sessions
-            volumes[data_path] = {'bind': '/var/lib/odoo', 'mode': 'rw'}
+            # USE host-translated path for the Docker daemon!
+            volumes[get_host_path(data_path)] = {'bind': '/var/lib/odoo', 'mode': 'rw'}
             
             # If we cloned addons, mount them
             addons_path = os.path.join(workspace_path, 'addons')
             if os.path.exists(addons_path):
                 # We mount it to /mnt/extra-addons which is standard in Odoo images
-                volumes[addons_path] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
+                volumes[get_host_path(addons_path)] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
             
             
             # Check if container already exists (redeploy scenario)
@@ -96,6 +126,7 @@ class DockerService:
                 network=network_name,
                 volumes=volumes,
                 ports={'8069/tcp': None}, # Let Docker assign a random host port
+                user='root',
                 detach=True,
                 labels={
                     "traefik.enable": "true",
