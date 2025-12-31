@@ -4,13 +4,13 @@
 <div class="flex flex-col gap-6 max-w-6xl">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-3xl font-bold tracking-tight">Usuarios</h1>
-            <p class="text-muted-foreground mt-2">Gestiona los usuarios de la plataforma</p>
+            <h1 class="text-3xl font-bold tracking-tight">Users</h1>
+            <p class="text-muted-foreground mt-2">Manage the platform's users</p>
         </div>
         <a href="{% url 'user-create' %}"
             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
             <i data-lucide="user-plus" class="mr-2 h-4 w-4"></i>
-            Crear Usuario
+            Create User
         </a>
     </div>
 
@@ -31,12 +31,12 @@
             <table class="w-full">
                 <thead class="border-b">
                     <tr class="bg-muted/50">
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Usuario</th>
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">User</th>
                         <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Email</th>
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Rol</th>
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Estado</th>
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Fecha de Registro</th>
-                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Acciones</th>
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Role</th>
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Registration Date</th>
+                        <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,7 +55,7 @@
                             {% if user_item.is_superuser %}
                             <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-red-50 text-red-700 border-red-200">
                                 <i data-lucide="shield" class="mr-1 h-3 w-3"></i>
-                                Superusuario
+                                Superuser
                             </span>
                             {% elif user_item.is_staff %}
                             <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200">
@@ -65,18 +65,18 @@
                             {% else %}
                             <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-gray-50 text-gray-700 border-gray-200">
                                 <i data-lucide="user" class="mr-1 h-3 w-3"></i>
-                                Usuario
+                                User
                             </span>
                             {% endif %}
                         </td>
                         <td class="p-4 align-middle">
                             {% if user_item.is_active %}
                             <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-50 text-green-700 border-green-200">
-                                Activo
+                                Active
                             </span>
                             {% else %}
                             <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-gray-50 text-gray-700 border-gray-200">
-                                Inactivo
+                                Inactive
                             </span>
                             {% endif %}
                         </td>
@@ -105,7 +105,7 @@
                     {% empty %}
                     <tr>
                         <td colspan="6" class="p-8 text-center text-muted-foreground">
-                            No hay usuarios registrados
+                            No users registered
                         </td>
                     </tr>
                     {% endfor %}

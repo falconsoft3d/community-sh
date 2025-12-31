@@ -64,6 +64,10 @@
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
                             <i data-lucide="download" class="mr-2 h-4 w-4"></i> Download
                         </a>
+                        <a href="{% url 'backup-create-instance' backup.pk %}"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-green-200 bg-green-50 hover:bg-green-100 text-green-600 h-9 px-3">
+                            <i data-lucide="copy-plus" class="mr-2 h-4 w-4"></i> New Instance
+                        </a>
                         <form action="{% url 'backup-restore-action' backup.pk %}" method="post"
                             onsubmit="return confirm('WARNING: This will overwrite the current database and filestore. Are you sure you want to restore this backup?')">
                             {% csrf_token %}

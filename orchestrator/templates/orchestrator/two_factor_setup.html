@@ -1,0 +1,147 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6 max-w-2xl mx-auto">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Autenticación de Dos Factores</h1>
+            <p class="text-muted-foreground mt-2">Configura la autenticación de dos factores (2FA) para mayor seguridad</p>
+        </div>
+    </div>
+
+    {% if two_factor_enabled %}
+    <!-- 2FA Already Enabled -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="p-6">
+            <div class="rounded-lg border border-green-200 bg-green-50 p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <i data-lucide="shield-check" class="h-5 w-5 text-green-600 mt-0.5"></i>
+                    <div class="flex-1">
+                        <h4 class="text-sm font-medium text-green-900">2FA Activado</h4>
+                        <p class="text-sm text-green-700 mt-1">
+                            Tu cuenta está protegida con autenticación de dos factores
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="disable">
+                <button type="submit" onclick="return confirm('¿Estás seguro de desactivar la autenticación de dos factores?')"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
+                    <i data-lucide="shield-off" class="mr-2 h-4 w-4"></i>
+                    Desactivar 2FA
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% elif step == 'verify' %}
+    <!-- Verify Code Step -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 border-b">
+            <h3 class="font-semibold leading-none tracking-tight">Escanea el código QR</h3>
+            <p class="text-sm text-muted-foreground">Usa una app de autenticación como Google Authenticator o Authy</p>
+        </div>
+        <div class="p-6">
+            {% if error %}
+            <div class="rounded-md bg-red-50 border border-red-200 p-3 mb-4">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="alert-circle" class="h-4 w-4 text-red-600"></i>
+                    <span class="text-sm text-red-800">Código inválido. Inténtalo de nuevo.</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="space-y-6">
+                <!-- QR Code -->
+                <div class="flex justify-center">
+                    <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" class="border rounded-lg p-4">
+                </div>
+
+                <!-- Manual Key -->
+                <div class="rounded-lg bg-muted p-4">
+                    <p class="text-sm font-medium mb-2">O ingresa esta clave manualmente:</p>
+                    <code class="text-sm font-mono bg-background px-2 py-1 rounded">{{ secret }}</code>
+                </div>
+
+                <!-- Verification Form -->
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="verify">
+                    <input type="hidden" name="secret" value="{{ secret }}">
+                    
+                    <div class="space-y-2">
+                        <label for="code" class="text-sm font-medium leading-none">
+                            Código de verificación <span class="text-destructive">*</span>
+                        </label>
+                        <input type="text" id="code" name="code" required maxlength="6" pattern="[0-9]{6}"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="123456" autofocus>
+                        <p class="text-sm text-muted-foreground">
+                            Ingresa el código de 6 dígitos de tu app de autenticación
+                        </p>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="submit"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                            <i data-lucide="check" class="mr-2 h-4 w-4"></i>
+                            Verificar y Activar
+                        </button>
+                        <a href="{% url 'user-profile' %}"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Initial Setup -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-col space-y-1.5 p-6 border-b">
+            <h3 class="font-semibold leading-none tracking-tight">Activar 2FA</h3>
+            <p class="text-sm text-muted-foreground">Protege tu cuenta con un segundo factor de autenticación</p>
+        </div>
+        <div class="p-6">
+            <div class="space-y-6">
+                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="info" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-blue-900">¿Qué es 2FA?</h4>
+                            <p class="text-sm text-blue-700 mt-1">
+                                La autenticación de dos factores añade una capa extra de seguridad a tu cuenta. 
+                                Además de tu contraseña, necesitarás un código temporal generado por una app de autenticación.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="text-sm font-medium">Necesitarás:</h4>
+                    <ul class="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-2">
+                        <li>Una app de autenticación como Google Authenticator, Authy, o Microsoft Authenticator</li>
+                        <li>Tu dispositivo móvil para escanear el código QR</li>
+                    </ul>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="enable">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <i data-lucide="shield-plus" class="mr-2 h-4 w-4"></i>
+                        Comenzar Configuración
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

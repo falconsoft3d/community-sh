@@ -18,10 +18,11 @@ class InstanceForm(forms.ModelForm):
     
     class Meta:
         model = Instance
-        fields = ['name', 'odoo_version', 'github_repo', 'github_branch']
+        fields = ['name', 'odoo_version', 'github_repo', 'github_branch', 'database_name']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'mi-empresa'}),
             'github_branch': forms.TextInput(attrs={'placeholder': 'main'}),
+            'database_name': forms.TextInput(attrs={'placeholder': 'Dejar vacío para auto-detección'}),
         }
     
     def __init__(self, *args, **kwargs):

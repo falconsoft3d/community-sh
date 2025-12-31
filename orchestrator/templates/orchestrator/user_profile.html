@@ -102,7 +102,7 @@
             </div>
 
             <!-- Change Password -->
-            <div class="rounded-lg border bg-card p-6">
+            <div class="rounded-lg border bg-card p-6 mb-6">
                 <h2 class="text-lg font-semibold mb-4">Cambiar Contraseña</h2>
                 <form method="post">
                     {% csrf_token %}
@@ -133,6 +133,41 @@
                         Cambiar Contraseña
                     </button>
                 </form>
+            </div>
+
+            <!-- Two-Factor Authentication -->
+            <div class="rounded-lg border bg-card p-6">
+                <h2 class="text-lg font-semibold mb-4">Autenticación de Dos Factores (2FA)</h2>
+                {% if user.profile.two_factor_enabled %}
+                <div class="rounded-lg border border-green-200 bg-green-50 p-4 mb-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="shield-check" class="h-5 w-5 text-green-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-green-900">2FA Activado</h4>
+                            <p class="text-sm text-green-700 mt-1">
+                                Tu cuenta está protegida con autenticación de dos factores
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 mb-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="shield-alert" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-blue-900">2FA Desactivado</h4>
+                            <p class="text-sm text-blue-700 mt-1">
+                                Añade una capa extra de seguridad activando la autenticación de dos factores
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                <a href="{% url 'two-factor-setup' %}"
+                   class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                    <i data-lucide="shield" class="mr-2 h-4 w-4"></i>
+                    {% if user.profile.two_factor_enabled %}Gestionar 2FA{% else %}Configurar 2FA{% endif %}
+                </a>
             </div>
         </div>
     </div>

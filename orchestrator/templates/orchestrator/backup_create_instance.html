@@ -10,27 +10,87 @@
         <h1 class="text-3xl font-bold tracking-tight">Create Instance from Backup</h1>
     </div>
 
+    <!-- Backup Info Card -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm mb-6">
+        <div class="flex flex-col space-y-1.5 p-6 pb-2 border-b">
+            <h3 class="font-semibold leading-none tracking-tight">Source Backup Information</h3>
+        </div>
+        <div class="p-6">
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">Backup File:</span>
+                    <span class="font-medium">{{ backup.filename }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">Source Instance:</span>
+                    <span class="font-medium">{{ backup.instance.name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">Odoo Version:</span>
+                    <span class="font-medium">{{ backup.instance.odoo_version }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">Backup Size:</span>
+                    <span class="font-medium">{{ backup.formatted_size }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">Created:</span>
+                    <span class="font-medium">{{ backup.created_at|date:"M d, Y H:i" }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted-foreground">Includes Filestore:</span>
+                    <span class="font-medium">
+                        {% if backup.include_filestore %}
+                            <span class="text-green-600">✓ Yes</span>
+                        {% else %}
+                            <span class="text-blue-600">Database only</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Instance Form -->
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-col space-y-1.5 p-6 border-b">
             <h3 class="font-semibold leading-none tracking-tight">New Instance Details</h3>
-            <p class="text-sm text-muted-foreground">Original backup: {{ backup.filename }}</p>
+            <p class="text-sm text-muted-foreground">Configure the new instance</p>
         </div>
         <div class="p-6">
             <form method="post" class="space-y-4">
                 {% csrf_token %}
 
                 <div class="space-y-2">
-                    <label for="name" class="text-sm font-medium leading-none">New Instance Name</label>
+                    <label for="name" class="text-sm font-medium leading-none">Instance Name *</label>
                     <input type="text" id="name" name="name" required
+                        value="{{ suggested_name }}"
                         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        placeholder="my-new-odoo">
-                    <p class="text-xs text-muted-foreground">Only letters, numbers and hyphens</p>
+                        placeholder="my-new-instance"
+                        pattern="[a-zA-Z0-9-]+"
+                        title="Solo letras, números y guiones">
+                    <p class="text-xs text-muted-foreground">This will be your subdomain: <span class="font-mono">[name].localhost</span></p>
+                </div>
+
+                <div class="rounded-md bg-blue-50 border border-blue-200 p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="info" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+                        <div class="text-sm text-blue-900">
+                            <p class="font-medium mb-1">What happens next?</p>
+                            <ul class="list-disc list-inside space-y-1 text-blue-800">
+                                <li>A new instance will be created with your specified name</li>
+                                <li>Docker containers will be deployed (Odoo + PostgreSQL)</li>
+                                <li>The backup will be restored (database + filestore)</li>
+                                <li>You'll be redirected to the new instance page</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="pt-4 flex items-center gap-4">
                     <button type="submit"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                        Create and Restore
+                        <i data-lucide="copy-plus" class="mr-2 h-4 w-4"></i> Create Instance
                     </button>
                     <a href="{% url 'instance-backups' backup.instance.pk %}"
                         class="text-sm text-muted-foreground hover:underline">Cancel</a>

@@ -1,409 +1,589 @@
 {% extends "orchestrator/base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-6 max-w-5xl" x-data="{ activeTab: 'general' }">
+<div class="flex flex-col gap-6" x-data="{ activeTab: window.location.hash ? window.location.hash.slice(1) : 'github' }">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-3xl font-bold tracking-tight">Settings</h1>
-            <p class="text-muted-foreground mt-2">Manage integrations and platform configuration</p>
+            <h1 class="text-3xl font-bold tracking-tight">Configuración</h1>
+            <p class="text-muted-foreground mt-2">Administra las integraciones y ajustes de la plataforma</p>
         </div>
-        <button type="submit" form="main-settings-form"
-            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-            <i data-lucide="save" class="mr-2 h-4 w-4"></i> Save All Changes
-        </button>
     </div>
 
     <!-- Tabs Navigation -->
-    <div class="border-b border-border overflow-x-auto">
-        <nav class="-mb-px flex space-x-6 min-w-max" aria-label="Tabs">
-            <button @click="activeTab = 'general'"
-                :class="activeTab === 'general' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
-                class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
-                <i data-lucide="settings" class="h-4 w-4"></i> General
-            </button>
-            <button @click="activeTab = 'security'"
-                :class="activeTab === 'security' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
-                class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
-                <i data-lucide="lock" class="h-4 w-4"></i> Security
-            </button>
-            <button @click="activeTab = 'github'"
+    <div class="border-b">
+        <nav class="flex gap-4 overflow-x-auto">
+            <button @click="activeTab = 'github'; window.location.hash = 'github'" 
                 :class="activeTab === 'github' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
-                class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
-                <i data-lucide="github" class="h-4 w-4"></i> GitHub
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="github" class="inline-block h-4 w-4 mr-2"></i>
+                GitHub
             </button>
-            <button @click="activeTab = 'domain'"
+            <button @click="activeTab = 'domain'; window.location.hash = 'domain'" 
                 :class="activeTab === 'domain' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
-                class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
-                <i data-lucide="globe" class="h-4 w-4"></i> Domain & SSL
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="globe" class="inline-block h-4 w-4 mr-2"></i>
+                Domain & SSL
             </button>
-            <button @click="activeTab = 'backups'"
+            <button @click="activeTab = 'general'; window.location.hash = 'general'" 
+                :class="activeTab === 'general' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="settings" class="inline-block h-4 w-4 mr-2"></i>
+                General
+            </button>
+            <button @click="activeTab = 'backups'; window.location.hash = 'backups'" 
                 :class="activeTab === 'backups' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
-                class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors flex items-center gap-2">
-                <i data-lucide="archive" class="h-4 w-4"></i> Backups
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="database" class="inline-block h-4 w-4 mr-2"></i>
+                Respaldos
+            </button>
+            <button @click="activeTab = 'help'; window.location.hash = 'help'" 
+                :class="activeTab === 'help' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="help-circle" class="inline-block h-4 w-4 mr-2"></i>
+                Ayuda
             </button>
         </nav>
     </div>
 
-    <!-- Messages -->
-    {% if messages %}
-    <div class="space-y-2">
-        {% for message in messages %}
-        <div class="rounded-md bg-green-50 border border-green-200 p-3">
-            <div class="flex items-center gap-2">
-                <i data-lucide="check-circle" class="h-4 w-4 text-green-600"></i>
-                <span class="text-sm text-green-800">{{ message }}</span>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <!-- General Tab -->
-    <div x-show="activeTab === 'general'" class="grid gap-6 animate-in fade-in duration-300 max-w-2xl">
+    <!-- GitHub Integration Tab -->
+    <div x-show="activeTab === 'github'" class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="font-semibold leading-none tracking-tight">System Settings</h3>
-                <p class="text-sm text-muted-foreground">General platform configuration</p>
-            </div>
-            <div class="p-6">
-                <div class="space-y-4">
-                    <div class="flex items-center space-x-2">
-                        <input form="main-settings-form" type="checkbox" id="registration_enabled"
-                            name="registration_enabled"
-                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary" {{
-                            config.registration_enabled|yesno:"checked," }}>
-                        <label for="registration_enabled" class="text-sm font-medium leading-none cursor-pointer">Enable
-                            User Registration</label>
-                    </div>
-                    <p class="text-sm text-muted-foreground ml-6">When disabled, new users will not be able to
-                        register.</p>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="github" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Integración con GitHub</h3>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Security Tab -->
-    <div x-show="activeTab === 'security'" class="grid gap-6 animate-in fade-in duration-300 max-w-2xl">
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="font-semibold leading-none tracking-tight">Two-Factor Authentication</h3>
-                <p class="text-sm text-muted-foreground">Enhance account security</p>
+                <p class="text-sm text-muted-foreground">Conecta tu cuenta de GitHub para desplegar repositorios automáticamente</p>
             </div>
             <div class="p-6">
-                <div class="space-y-4">
-                    <div class="flex items-center space-x-2">
-                        <input form="main-settings-form" type="checkbox" id="two_factor_enabled"
-                            name="two_factor_enabled"
-                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary" {% if
-                            user.profile.two_factor_enabled %}checked{% endif %}>
-                        <label for="two_factor_enabled" class="text-sm font-medium leading-none cursor-pointer">Enable
-                            2FA</label>
-                    </div>
-                    <p class="text-sm text-muted-foreground ml-6">Require two-factor authentication for login.</p>
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
 
-                    {% if user.profile.two_factor_enabled %}
-                    <div class="ml-6 mt-2">
-                        <a href="{% url 'enable-2fa' %}"
-                            class="text-sm text-primary hover:underline flex items-center gap-1">
-                            <i data-lucide="settings" class="h-3 w-3"></i> Configure 2FA Method
-                        </a>
+                    {% if messages %}
+                    {% for message in messages %}
+                    <div class="rounded-md bg-green-50 border border-green-200 p-3">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="check-circle" class="h-4 w-4 text-green-600"></i>
+                            <span class="text-sm text-green-800">{{ message }}</span>
+                        </div>
                     </div>
+                    {% endfor %}
                     {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- GitHub Tab -->
-    <div x-show="activeTab === 'github'" class="grid gap-6 animate-in fade-in duration-300 max-w-5xl">
-        <div class="grid md:grid-cols-2 gap-6">
-            <!-- Inputs -->
-            <div class="rounded-xl border bg-card text-card-foreground shadow-sm h-fit">
-                <div class="flex flex-col space-y-1.5 p-6 border-b">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="github" class="h-5 w-5"></i>
-                        <h3 class="font-semibold leading-none tracking-tight">GitHub Configuration</h3>
-                    </div>
-                    <p class="text-sm text-muted-foreground">Connect your GitHub account</p>
-                </div>
-                <div class="p-6 space-y-4">
                     <div class="space-y-2">
-                        <label for="personal_access_token" class="text-sm font-medium leading-none">Personal Access
-                            Token <span class="text-destructive">*</span></label>
-                        <input form="main-settings-form" type="password" id="personal_access_token"
-                            name="personal_access_token" value="{{ config.personal_access_token|default:'' }}"
+                        <label for="personal_access_token" class="text-sm font-medium leading-none">
+                            Personal Access Token
+                            <span class="text-destructive">*</span>
+                        </label>
+                        <input type="password" id="personal_access_token" name="personal_access_token"
+                            value="{{ config.personal_access_token|default:'' }}"
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                        <p class="text-sm text-muted-foreground">
+                            Crea un token en
+                            <a href="https://github.com/settings/tokens" target="_blank"
+                                class="text-primary hover:underline">
+                                GitHub Settings → Developer settings → Personal access tokens
+                            </a>
+                            con permisos de <code class="bg-muted px-1 py-0.5 rounded">repo</code>
+                        </p>
                     </div>
+
                     <div class="space-y-2">
-                        <label for="default_organization" class="text-sm font-medium leading-none">Default
-                            Organization (Optional)</label>
-                        <input form="main-settings-form" type="text" id="default_organization"
-                            name="default_organization" value="{{ config.default_organization|default:'' }}"
+                        <label for="default_organization" class="text-sm font-medium leading-none">
+                            Organización predeterminada (opcional)
+                        </label>
+                        <input type="text" id="default_organization" name="default_organization"
+                            value="{{ config.default_organization|default:'' }}"
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            placeholder="my-org">
+                            placeholder="mi-organizacion">
+                        <p class="text-sm text-muted-foreground">
+                            Si trabajas con una organización específica, puedes establecerla aquí
+                        </p>
                     </div>
+
                     <div class="space-y-2">
-                        <label for="webhook_secret" class="text-sm font-medium leading-none">Webhook Secret
-                            (Optional)</label>
-                        <input form="main-settings-form" type="password" id="webhook_secret" name="webhook_secret"
+                        <label for="webhook_secret" class="text-sm font-medium leading-none">
+                            Webhook Secret (opcional)
+                        </label>
+                        <input type="password" id="webhook_secret" name="webhook_secret"
                             value="{{ config.webhook_secret|default:'' }}"
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            placeholder="webhook-secret">
+                            placeholder="webhook-secret-123">
+                        <p class="text-sm text-muted-foreground">
+                            Secret para validar webhooks de GitHub
+                        </p>
                     </div>
 
                     {% if config.personal_access_token %}
-                    <div class="rounded-lg border border-green-200 bg-green-50 p-4 mt-4">
+                    <div class="rounded-lg border border-green-200 bg-green-50 p-4">
                         <div class="flex items-start gap-3">
                             <i data-lucide="check-circle" class="h-5 w-5 text-green-600 mt-0.5"></i>
                             <div class="flex-1">
-                                <h4 class="text-sm font-medium text-green-900">GitHub Connected</h4>
-                                <p class="text-sm text-green-700 mt-1">Your account is connected successfully.</p>
+                                <h4 class="text-sm font-medium text-green-900">GitHub conectado</h4>
+                                <p class="text-sm text-green-700 mt-1">
+                                    Tu cuenta está conectada correctamente. Ahora puedes clonar repositorios privados.
+                                </p>
                             </div>
                         </div>
                     </div>
                     {% endif %}
-                </div>
-            </div>
 
-            <!-- Instructions -->
-            <div class="rounded-xl border bg-card text-card-foreground shadow-sm h-fit">
-                <div class="flex flex-col space-y-1.5 p-6 border-b">
-                    <h3 class="font-semibold leading-none tracking-tight">How to get a Token</h3>
-                </div>
-                <div class="p-6">
-                    <ol class="list-decimal list-inside space-y-2 text-sm">
-                        <li>Go to <a href="https://github.com/settings/tokens" target="_blank"
-                                class="text-primary hover:underline">GitHub Personal access tokens</a></li>
-                        <li>Click "Generate new token" (classic).</li>
-                        <li>Name it (e.g. "Community SH").</li>
-                        <li>Select permissions:
-                            <ul class="list-disc list-inside ml-6 mt-1 space-y-1">
-                                <li><code class="bg-muted px-1 py-0.5 rounded">repo</code> - Full repo access</li>
-                                <li><code class="bg-muted px-1 py-0.5 rounded">read:org</code> - Read orgs</li>
-                            </ul>
-                        </li>
-                        <li>Click "Generate token".</li>
-                        <li>Copy and paste the token here.</li>
-                    </ol>
-                </div>
+                    <div class="flex items-center gap-4 pt-4">
+                        <button type="submit"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                            <i data-lucide="save" class="mr-2 h-4 w-4"></i>
+                            Guardar Configuración
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
-    <!-- Domain Tab -->
-    <div x-show="activeTab === 'domain'" class="grid gap-6 animate-in fade-in duration-300 max-w-2xl">
+    <!-- Domain & SSL Tab -->
+    <div x-show="activeTab === 'domain'" class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <div class="flex items-center gap-2">
                     <i data-lucide="globe" class="h-5 w-5"></i>
-                    <h3 class="font-semibold leading-none tracking-tight">Domain & SSL Configuration</h3>
+                    <h3 class="font-semibold leading-none tracking-tight">Configuración de Dominio y SSL</h3>
                 </div>
-                <p class="text-sm text-muted-foreground">Config main domain and HTTPS</p>
-            </div>
-            <div class="p-6 space-y-4">
-                <div class="space-y-2">
-                    <label for="main_domain" class="text-sm font-medium leading-none">Main Domain</label>
-                    <input form="main-settings-form" type="text" id="main_domain" name="main_domain"
-                        value="{{ config.main_domain|default:'' }}"
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        placeholder="example.com">
-                    <p class="text-sm text-muted-foreground">Main application domain (without https://)</p>
-                </div>
-
-                <div class="space-y-2">
-                    <div class="flex items-center space-x-2">
-                        <input form="main-settings-form" type="checkbox" id="ssl_enabled" name="ssl_enabled"
-                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary" {{
-                            config.ssl_enabled|yesno:"checked," }}>
-                        <label for="ssl_enabled" class="text-sm font-medium leading-none cursor-pointer">Enable
-                            SSL/HTTPS</label>
-                    </div>
-                </div>
-
-                <div class="space-y-2">
-                    <label for="ssl_certificate_path" class="text-sm font-medium leading-none">SSL Certificate
-                        Path</label>
-                    <input form="main-settings-form" type="text" id="ssl_certificate_path" name="ssl_certificate_path"
-                        value="{{ config.ssl_certificate_path|default:'' }}"
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        readonly>
-                </div>
-
-                <div class="space-y-2">
-                    <label for="ssl_key_path" class="text-sm font-medium leading-none">SSL Key Path</label>
-                    <input form="main-settings-form" type="text" id="ssl_key_path" name="ssl_key_path"
-                        value="{{ config.ssl_key_path|default:'' }}"
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        readonly>
-                </div>
-
-                {% if config.ssl_enabled and config.main_domain %}
-                <div class="rounded-lg border border-green-200 bg-green-50 p-4">
-                    <div class="flex items-start gap-3">
-                        <i data-lucide="shield-check" class="h-5 w-5 text-green-600 mt-0.5"></i>
-                        <div class="flex-1">
-                            <h4 class="text-sm font-medium text-green-900">SSL Configured</h4>
-                            <p class="text-sm text-green-700 mt-1">Your domain {{ config.main_domain }} is
-                                configured with SSL/HTTPS.</p>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Generate SSL Button (Separate Form) -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 pb-2 border-b">
-                <h3 class="font-semibold leading-none tracking-tight">Let's Encrypt Automation</h3>
+                <p class="text-sm text-muted-foreground">Configura el dominio principal y habilita SSL/HTTPS</p>
             </div>
             <div class="p-6">
-                <!-- Generate Info -->
-                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 mb-4">
-                    <div class="flex items-start gap-3">
-                        <i data-lucide="shield-plus" class="h-5 w-5 text-blue-600 mt-0.5"></i>
-                        <div class="flex-1">
-                            <h4 class="text-sm font-medium text-blue-900 mb-2">Auto-generate Certificate</h4>
-                            <p class="text-sm text-blue-700 mb-3">Automatically generate a free SSL certificate using
-                                Let's Encrypt / Certbot.</p>
-                            <button type="button"
-                                onclick="document.getElementById('letsencrypt-form').style.display = document.getElementById('letsencrypt-form').style.display === 'none' ? 'block' : 'none'"
-                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 h-9 px-4 py-2">
-                                <i data-lucide="key" class="mr-2 h-4 w-4"></i> Generate SSL Certificate
-                            </button>
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <div class="space-y-2">
+                        <label for="main_domain" class="text-sm font-medium leading-none">
+                            Dominio Principal
+                        </label>
+                        <input type="text" id="main_domain" name="main_domain"
+                            value="{{ config.main_domain|default:'' }}"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="ejemplo.com">
+                        <p class="text-sm text-muted-foreground">
+                            Dominio principal de tu aplicación (sin https://)
+                        </p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="ssl_enabled" name="ssl_enabled" {% if config.ssl_enabled %}checked{% endif %}
+                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
+                            <label for="ssl_enabled" class="text-sm font-medium leading-none cursor-pointer">
+                                Habilitar SSL/HTTPS
+                            </label>
+                        </div>
+                        <p class="text-sm text-muted-foreground">
+                            Activa el protocolo HTTPS para conexiones seguras
+                        </p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="ssl_certificate_path" class="text-sm font-medium leading-none">
+                            Ruta del Certificado SSL
+                        </label>
+                        <input type="text" id="ssl_certificate_path" name="ssl_certificate_path"
+                            value="{{ config.ssl_certificate_path|default:'' }}"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="/etc/ssl/certs/certificate.crt" readonly>
+                        <p class="text-sm text-muted-foreground">
+                            Ruta completa al archivo del certificado SSL (se autocompletará al generar con Let's Encrypt)
+                        </p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="ssl_key_path" class="text-sm font-medium leading-none">
+                            Ruta de la Clave Privada SSL
+                        </label>
+                        <input type="text" id="ssl_key_path" name="ssl_key_path"
+                            value="{{ config.ssl_key_path|default:'' }}"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="/etc/ssl/private/private.key" readonly>
+                        <p class="text-sm text-muted-foreground">
+                            Ruta completa al archivo de la clave privada SSL (se autocompletará al generar con Let's Encrypt)
+                        </p>
+                    </div>
+
+                    <!-- Let's Encrypt Auto-generation -->
+                    <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="shield-plus" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+                            <div class="flex-1">
+                                <h4 class="text-sm font-medium text-blue-900 mb-2">Generar Certificado Automáticamente con Let's Encrypt</h4>
+                                <p class="text-sm text-blue-700 mb-3">
+                                    Genera un certificado SSL gratuito y automáticamente configurado usando Let's Encrypt/Certbot.
+                                </p>
+                                <button type="button" 
+                                    onclick="document.getElementById('letsencrypt-form').style.display = document.getElementById('letsencrypt-form').style.display === 'none' ? 'block' : 'none'"
+                                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 h-9 px-4 py-2">
+                                    <i data-lucide="key" class="mr-2 h-4 w-4"></i>
+                                    Generar Certificado SSL
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Form (Hidden by default) -->
-                <div id="letsencrypt-form" style="display: none;"
-                    class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
-                    <form method="post" action="{% url 'generate-ssl' %}"
-                        onsubmit="return confirm('Are you sure you want to generate a new SSL certificate? Ensure your domain is pointing to this server.');">
-                        {% csrf_token %}
-                        <div class="space-y-4">
-                            <div class="space-y-2">
-                                <label for="letsencrypt_domain" class="text-sm font-medium leading-none">Domain <span
-                                        class="text-destructive">*</span></label>
-                                <input type="text" id="letsencrypt_domain" name="domain"
-                                    value="{{ config.main_domain|default:'' }}" required
-                                    class="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    <!-- Let's Encrypt Form (Hidden by default) -->
+                    <div id="letsencrypt-form" style="display: none;" class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
+                        <h4 class="text-sm font-medium">Configuración de Let's Encrypt</h4>
+                        <p class="text-sm text-muted-foreground">
+                            <strong>Nota:</strong> Tu dominio debe estar apuntando a este servidor y el puerto 80 debe estar disponible.
+                        </p>
+                        <form method="post" action="{% url 'generate-ssl' %}" onsubmit="return confirm('¿Estás seguro de generar un nuevo certificado SSL? Asegúrate de que tu dominio esté configurado correctamente.');">
+                            {% csrf_token %}
+                            <div class="space-y-4">
+                                <div class="space-y-2">
+                                    <label for="letsencrypt_domain" class="text-sm font-medium leading-none">
+                                        Dominio <span class="text-destructive">*</span>
+                                    </label>
+                                    <input type="text" id="letsencrypt_domain" name="domain"
+                                        value="{{ config.main_domain|default:'' }}"
+                                        required
+                                        class="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        placeholder="ejemplo.com">
+                                </div>
+                                <div class="space-y-2">
+                                    <label for="letsencrypt_email" class="text-sm font-medium leading-none">
+                                        Email <span class="text-destructive">*</span>
+                                    </label>
+                                    <input type="email" id="letsencrypt_email" name="email"
+                                        value="{{ user.email|default:'' }}"
+                                        required
+                                        class="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                        placeholder="tu@email.com">
+                                    <p class="text-sm text-muted-foreground">
+                                        Email para notificaciones de renovación de Let's Encrypt
+                                    </p>
+                                </div>
+                                <button type="submit"
+                                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2">
+                                    <i data-lucide="play" class="mr-2 h-4 w-4"></i>
+                                    Generar Certificado Ahora
+                                </button>
                             </div>
-                            <div class="space-y-2">
-                                <label for="letsencrypt_email" class="text-sm font-medium leading-none">Email <span
-                                        class="text-destructive">*</span></label>
-                                <input type="email" id="letsencrypt_email" name="email"
-                                    value="{{ user.email|default:'' }}" required
-                                    class="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        </form>
+                    </div>
+
+                    {% if config.ssl_enabled and config.main_domain %}
+                    <div class="rounded-lg border border-green-200 bg-green-50 p-4">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="shield-check" class="h-5 w-5 text-green-600 mt-0.5"></i>
+                            <div class="flex-1">
+                                <h4 class="text-sm font-medium text-green-900">SSL Configurado</h4>
+                                <p class="text-sm text-green-700 mt-1">
+                                    Tu dominio {{ config.main_domain }} está configurado con SSL/HTTPS
+                                </p>
                             </div>
-                            <button type="submit"
-                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2">
-                                <i data-lucide="play" class="mr-2 h-4 w-4"></i> Generate Now
-                            </button>
                         </div>
-                    </form>
+                    </div>
+                    {% endif %}
+
+                    <div class="flex items-center gap-4 pt-4">
+                        <button type="submit"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                            <i data-lucide="save" class="mr-2 h-4 w-4"></i>
+                            Guardar Configuración
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- General Tab -->
+    <div x-show="activeTab === 'general'" class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="settings" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Configuración General</h3>
                 </div>
+                <p class="text-sm text-muted-foreground">Opciones generales de la plataforma</p>
+            </div>
+            <div class="p-6">
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="registration_enabled" name="registration_enabled" {% if config.registration_enabled %}checked{% endif %}
+                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
+                            <label for="registration_enabled" class="text-sm font-medium leading-none cursor-pointer">
+                                Habilitar registro de usuarios
+                            </label>
+                        </div>
+                        <p class="text-sm text-muted-foreground">
+                            Cuando está deshabilitado, los nuevos usuarios no podrán registrarse
+                        </p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="public_website_enabled" name="public_website_enabled" {% if config.public_website_enabled %}checked{% endif %}
+                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
+                            <label for="public_website_enabled" class="text-sm font-medium leading-none cursor-pointer">
+                                Habilitar sitio web público
+                            </label>
+                        </div>
+                        <p class="text-sm text-muted-foreground">
+                            Muestra el sitio web público con información de la plataforma
+                        </p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="two_factor_required" name="two_factor_required" {% if config.two_factor_required %}checked{% endif %}
+                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
+                            <label for="two_factor_required" class="text-sm font-medium leading-none cursor-pointer">
+                                Requerir autenticación de dos factores (2FA)
+                            </label>
+                        </div>
+                        <p class="text-sm text-muted-foreground">
+                            Obliga a todos los usuarios a configurar autenticación de dos factores para iniciar sesión
+                        </p>
+                    </div>
+
+                    <div class="border-t pt-6"></div>
+
+                    <div class="space-y-4">
+                        <h4 class="text-sm font-medium">Notificaciones por Email</h4>
+                        
+                        <div class="space-y-2">
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="email_notifications_enabled" name="email_notifications_enabled" {% if config.email_notifications_enabled %}checked{% endif %}
+                                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
+                                <label for="email_notifications_enabled" class="text-sm font-medium leading-none cursor-pointer">
+                                    Habilitar notificaciones por email
+                                </label>
+                            </div>
+                            <p class="text-sm text-muted-foreground">
+                                Recibe emails cuando se crea o elimina una instancia
+                            </p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label for="notification_emails" class="text-sm font-medium leading-none">
+                                Emails para notificaciones
+                            </label>
+                            <input type="text" id="notification_emails" name="notification_emails"
+                                value="{{ config.notification_emails|default:'' }}"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                placeholder="admin@example.com, user@example.com">
+                            <p class="text-sm text-muted-foreground">
+                                Lista de emails separados por comas para recibir notificaciones
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4 pt-4">
+                        <button type="submit"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                            <i data-lucide="save" class="mr-2 h-4 w-4"></i>
+                            Guardar Configuración
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
     <!-- Backups Tab -->
-    <div x-show="activeTab === 'backups'" class="grid gap-6 animate-in fade-in duration-300 max-w-2xl">
+    <div x-show="activeTab === 'backups'" class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <div class="flex items-center gap-2">
-                    <i data-lucide="archive" class="h-5 w-5"></i>
-                    <h3 class="font-semibold leading-none tracking-tight">Automatic Backups</h3>
+                    <i data-lucide="database" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Respaldos Automáticos</h3>
                 </div>
-                <p class="text-sm text-muted-foreground">Configure periodic backups frequency and retention</p>
-            </div>
-            <div class="p-6 space-y-4">
-                <div class="space-y-2">
-                    <label for="auto_backup_frequency" class="text-sm font-medium leading-none">Backup
-                        Frequency</label>
-                    <select form="main-settings-form" id="auto_backup_frequency" name="auto_backup_frequency"
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                        <option value="none" {% if config.auto_backup_frequency=='none' %}selected{% endif %}>
-                            Disabled</option>
-                        <option value="minutes" {% if config.auto_backup_frequency=='minutes' %}selected{% endif %}>
-                            Every 5 Minutes</option>
-                        <option value="hourly" {% if config.auto_backup_frequency=='hourly' %}selected{% endif %}>
-                            Every Hour</option>
-                        <option value="daily" {% if config.auto_backup_frequency=='daily' %}selected{% endif %}>
-                            Every Day</option>
-                        <option value="weekly" {% if config.auto_backup_frequency=='weekly' %}selected{% endif %}>
-                            Every Week</option>
-                    </select>
-                    <p class="text-sm text-muted-foreground">How often should the system backup all instances.</p>
-                </div>
-
-                <div class="space-y-2">
-                    <label for="auto_backup_retention" class="text-sm font-medium leading-none">Retention
-                        (Count)</label>
-                    <input form="main-settings-form" type="number" id="auto_backup_retention"
-                        name="auto_backup_retention" value="{{ config.auto_backup_retention }}" min="1" max="50"
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                    <p class="text-sm text-muted-foreground">Number of recent backups to keep per instance (default
-                        5).</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Manual Backup Trigger -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="font-semibold leading-none tracking-tight">Manual Backup Execution</h3>
-                <p class="text-sm text-muted-foreground">Run the automatic backup process immediately</p>
+                <p class="text-sm text-muted-foreground">Configura respaldos automáticos periódicos para todas las instancias</p>
             </div>
             <div class="p-6">
-                <form method="post" action="{% url 'run-manual-backup' %}"
-                    onsubmit="return confirm('This will backup all instances according to your configuration. Continue?');">
+                <form method="post" class="space-y-6">
                     {% csrf_token %}
-                    <button type="submit"
-                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
-                        <i data-lucide="play" class="mr-2 h-4 w-4"></i> Run Backup Now
-                    </button>
-                </form>
-            </div>
-        </div>
 
-        <!-- Cron Job Installation -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="font-semibold leading-none tracking-tight">Cron Job Installation</h3>
-                <p class="text-sm text-muted-foreground">Install or update the automatic backup cron job</p>
-            </div>
-            <div class="p-6">
-                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 mb-4">
-                    <div class="flex items-start gap-3">
-                        <i data-lucide="clock" class="h-5 w-5 text-blue-600 mt-0.5"></i>
-                        <div class="flex-1">
-                            <h4 class="text-sm font-medium text-blue-900 mb-2">Automatic Scheduling</h4>
-                            <p class="text-sm text-blue-700 mb-2">This will install a cron job that checks every 5
-                                minutes if backups should run based on your configuration above.</p>
-                            <p class="text-xs text-blue-600">Logs will be saved to:
-                                /var/log/community_sh_backups.log</p>
+                    <!-- Activar respaldos automáticos -->
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
+                            <input type="checkbox" 
+                                   name="auto_backup_enabled" 
+                                   id="auto_backup_enabled"
+                                   {% if config.auto_backup_enabled %}checked{% endif %}
+                                   class="h-5 w-5 rounded border-input text-primary focus:ring-2 focus:ring-primary">
+                            <div>
+                                <label for="auto_backup_enabled" class="font-medium text-sm cursor-pointer flex items-center gap-2">
+                                    <i data-lucide="toggle-right" class="h-4 w-4"></i>
+                                    Activar Respaldos Automáticos
+                                </label>
+                                <p class="text-xs text-muted-foreground mt-0.5">
+                                    Ejecutar respaldos automáticos según la frecuencia configurada
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <form method="post" action="{% url 'install-backup-cron' %}"
-                    onsubmit="return confirm('This will install/update the cron job for automatic backups. Continue?');">
-                    {% csrf_token %}
-                    <button type="submit"
-                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2">
-                        <i data-lucide="download" class="mr-2 h-4 w-4"></i> Install Cron Job
-                    </button>
+
+                    <!-- Frecuencia de respaldo -->
+                    <div class="space-y-4">
+                        <h4 class="font-medium text-sm flex items-center gap-2">
+                            <i data-lucide="clock" class="h-4 w-4"></i>
+                            Frecuencia de Respaldo
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label for="auto_backup_frequency_value" class="block text-sm font-medium">
+                                    Cada Cuánto
+                                </label>
+                                <input type="number" 
+                                       name="auto_backup_frequency_value" 
+                                       id="auto_backup_frequency_value"
+                                       value="{{ config.auto_backup_frequency_value|default:5 }}"
+                                       min="1"
+                                       class="w-full px-3 py-2 rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div class="space-y-2">
+                                <label for="auto_backup_frequency_unit" class="block text-sm font-medium">
+                                    Unidad de Tiempo
+                                </label>
+                                <select name="auto_backup_frequency_unit" 
+                                        id="auto_backup_frequency_unit"
+                                        class="w-full px-3 py-2 rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <option value="minute" {% if config.auto_backup_frequency_unit == 'minute' %}selected{% endif %}>Minutos</option>
+                                    <option value="hour" {% if config.auto_backup_frequency_unit == 'hour' %}selected{% endif %}>Horas</option>
+                                    <option value="day" {% if config.auto_backup_frequency_unit == 'day' or not config.auto_backup_frequency_unit %}selected{% endif %}>Días</option>
+                                    <option value="week" {% if config.auto_backup_frequency_unit == 'week' %}selected{% endif %}>Semanas</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="text-xs text-muted-foreground">
+                            Ejemplo: "5 Días" ejecutará un respaldo cada 5 días
+                        </p>
+                    </div>
+
+                    <!-- Retención de respaldos -->
+                    <div class="space-y-2">
+                        <label for="auto_backup_retention" class="block text-sm font-medium flex items-center gap-2">
+                            <i data-lucide="archive" class="h-4 w-4"></i>
+                            Cantidad de Respaldos a Mantener
+                        </label>
+                        <input type="number" 
+                               name="auto_backup_retention" 
+                               id="auto_backup_retention"
+                               value="{{ config.auto_backup_retention|default:5 }}"
+                               min="1"
+                               class="w-full px-3 py-2 rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary">
+                        <p class="text-xs text-muted-foreground">
+                            Se mantendrán los últimos <strong>N</strong> respaldos por instancia. Los más antiguos se eliminarán automáticamente.
+                        </p>
+                    </div>
+
+                    <!-- Información adicional -->
+                    <div class="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
+                        <div class="flex gap-3">
+                            <i data-lucide="info" class="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5"></i>
+                            <div class="space-y-2 text-sm">
+                                <p class="font-medium">Información Importante:</p>
+                                <ul class="space-y-1 text-muted-foreground list-disc list-inside">
+                                    <li>Los respaldos incluyen base de datos y filestore de cada instancia</li>
+                                    <li>Se ejecutarán automáticamente según la frecuencia configurada</li>
+                                    <li>Los respaldos antiguos se eliminan al superar el límite</li>
+                                    <li>Puedes pausar desactivando esta opción</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex justify-between items-center pt-4 border-t">
+                        <a href="{% url 'run-auto-backups' %}" 
+                           class="inline-flex items-center justify-center rounded-md bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            <i data-lucide="play" class="h-4 w-4 mr-2"></i>
+                            Ejecutar Respaldos Ahora
+                        </a>
+                        <button type="submit"
+                            class="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                            <i data-lucide="save" class="h-4 w-4 mr-2"></i>
+                            Guardar Configuración
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- Help Tab -->
+    <div x-show="activeTab === 'help'" class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="help-circle" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Ayuda</h3>
+                </div>
+                <p class="text-sm text-muted-foreground">Guías e instrucciones para configurar la plataforma</p>
+            </div>
+            <div class="p-6 space-y-6">
+                <!-- GitHub Token Instructions -->
+                <div class="space-y-3">
+                    <h4 class="font-medium text-sm flex items-center gap-2">
+                        <i data-lucide="github" class="h-4 w-4"></i>
+                        Cómo obtener un GitHub Personal Access Token
+                    </h4>
+                    <ol class="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-6">
+                        <li>Ve a <a href="https://github.com/settings/tokens" target="_blank"
+                                class="text-primary hover:underline">GitHub Settings → Developer settings → Personal access tokens</a></li>
+                        <li>Haz clic en "Generate new token" (classic)</li>
+                        <li>Dale un nombre descriptivo (ej: "Community SH")</li>
+                        <li>Selecciona los siguientes permisos:
+                            <ul class="list-disc list-inside ml-6 mt-1 space-y-1">
+                                <li><code class="bg-muted px-1 py-0.5 rounded">repo</code> - Acceso completo a repositorios privados</li>
+                                <li><code class="bg-muted px-1 py-0.5 rounded">read:org</code> - Leer información de organizaciones (opcional)</li>
+                            </ul>
+                        </li>
+                        <li>Haz clic en "Generate token"</li>
+                        <li>Copia el token y pégalo en la pestaña GitHub (guárdalo en un lugar seguro, no podrás verlo de nuevo)</li>
+                    </ol>
+                </div>
+
+                <div class="border-t pt-6"></div>
+
+                <!-- SSL Instructions -->
+                <div class="space-y-3">
+                    <h4 class="font-medium text-sm flex items-center gap-2">
+                        <i data-lucide="shield" class="h-4 w-4"></i>
+                        Configurar SSL con Let's Encrypt
+                    </h4>
+                    <ol class="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-6">
+                        <li>Asegúrate de que tu dominio esté apuntando a la IP de este servidor</li>
+                        <li>Verifica que el puerto 80 esté disponible y accesible desde internet</li>
+                        <li>Ve a la pestaña "Domain & SSL"</li>
+                        <li>Ingresa tu dominio principal</li>
+                        <li>Haz clic en "Generar Certificado SSL"</li>
+                        <li>Completa el formulario con tu dominio y email</li>
+                        <li>El sistema generará automáticamente el certificado y lo configurará</li>
+                        <li>Los certificados se renovarán automáticamente antes de expirar</li>
+                    </ol>
+                </div>
+
+                <div class="border-t pt-6"></div>
+
+                <!-- General Tips -->
+                <div class="space-y-3">
+                    <h4 class="font-medium text-sm flex items-center gap-2">
+                        <i data-lucide="lightbulb" class="h-4 w-4"></i>
+                        Consejos generales
+                    </h4>
+                    <ul class="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-6">
+                        <li>Guarda siempre los cambios después de modificar cualquier configuración</li>
+                        <li>Mantén tu GitHub Personal Access Token seguro y no lo compartas</li>
+                        <li>Si cambias el dominio principal, actualiza también tus registros DNS</li>
+                        <li>El registro de usuarios puede deshabilitarse temporalmente durante mantenimiento</li>
+                        <li>Revisa regularmente la pestaña "Acerca de" para conocer nuevas características</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<!-- Main Settings Form (Hidden) -->
-<form id="main-settings-form" method="post" class="hidden">
-    {% csrf_token %}
-</form>
-
 {% endblock %}

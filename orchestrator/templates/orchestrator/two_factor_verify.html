@@ -1,0 +1,54 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex min-h-screen items-center justify-center">
+    <div class="w-full max-w-md">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b text-center">
+                <div class="flex justify-center mb-4">
+                    <i data-lucide="shield-check" class="h-12 w-12 text-primary"></i>
+                </div>
+                <h3 class="font-semibold leading-none tracking-tight text-2xl">Verificación de Dos Factores</h3>
+                <p class="text-sm text-muted-foreground">Ingresa el código de tu app de autenticación</p>
+            </div>
+            <div class="p-6">
+                {% if messages %}
+                {% for message in messages %}
+                <div class="rounded-md bg-red-50 border border-red-200 p-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="alert-circle" class="h-4 w-4 text-red-600"></i>
+                        <span class="text-sm text-red-800">{{ message }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <div class="space-y-2">
+                        <label for="code" class="text-sm font-medium leading-none">
+                            Código de 6 dígitos
+                        </label>
+                        <input type="text" id="code" name="code" required maxlength="6" pattern="[0-9]{6}"
+                            class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-lg text-center font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="000000" autofocus>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                        <i data-lucide="check" class="mr-2 h-4 w-4"></i>
+                        Verificar Código
+                    </button>
+
+                    <div class="text-center pt-4">
+                        <a href="{% url 'login' %}" class="text-sm text-muted-foreground hover:text-primary">
+                            Volver al inicio de sesión
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

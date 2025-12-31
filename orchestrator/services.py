@@ -276,31 +276,36 @@ class DockerService:
         # 4. Delete Git branch if this instance has a custom branch
         workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
         if instance.github_repo and instance.github_branch:
-            addons_path = os.path.join(workspace_path, 'addons')
-            if os.path.exists(addons_path):
-                try:
-                    print(f"Attempting to delete Git branch '{instance.github_branch}'...")
-                    repo = git.Repo(addons_path)
-                    
-                    # Delete local branch
+            # Don't delete main/master branches
+            protected_branches = ['main', 'master', 'develop', 'development']
+            if instance.github_branch not in protected_branches:
+                addons_path = os.path.join(workspace_path, 'addons')
+                if os.path.exists(addons_path):
                     try:
-                        repo.delete_head(instance.github_branch, force=True)
-                        print(f"Deleted local branch '{instance.github_branch}'")
-                    except Exception as e:
-                        print(f"Warning: Could not delete local branch: {e}")
-                    
-                    # Delete remote branch
-                    try:
-                        origin = repo.remotes.origin
-                        origin.push(refspec=f":{instance.github_branch}")
-                        print(f"Deleted remote branch '{instance.github_branch}'")
-                    except Exception as e:
-                        print(f"Warning: Could not delete remote branch: {e}")
+                        print(f"Attempting to delete Git branch '{instance.github_branch}'...")
+                        repo = git.Repo(addons_path)
                         
-                except git.exc.InvalidGitRepositoryError:
-                    print("Not a git repository, skipping branch deletion")
-                except Exception as e:
-                    print(f"Warning: Error during Git branch deletion: {e}")
+                        # Delete local branch
+                        try:
+                            repo.delete_head(instance.github_branch, force=True)
+                            print(f"Deleted local branch '{instance.github_branch}'")
+                        except Exception as e:
+                            print(f"Warning: Could not delete local branch: {e}")
+                        
+                        # Delete remote branch
+                        try:
+                            origin = repo.remotes.origin
+                            origin.push(refspec=f":{instance.github_branch}")
+                            print(f"Deleted remote branch '{instance.github_branch}'")
+                        except Exception as e:
+                            print(f"Warning: Could not delete remote branch: {e}")
+                            
+                    except git.exc.InvalidGitRepositoryError:
+                        print("Not a git repository, skipping branch deletion")
+                    except Exception as e:
+                        print(f"Warning: Error during Git branch deletion: {e}")
+            else:
+                print(f"Skipping deletion of protected branch: {instance.github_branch}")
         
         # 5. Remove Files
         if os.path.exists(workspace_path):
@@ -322,7 +327,8 @@ class DockerService:
             odoo_version=instance.odoo_version,
             github_repo=instance.github_repo,
             github_branch=new_name,  # Use new name as branch name
-            status=Instance.Status.DEPLOYING
+            status=Instance.Status.DEPLOYING,
+            origin='duplicate'
         )
         
         try:
@@ -511,18 +517,55 @@ class DockerService:
         
         try:
             with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                # 1. Backup database
-                print("Backing up database...")
+                # 1. Backup Odoo database
+                print(f"Backing up database for {instance.name}...")
                 db_container = self.client.containers.get(f"db_{instance.name}")
                 
-                # Create database dump
+                # Check if database_name is specified in instance
+                if instance.database_name:
+                    odoo_db_name = instance.database_name
+                    print(f"Using specified database name: {odoo_db_name}")
+                else:
+                    # List databases to find the Odoo database
+                    list_dbs_result = db_container.exec_run(
+                        "psql -U odoo -d postgres -t -c \"SELECT datname FROM pg_database WHERE datistemplate = false;\"",
+                        environment={"PGPASSWORD": "odoo"}
+                    )
+                    
+                    if list_dbs_result.exit_code == 0:
+                        databases = [db.strip() for db in list_dbs_result.output.decode('utf-8').split('\n') if db.strip()]
+                        print(f"Available databases: {databases}")
+                        
+                        # Filter out system databases
+                        user_databases = [db for db in databases if db not in ['postgres', 'template0', 'template1']]
+                        
+                        if user_databases:
+                            # Use the first user database (the Odoo database)
+                            odoo_db_name = user_databases[0]
+                            print(f"Found Odoo database: {odoo_db_name}")
+                        else:
+                            raise Exception(
+                                f"No se encontró ninguna base de datos de usuario. "
+                                f"Por favor, especifica el nombre de la base de datos en el campo 'Database Name' de la instancia. "
+                                f"Bases de datos disponibles: {databases}"
+                            )
+                        
+                        print(f"Using database: {odoo_db_name}")
+                    else:
+                        raise Exception(
+                            "No se pudo listar las bases de datos. "
+                            "Por favor, especifica el nombre de la base de datos en el campo 'Database Name' de la instancia."
+                        )
+                
+                # Create database dump for the specific database
                 dump_result = db_container.exec_run(
-                    "pg_dump -U odoo -Fc postgres -f /tmp/backup.dump",
+                    f"pg_dump -U odoo -Fc {odoo_db_name} -f /tmp/backup.dump",
                     environment={"PGPASSWORD": "odoo"}
                 )
                 
                 if dump_result.exit_code != 0:
-                    raise Exception(f"Database backup failed: {dump_result.output.decode('utf-8')}")
+                    error_msg = dump_result.output.decode('utf-8')
+                    raise Exception(f"Database backup failed: {error_msg}")
                 
                 # Get dump file
                 dump_stream, _ = db_container.get_archive('/tmp/backup.dump')
@@ -534,21 +577,55 @@ class DockerService:
                 tar = tarfile.open(fileobj=io.BytesIO(dump_data))
                 dump_file = tar.extractfile('backup.dump')
                 zipf.writestr('database.dump', dump_file.read())
-                print("Database backed up successfully")
+                print(f"Database '{odoo_db_name}' backed up successfully")
                 
                 # 2. Backup filestore if requested
                 if include_filestore:
-                    print("Backing up filestore...")
-                    workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
-                    filestore_path = os.path.join(workspace_path, 'filestore')
-                    
-                    if os.path.exists(filestore_path):
-                        for root, dirs, files in os.walk(filestore_path):
-                            for file in files:
-                                file_path = os.path.join(root, file)
-                                arcname = os.path.relpath(file_path, workspace_path)
-                                zipf.write(file_path, arcname)
-                        print("Filestore backed up successfully")
+                    print("Backing up filestore from Odoo container...")
+                    try:
+                        odoo_container = self.client.containers.get(f"odoo_{instance.name}")
+                        
+                        # The filestore is typically at /var/lib/odoo/filestore/{db_name}
+                        filestore_path = f"/var/lib/odoo/filestore/{odoo_db_name}"
+                        print(f"Checking filestore at: {filestore_path}")
+                        
+                        # Check if filestore exists in container using sh -c
+                        check_result = odoo_container.exec_run(
+                            f"sh -c 'if [ -d {filestore_path} ]; then echo exists; else echo not_found; fi'"
+                        )
+                        check_output = check_result.output.decode('utf-8').strip()
+                        print(f"Filestore check result: '{check_output}'")
+                        
+                        if 'exists' in check_output:
+                            # Get filestore archive from container
+                            print(f"Extracting filestore from {filestore_path}...")
+                            filestore_stream, _ = odoo_container.get_archive(filestore_path)
+                            filestore_data = b''.join(filestore_stream)
+                            print(f"Filestore archive size: {len(filestore_data)} bytes")
+                            
+                            # Extract the tar and add files to backup zip
+                            import tarfile
+                            import io
+                            tar = tarfile.open(fileobj=io.BytesIO(filestore_data))
+                            file_count = 0
+                            for member in tar.getmembers():
+                                if member.isfile():
+                                    file_data = tar.extractfile(member)
+                                    # Store with 'filestore/' prefix
+                                    zip_path = f'filestore/{member.name}'
+                                    zipf.writestr(zip_path, file_data.read())
+                                    file_count += 1
+                                    if file_count <= 3:  # Log first 3 files
+                                        print(f"  Added to ZIP: {zip_path}")
+                            print(f"Filestore backed up successfully: {file_count} files from {filestore_path}")
+                        else:
+                            print(f"Warning: Filestore not found at {filestore_path}")
+                    except Exception as e:
+                        import traceback
+                        print(f"ERROR backing up filestore: {str(e)}")
+                        print(traceback.format_exc())
+                else:
+                    print("Skipping filestore backup (not requested)")
                 
                 # 3. Add metadata
                 metadata = {
@@ -556,6 +633,7 @@ class DockerService:
                     'odoo_version': instance.odoo_version,
                     'backup_date': timestamp,
                     'include_filestore': include_filestore,
+                    'database_name': odoo_db_name,
                     'github_repo': instance.github_repo or '',
                     'github_branch': instance.github_branch or ''
                 }
@@ -599,6 +677,14 @@ class DockerService:
         
         try:
             with zipfile.ZipFile(backup_file_path, 'r') as zipf:
+                # List all files in the ZIP for debugging
+                zip_contents = zipf.namelist()
+                print(f"ZIP file contains {len(zip_contents)} entries")
+                filestore_entries = [f for f in zip_contents if f.startswith('filestore/')]
+                print(f"Filestore entries found: {len(filestore_entries)}")
+                if filestore_entries:
+                    print(f"First few filestore entries: {filestore_entries[:5]}")
+                
                 # Extract to temp directory
                 temp_dir = tempfile.mkdtemp()
                 zipf.extractall(temp_dir)
@@ -633,39 +719,120 @@ class DockerService:
                 # Put file in container
                 db_container.put_archive('/tmp', tar_stream.read())
                 
-                # Drop and recreate database
-                db_container.exec_run(
-                    "psql -U odoo -c 'DROP DATABASE IF EXISTS postgres'",
-                    environment={"PGPASSWORD": "odoo", "PGDATABASE": "template1"}
-                )
-                db_container.exec_run(
-                    "psql -U odoo -c 'CREATE DATABASE postgres'",
-                    environment={"PGPASSWORD": "odoo", "PGDATABASE": "template1"}
-                )
+                # Get database name - prioritize instance's database_name if set
+                if instance.database_name:
+                    odoo_db_name = instance.database_name
+                    print(f"Using instance database name: {odoo_db_name}")
+                else:
+                    odoo_db_name = metadata.get('database_name', instance.name.replace('-', '_'))
+                    print(f"Using metadata/default database name: {odoo_db_name}")
                 
-                # Restore dump
+                # Drop and recreate the database
+                print(f"Dropping and recreating database '{odoo_db_name}'...")
+                drop_result = db_container.exec_run(
+                    f'psql -U odoo -c "DROP DATABASE IF EXISTS \\"{odoo_db_name}\\""',
+                    environment={"PGPASSWORD": "odoo", "PGDATABASE": "postgres"}
+                )
+                print(f"Drop database result: {drop_result.exit_code} - {drop_result.output.decode()}")
+                
+                create_result = db_container.exec_run(
+                    f'psql -U odoo -c "CREATE DATABASE \\"{odoo_db_name}\\""',
+                    environment={"PGPASSWORD": "odoo", "PGDATABASE": "postgres"}
+                )
+                print(f"Create database result: {create_result.exit_code} - {create_result.output.decode()}")
+                
+                # Restore dump to the database (without -c flag to avoid clean errors)
                 restore_result = db_container.exec_run(
-                    "pg_restore -U odoo -d postgres -c /tmp/restore.dump",
+                    f"pg_restore -U odoo -d {odoo_db_name} --no-owner --no-acl /tmp/restore.dump",
                     environment={"PGPASSWORD": "odoo"}
                 )
                 print(f"Database restore completed. Exit code: {restore_result.exit_code}")
+                if restore_result.output:
+                    print(f"Restore output: {restore_result.output.decode()}")
                 
                 # 2. Restore filestore if exists
                 filestore_dir = os.path.join(temp_dir, 'filestore')
+                print(f"Checking for filestore at: {filestore_dir}")
+                print(f"Filestore exists: {os.path.exists(filestore_dir)}")
+                
                 if os.path.exists(filestore_dir):
-                    print("Restoring filestore...")
-                    workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
-                    target_filestore = os.path.join(workspace_path, 'filestore')
-                    
-                    # Remove old filestore
-                    if os.path.exists(target_filestore):
-                        import shutil
-                        shutil.rmtree(target_filestore)
-                    
-                    # Copy new filestore
-                    import shutil
-                    shutil.copytree(filestore_dir, target_filestore)
-                    print("Filestore restored successfully")
+                    print("Restoring filestore to Odoo container...")
+                    try:
+                        odoo_container = self.client.containers.get(f"odoo_{instance.name}")
+                        
+                        # Check what's inside the filestore directory
+                        filestore_contents = os.listdir(filestore_dir)
+                        print(f"Filestore directory contents: {filestore_contents}")
+                        
+                        if not filestore_contents:
+                            print("Warning: Filestore directory is empty")
+                            raise Exception("Filestore directory is empty")
+                        
+                        # The filestore backup includes the original DB name as a subdirectory
+                        # We need to get the actual files from inside that subdirectory
+                        actual_filestore_dir = filestore_dir
+                        
+                        # If there's a single subdirectory, use that as the actual filestore
+                        if len(filestore_contents) == 1 and os.path.isdir(os.path.join(filestore_dir, filestore_contents[0])):
+                            actual_filestore_dir = os.path.join(filestore_dir, filestore_contents[0])
+                            print(f"Using subdirectory as filestore source: {actual_filestore_dir}")
+                        
+                        # Count files to restore
+                        file_count = 0
+                        for root, dirs, files in os.walk(actual_filestore_dir):
+                            file_count += len(files)
+                        
+                        print(f"Total files to restore: {file_count}")
+                        
+                        if file_count == 0:
+                            print("Warning: No files found in filestore directory")
+                            raise Exception("No files found in filestore")
+                        
+                        # Create tar archive with filestore contents
+                        tar_stream = io.BytesIO()
+                        tar = tarfile.open(fileobj=tar_stream, mode='w')
+                        
+                        # Add all files from actual filestore directory
+                        files_added = 0
+                        for root, dirs, files in os.walk(actual_filestore_dir):
+                            for file in files:
+                                file_path = os.path.join(root, file)
+                                # Get relative path from actual_filestore_dir
+                                arcname = os.path.relpath(file_path, actual_filestore_dir)
+                                tar.add(file_path, arcname=arcname)
+                                files_added += 1
+                        
+                        print(f"Added {files_added} files to tar archive")
+                        tar.close()
+                        
+                        tar_size = tar_stream.tell()
+                        print(f"Tar archive size: {tar_size} bytes")
+                        tar_stream.seek(0)
+                        
+                        # Create filestore directory in container
+                        filestore_path = f"/var/lib/odoo/filestore/{odoo_db_name}"
+                        print(f"Creating filestore directory in container: {filestore_path}")
+                        odoo_container.exec_run(f"mkdir -p {filestore_path}")
+                        
+                        # Put filestore archive in container to the correct database folder
+                        print(f"Uploading filestore to container...")
+                        odoo_container.put_archive(filestore_path, tar_stream.read())
+                        
+                        # Verify files were copied
+                        verify_result = odoo_container.exec_run(f"ls -la {filestore_path}")
+                        print(f"Files in container after restore: {verify_result.output.decode('utf-8')}")
+                        
+                        # Set correct ownership
+                        print(f"Setting ownership...")
+                        odoo_container.exec_run(f"chown -R odoo:odoo {filestore_path}")
+                        
+                        print(f"Filestore restored successfully to container at {filestore_path}")
+                    except Exception as e:
+                        import traceback
+                        print(f"ERROR: Could not restore filestore: {str(e)}")
+                        print(traceback.format_exc())
+                else:
+                    print("Warning: No filestore directory found in backup")
                 
                 # Restart instance
                 print("Restarting instance...")

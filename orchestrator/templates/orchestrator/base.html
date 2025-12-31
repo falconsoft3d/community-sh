@@ -116,15 +116,15 @@
                             <i data-lucide="server" class="h-4 w-4"></i>
                             Instances
                         </a>
+                        <a href="{% url 'container-list' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'container-list' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="box" class="h-4 w-4"></i>
+                            Containers
+                        </a>
                         <a href="{% url 'metrics' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'metrics' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
                             Metrics
-                        </a>
-                        <a href="{% url 'container-list' %}"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'container-list' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="container" class="h-4 w-4"></i>
-                            Docker
                         </a>
                         {% if user.is_superuser %}
                         <a href="{% url 'user-list' %}"
@@ -138,6 +138,11 @@
                             <i data-lucide="settings" class="h-4 w-4"></i>
                             Settings
                         </a>
+                        <a href="{% url 'about' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'about' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="info" class="h-4 w-4"></i>
+                            About
+                        </a>
                     </nav>
                 </div>
             </div>
@@ -147,8 +152,7 @@
         <!-- Main Content -->
         <div class="flex flex-col w-full">
             {% if user.is_authenticated %}
-            <header
-                class="flex h-14 items-center gap-4 bg-card shadow-sm px-4 lg:h-[60px] lg:px-6 mx-4 mt-4 mb-2 rounded-lg border">
+            <header class="flex h-14 items-center gap-4 bg-card shadow-sm px-4 lg:h-[60px] lg:px-6 mx-4 mt-4 mb-2 rounded-lg border">
                 <!-- Mobile Trigger could go here -->
                 <div class="w-full flex-1">
                     <!-- Breadcrumb or Title -->
@@ -160,8 +164,7 @@
                         <button @click="open = !open"
                             class="h-8 w-8 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors overflow-hidden">
                             {% if user.profile.avatar %}
-                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}"
-                                class="h-full w-full object-cover">
+                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="h-full w-full object-cover">
                             {% else %}
                             <span class="text-xs font-bold">{{ user.username|slice:":1"|upper }}</span>
                             {% endif %}

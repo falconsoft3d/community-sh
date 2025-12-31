@@ -42,6 +42,21 @@ class InstanceViewSet(viewsets.ModelViewSet):
 # Home view
 def home(request):
     """Home/landing page"""
+    from .config_models import GitHubConfig
+    from django.shortcuts import redirect
+    
+    # Check if public website is enabled
+    try:
+        config = GitHubConfig.objects.first()
+        if config and not config.public_website_enabled:
+            # If user is already authenticated, go to dashboard
+            if request.user.is_authenticated:
+                return redirect('instance-list')
+            # Otherwise redirect to login
+            return redirect('login')
+    except:
+        pass
+    
     from .blog_models import BlogPost
     featured_posts = BlogPost.objects.filter(published=True, featured=True)[:3]
     return render(request, 'orchestrator/home.html', {'featured_posts': featured_posts})
@@ -54,12 +69,38 @@ def dashboard(request):
 
 def blog_list(request):
     """Blog list page"""
+    from .config_models import GitHubConfig
+    from django.shortcuts import redirect
+    
+    # Check if public website is enabled
+    try:
+        config = GitHubConfig.objects.first()
+        if config and not config.public_website_enabled:
+            if request.user.is_authenticated:
+                return redirect('instance-list')
+            return redirect('login')
+    except:
+        pass
+    
     from .blog_models import BlogPost
     posts = BlogPost.objects.filter(published=True)
     return render(request, 'orchestrator/blog_list.html', {'posts': posts})
 
 def blog_detail(request, slug):
     """Blog post detail page"""
+    from .config_models import GitHubConfig
+    from django.shortcuts import redirect
+    
+    # Check if public website is enabled
+    try:
+        config = GitHubConfig.objects.first()
+        if config and not config.public_website_enabled:
+            if request.user.is_authenticated:
+                return redirect('instance-list')
+            return redirect('login')
+    except:
+        pass
+    
     from .blog_models import BlogPost
     post = get_object_or_404(BlogPost, slug=slug, published=True)
     
@@ -83,7 +124,6 @@ def blog_detail(request, slug):
 class InstanceListView(LoginRequiredMixin, ListView):
     model = Instance
     ordering = ['-created_at']
-    paginate_by = 10
 
 class InstanceCreateView(LoginRequiredMixin, CreateView):
     model = Instance
@@ -97,14 +137,97 @@ class InstanceCreateView(LoginRequiredMixin, CreateView):
         return kwargs
     
     def form_valid(self, form):
+        # Set origin to manual
+        form.instance.origin = 'manual'
         # Save the instance first
         response = super().form_valid(form)
+        
+        # Create GitHub branch if repository is configured
+        if self.object.github_repo and self.object.github_branch:
+            print("=" * 50)
+            print("CREATING GITHUB BRANCH FOR NEW INSTANCE")
+            print("=" * 50)
+            
+            original_branch = self.object.github_branch
+            new_branch = self.object.name
+            
+            print(f"GitHub Repo: {self.object.github_repo}")
+            print(f"Original Branch: {original_branch}")
+            print(f"New Branch: {new_branch}")
+            
+            # Get GitHub config
+            from .config_models import GitHubConfig
+            github_config = GitHubConfig.objects.filter(user=self.request.user).first()
+            
+            if github_config and github_config.personal_access_token:
+                import subprocess
+                import tempfile
+                import shutil
+                import os
+                
+                temp_git_dir = tempfile.mkdtemp()
+                print(f"Created temp directory: {temp_git_dir}")
+                
+                try:
+                    # Parse repo URL to add token
+                    repo_url = self.object.github_repo.replace('https://', f'https://{github_config.personal_access_token}@')
+                    print(f"Cloning repository (branch: {original_branch})...")
+                    
+                    # Clone the repository
+                    result = subprocess.run(
+                        ['git', 'clone', '--branch', original_branch, '--single-branch', repo_url, temp_git_dir], 
+                        check=True, capture_output=True, text=True
+                    )
+                    print(f"Clone successful")
+                    
+                    # Create and checkout new branch
+                    print(f"Creating new branch: {new_branch}")
+                    result = subprocess.run(
+                        ['git', 'checkout', '-b', new_branch], 
+                        check=True, capture_output=True, text=True, cwd=temp_git_dir
+                    )
+                    
+                    # Push new branch to remote
+                    print(f"Pushing branch to remote...")
+                    result = subprocess.run(
+                        ['git', 'push', 'origin', new_branch], 
+                        check=True, capture_output=True, text=True, cwd=temp_git_dir
+                    )
+                    print(f"✅ Successfully created GitHub branch '{new_branch}'")
+                    
+                    # Update instance with new branch
+                    self.object.github_branch = new_branch
+                    self.object.save()
+                    print(f"Updated instance branch to: {new_branch}")
+                    
+                    from django.contrib import messages
+                    messages.success(self.request, f'✅ Rama de GitHub "{new_branch}" creada exitosamente')
+                    
+                except subprocess.CalledProcessError as e:
+                    print(f"❌ Git command failed: {e.stderr}")
+                    from django.contrib import messages
+                    messages.warning(self.request, f'Instancia creada pero no se pudo crear la rama en GitHub')
+                except Exception as e:
+                    print(f"❌ Unexpected error: {str(e)}")
+                finally:
+                    if os.path.exists(temp_git_dir):
+                        shutil.rmtree(temp_git_dir)
+            else:
+                print("⚠️ GitHub token not configured")
+            
+            print("=" * 50)
+        
         # Then trigger deployment
         service = DockerService()
         try:
             service.deploy_instance(self.object)
         except Exception as e:
             print(f"Error deploying instance: {e}")
+        
+        # Send email notification
+        from .email_notifications import send_instance_notification
+        send_instance_notification('created', self.object, self.request.user)
+        
         return response
 
 class InstanceDetailView(LoginRequiredMixin, DetailView):
@@ -114,6 +237,11 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         service = DockerService()
         context['logs'] = service.get_logs(self.object)
+        
+        # Add backups to context
+        from .backup_models import Backup
+        context['backups'] = Backup.objects.filter(instance=self.object).order_by('-created_at')
+        
         return context
 
 @login_required
@@ -380,6 +508,10 @@ def instance_install_module(request, pk):
 def instance_delete(request, pk):
     instance = get_object_or_404(Instance, pk=pk)
     if request.method == 'POST':
+        # Send email notification before deleting
+        from .email_notifications import send_instance_notification
+        send_instance_notification('deleted', instance, request.user)
+        
         service = DockerService()
         service.delete_instance(instance)
         instance.delete()
@@ -413,6 +545,11 @@ def instance_duplicate(request, pk):
         service = DockerService()
         try:
             new_instance = service.copy_instance(instance, new_name)
+            
+            # Send email notification
+            from .email_notifications import send_instance_notification
+            send_instance_notification('created', new_instance, request.user)
+            
             from django.contrib import messages
             messages.success(request, f'Instancia duplicada exitosamente como "{new_name}"')
             return redirect('instance-detail', pk=new_instance.pk)
@@ -499,32 +636,144 @@ def settings_view(request):
         config.default_organization = request.POST.get('default_organization', '')
         config.webhook_secret = request.POST.get('webhook_secret', '')
         config.registration_enabled = request.POST.get('registration_enabled') == 'on'
+        config.public_website_enabled = request.POST.get('public_website_enabled') == 'on'
+        config.two_factor_required = request.POST.get('two_factor_required') == 'on'
+        
+        # Update email notifications
+        config.email_notifications_enabled = request.POST.get('email_notifications_enabled') == 'on'
+        config.notification_emails = request.POST.get('notification_emails', '')
+        
+        # Update automatic backups configuration
+        config.auto_backup_enabled = request.POST.get('auto_backup_enabled') == 'on'
+        config.auto_backup_frequency_unit = request.POST.get('auto_backup_frequency_unit', 'day')
+        config.auto_backup_frequency_value = int(request.POST.get('auto_backup_frequency_value', 5))
+        config.auto_backup_retention = int(request.POST.get('auto_backup_retention', 5))
         
         # Update domain and SSL configuration
         config.main_domain = request.POST.get('main_domain', '')
         config.ssl_enabled = request.POST.get('ssl_enabled') == 'on'
         config.ssl_certificate_path = request.POST.get('ssl_certificate_path', '')
         config.ssl_key_path = request.POST.get('ssl_key_path', '')
-
-        # Update backup configuration
-        config.auto_backup_frequency = request.POST.get('auto_backup_frequency', 'none')
-        try:
-            config.auto_backup_retention = int(request.POST.get('auto_backup_retention', 5))
-        except (ValueError, TypeError):
-            config.auto_backup_retention = 5
-            
+        
         config.save()
-
-        # Update User Profile (2FA)
-        if hasattr(request.user, 'profile'):
-            profile = request.user.profile
-            profile.two_factor_enabled = request.POST.get('two_factor_enabled') == 'on'
-            profile.save()
         
         messages.success(request, 'Configuración guardada exitosamente')
         return redirect('settings')
     
     return render(request, 'orchestrator/settings.html', {'config': config})
+
+@login_required
+def run_auto_backups_view(request):
+    """Execute automatic backups for all instances"""
+    from django.contrib import messages
+    from .config_models import GitHubConfig
+    from .services import DockerService
+    from .backup_models import Backup
+    import traceback
+    
+    try:
+        # Get config from current user
+        config = GitHubConfig.objects.filter(user=request.user).first()
+        if not config:
+            messages.error(request, 'No se encontró la configuración')
+            return redirect('settings')
+        
+        # Get all running instances
+        instances = Instance.objects.filter(status='running')
+        if not instances.exists():
+            messages.info(request, 'No hay instancias en ejecución para respaldar')
+            return redirect('settings')
+        
+        print(f"Starting manual backup for {instances.count()} instances...")
+        docker_service = DockerService()
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        for instance in instances:
+            try:
+                print(f"Backing up instance: {instance.name}")
+                # Create backup with filestore
+                backup_record = docker_service.backup_instance(instance, include_filestore=True)
+                success_count += 1
+                print(f"Backup created for {instance.name}: {backup_record.filename}")
+                
+                # Clean old backups based on retention policy (per instance)
+                retention = config.auto_backup_retention if config.auto_backup_retention else 5
+                instance_backups = Backup.objects.filter(instance=instance).order_by('-created_at')
+                
+                print(f"Instance {instance.name} has {instance_backups.count()} backups, retention limit: {retention}")
+                
+                if instance_backups.count() > retention:
+                    old_backups = instance_backups[retention:]
+                    for old_backup in old_backups:
+                        try:
+                            import os
+                            if os.path.exists(old_backup.file_path):
+                                os.remove(old_backup.file_path)
+                                print(f"Deleted old backup file: {old_backup.file_path}")
+                            old_backup.delete()
+                            print(f"Deleted old backup record: {old_backup.filename}")
+                        except Exception as e:
+                            print(f"Error deleting old backup {old_backup.filename}: {str(e)}")
+                
+            except Exception as e:
+                error_count += 1
+                error_msg = f"{instance.name}: {str(e)}"
+                errors.append(error_msg)
+                print(f"Error backing up instance {instance.name}: {str(e)}")
+                print(traceback.format_exc())
+        
+        # Show results
+        if success_count > 0 and error_count == 0:
+            messages.success(request, f'✅ Respaldos completados exitosamente: {success_count} instancias respaldadas')
+        elif success_count > 0 and error_count > 0:
+            messages.warning(request, f'⚠️ Respaldos parciales: {success_count} exitosos, {error_count} con errores')
+            for error in errors[:3]:  # Show first 3 errors
+                messages.error(request, f'Error: {error}')
+        else:
+            messages.error(request, f'❌ Error al crear respaldos. {error_count} errores encontrados')
+            for error in errors[:3]:
+                messages.error(request, f'Error: {error}')
+        
+    except Exception as e:
+        messages.error(request, f'Error crítico al ejecutar respaldos: {str(e)}')
+        print(f"Critical error in run_auto_backups_view: {str(e)}")
+        print(traceback.format_exc())
+    
+    return redirect('settings')
+
+@login_required
+def about(request):
+    """About page with version history"""
+    versions = [
+        {
+            'version': '1.0.0',
+            'date': '2025-12-31',
+            'notes': [
+                'Gestión completa de instancias Odoo (crear, desplegar, detener, reiniciar, eliminar)',
+                'Orquestación de contenedores Docker con PostgreSQL 13',
+                'Soporte multi-versión de Odoo (10.0 - 19.0)',
+                'Integración con repositorios GitHub para módulos personalizados',
+                'Sistema completo de backup y restauración',
+                'Crear nuevas instancias desde backups existentes',
+                'Logs en tiempo real y acceso a consola de contenedores',
+                'Gestión de certificados SSL/TLS con Let\'s Encrypt',
+                'Configuración de dominios personalizados',
+                'Monitoreo de recursos y métricas de contenedores',
+                'Autenticación de usuarios y gestión de perfiles',
+                'Interfaz con pestañas para detalles de instancia',
+                'Sistema de nomenclatura automática para instancias desde backup (name-copy-N)',
+                'Detección automática de bases de datos',
+                'Respaldo de filestore desde contenedores Docker',
+            ]
+        }
+    ]
+    
+    return render(request, 'orchestrator/about.html', {
+        'current_version': '1.0.0',
+        'versions': versions
+    })
 
 @login_required
 def generate_ssl_certificate(request):
@@ -565,7 +814,14 @@ def generate_ssl_certificate(request):
 @login_required
 def instance_backup(request, pk):
     instance = get_object_or_404(Instance, pk=pk)
-    include_filestore = request.GET.get('filestore', 'true') == 'true'
+    
+    # Handle both GET and POST
+    if request.method == 'POST':
+        include_filestore = request.POST.get('filestore', 'true') == 'true'
+        redirect_url = 'instance-detail'
+    else:
+        include_filestore = request.GET.get('filestore', 'true') == 'true'
+        redirect_url = 'instance-backups'
     
     try:
         service = DockerService()
@@ -577,7 +833,12 @@ def instance_backup(request, pk):
         from django.contrib import messages
         messages.error(request, f'Error creating backup: {str(e)}')
     
-    return redirect('instance-backups', pk=pk)
+    # If coming from instance detail (POST), redirect to the backups tab
+    if request.method == 'POST':
+        from django.urls import reverse
+        return redirect(reverse('instance-detail', kwargs={'pk': pk}) + '#backups')
+    
+    return redirect(redirect_url, pk=pk)
 
 @login_required
 def instance_restore(request, pk):
@@ -657,6 +918,229 @@ def backup_delete(request, backup_id):
         messages.success(request, 'Respaldo eliminado exitosamente')
     
     return redirect('instance-backups', pk=instance_pk)
+
+@login_required
+def backup_restore_action(request, backup_id):
+    from .backup_models import Backup
+    backup = get_object_or_404(Backup, pk=backup_id)
+    instance = backup.instance
+    
+    if request.method == 'POST':
+        try:
+            service = DockerService()
+            service.restore_instance(instance, backup.file_path)
+            
+            from django.contrib import messages
+            messages.success(request, f'Respaldo restaurado exitosamente desde {backup.filename}')
+        except Exception as e:
+            from django.contrib import messages
+            messages.error(request, f'Error restaurando respaldo: {str(e)}')
+    
+    return redirect('instance-backups', pk=instance.pk)
+
+@login_required
+def backup_create_instance(request, backup_id):
+    """Create a new instance from a backup"""
+    from .backup_models import Backup
+    import zipfile
+    import json
+    
+    backup = get_object_or_404(Backup, pk=backup_id)
+    
+    if request.method == 'POST':
+        new_name = request.POST.get('name', '')
+        
+        if not new_name:
+            from django.contrib import messages
+            messages.error(request, 'Debes proporcionar un nombre para la nueva instancia')
+            return redirect('instance-backups', pk=backup.instance.pk)
+        
+        # Check if name already exists
+        if Instance.objects.filter(name=new_name).exists():
+            from django.contrib import messages
+            messages.error(request, f'Ya existe una instancia con el nombre "{new_name}"')
+            return redirect('instance-backups', pk=backup.instance.pk)
+        
+        try:
+            # Read metadata from backup
+            with zipfile.ZipFile(backup.file_path, 'r') as zipf:
+                metadata_content = zipf.read('metadata.json')
+                metadata = json.loads(metadata_content)
+            
+            # Find an available port
+            import random
+            used_ports = list(Instance.objects.values_list('port', flat=True))
+            while True:
+                port = random.randint(8000, 9000)
+                if port not in used_ports:
+                    break
+            
+            # Use the same database name from the original backup
+            original_db_name = metadata.get('database_name')
+            if not original_db_name:
+                # Fallback: usar el nombre de la instancia si no hay metadata
+                original_db_name = new_name.replace('-', '_')
+            
+            # Create new instance
+            new_instance = Instance.objects.create(
+                name=new_name,
+                odoo_version=metadata.get('odoo_version', backup.instance.odoo_version),
+                github_repo=metadata.get('github_repo', backup.instance.github_repo),
+                github_branch=metadata.get('github_branch', backup.instance.github_branch),
+                database_name=original_db_name,
+                port=port,
+                status='deploying',
+                origin='backup'
+            )
+            
+            from django.contrib import messages
+            
+            # Deploy the instance
+            service = DockerService()
+            print(f"Deploying instance {new_name}...")
+            service.deploy_instance(new_instance)
+            
+            # Create new branch in GitHub from original branch
+            print("=" * 50)
+            print("STARTING GITHUB BRANCH CREATION")
+            print("=" * 50)
+            
+            original_branch = metadata.get('github_branch', 'main')
+            new_branch = new_name
+            github_repo = metadata.get('github_repo', '')
+            
+            print(f"GitHub Repo: {github_repo}")
+            print(f"Original Branch: {original_branch}")
+            print(f"New Branch: {new_branch}")
+            
+            if github_repo:
+                print(f"Repository URL exists, proceeding with branch creation...")
+                
+                # Get GitHub config
+                from .config_models import GitHubConfig
+                github_config = GitHubConfig.objects.filter(user=request.user).first()
+                
+                if github_config:
+                    print(f"GitHub config found for user: {request.user.username}")
+                    print(f"Has token: {bool(github_config.personal_access_token)}")
+                else:
+                    print("No GitHub config found")
+                
+                if github_config and github_config.personal_access_token:
+                    import subprocess
+                    import tempfile
+                    import shutil
+                    
+                    # Create temp directory for git operations
+                    temp_git_dir = tempfile.mkdtemp()
+                    print(f"Created temp directory: {temp_git_dir}")
+                    
+                    try:
+                        # Parse repo URL to add token
+                        repo_url = github_repo.replace('https://', f'https://{github_config.personal_access_token}@')
+                        print(f"Cloning repository (branch: {original_branch})...")
+                        
+                        # Clone the repository
+                        result = subprocess.run(
+                            ['git', 'clone', '--branch', original_branch, '--single-branch', repo_url, temp_git_dir], 
+                            check=True, capture_output=True, text=True
+                        )
+                        print(f"Clone output: {result.stdout}")
+                        print(f"Clone successful")
+                        
+                        # Create and checkout new branch
+                        print(f"Creating new branch: {new_branch}")
+                        result = subprocess.run(
+                            ['git', 'checkout', '-b', new_branch], 
+                            check=True, capture_output=True, text=True, cwd=temp_git_dir
+                        )
+                        print(f"Checkout output: {result.stdout}")
+                        
+                        # Push new branch to remote
+                        print(f"Pushing branch to remote...")
+                        result = subprocess.run(
+                            ['git', 'push', 'origin', new_branch], 
+                            check=True, capture_output=True, text=True, cwd=temp_git_dir
+                        )
+                        print(f"Push output: {result.stdout}")
+                        print(f"✅ Successfully created GitHub branch '{new_branch}'")
+                        
+                        # Update instance with new branch
+                        new_instance.github_branch = new_branch
+                        new_instance.save()
+                        print(f"Updated instance branch to: {new_branch}")
+                        
+                        messages.success(request, f'✅ Rama de GitHub "{new_branch}" creada exitosamente')
+                        
+                    except subprocess.CalledProcessError as e:
+                        print(f"❌ Git command failed!")
+                        print(f"Error: {e.stderr}")
+                        print(f"Return code: {e.returncode}")
+                        messages.warning(request, f'Instancia creada pero no se pudo crear la rama en GitHub: {e.stderr}')
+                    except Exception as e:
+                        print(f"❌ Unexpected error: {str(e)}")
+                        import traceback
+                        print(traceback.format_exc())
+                        messages.warning(request, f'Error al crear rama en GitHub: {str(e)}')
+                    finally:
+                        # Clean up temp directory
+                        if os.path.exists(temp_git_dir):
+                            print(f"Cleaning up temp directory: {temp_git_dir}")
+                            shutil.rmtree(temp_git_dir)
+                else:
+                    print("⚠️ GitHub token not configured, skipping branch creation")
+                    messages.info(request, 'Configure su token de GitHub en Settings para crear ramas automáticamente.')
+            else:
+                print("⚠️ No GitHub repository configured for this instance")
+            
+            print("=" * 50)
+            print("GITHUB BRANCH CREATION FINISHED")
+            print("=" * 50)
+            
+            # Wait for containers to be ready
+            import time
+            print("Waiting for containers to be ready...")
+            time.sleep(5)  # Wait 5 seconds for containers to start
+            
+            # Restore the backup to the new instance
+            print(f"Restoring backup {backup.filename} to instance {new_name}...")
+            service.restore_instance(new_instance, backup.file_path)
+            
+            # Update instance status
+            new_instance.status = 'running'
+            new_instance.save()
+            
+            # Send email notification
+            from .email_notifications import send_instance_notification
+            send_instance_notification('created', new_instance, request.user)
+            
+            messages.success(request, f'Nueva instancia "{new_name}" creada exitosamente desde el backup')
+            return redirect('instance-detail', pk=new_instance.pk)
+            
+        except Exception as e:
+            from django.contrib import messages
+            messages.error(request, f'Error creando instancia desde backup: {str(e)}')
+            # Clean up if instance was created
+            if 'new_instance' in locals():
+                new_instance.delete()
+            return redirect('instance-backups', pk=backup.instance.pk)
+    
+    # GET request - show form
+    # Generate suggested name
+    base_name = backup.instance.name
+    suggested_name = f"{base_name}-copy-1"
+    counter = 1
+    
+    # Find next available copy number
+    while Instance.objects.filter(name=suggested_name).exists():
+        counter += 1
+        suggested_name = f"{base_name}-copy-{counter}"
+    
+    return render(request, 'orchestrator/backup_create_instance.html', {
+        'backup': backup,
+        'source_instance': backup.instance,
+        'suggested_name': suggested_name
+    })
 
 # User Management Views
 @login_required
@@ -833,111 +1317,8 @@ def user_change_password(request):
         request.user.save()
         
         # Keep user logged in
-        # Keep user logged in
         update_session_auth_hash(request, request.user)
         
         messages.success(request, 'Contraseña cambiada exitosamente')
     
     return redirect('user-profile')
-
-@login_required
-def backup_restore_action(request, backup_id):
-    """Restore an instance from a backup"""
-    from .backup_models import Backup
-    from .services import DockerService
-    backup = get_object_or_404(Backup, pk=backup_id)
-    instance = backup.instance
-    
-    if request.method == 'POST':
-        service = DockerService()
-        try:
-            # Stop instance first
-            service.stop_instance(instance)
-            # Restore
-            service.restore_instance(instance, backup.file_path)
-            # Start instance
-            service.deploy_instance(instance)
-            messages.success(request, f'Instancia "{instance.name}" restaurada exitosamente.')
-        except Exception as e:
-            messages.error(request, f'Error al restaurar: {str(e)}')
-            
-    return redirect('instance-backups', pk=instance.pk)
-
-@login_required
-def backup_create_instance(request, backup_id):
-    """Create a new instance from an existing backup"""
-    from .backup_models import Backup
-    from .models import Instance
-    backup = get_object_or_404(Backup, pk=backup_id)
-    
-    if request.method == 'POST':
-        new_name = request.POST.get('name')
-        if not new_name:
-            messages.error(request, 'El nombre es requerido')
-            return render(request, 'orchestrator/backup_create_instance.html', {'backup': backup})
-            
-        if Instance.objects.filter(name=new_name).exists():
-            messages.error(request, f'La instancia "{new_name}" ya existe')
-            return render(request, 'orchestrator/backup_create_instance.html', {'backup': backup})
-            
-        try:
-            # Create new instance record based on original
-            original = backup.instance
-            new_instance = Instance.objects.create(
-                name=new_name,
-                repo_url=original.repo_url,
-                branch=original.branch,
-                version=original.version,
-                admin_password=original.admin_password,
-                db_name=new_name.replace('-', '_'),
-                created_by=request.user
-            )
-            
-            from .services import DockerService
-            service = DockerService()
-            # Restore backup into new instance logic
-            service.restore_instance(new_instance, backup.file_path)
-            service.deploy_instance(new_instance)
-            
-            messages.success(request, f'Instancia "{new_name}" creada exitosamente desde respaldo')
-            return redirect('instance-list')
-        except Exception as e:
-            messages.error(request, f'Error al crear instancia: {str(e)}')
-            
-    return render(request, 'orchestrator/backup_create_instance.html', {'backup': backup})
-
-@login_required
-def run_manual_backup(request):
-    """Manually trigger the auto-backup process"""
-    from django.core.management import call_command
-    from django.contrib import messages
-    try:
-        call_command('run_auto_backups')
-        messages.success(request, 'Proceso de backup manual completado correctamente.')
-    except Exception as e:
-        messages.error(request, f'Error al ejecutar backup: {str(e)}')
-    return redirect('settings')
-
-@login_required
-def install_backup_cron(request):
-    """Install the cron job for automatic backups"""
-    import os
-    from django.conf import settings
-    from django.contrib import messages
-    
-    try:
-        manage_py = os.path.join(settings.BASE_DIR, 'manage.py')
-        python_bin = os.path.join(settings.BASE_DIR, 'venv', 'bin', 'python')
-        
-        if not os.path.exists(python_bin):
-            python_bin = 'python3'
-            
-        cron_command = f"*/5 * * * * {python_bin} {manage_py} run_auto_backups >> /var/log/community_sh_backups.log 2>&1"
-        
-        os.system(f'(crontab -l 2>/dev/null; echo "{cron_command}") | crontab -')
-        
-        messages.success(request, 'Cron job de backups instalado correctamente (cada 5 min).')
-    except Exception as e:
-        messages.error(request, f'Error al instalar cron: {str(e)}')
-        
-    return redirect('settings')

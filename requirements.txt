@@ -12,3 +12,5 @@ sqlparse==0.5.5
 urllib3==2.6.2
 markdown>=3.10
 Pillow>=10.0.0
+pyotp>=2.9.0
+qrcode>=7.4.0

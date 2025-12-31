@@ -25,6 +25,7 @@ class Instance(models.Model):
         ('19.0', '19.0'),
     ], default='17.0')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DEPLOYING)
+    origin = models.CharField(max_length=50, blank=True, null=True, help_text="Origin of instance creation (manual, backup, duplicate)")
     
     # Github Integration
     github_repo = models.CharField(max_length=255, blank=True, null=True)
@@ -40,6 +41,9 @@ class Instance(models.Model):
     ssl_certificate_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_key_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_email = models.EmailField(blank=True, null=True, help_text="Email for Let's Encrypt notifications")
+    
+    # Database
+    database_name = models.CharField(max_length=100, blank=True, null=True, help_text="Nombre de la base de datos de Odoo (dejar vacío para auto-detección)")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -59,7 +63,6 @@ class Instance(models.Model):
 from .config_models import GitHubConfig
 from .backup_models import Backup
 from .blog_models import BlogPost
-from .container_models import Container
 
 class UserProfile(models.Model):
     """Extended user profile with additional information"""
