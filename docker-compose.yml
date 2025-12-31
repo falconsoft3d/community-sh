@@ -40,7 +40,7 @@ services:
       - DEBUG=${DEBUG:-True}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
       # IMPORTANT: This must match the absolute path on the HOST machine
-      - HOST_WORKDIR=${HOST_WORKDIR:-/opt/community-sh}
+      - HOST_WORKDIR=${HOST_WORKDIR}
       - SERVER_IP=${SERVER_IP}
     volumes:
       - ./:/app
