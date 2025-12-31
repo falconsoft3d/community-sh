@@ -80,7 +80,11 @@ class DockerService:
             # Helper to translate container path to host path (for Docker-in-Docker)
             # Docker daemon running on host needs the host machine paths
             def get_host_path(local_path):
-                host_workdir = os.environ.get('HOST_WORKDIR', '/opt/community-sh')
+                # In local development (Mac/Windows), the path might be the same
+                # In production (EasyPanel/Docker-in-Docker), we need to translate /app to /opt/project
+                host_workdir = os.environ.get('HOST_WORKDIR')
+                if not host_workdir:
+                    return local_path
                 return local_path.replace(str(settings.BASE_DIR), host_workdir)
 
             volumes = {}

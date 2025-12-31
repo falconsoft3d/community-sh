@@ -63,12 +63,10 @@ class Container(models.Model):
     @property
     def url(self):
         """Get the URL for this container"""
-        # Try environment variable first (set in .env)
-        server_ip = os.environ.get('SERVER_IP')
-        
-        # Fallback: try to get from network
+        # Use SERVER_IP from .env if available, otherwise default to 127.0.0.1
+        server_ip = os.environ.get('SERVER_IP', '127.0.0.1')
         if not server_ip:
-            return ""
+            server_ip = '127.0.0.1'
             
         # Handle IPv6 formatting (wrap in brackets for URL)
         display_ip = f"[{server_ip}]" if ":" in server_ip and "[" not in server_ip else server_ip
