@@ -35,12 +35,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/community_sh
-      - DJANGO_SECRET_KEY=django-insecure-your-secret-key-here
-      - DEBUG=True
-      - ALLOWED_HOSTS=localhost,community.local,127.0.0.1
+      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@db:5432/community_sh}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-your-secret-key-here}
+      - DEBUG=${DEBUG:-True}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
       # IMPORTANT: This must match the absolute path on the HOST machine
-      - HOST_WORKDIR=/Users/marlonfalcon/Documents/Projects/community-sh
+      - HOST_WORKDIR=${HOST_WORKDIR:-/opt/community-sh}
     volumes:
       - ./:/app
       - ./media:/app/media

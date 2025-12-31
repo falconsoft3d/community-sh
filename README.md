@@ -55,12 +55,24 @@ docker-compose down
 docker-compose logs --tail=100 app
 ```
 
+```bash
+sudo docker compose restart app
+```
+
 **Eliminar Dockers**
 ```bash
 cd /opt/community-sh
 sudo docker compose down
 sudo docker compose down -v
 sudo docker compose down -v --rmi all
+
+
+sudo docker compose down
+sudo docker stop $(sudo docker ps -aq) 2>/dev/null || true
+sudo docker volume prune -f
+sudo docker compose up -d
+sleep 15
+
 ```bash
 
 
