@@ -66,10 +66,9 @@ class Instance(models.Model):
         
         # Fallback: try to get from network
         if not server_ip:
-            try:
-                server_ip = socket.gethostbyname(socket.gethostname())
-            except:
-                server_ip = 'localhost'
+            # If no SERVER_IP, we'll return an empty string or host
+            # so the template can fallback to request.get_host if needed
+            return ""
         
         # Get port from container if exists
         uri = f"http://{server_ip}"

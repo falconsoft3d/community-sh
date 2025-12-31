@@ -68,9 +68,6 @@ class Container(models.Model):
         
         # Fallback: try to get from network
         if not server_ip:
-            try:
-                server_ip = socket.gethostbyname(socket.gethostname())
-            except:
-                server_ip = 'localhost'
+            return ""
         
         return f"http://{server_ip}:{self.port}"

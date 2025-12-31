@@ -41,6 +41,7 @@ services:
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
       # IMPORTANT: This must match the absolute path on the HOST machine
       - HOST_WORKDIR=${HOST_WORKDIR:-/opt/community-sh}
+      - SERVER_IP=${SERVER_IP}
     volumes:
       - ./:/app
       - ./media:/app/media
