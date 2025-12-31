@@ -40,53 +40,58 @@
                 </button>
             </form>
             <div class="h-6 w-px bg-border mx-2"></div>
+            <a href="{% url 'instance-duplicate' object.pk %}"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                <i data-lucide="copy" class="mr-2 h-4 w-4"></i> Duplicate
+            </a>
+            <form action="{% url 'instance-delete' object.pk %}" method="post" id="deleteForm">
+                {% csrf_token %}
+            </form>
+            <button type="button" @click="deleteModal = true"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
+                <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Delete
+            </button>
         </div>
     </div>
 
     <!-- Tabs Navigation -->
     <div class="border-b border-border">
         <nav class="flex space-x-8" aria-label="Tabs">
-            <button @click="activeTab = 'info'"
+            <button @click="activeTab = 'info'" 
                 :class="activeTab === 'info' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="info" class="inline-block h-4 w-4 mr-2"></i>
                 Information
             </button>
-            <button @click="activeTab = 'logs'"
+            <button @click="activeTab = 'logs'" 
                 :class="activeTab === 'logs' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="terminal" class="inline-block h-4 w-4 mr-2"></i>
                 Logs
             </button>
-            <button @click="activeTab = 'console'"
+            <button @click="activeTab = 'console'" 
                 :class="activeTab === 'console' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="code" class="inline-block h-4 w-4 mr-2"></i>
                 Console
             </button>
-            <button @click="activeTab = 'domains'"
+            <button @click="activeTab = 'domains'" 
                 :class="activeTab === 'domains' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="globe" class="inline-block h-4 w-4 mr-2"></i>
                 Domains
             </button>
-            <button @click="activeTab = 'modules'"
+            <button @click="activeTab = 'modules'" 
                 :class="activeTab === 'modules' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="package" class="inline-block h-4 w-4 mr-2"></i>
                 Modules
             </button>
-            <button @click="activeTab = 'backups'"
+            <button @click="activeTab = 'backups'" 
                 :class="activeTab === 'backups' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="archive" class="inline-block h-4 w-4 mr-2"></i>
                 Backups
-            </button>
-            <button @click="activeTab = 'security'"
-                :class="activeTab === 'security' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
-                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
-                <i data-lucide="shield" class="inline-block h-4 w-4 mr-2"></i>
-                Security
             </button>
         </nav>
     </div>
@@ -94,8 +99,7 @@
     <!-- Information Tab -->
     <div x-show="activeTab === 'info'" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <!-- Info Card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm"
-            x-data="{ editingName: false, editingDbName: false, editingSecurityPassword: false }">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm" x-data="{ editingName: false }">
             <div class="flex flex-col space-y-1.5 p-6 pb-2">
                 <h3 class="font-semibold leading-none tracking-tight">Information</h3>
                 <p class="text-sm text-muted-foreground">Details about this instance.</p>
@@ -105,17 +109,17 @@
                     <label class="text-sm font-medium leading-none">Nombre</label>
                     <div x-show="!editingName" class="flex items-center gap-2">
                         <span class="text-sm text-muted-foreground">{{ object.name }}</span>
-                        <button @click="editingName = true"
+                        <button @click="editingName = true" 
                             class="text-xs text-primary hover:underline flex items-center gap-1">
                             <i data-lucide="pencil" class="h-3 w-3"></i> Editar
                         </button>
                     </div>
-                    <form x-show="editingName" action="{% url 'instance-update-name' object.pk %}" method="post"
-                        class="flex gap-2">
+                    <form x-show="editingName" action="{% url 'instance-update-name' object.pk %}" method="post" class="flex gap-2">
                         {% csrf_token %}
-                        <input type="text" name="name" value="{{ object.name }}"
-                            class="flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm" required
-                            pattern="[a-z0-9-]+" title="Solo letras minúsculas, números y guiones">
+                        <input type="text" name="name" value="{{ object.name }}" 
+                               class="flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                               required pattern="[a-z0-9-]+" 
+                               title="Solo letras minúsculas, números y guiones">
                         <button type="submit"
                             class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
                             <i data-lucide="check" class="h-3 w-3"></i>
@@ -126,41 +130,6 @@
                         </button>
                     </form>
                 </div>
-
-                <div class="space-y-1">
-                    <label class="text-sm font-medium leading-none">Database Name</label>
-                    <div x-show="!editingDbName" class="flex items-center gap-2">
-                        <span class="text-sm text-muted-foreground">
-                            {% if object.database_name %}
-                            {{ object.database_name }}
-                            {% else %}
-                            <span class="italic text-muted-foreground/50">Auto-detect</span>
-                            {% endif %}
-                        </span>
-                        <button @click="editingDbName = true"
-                            class="text-xs text-primary hover:underline flex items-center gap-1">
-                            <i data-lucide="pencil" class="h-3 w-3"></i> Editar
-                        </button>
-                    </div>
-                    <form x-show="editingDbName" action="{% url 'instance-update-database-name' object.pk %}"
-                        method="post" class="flex gap-2">
-                        {% csrf_token %}
-                        <input type="text" name="database_name" value="{{ object.database_name|default:'' }}"
-                            class="flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                            placeholder="Nombre de la BD" pattern="[a-zA-Z0-9_]+"
-                            title="Solo letras, números y guiones bajos">
-                        <button type="submit"
-                            class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
-                            <i data-lucide="check" class="h-3 w-3"></i>
-                        </button>
-                        <button type="button" @click="editingDbName = false"
-                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">
-                            <i data-lucide="x" class="h-3 w-3"></i>
-                        </button>
-                    </form>
-                </div>
-
-
 
                 <div class="space-y-1">
                     <label
@@ -204,8 +173,7 @@
                             class="text-sm text-primary hover:underline flex items-center gap-1">
                             http://localhost:{{ object.port }} <i data-lucide="external-link" class="h-3 w-3"></i>
                         </a>
-                        <p class="text-xs text-muted-foreground mt-1">Acceso directo por puerto (disponible
-                            inmediatamente)</p>
+                        <p class="text-xs text-muted-foreground mt-1">Acceso directo por puerto (disponible inmediatamente)</p>
                         {% else %}
                         <span class="text-sm text-muted-foreground">-</span>
                         {% endif %}
@@ -217,137 +185,22 @@
                     <div class="text-sm text-muted-foreground">{{ object.odoo_version }}</div>
                 </div>
 
-                <div class="space-y-1" x-data="{ editingRepo: false }">
-                    <label class="text-sm font-medium leading-none">Main Repository</label>
-
-                    <div x-show="!editingRepo" class="flex flex-col gap-1">
-                        <div class="text-sm text-muted-foreground flex items-center gap-2">
-                            {% if object.github_repo %}
-                            <div class="flex flex-col gap-1">
-                                <div class="flex items-center gap-2">
-                                    <i data-lucide="github" class="h-4 w-4"></i>
-                                    <a href="{{ object.github_repo }}" target="_blank"
-                                        class="hover:underline truncate max-w-[200px]">{{ object.github_repo }}</a>
-                                </div>
-                                <div class="flex items-center gap-2 text-xs">
-                                    <i data-lucide="git-branch" class="h-3 w-3"></i>
-                                    <span>{{ object.github_branch }}</span>
-                                </div>
-                            </div>
-                            {% else %}
-                            <span class="italic text-muted-foreground/50">Local / Ninguno</span>
-                            {% endif %}
-
-                            <button @click="editingRepo = true" class="text-xs text-primary hover:underline ml-2">
-                                <i data-lucide="pencil" class="h-3 w-3"></i> Editar
-                            </button>
+                <div class="space-y-1">
+                    <label class="text-sm font-medium leading-none">Source</label>
+                    <div class="text-sm text-muted-foreground">
+                        {% if object.github_repo %}
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="github" class="h-4 w-4"></i>
+                            <span class="truncate">{{ object.github_repo }}</span>
                         </div>
+                        <div class="flex items-center gap-2 mt-1 ml-6">
+                            <i data-lucide="git-branch" class="h-3 w-3"></i>
+                            <span>{{ object.github_branch }}</span>
+                        </div>
+                        {% else %}
+                        Local
+                        {% endif %}
                     </div>
-
-                    <form x-show="editingRepo" action="{% url 'instance-update-main-repo' object.pk %}" method="post"
-                        class="flex flex-col gap-2 p-2 bg-muted/50 rounded-md border mt-1">
-                        {% csrf_token %}
-                        <div class="space-y-1">
-                            <label class="text-xs font-medium">Repo URL</label>
-                            <input type="text" name="github_repo" value="{{ object.github_repo|default:'' }}"
-                                class="w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                                placeholder="https://github.com/user/repo">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-xs font-medium">Branch</label>
-                            <input type="text" name="github_branch" value="{{ object.github_branch|default:'main' }}"
-                                class="w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                                placeholder="main">
-                        </div>
-                        <div class="flex gap-2 justify-end mt-1">
-                            <button type="button" @click="editingRepo = false"
-                                class="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent h-7 px-2">
-                                Cancelar
-                            </button>
-                            <button type="submit"
-                                class="inline-flex items-center justify-center rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-7 px-2">
-                                Guardar
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Secondary Repositories Card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col"
-            x-data="{ addingRepo: false }">
-            <div class="flex flex-col space-y-1.5 p-6 pb-2 border-b">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-semibold leading-none tracking-tight">Secondary Repositories</h3>
-                    <button @click="addingRepo = true"
-                        class="text-xs bg-primary text-primary-foreground hover:bg-primary/90 rounded px-2 py-1 flex items-center gap-1">
-                        <i data-lucide="plus" class="h-3 w-3"></i> Add
-                    </button>
-                </div>
-                <p class="text-sm text-muted-foreground">Extra addons repositories</p>
-            </div>
-            <div class="p-6 pt-4 flex-1 flex flex-col gap-4">
-
-                <!-- Add Form -->
-                <div x-show="addingRepo" class="bg-muted/30 p-3 rounded-md border text-sm" x-transition>
-                    <form action="{% url 'instance-add-secondary-repo' object.pk %}" method="post" class="space-y-3">
-                        {% csrf_token %}
-                        <div class="grid gap-2">
-                            <div class="grid gap-1">
-                                <label class="text-xs font-medium">Repo URL</label>
-                                <input type="text" name="repo_url" required
-                                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="https://github.com/user/addons">
-                            </div>
-                            <div class="grid gap-1">
-                                <label class="text-xs font-medium">Branch</label>
-                                <input type="text" name="branch" value="main" required
-                                    class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="main">
-                            </div>
-                        </div>
-                        <div class="flex justify-end gap-2">
-                            <button type="button" @click="addingRepo = false"
-                                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3">
-                                Cancel
-                            </button>
-                            <button type="submit"
-                                class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 px-3">
-                                Add Repository
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- List -->
-                <div class="space-y-2">
-                    {% if secondary_repos %}
-                    {% for repo in secondary_repos %}
-                    <div
-                        class="flex items-start justify-between p-3 rounded-lg border bg-card text-card-foreground shadow-sm">
-                        <div class="flex flex-col gap-1 overflow-hidden">
-                            <div class="flex items-center gap-2 text-sm font-medium">
-                                <i data-lucide="folder-git-2" class="h-4 w-4 text-muted-foreground"></i>
-                                <span class="truncate" title="{{ repo.repo_url }}">{{ repo.repo_url }}</span>
-                            </div>
-                            <div class="flex items-center gap-2 text-xs text-muted-foreground ml-6">
-                                <i data-lucide="git-branch" class="h-3 w-3"></i>
-                                <span>{{ repo.branch }}</span>
-                            </div>
-                        </div>
-                        <a href="{% url 'instance-delete-secondary-repo' object.pk repo.pk %}"
-                            onclick="return confirm('¿Eliminar este repositorio?')"
-                            class="text-destructive hover:bg-destructive/10 p-1 rounded transition-colors">
-                            <i data-lucide="trash-2" class="h-4 w-4"></i>
-                        </a>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <div class="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-lg">
-                        No hay repositorios secundarios
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -361,8 +214,7 @@
                 <h3 class="font-semibold leading-none tracking-tight">Dominio & SSL</h3>
                 <p class="text-sm text-muted-foreground">Configurar dominio personalizado</p>
             </div>
-            <div class="p-6 pt-4 space-y-4"
-                x-data="{ showDomainForm: {% if not object.custom_domain %}true{% else %}false{% endif %} }">
+            <div class="p-6 pt-4 space-y-4" x-data="{ showDomainForm: {% if not object.custom_domain %}true{% else %}false{% endif %} }">
                 {% if object.custom_domain %}
                 <div class="space-y-3">
                     <div class="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
@@ -371,34 +223,32 @@
                             <span class="text-sm font-medium">{{ object.custom_domain }}</span>
                         </div>
                         {% if object.ssl_enabled %}
-                        <div
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-green-100 text-green-800">
+                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-green-100 text-green-800">
                             <i data-lucide="shield-check" class="h-3 w-3 mr-1"></i>
                             SSL Activo
                         </div>
                         {% else %}
-                        <div
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-yellow-100 text-yellow-800">
+                        <div class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-yellow-100 text-yellow-800">
                             <i data-lucide="shield-alert" class="h-3 w-3 mr-1"></i>
                             Sin SSL
                         </div>
                         {% endif %}
                     </div>
-
+                    
                     {% if not object.ssl_enabled %}
                     <button onclick="document.getElementById('ssl-form-{{ object.pk }}').classList.toggle('hidden')"
                         class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
                         <i data-lucide="shield-plus" class="mr-2 h-4 w-4"></i>
                         Generar Certificado SSL
                     </button>
-
-                    <form id="ssl-form-{{ object.pk }}" action="{% url 'instance-generate-ssl' object.pk %}"
-                        method="post" class="hidden space-y-3 pt-2 border-t">
+                    
+                    <form id="ssl-form-{{ object.pk }}" action="{% url 'instance-generate-ssl' object.pk %}" method="post" class="hidden space-y-3 pt-2 border-t">
                         {% csrf_token %}
                         <div>
                             <label class="text-sm font-medium mb-2 block">Email para notificaciones</label>
-                            <input type="email" name="email" required placeholder="tu@email.com"
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <input type="email" name="email" required
+                                   placeholder="tu@email.com"
+                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                         </div>
                         <button type="submit"
                             class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-9 px-4 py-2">
@@ -418,7 +268,7 @@
                         </div>
                     </div>
                     {% endif %}
-
+                    
                     <button @click="showDomainForm = !showDomainForm"
                         class="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-2">
                         <i data-lucide="settings" class="h-3 w-3"></i>
@@ -426,15 +276,16 @@
                     </button>
                 </div>
                 {% endif %}
-
-                <form x-show="showDomainForm" action="{% url 'instance-configure-domain' object.pk %}" method="post"
-                    class="space-y-3">
+                
+                <form x-show="showDomainForm" action="{% url 'instance-configure-domain' object.pk %}" method="post" class="space-y-3">
                     {% csrf_token %}
                     <div>
                         <label class="text-sm font-medium mb-2 block">Dominio Personalizado</label>
-                        <input type="text" name="domain" value="{{ object.custom_domain|default:'' }}"
-                            placeholder="ejemplo.com o www.ejemplo.com"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
+                        <input type="text" name="domain" 
+                               value="{{ object.custom_domain|default:'' }}"
+                               placeholder="ejemplo.com o www.ejemplo.com"
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                               required>
                         <p class="text-xs text-muted-foreground mt-1">
                             Asegúrate de que tu dominio apunte a este servidor
                         </p>
@@ -461,22 +312,21 @@
                 {% if not object.github_repo %}
                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
                     <p class="text-xs text-yellow-800">
-                        Esta instancia no tiene un repositorio de GitHub configurado.
+                        Esta instancia no tiene un repositorio de GitHub configurado. 
                         Los módulos solo se pueden instalar en instancias con repositorio.
                     </p>
                 </div>
                 {% else %}
-                <form action="{% url 'instance-install-module' object.pk %}" method="post" enctype="multipart/form-data"
-                    class="space-y-3">
+                <form action="{% url 'instance-install-module' object.pk %}" method="post" enctype="multipart/form-data" class="space-y-3">
                     {% csrf_token %}
                     <div>
                         <label class="text-sm font-medium mb-2 block">Archivo del Módulo</label>
-                        <input type="file" name="module_file" accept=".zip"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium"
-                            required>
+                        <input type="file" name="module_file" 
+                               accept=".zip"
+                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium"
+                               required>
                         <p class="text-xs text-muted-foreground mt-1">
-                            El módulo se agregará a <strong>{{ object.github_repo }}</strong> y se desplegará
-                            automáticamente
+                            El módulo se agregará a <strong>{{ object.github_repo }}</strong> y se desplegará automáticamente
                         </p>
                     </div>
                     <button type="submit"
@@ -577,88 +427,7 @@
             </div>
         </div>
     </div>
-    <!-- Security Tab -->
-    <div x-show="activeTab === 'security'" class="space-y-6">
-        <!-- Security Password Card -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Security Password</h3>
-                <p class="text-sm text-muted-foreground">Protects your instance from accidental deletion.</p>
-            </div>
-            <div class="p-6 pt-4 space-y-4" x-data="{ editingSecurityPassword: false }">
-                <div class="space-y-1">
-                    <div x-show="!editingSecurityPassword" class="flex items-center gap-2">
-                        <span class="text-sm text-muted-foreground">
-                            {% if object.security_password %}
-                            <div
-                                class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-green-100 text-green-800">
-                                <i data-lucide="lock" class="h-3 w-3 mr-1"></i> Protegido
-                            </div>
-                            {% else %}
-                            <span class="italic text-muted-foreground/50">No configurada</span>
-                            {% endif %}
-                        </span>
-                        <button @click="editingSecurityPassword = true"
-                            class="text-xs text-primary hover:underline flex items-center gap-1">
-                            <i data-lucide="pencil" class="h-3 w-3"></i> Editar
-                        </button>
-                    </div>
 
-                    <form x-show="editingSecurityPassword"
-                        action="{% url 'instance-update-security-password' object.pk %}" method="post"
-                        class="flex flex-col gap-2 max-w-sm">
-                        {% csrf_token %}
-                        {% if object.security_password %}
-                        <div class="space-y-1">
-                            <label class="text-xs font-medium">Contraseña Anterior</label>
-                            <input type="password" name="old_password"
-                                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                required>
-                        </div>
-                        {% endif %}
-                        <div class="space-y-1">
-                            <label class="text-xs font-medium">Nueva Contraseña</label>
-                            <input type="password" name="security_password"
-                                class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Dejar vacío para quitar seguridad">
-                        </div>
-                        <div class="flex gap-2 justify-end pt-2">
-                            <button type="button" @click="editingSecurityPassword = false"
-                                class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">
-                                Cancelar
-                            </button>
-                            <button type="submit"
-                                class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
-                                Guardar
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Danger Zone Card -->
-        <div class="rounded-xl border border-red-200 bg-red-50 text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight text-red-700">Danger Zone</h3>
-                <p class="text-sm text-red-600/80">Irreversible actions on this instance.</p>
-            </div>
-            <div class="p-6 pt-4 flex flex-col gap-4">
-                <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-red-100">
-                    <div class="space-y-1">
-                        <div class="font-medium text-red-600">Delete Instance</div>
-                        <div class="text-sm text-muted-foreground">Permanently delete this instance and all its data.
-                        </div>
-                    </div>
-                    <button type="button" @click="deleteModal = true"
-                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-9 px-4 py-2">
-                        <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Delete Instance
-                    </button>
-                </div>
-
-            </div>
-        </div>
-    </div>
     <!-- Logs Tab -->
     <div x-show="activeTab === 'logs'" class="space-y-6">
         <!-- Live Logs Card -->
@@ -670,15 +439,13 @@
                         <p class="text-sm text-muted-foreground">Real-time output from container.</p>
                     </div>
                     <span class="relative flex h-3 w-3">
-                        <span
-                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
                     </span>
                 </div>
             </div>
             <div class="flex-1 bg-zinc-950 p-4 overflow-hidden rounded-b-xl relative">
-                <pre id="logs-container"
-                    class="font-mono text-xs text-zinc-300 h-full w-full overflow-y-auto whitespace-pre-wrap">{{ logs }}</pre>
+                <pre id="logs-container" class="font-mono text-xs text-zinc-300 h-full w-full overflow-y-auto whitespace-pre-wrap">{{ logs }}</pre>
             </div>
         </div>
     </div>
@@ -694,41 +461,42 @@
                         <p class="text-sm text-muted-foreground">Ejecuta comandos dentro del contenedor.</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="document.getElementById('requirements-file').click()"
+                        <button onclick="document.getElementById('requirements-file').click()" 
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
                             title="Instalar desde requirements.txt">
                             <i data-lucide="package-plus" class="h-4 w-4 mr-2"></i> Requirements
                         </button>
-                        <input type="file" id="requirements-file" accept=".txt" class="hidden"
-                            onchange="handleRequirementsFile(event)">
-                        <button onclick="clearConsole()"
+                        <input type="file" id="requirements-file" accept=".txt" class="hidden" onchange="handleRequirementsFile(event)">
+                        <button onclick="clearConsole()" 
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
                             <i data-lucide="trash-2" class="h-4 w-4"></i>
                         </button>
                     </div>
                 </div>
                 <div class="flex gap-2 pt-2">
-                    <button onclick="quickCommand('ls -la')"
+                    <button onclick="quickCommand('ls -la')" 
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">ls -la</button>
-                    <button onclick="quickCommand('pip list')"
+                    <button onclick="quickCommand('pip list')" 
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">pip list</button>
-                    <button onclick="quickCommand('pip3 list')"
+                    <button onclick="quickCommand('pip3 list')" 
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">pip3 list</button>
-                    <button onclick="quickCommand('pwd')"
+                    <button onclick="quickCommand('pwd')" 
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">pwd</button>
-                    <button onclick="quickCommand('df -h')"
+                    <button onclick="quickCommand('df -h')" 
                         class="text-xs px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">df -h</button>
                 </div>
             </div>
             <div class="flex-1 bg-zinc-950 p-4 overflow-hidden flex flex-col">
-                <div id="console-output"
+                <div id="console-output" 
                     class="font-mono text-xs text-zinc-300 flex-1 overflow-y-auto whitespace-pre-wrap mb-2"></div>
                 <div class="flex gap-2">
                     <span class="text-green-400 font-mono text-xs">$</span>
-                    <input type="text" id="console-input" placeholder="Ingresa un comando (ej: pip install requests)"
+                    <input type="text" 
+                        id="console-input" 
+                        placeholder="Ingresa un comando (ej: pip install requests)"
                         class="flex-1 bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-300 font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         onkeydown="handleConsoleInput(event)">
-                    <button onclick="executeConsoleCommand()"
+                    <button onclick="executeConsoleCommand()" 
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                         <i data-lucide="play" class="mr-2 h-4 w-4"></i> Ejecutar
                     </button>
@@ -738,116 +506,97 @@
     </div>
 
     <!-- Domains Tab -->
-    <div x-show="deleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style="display: none;">
-        <!-- Backdrop -->
-        <div @click="deleteModal = false; step = 1; confirmText = ''"
-            class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-
-        <!-- Modal -->
-        <div class="relative bg-card rounded-lg shadow-xl max-w-md w-full border"
-            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
-            x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
-
-            <!-- Step 1: Warning -->
-            <div x-show="step === 1" class="p-6">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-                        <i data-lucide="alert-triangle" class="h-6 w-6 text-destructive"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-semibold">¿Eliminar Instancia?</h3>
-                        <p class="text-sm text-muted-foreground">Esta acción no se puede deshacer</p>
-                    </div>
+<div x-show="deleteModal" 
+     x-cloak
+     class="fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="display: none;">
+    <!-- Backdrop -->
+    <div @click="deleteModal = false; step = 1; confirmText = ''" 
+         class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    
+    <!-- Modal -->
+    <div class="relative bg-card rounded-lg shadow-xl max-w-md w-full border"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95">
+        
+        <!-- Step 1: Warning -->
+        <div x-show="step === 1" class="p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <i data-lucide="alert-triangle" class="h-6 w-6 text-destructive"></i>
                 </div>
-
-                <div class="space-y-3 mb-6">
-                    <div class="bg-destructive/5 border border-destructive/20 rounded-lg p-4">
-                        <p class="text-sm font-medium mb-2">Se eliminará permanentemente:</p>
-                        <ul class="text-sm text-muted-foreground space-y-1 ml-4">
-                            <li class="flex items-center gap-2">
-                                <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                                El contenedor Docker <strong class="text-foreground">{{ object.name }}</strong>
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                                Todos los datos y configuraciones
-                            </li>
-                            <li class="flex items-center gap-2">
-                                <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                                Los addons personalizados
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="flex gap-3">
-                    <button @click="deleteModal = false; step = 1; confirmText = ''"
-                        class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                        Cancelar
-                    </button>
-                    <button @click="step = 2"
-                        class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
-                        Continuar
-                    </button>
+                <div>
+                    <h3 class="text-lg font-semibold">¿Eliminar Instancia?</h3>
+                    <p class="text-sm text-muted-foreground">Esta acción no se puede deshacer</p>
                 </div>
             </div>
-
-            <!-- Step 2: Confirmation -->
-            <div x-show="step === 2" class="p-6">
-                <form action="{% url 'instance-delete' object.pk %}" method="post" class="space-y-4">
-                    {% csrf_token %}
-
-                    <div class="mb-4">
-                        <h3 class="text-lg font-semibold mb-2">Confirmar Eliminación</h3>
-
-                        {% if object.security_password %}
-                        <div
-                            class="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4 text-amber-800 text-sm flex items-center gap-2">
-                            <i data-lucide="lock" class="h-4 w-4"></i>
-                            Esta instancia está protegida con contraseña.
-                        </div>
-                        <p class="text-sm text-muted-foreground mb-2">
-                            Ingresa la <strong>contraseña de seguridad</strong> para confirmar:
-                        </p>
-                        <input type="password" name="security_password" x-model="confirmText"
-                            placeholder="Contraseña de seguridad"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                            required>
-                        {% else %}
-                        <p class="text-sm text-muted-foreground mb-4">
-                            Escribe <strong class="text-foreground">{{ object.name }}</strong> para confirmar:
-                        </p>
-                        <input type="text" x-model="confirmText" placeholder="Escribe el nombre de la instancia"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                            required>
-                        {% endif %}
-                    </div>
-
-                    <div class="flex gap-3">
-                        <button type="button" @click="step = 1; confirmText = ''"
-                            class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                            <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i> Atrás
-                        </button>
-
-                        {% if object.security_password %}
-                        <button type="submit" title="Haz clic para eliminar si la contraseña es correcta"
-                            class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
-                            <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Eliminar
-                        </button>
-                        {% else %}
-                        <button type="submit" title="Escribe el nombre exacto para habilitar"
-                            x-bind:disabled="confirmText !== '{{ object.name }}'"
-                            class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Eliminar
-                        </button>
-                        {% endif %}
-                    </div>
-                </form>
+            
+            <div class="space-y-3 mb-6">
+                <div class="bg-destructive/5 border border-destructive/20 rounded-lg p-4">
+                    <p class="text-sm font-medium mb-2">Se eliminará permanentemente:</p>
+                    <ul class="text-sm text-muted-foreground space-y-1 ml-4">
+                        <li class="flex items-center gap-2">
+                            <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
+                            El contenedor Docker <strong class="text-foreground">{{ object.name }}</strong>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
+                            Todos los datos y configuraciones
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
+                            Los addons personalizados
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button @click="deleteModal = false; step = 1; confirmText = ''"
+                    class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    Cancelar
+                </button>
+                <button @click="step = 2"
+                    class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
+                    Continuar
+                </button>
+            </div>
+        </div>
+        
+        <!-- Step 2: Confirmation -->
+        <div x-show="step === 2" class="p-6">
+            <div class="mb-4">
+                <h3 class="text-lg font-semibold mb-2">Confirmar Eliminación</h3>
+                <p class="text-sm text-muted-foreground mb-4">
+                    Escribe <strong class="text-foreground">{{ object.name }}</strong> para confirmar:
+                </p>
+                
+                <input type="text" 
+                       x-model="confirmText"
+                       placeholder="Escribe el nombre de la instancia"
+                       @keyup.enter="if (confirmText === '{{ object.name }}') document.getElementById('deleteForm').submit()"
+                       class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            </div>
+            
+            <div class="flex gap-3">
+                <button @click="step = 1; confirmText = ''"
+                    class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i> Atrás
+                </button>
+                <button @click="if (confirmText === '{{ object.name }}') document.getElementById('deleteForm').submit()"
+                    :disabled="confirmText !== '{{ object.name }}'"
+                    :class="confirmText === '{{ object.name }}' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'opacity-50 cursor-not-allowed'"
+                    class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-10 px-4 py-2">
+                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Eliminar
+                </button>
             </div>
         </div>
     </div>
+</div>
 
 </div> <!-- Cierre del div principal con x-data -->
 
@@ -887,12 +636,12 @@
         const timestamp = new Date().toLocaleTimeString();
         const colorClass = type === 'command' ? 'text-green-400' : type === 'error' ? 'text-red-400' : 'text-zinc-300';
         const prefix = type === 'command' ? '$ ' : type === 'error' ? '❌ ' : '';
-
+        
         const line = document.createElement('div');
         line.className = `${colorClass} mb-1`;
         line.innerHTML = `<span class="text-zinc-500">[${timestamp}]</span> ${prefix}${text}`;
         consoleOutput.appendChild(line);
-
+        
         // Auto scroll to bottom
         consoleOutput.scrollTop = consoleOutput.scrollHeight;
     }
@@ -907,10 +656,10 @@
 
         // Show command in console
         appendToConsole(command, 'command');
-
+        
         // Clear input
         consoleInput.value = '';
-
+        
         // Show loading
         appendToConsole('Ejecutando...', 'output');
 
@@ -923,21 +672,21 @@
             },
             body: JSON.stringify({ command: command })
         })
-            .then(response => response.json())
-            .then(data => {
-                // Remove "Ejecutando..." message
-                consoleOutput.lastChild.remove();
-
-                if (data.success) {
-                    appendToConsole(data.output || '(sin salida)', 'output');
-                } else {
-                    appendToConsole(data.error || 'Error desconocido', 'error');
-                }
-            })
-            .catch(error => {
-                consoleOutput.lastChild.remove();
-                appendToConsole(`Error de conexión: ${error.message}`, 'error');
-            });
+        .then(response => response.json())
+        .then(data => {
+            // Remove "Ejecutando..." message
+            consoleOutput.lastChild.remove();
+            
+            if (data.success) {
+                appendToConsole(data.output || '(sin salida)', 'output');
+            } else {
+                appendToConsole(data.error || 'Error desconocido', 'error');
+            }
+        })
+        .catch(error => {
+            consoleOutput.lastChild.remove();
+            appendToConsole(`Error de conexión: ${error.message}`, 'error');
+        });
     }
 
     function handleConsoleInput(event) {
@@ -988,17 +737,17 @@
             },
             body: formData
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    appendToConsole(data.output || '✓ Instalación completada', 'output');
-                } else {
-                    appendToConsole(data.error || 'Error en la instalación', 'error');
-                }
-            })
-            .catch(error => {
-                appendToConsole(`Error: ${error.message}`, 'error');
-            });
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                appendToConsole(data.output || '✓ Instalación completada', 'output');
+            } else {
+                appendToConsole(data.error || 'Error en la instalación', 'error');
+            }
+        })
+        .catch(error => {
+            appendToConsole(`Error: ${error.message}`, 'error');
+        });
 
         // Reset file input
         event.target.value = '';

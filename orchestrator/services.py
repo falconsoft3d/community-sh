@@ -50,45 +50,19 @@ class DockerService:
             # 5. Start Odoo
             odoo_container_name = f"odoo_{instance.name}"
             
-            # Prepare data persistence
-            # WE MUST TRANSLATE THE CONTAINER PATH TO HOST PATH FOR DOCKER SOCKET
-            host_workdir = os.environ.get('HOST_WORKDIR', os.getcwd())
+            # Prepare data persistence directory
+            data_path = os.path.join(workspace_path, 'data')
+            os.makedirs(data_path, exist_ok=True)
             
-            # Local paths inside container (for checking existence)
-            local_data_path = os.path.join(workspace_path, 'data')
-            local_addons_path = os.path.join(workspace_path, 'addons')
-            local_custom_repos_path = os.path.join(workspace_path, 'custom_repos')
-            
-            # Host paths (for Docker binding)
-            # workspace_path inside container is /app/instances/NAME
-            # relative path is instances/NAME
-            relative_workspace = os.path.relpath(workspace_path, settings.BASE_DIR)
-            host_workspace_path = os.path.join(host_workdir, relative_workspace)
-            
-            host_data_path = os.path.join(host_workspace_path, 'data')
-            host_addons_path = os.path.join(host_workspace_path, 'addons')
-            host_custom_repos_path = os.path.join(host_workspace_path, 'custom_repos')
-
-            os.makedirs(local_data_path, exist_ok=True)
             volumes = {}
-            volumes[host_data_path] = {'bind': '/var/lib/odoo', 'mode': 'rw'}
+            # Mount data directory for Odoo filestore and sessions
+            volumes[data_path] = {'bind': '/var/lib/odoo', 'mode': 'rw'}
             
-            # Helper to build addons path string
-            addons_paths_list = []
-            
-            # If we cloned addons (Main Repo), mount them
-            if os.path.exists(local_addons_path):
+            # If we cloned addons, mount them
+            addons_path = os.path.join(workspace_path, 'addons')
+            if os.path.exists(addons_path):
                 # We mount it to /mnt/extra-addons which is standard in Odoo images
-                volumes[host_addons_path] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
-                addons_paths_list.append('/mnt/extra-addons')
-            
-            # 2.5 Clone Secondary Repositories
-            secondary_paths = self._clone_secondary_repos(instance, workspace_path)
-            if secondary_paths:
-                # Mount the parent directory 'custom_repos' to /mnt/custom_repos
-                volumes[host_custom_repos_path] = {'bind': '/mnt/custom_repos', 'mode': 'rw'}
-                # Add each cloned repo subfolder to the path
-                addons_paths_list.extend(secondary_paths)
+                volumes[addons_path] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
             
             
             # Check if container already exists (redeploy scenario)
@@ -110,19 +84,10 @@ class DockerService:
             except docker.errors.NotFound:
                 print(f"Container {odoo_container_name} not found. This is a fresh deployment.")
             
-            # Determine command arguments
-            cmd = []
-            if addons_paths_list:
-                # Always append the default system addons path at the end
-                # Note: Odoo parses addons_paths in order.
-                full_addons_path = ",".join(addons_paths_list) + ",/usr/lib/python3/dist-packages/odoo/addons"
-                cmd = ["odoo", f"--addons-path={full_addons_path}"]
-            
             # Create the container
             odoo_container = self.client.containers.run(
                 f"odoo:{instance.odoo_version}",
                 name=odoo_container_name,
-                command=cmd,
                 environment={
                     "HOST": db_container_name,
                     "USER": "odoo",
@@ -251,52 +216,6 @@ class DockerService:
         # If we get here, all attempts failed
         print(f"Warning: Could not clone repository {instance.github_repo}. Continuing without custom addons.")
 
-
-    def _clone_secondary_repos(self, instance, workspace_path):
-        """Clone all secondary repositories into 'custom_repos' directory"""
-        secondary_repos = instance.secondary_repositories.all()
-        if not secondary_repos:
-            return []
-
-        custom_repos_path = os.path.join(workspace_path, 'custom_repos')
-        os.makedirs(custom_repos_path, exist_ok=True)
-        
-        cloned_paths = []
-        
-        for repo_obj in secondary_repos:
-            # Create a safe directory name from the repo URL
-            repo_name = repo_obj.repo_url.split('/')[-1].replace('.git', '')
-            repo_dir = os.path.join(custom_repos_path, repo_name)
-            
-            # Simple clone/pull logic similar to main repo but simplified
-            if os.path.exists(repo_dir):
-                try:
-                    print(f"Updating secondary repo {repo_name}...")
-                    repo = git.Repo(repo_dir)
-                    origin = repo.remotes.origin
-                    origin.pull(repo_obj.branch)
-                except Exception as e:
-                    print(f"Error updating {repo_name}: {e}. Re-cloning...")
-                    import shutil
-                    shutil.rmtree(repo_dir)
-            
-            if not os.path.exists(repo_dir):
-                try:
-                    print(f"Cloning secondary repo {repo_obj.repo_url} ({repo_obj.branch})...")
-                    git.Repo.clone_from(
-                        repo_obj.repo_url,
-                        repo_dir,
-                        branch=repo_obj.branch,
-                        depth=1
-                    )
-                except Exception as e:
-                    print(f"Failed to clone secondary repo {repo_obj.repo_url}: {e}")
-                    continue
-            
-            # Add relative path inside container mount
-            cloned_paths.append(f"/mnt/custom_repos/{repo_name}")
-            
-        return cloned_paths
 
     def stop_instance(self, instance):
         if not instance.container_id:

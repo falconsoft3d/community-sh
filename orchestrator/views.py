@@ -242,9 +242,6 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         from .backup_models import Backup
         context['backups'] = Backup.objects.filter(instance=self.object).order_by('-created_at')
         
-        # Add secondary repos
-        context['secondary_repos'] = self.object.secondary_repositories.all()
-        
         return context
 
 @login_required
@@ -465,35 +462,6 @@ def instance_update_name(request, pk):
     return redirect('instance-detail', pk=pk)
 
 @login_required
-def instance_update_database_name(request, pk):
-    """Update instance database name"""
-    instance = get_object_or_404(Instance, pk=pk)
-    
-    if request.method == 'POST':
-        database_name = request.POST.get('database_name', '').strip()
-        
-        # database_name can be empty (auto-detection mode)
-        
-        # Validate format if provided
-        import re
-        if database_name and not re.match(r'^[a-zA-Z0-9_]+$', database_name):
-            messages.error(request, 'El nombre de la base de datos solo puede contener letras, números y guiones bajos')
-            return redirect('instance-detail', pk=pk)
-        
-        old_db = instance.database_name
-        instance.database_name = database_name
-        instance.save()
-        
-        if database_name:
-            messages.success(request, f'Nombre de base de datos actualizado a "{database_name}"')
-        else:
-            messages.success(request, 'Nombre de base de datos borrado (se usará auto-detección)')
-            
-        return redirect('instance-detail', pk=pk)
-    
-    return redirect('instance-detail', pk=pk)
-
-@login_required
 def instance_install_module(request, pk):
     """Upload and install a module ZIP file"""
     instance = get_object_or_404(Instance, pk=pk)
@@ -537,29 +505,9 @@ def instance_install_module(request, pk):
     return redirect('instance-detail', pk=pk)
 
 @login_required
-@login_required
 def instance_delete(request, pk):
     instance = get_object_or_404(Instance, pk=pk)
     if request.method == 'POST':
-        # Check security password if active
-        if instance.security_password:
-            password_confirm = request.POST.get('security_password', '')
-            
-            # Check if password matches (handling both hashed and legacy plain text)
-            from django.contrib.auth.hashers import check_password
-            
-            is_valid = False
-            # First try as hashed password
-            if check_password(password_confirm, instance.security_password):
-                is_valid = True
-            # Fallback for legacy plain text passwords (temporary compatibility)
-            elif password_confirm == instance.security_password:
-                is_valid = True
-                
-            if not is_valid:
-                messages.error(request, '❌ Contraseña de seguridad incorrecta. No se pudo eliminar la instancia.')
-                return redirect('instance-detail', pk=pk)
-        
         # Send email notification before deleting
         from .email_notifications import send_instance_notification
         send_instance_notification('deleted', instance, request.user)
@@ -567,115 +515,7 @@ def instance_delete(request, pk):
         service = DockerService()
         service.delete_instance(instance)
         instance.delete()
-        messages.success(request, f'Instancia {instance.name} eliminada correctamente.')
         return redirect('instance-list')
-    return redirect('instance-detail', pk=pk)
-
-@login_required
-def instance_update_security_password(request, pk):
-    """Update instance security password"""
-    instance = get_object_or_404(Instance, pk=pk)
-    
-    if request.method == 'POST':
-        new_password = request.POST.get('security_password', '').strip()
-        old_password = request.POST.get('old_password', '').strip()
-        
-        from django.contrib.auth.hashers import make_password, check_password
-
-        # If security password is set, verify it first
-        if instance.security_password:
-            if not old_password:
-                messages.error(request, 'Debes ingresar la contraseña anterior para cambiarla')
-                return redirect('instance-detail', pk=pk)
-            
-            # Check old password (legacy support needed here too)
-            is_valid_old = False
-            if check_password(old_password, instance.security_password):
-                is_valid_old = True
-            elif old_password == instance.security_password:
-                is_valid_old = True
-            
-            if not is_valid_old:
-                messages.error(request, 'Contraseña anterior incorrecta')
-                return redirect('instance-detail', pk=pk)
-        
-        # Save new password hashed (or empty if removing)
-        if new_password:
-            instance.security_password = make_password(new_password)
-            messages.success(request, '🔒 Contraseña de seguridad activada correctamente')
-        else:
-            instance.security_password = ''
-            messages.warning(request, '🔓 Contraseña de seguridad desactivada')
-            
-        instance.save()
-            
-        return redirect('instance-detail', pk=pk)
-    
-    return redirect('instance-detail', pk=pk)
-
-@login_required
-def instance_update_main_repo(request, pk):
-    """Update instance main repository"""
-    instance = get_object_or_404(Instance, pk=pk)
-    
-    if request.method == 'POST':
-        repo_url = request.POST.get('github_repo', '').strip()
-        branch = request.POST.get('github_branch', 'main').strip()
-        
-        if not repo_url:
-            # If empty, we are removing it
-            instance.github_repo = None
-            instance.github_branch = 'main'
-            messages.success(request, 'Repositorio principal eliminado')
-        else:
-            instance.github_repo = repo_url
-            instance.github_branch = branch
-            messages.success(request, f'Repositorio principal actualizado: {repo_url} ({branch})')
-            
-        instance.save()
-        # Trigger redeployment/update logic if needed? 
-        # For now just save. User might need to redeploy or install modules.
-        return redirect('instance-detail', pk=pk)
-    
-    return redirect('instance-detail', pk=pk)
-
-@login_required
-def instance_add_secondary_repo(request, pk):
-    """Add a secondary repository to instance"""
-    instance = get_object_or_404(Instance, pk=pk)
-    
-    if request.method == 'POST':
-        from .models import InstanceRepository
-        
-        repo_url = request.POST.get('repo_url', '').strip()
-        branch = request.POST.get('branch', 'main').strip()
-        
-        if not repo_url:
-            messages.error(request, 'La URL del repositorio es requerida')
-            return redirect('instance-detail', pk=pk)
-            
-        InstanceRepository.objects.create(
-            instance=instance,
-            repo_url=repo_url,
-            branch=branch
-        )
-        
-        messages.success(request, f'Repositorio secundario agregado: {repo_url}')
-        return redirect('instance-detail', pk=pk)
-    
-    return redirect('instance-detail', pk=pk)
-
-@login_required
-def instance_delete_secondary_repo(request, pk, repo_id):
-    """Delete a secondary repository"""
-    instance = get_object_or_404(Instance, pk=pk)
-    from .models import InstanceRepository
-    
-    repo = get_object_or_404(InstanceRepository, pk=repo_id, instance=instance)
-    repo_url = repo.repo_url
-    repo.delete()
-    
-    messages.success(request, f'Repositorio secundario eliminado: {repo_url}')
     return redirect('instance-detail', pk=pk)
 
 @login_required
@@ -1419,83 +1259,30 @@ def user_delete(request, user_id):
 def user_profile(request):
     """View and edit current user's profile"""
     from django.contrib import messages
-    from django.contrib.auth import authenticate, logout
-    from django.contrib.auth.models import User
     from .models import UserProfile
     
     # Ensure profile exists
     profile, created = UserProfile.objects.get_or_create(user=request.user)
     
     if request.method == 'POST':
-        form_type = request.POST.get('form_type', '')
+        # Update user info
+        request.user.first_name = request.POST.get('first_name', '')
+        request.user.last_name = request.POST.get('last_name', '')
+        request.user.email = request.POST.get('email', '')
+        request.user.save()
         
-        # Handle account deletion
-        if form_type == 'delete_account':
-            password = request.POST.get('delete_password', '')
-            
-            # Verify password
-            user = authenticate(username=request.user.username, password=password)
-            if not user:
-                messages.error(request, 'Contraseña incorrecta. No se pudo eliminar la cuenta.')
-                return redirect('user-profile')
-            
-            # Prevent deleting the last superuser
-            if request.user.is_superuser:
-                superuser_count = User.objects.filter(is_superuser=True).count()
-                if superuser_count <= 1:
-                    messages.error(request, 'No puedes eliminar el único administrador del sistema.')
-                    return redirect('user-profile')
-            
-            # Delete the user account
-            username = request.user.username
-            logout(request)  # Log out before deleting
-            User.objects.filter(username=username).delete()
-            messages.success(request, 'Tu cuenta ha sido eliminada exitosamente.')
-            return redirect('home')
+        # Update profile
+        profile.bio = request.POST.get('bio', '')
+        profile.phone = request.POST.get('phone', '')
         
-        # Handle password change
-        elif form_type == 'password':
-            current_password = request.POST.get('current_password', '')
-            new_password1 = request.POST.get('new_password1', '')
-            new_password2 = request.POST.get('new_password2', '')
-            
-            # Verify current password
-            user = authenticate(username=request.user.username, password=current_password)
-            if not user:
-                messages.error(request, 'La contraseña actual es incorrecta.')
-                return redirect('user-profile')
-            
-            # Verify new passwords match
-            if new_password1 != new_password2:
-                messages.error(request, 'Las nuevas contraseñas no coinciden.')
-                return redirect('user-profile')
-            
-            # Update password
-            request.user.set_password(new_password1)
-            request.user.save()
-            messages.success(request, 'Contraseña actualizada exitosamente. Por favor, inicia sesión nuevamente.')
-            return redirect('login')
+        # Handle avatar upload
+        if 'avatar' in request.FILES:
+            profile.avatar = request.FILES['avatar']
         
-        # Handle profile/avatar update
-        else:
-            # Update user info
-            request.user.first_name = request.POST.get('first_name', '')
-            request.user.last_name = request.POST.get('last_name', '')
-            request.user.email = request.POST.get('email', '')
-            request.user.save()
-            
-            # Update profile
-            profile.bio = request.POST.get('bio', '')
-            profile.phone = request.POST.get('phone', '')
-            
-            # Handle avatar upload
-            if 'avatar' in request.FILES:
-                profile.avatar = request.FILES['avatar']
-            
-            profile.save()
-            
-            messages.success(request, 'Perfil actualizado exitosamente')
-            return redirect('user-profile')
+        profile.save()
+        
+        messages.success(request, 'Perfil actualizado exitosamente')
+        return redirect('user-profile')
     
     return render(request, 'orchestrator/user_profile.html', {'profile': profile})
 

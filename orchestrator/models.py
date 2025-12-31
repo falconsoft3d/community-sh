@@ -45,9 +45,6 @@ class Instance(models.Model):
     # Database
     database_name = models.CharField(max_length=100, blank=True, null=True, help_text="Nombre de la base de datos de Odoo (dejar vacío para auto-detección)")
     
-    # Security
-    security_password = models.CharField(max_length=255, blank=True, null=True, help_text="Contraseña de seguridad para borrado")
-    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -56,22 +53,43 @@ class Instance(models.Model):
 
     @property
     def url(self):
-        # Use custom domain if set, otherwise use localhost subdomain
+        """Get the primary URL for accessing this instance"""
+        # Use custom domain if set
         if self.custom_domain:
             protocol = "https" if self.ssl_enabled else "http"
             return f"{protocol}://{self.custom_domain}"
-        return f"http://{self.name}.localhost"
-
-class InstanceRepository(models.Model):
-    """Secondary repositories for an instance (e.g. extra addons)"""
-    instance = models.ForeignKey(Instance, on_delete=models.CASCADE, related_name='secondary_repositories')
-    repo_url = models.CharField(max_length=255, help_text="URL del repositorio (https://github.com/user/repo)")
-    branch = models.CharField(max_length=100, default='main', help_text="Rama a utilizar (ej. main, 14.0, master)")
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    def __str__(self):
-        return f"{self.repo_url} ({self.branch})"
+        
+        # Try to get server IP from environment or request
+        from django.conf import settings
+        import socket
+        
+        # Try environment variable first (set in .env)
+        server_ip = os.environ.get('SERVER_IP')
+        
+        # Fallback: try to get from network
+        if not server_ip:
+            try:
+                # Get server hostname
+                server_ip = socket.gethostbyname(socket.gethostname())
+            except:
+                # Last resort: use localhost
+                server_ip = 'localhost'
+        
+        # Get port from container if exists
+        if self.container_id:
+            try:
+                import docker
+                client = docker.from_env()
+                container = client.containers.get(self.container_id)
+                # Get mapped port (e.g., 32768 from 8069)
+                ports = container.ports.get('8069/tcp')
+                if ports and len(ports) > 0:
+                    port = ports[0]['HostPort']
+                    return f"http://{server_ip}:{port}"
+            except:
+                pass
+        
+        return f"http://{server_ip}"
 
 # Import additional models
 from .config_models import GitHubConfig
