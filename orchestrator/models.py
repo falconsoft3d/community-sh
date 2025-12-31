@@ -45,6 +45,9 @@ class Instance(models.Model):
     # Database
     database_name = models.CharField(max_length=100, blank=True, null=True, help_text="Nombre de la base de datos de Odoo (dejar vacío para auto-detección)")
     
+    # Security
+    security_password = models.CharField(max_length=255, blank=True, null=True, help_text="Contraseña de seguridad para borrado")
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -58,6 +61,17 @@ class Instance(models.Model):
             protocol = "https" if self.ssl_enabled else "http"
             return f"{protocol}://{self.custom_domain}"
         return f"http://{self.name}.localhost"
+
+class InstanceRepository(models.Model):
+    """Secondary repositories for an instance (e.g. extra addons)"""
+    instance = models.ForeignKey(Instance, on_delete=models.CASCADE, related_name='secondary_repositories')
+    repo_url = models.CharField(max_length=255, help_text="URL del repositorio (https://github.com/user/repo)")
+    branch = models.CharField(max_length=100, default='main', help_text="Rama a utilizar (ej. main, 14.0, master)")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.repo_url} ({self.branch})"
 
 # Import additional models
 from .config_models import GitHubConfig

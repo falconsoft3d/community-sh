@@ -126,7 +126,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-LOGIN_REDIRECT_URL = '/instances/'
+LOGIN_REDIRECT_URL = '/dashboard/instances/'
 LOGOUT_REDIRECT_URL = '/'
 
 # Email configuration

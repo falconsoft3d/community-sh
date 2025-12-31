@@ -9,7 +9,8 @@
     {% if messages %}
     <div class="mb-6">
         {% for message in messages %}
-        <div class="rounded-lg border px-4 py-3 text-sm {% if message.tags == 'success' %}bg-green-50 border-green-200 text-green-800{% else %}bg-red-50 border-red-200 text-red-800{% endif %}">
+        <div
+            class="rounded-lg border px-4 py-3 text-sm {% if message.tags == 'success' %}bg-green-50 border-green-200 text-green-800{% else %}bg-red-50 border-red-200 text-red-800{% endif %}">
             {{ message }}
         </div>
         {% endfor %}
@@ -22,10 +23,11 @@
             <div class="rounded-lg border bg-card p-6">
                 <h2 class="text-lg font-semibold mb-4">Foto de Perfil</h2>
                 <div class="flex flex-col items-center">
-                    <div class="h-32 w-32 rounded-full bg-secondary flex items-center justify-center overflow-hidden mb-4">
+                    <div
+                        class="h-32 w-32 rounded-full bg-secondary flex items-center justify-center overflow-hidden mb-4">
                         {% if user.profile.avatar %}
-                        <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" 
-                             class="h-full w-full object-cover" id="avatar-preview">
+                        <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}"
+                            class="h-full w-full object-cover" id="avatar-preview">
                         {% else %}
                         <span class="text-4xl font-bold" id="avatar-preview">{{ user.username|slice:":1"|upper }}</span>
                         {% endif %}
@@ -38,11 +40,11 @@
                                 Cambiar Foto
                             </label>
                             <input type="file" name="avatar" id="id_avatar" accept="image/*"
-                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                   onchange="previewAvatar(event)">
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                onchange="previewAvatar(event)">
                         </div>
                         <button type="submit"
-                                class="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                            class="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                             Guardar Foto
                         </button>
                     </form>
@@ -63,14 +65,14 @@
                                 Nombre
                             </label>
                             <input type="text" name="first_name" id="id_first_name" value="{{ user.first_name }}"
-                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                         </div>
                         <div>
                             <label for="id_last_name" class="block text-sm font-medium mb-2">
                                 Apellido
                             </label>
                             <input type="text" name="last_name" id="id_last_name" value="{{ user.last_name }}"
-                                   class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                         </div>
                     </div>
                     <div class="mb-4">
@@ -78,24 +80,24 @@
                             Email
                         </label>
                         <input type="email" name="email" id="id_email" value="{{ user.email }}"
-                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                     </div>
                     <div class="mb-4">
                         <label for="id_phone" class="block text-sm font-medium mb-2">
                             Teléfono
                         </label>
                         <input type="text" name="phone" id="id_phone" value="{{ user.profile.phone|default:'' }}"
-                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                     </div>
                     <div class="mb-4">
                         <label for="id_bio" class="block text-sm font-medium mb-2">
                             Biografía
                         </label>
                         <textarea name="bio" id="id_bio" rows="4"
-                                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ user.profile.bio|default:'' }}</textarea>
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ user.profile.bio|default:'' }}</textarea>
                     </div>
                     <button type="submit"
-                            class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                         Guardar Cambios
                     </button>
                 </form>
@@ -112,24 +114,24 @@
                             Contraseña Actual
                         </label>
                         <input type="password" name="current_password" id="id_current_password" required
-                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                     </div>
                     <div class="mb-4">
                         <label for="id_new_password1" class="block text-sm font-medium mb-2">
                             Nueva Contraseña
                         </label>
                         <input type="password" name="new_password1" id="id_new_password1" required
-                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                     </div>
                     <div class="mb-4">
                         <label for="id_new_password2" class="block text-sm font-medium mb-2">
                             Confirmar Nueva Contraseña
                         </label>
                         <input type="password" name="new_password2" id="id_new_password2" required
-                               class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                     </div>
                     <button type="submit"
-                            class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                         Cambiar Contraseña
                     </button>
                 </form>
@@ -164,26 +166,95 @@
                 </div>
                 {% endif %}
                 <a href="{% url 'two-factor-setup' %}"
-                   class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                    class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                     <i data-lucide="shield" class="mr-2 h-4 w-4"></i>
                     {% if user.profile.two_factor_enabled %}Gestionar 2FA{% else %}Configurar 2FA{% endif %}
                 </a>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="rounded-lg border border-destructive bg-card p-6">
+                <h2 class="text-lg font-semibold mb-4 text-destructive">Zona de Peligro</h2>
+                <div class="rounded-lg border border-destructive/20 bg-destructive/5 p-4 mb-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="alert-triangle" class="h-5 w-5 text-destructive mt-0.5"></i>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-destructive">Eliminar Cuenta</h4>
+                            <p class="text-sm text-muted-foreground mt-1">
+                                Una vez que elimines tu cuenta, no hay vuelta atrás. Por favor, ten cuidado.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <button type="button"
+                    onclick="document.getElementById('delete-account-modal').classList.remove('hidden')"
+                    class="inline-flex items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
+                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i>
+                    Eliminar Mi Cuenta
+                </button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Delete Account Confirmation Modal -->
+<div id="delete-account-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-card rounded-lg shadow-lg max-w-md w-full p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                <i data-lucide="alert-triangle" class="h-6 w-6 text-destructive"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-semibold">¿Eliminar cuenta?</h3>
+                <p class="text-sm text-muted-foreground">Esta acción no se puede deshacer</p>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'user-profile' %}">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="delete_account">
+
+            <div class="mb-4">
+                <label for="delete_password" class="block text-sm font-medium mb-2">
+                    Confirma tu contraseña
+                </label>
+                <input type="password" name="delete_password" id="delete_password" required
+                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="Ingresa tu contraseña para confirmar">
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" onclick="document.getElementById('delete-account-modal').classList.add('hidden')"
+                    class="flex-1 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">
+                    Cancelar
+                </button>
+                <button type="submit"
+                    class="flex-1 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
+                    Eliminar Permanentemente
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-function previewAvatar(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const preview = document.getElementById('avatar-preview');
-            preview.innerHTML = `<img src="${e.target.result}" alt="Preview" class="h-full w-full object-cover">`;
+    function previewAvatar(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const preview = document.getElementById('avatar-preview');
+                preview.innerHTML = `<img src="${e.target.result}" alt="Preview" class="h-full w-full object-cover">`;
+            }
+            reader.readAsDataURL(file);
         }
-        reader.readAsDataURL(file);
     }
-}
+
+    // Close modal on outside click
+    document.getElementById('delete-account-modal')?.addEventListener('click', function (e) {
+        if (e.target === this) {
+            this.classList.add('hidden');
+        }
+    });
 </script>
 {% endblock %}

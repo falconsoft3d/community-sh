@@ -38,6 +38,12 @@ chmod +x easy-install.sh
 sudo ./easy-install.sh
 ```
 
+**Option 3: Update**
+```bash
+git pull
+docker-compose up -d --build
+docker-compose exec app python manage.py migrate
+```
 
 **Docker Compose Commands**
 ```bash
@@ -46,6 +52,7 @@ docker-compose up -d --build
 docker-compose logs -f cron
 docker-compose restart app
 docker-compose down
+docker-compose logs --tail=100 app
 ```
 
 **Made with ❤️ for the Marlon Falcón Hernández**
