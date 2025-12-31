@@ -28,10 +28,6 @@
 Run this command on your fresh server:
 ```bash
 curl -sL https://raw.githubusercontent.com/falconsoft3d/community-sh/main/easy-install.sh | sudo bash
-
-cd /opt/community-sh && sudo docker compose exec app python manage.py createsuperuser
-
-
 ```
 
 **Option 2: Review and Run**
@@ -76,8 +72,14 @@ sudo docker stop $(sudo docker ps -aq) 2>/dev/null || true
 sudo docker volume prune -f
 sudo docker compose up -d
 sleep 15
+```
 
-
+# 1. Limpieza (si no la has hecho ya)
+```bash
+sudo docker stop $(sudo docker ps -aq) 2>/dev/null
+sudo docker rm $(sudo docker ps -aq) 2>/dev/null
+sudo docker volume rm $(sudo docker volume ls -q) 2>/dev/null
+sudo rm -rf /opt/community-sh
 ```
 
 ## 🔒 SSL/HTTPS Configuration
