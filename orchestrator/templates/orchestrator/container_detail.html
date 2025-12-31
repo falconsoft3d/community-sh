@@ -95,7 +95,8 @@
                     </div>
                     {% if container.status == 'running' %}
                     <div class="pt-4 border-t space-y-2">
-                        <a href="{{ container.url }}" target="_blank"
+                        <a href="{% if container.url %}{{ container.url }}{% else %}http://{{ request.get_host|cut:':8000' }}:{{ container.port }}{% endif %}"
+                            target="_blank"
                             class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                             <i data-lucide="external-link" class="mr-2 h-4 w-4"></i>
                             Open Container
