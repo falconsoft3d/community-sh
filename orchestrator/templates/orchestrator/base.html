@@ -62,6 +62,20 @@
                         md: "calc(var(--radius) - 2px)",
                         sm: "calc(var(--radius) - 4px)",
                     },
+                    animation: {
+                        'slide-in-right': 'slideInRight 0.3s ease-out forwards',
+                        'slide-out-right': 'slideOutRight 0.3s ease-in forwards',
+                    },
+                    keyframes: {
+                        slideInRight: {
+                            '0%': { transform: 'translateX(100%)', opacity: '0' },
+                            '100%': { transform: 'translateX(0)', opacity: '1' },
+                        },
+                        slideOutRight: {
+                            '0%': { transform: 'translateX(0)', opacity: '1' },
+                            '100%': { transform: 'translateX(100%)', opacity: '0' },
+                        },
+                    },
                 }
             }
         }
@@ -92,6 +106,43 @@
 
         body {
             font-family: 'Inter', sans-serif;
+        }
+
+        /* Toast Animations */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .animate-slide-in-right {
+            animation: slideInRight 0.3s ease-out forwards;
+        }
+
+        .animate-slide-out-right {
+            animation: slideOutRight 0.3s ease-in forwards;
+        }
+
+        .toast-notification {
+            transition: all 0.3s ease;
         }
     </style>
 </head>
@@ -152,7 +203,8 @@
         <!-- Main Content -->
         <div class="flex flex-col w-full">
             {% if user.is_authenticated %}
-            <header class="flex h-14 items-center gap-4 bg-card shadow-sm px-4 lg:h-[60px] lg:px-6 mx-4 mt-4 mb-2 rounded-lg border">
+            <header
+                class="flex h-14 items-center gap-4 bg-card shadow-sm px-4 lg:h-[60px] lg:px-6 mx-4 mt-4 mb-2 rounded-lg border">
                 <!-- Mobile Trigger could go here -->
                 <div class="w-full flex-1">
                     <!-- Breadcrumb or Title -->
@@ -164,7 +216,8 @@
                         <button @click="open = !open"
                             class="h-8 w-8 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors overflow-hidden">
                             {% if user.profile.avatar %}
-                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="h-full w-full object-cover">
+                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}"
+                                class="h-full w-full object-cover">
                             {% else %}
                             <span class="text-xs font-bold">{{ user.username|slice:":1"|upper }}</span>
                             {% endif %}
@@ -203,6 +256,44 @@
             </main>
         </div>
     </div>
+
+    <!-- Toast Notifications -->
+    {% include "orchestrator/includes/messages_toast.html" %}
+
+    <!-- Toast Notifications Script -->
+    <script>
+        // Function to close a toast notification
+        function closeToast(toastElement) {
+            if (!toastElement) return;
+
+            // Add slide-out animation
+            toastElement.classList.remove('animate-slide-in-right');
+            toastElement.classList.add('animate-slide-out-right');
+
+            // Remove element after animation completes
+            setTimeout(() => {
+                toastElement.remove();
+
+                // If no more toasts, hide container
+                const container = document.getElementById('toast-container');
+                if (container && container.querySelectorAll('.toast-notification').length === 0) {
+                    container.style.display = 'none';
+                }
+            }, 300); // Match animation duration
+        }
+
+        // Auto-dismiss toasts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function () {
+            const toasts = document.querySelectorAll('.toast-notification');
+
+            toasts.forEach((toast, index) => {
+                // Auto-dismiss after 5 seconds (with stagger for multiple toasts)
+                setTimeout(() => {
+                    closeToast(toast);
+                }, 5000 + (index * 100)); // Stagger dismissals by 100ms
+            });
+        });
+    </script>
 
     <!-- Initialize Icons -->
     <script>

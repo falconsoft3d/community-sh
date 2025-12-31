@@ -1,0 +1,24 @@
+name: n8n
+display_name: "n8n - Workflow Automation"
+description: "Workflow automation tool for connecting various apps and services"
+icon: "workflow"
+image: "n8nio/n8n:latest"
+container_port: 5678
+default_port: 5678
+
+environment:
+  N8N_BASIC_AUTH_ACTIVE: "true"
+  N8N_BASIC_AUTH_USER: "admin"
+  N8N_BASIC_AUTH_PASSWORD: "changeme"
+  GENERIC_TIMEZONE: "UTC"
+
+volumes:
+  n8n_data:
+    host: "./instances/n8n_data"
+    container: "/home/node/.n8n"
+
+network: "traefik"
+
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.n8n.rule: "Host(`{container_name}.localhost`)"

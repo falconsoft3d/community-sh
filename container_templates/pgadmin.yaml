@@ -1,0 +1,23 @@
+name: pgadmin
+display_name: "pgAdmin - PostgreSQL Admin"
+description: "Web-based administration tool for PostgreSQL databases"
+icon: "database"
+image: "dpage/pgadmin4:latest"
+container_port: 80
+default_port: 5050
+
+environment:
+  PGADMIN_DEFAULT_EMAIL: "admin@admin.com"
+  PGADMIN_DEFAULT_PASSWORD: "admin"
+  PGADMIN_CONFIG_SERVER_MODE: "False"
+
+volumes:
+  pgadmin_data:
+    host: "./instances/pgadmin_data"
+    container: "/var/lib/pgadmin"
+
+network: "traefik"
+
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.pgadmin.rule: "Host(`{container_name}.localhost`)"

@@ -1,0 +1,23 @@
+name: mongodb
+display_name: "MongoDB - NoSQL Database"
+description: "Document-oriented NoSQL database for modern applications"
+icon: "database"
+image: "mongo:latest"
+container_port: 27017
+default_port: 27017
+
+environment:
+  MONGO_INITDB_ROOT_USERNAME: "admin"
+  MONGO_INITDB_ROOT_PASSWORD: "changeme"
+
+volumes:
+  mongodb_data:
+    host: "./instances/mongodb_data"
+    container: "/data/db"
+  mongodb_config:
+    host: "./instances/mongodb_config"
+    container: "/data/configdb"
+
+network: "traefik"
+
+labels: {}

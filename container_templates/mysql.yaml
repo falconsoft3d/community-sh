@@ -1,0 +1,20 @@
+name: mysql
+display_name: "MySQL"
+description: "The world's most popular open source database"
+icon: "database"
+image: "mysql:latest"
+container_port: 3306
+default_port: 3306
+environment:
+  MYSQL_ROOT_PASSWORD: "admin"
+  MYSQL_DATABASE: "community"
+  MYSQL_USER: "admin"
+  MYSQL_PASSWORD: "admin"
+volumes:
+  mysql_data:
+    host: "mysql_data"
+    container: "/var/lib/mysql"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.mysql.rule: "Host(`mysql.localhost`)"

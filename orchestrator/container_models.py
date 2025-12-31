@@ -1,6 +1,17 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+def get_template_choices():
+    """Get template choices from YAML files"""
+    try:
+        from orchestrator.template_services import get_template_loader
+        loader = get_template_loader()
+        choices = loader.get_template_choices()
+        return choices if choices else [('custom', 'Custom')]
+    except Exception as e:
+        print(f"Error loading template choices: {e}")
+        return [('custom', 'Custom')]
+
 class Container(models.Model):
     """Generic Docker container management"""
     
@@ -11,17 +22,8 @@ class Container(models.Model):
         ('creating', 'Creating'),
     ]
     
-    TEMPLATE_CHOICES = [
-        ('custom', 'Custom'),
-        ('n8n', 'n8n - Workflow Automation'),
-        ('pgadmin', 'pgAdmin - PostgreSQL Admin'),
-        ('portainer', 'Portainer - Docker Management'),
-        ('redis', 'Redis - Cache Database'),
-        ('mongodb', 'MongoDB - NoSQL Database'),
-    ]
-    
     name = models.CharField(max_length=255, unique=True)
-    template = models.CharField(max_length=50, choices=TEMPLATE_CHOICES, default='custom')
+    template = models.CharField(max_length=50, choices=get_template_choices, default='custom')
     image = models.CharField(max_length=255, help_text="Docker image (e.g., n8nio/n8n:latest)")
     port = models.IntegerField(help_text="Host port to expose")
     container_port = models.IntegerField(help_text="Container internal port")

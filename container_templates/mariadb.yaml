@@ -1,0 +1,19 @@
+name: mariadb
+display_name: "MariaDB"
+description: "MariaDB is a community-developed, commercially supported fork of the MySQL relational database management system."
+icon: "database"
+image: "mariadb:latest"
+container_port: 3306
+default_port: 3306
+environment:
+  MYSQL_ROOT_PASSWORD: "admin"
+  MYSQL_DATABASE: "nextcloud"
+  MYSQL_USER: "nextcloud"
+  MYSQL_PASSWORD: "nextcloud_password"
+volumes:
+  mariadb_data:
+    host: "mariadb_data"
+    container: "/var/lib/mysql"
+network: "traefik"
+labels:
+  traefik.enable: "false"

@@ -1,0 +1,15 @@
+name: pocketbase
+display_name: "PocketBase"
+description: "Open Source backend in 1 file"
+icon: "database"
+image: "ghcr.io/muchobien/pocketbase:latest"
+container_port: 8090
+default_port: 8090
+volumes:
+  pocketbase_data:
+    host: "pocketbase_data"
+    container: "/pb_data"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.pocketbase.rule: "Host(`pocketbase.localhost`)"

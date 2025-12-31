@@ -1,0 +1,17 @@
+name: supabase
+display_name: "Supabase"
+description: "The Open Source Firebase Alternative (All-in-one)"
+icon: "database"
+image: "supabase/postgres:latest"
+container_port: 5432
+default_port: 5433
+environment:
+  POSTGRES_PASSWORD: "admin"
+volumes:
+  supabase_data:
+    host: "supabase_data"
+    container: "/var/lib/postgresql/data"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.supabase.rule: "Host(`supabase.localhost`)"

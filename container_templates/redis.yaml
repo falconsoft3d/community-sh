@@ -1,0 +1,20 @@
+name: redis
+display_name: "Redis - Cache Database"
+description: "In-memory data structure store for caching and message brokering"
+icon: "database"
+image: "redis:latest"
+container_port: 6379
+default_port: 6379
+
+environment: {}
+
+volumes:
+  redis_data:
+    host: "./instances/redis_data"
+    container: "/data"
+
+network: "traefik"
+
+command: "redis-server --appendonly yes"
+
+labels: {}

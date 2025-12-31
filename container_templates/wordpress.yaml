@@ -1,0 +1,22 @@
+name: wordpress
+display_name: "WordPress"
+description: "The world's most popular website builder - Pre-configured with MySQL"
+icon: "layout"
+image: "wordpress:latest"
+container_port: 80
+default_port: 8081
+environment:
+  WORDPRESS_DB_HOST: "mysql"
+  WORDPRESS_DB_USER: "admin"
+  WORDPRESS_DB_PASSWORD: "admin"
+  WORDPRESS_DB_NAME: "community"
+  WORDPRESS_TABLE_PREFIX: "wp_"
+volumes:
+  wordpress_data:
+    host: "wordpress_data"
+    container: "/var/www/html"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.wordpress.rule: "Host(`wordpress.localhost`)"
+  traefik.http.services.wordpress.loadbalancer.server.port: "80"

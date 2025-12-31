@@ -1,0 +1,27 @@
+{% if messages %}
+<div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
+    {% for message in messages %}
+    <div class="toast-notification animate-slide-in-right rounded-lg shadow-lg {% if message.tags == 'success' %}bg-green-50 border-l-4 border-green-500{% elif message.tags == 'error' %}bg-red-50 border-l-4 border-red-500{% elif message.tags == 'warning' %}bg-yellow-50 border-l-4 border-yellow-500{% else %}bg-blue-50 border-l-4 border-blue-500{% endif %} p-4"
+        data-toast-id="toast-{{ forloop.counter }}">
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0">
+                <i data-lucide="{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}alert-circle{% elif message.tags == 'warning' %}alert-triangle{% else %}info{% endif %}"
+                    class="h-5 w-5 {% if message.tags == 'success' %}text-green-600{% elif message.tags == 'error' %}text-red-600{% elif message.tags == 'warning' %}text-yellow-600{% else %}text-blue-600{% endif %}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p
+                    class="text-sm font-medium {% if message.tags == 'success' %}text-green-800{% elif message.tags == 'error' %}text-red-800{% elif message.tags == 'warning' %}text-yellow-800{% else %}text-blue-800{% endif %}">
+                    {{ message }}
+                </p>
+            </div>
+            <button type="button"
+                class="flex-shrink-0 inline-flex rounded-md p-1.5 {% if message.tags == 'success' %}text-green-500 hover:bg-green-100{% elif message.tags == 'error' %}text-red-500 hover:bg-red-100{% elif message.tags == 'warning' %}text-yellow-500 hover:bg-yellow-100{% else %}text-blue-500 hover:bg-blue-100{% endif %} focus:outline-none transition-colors"
+                onclick="closeToast(this.closest('.toast-notification'))">
+                <span class="sr-only">Close</span>
+                <i data-lucide="x" class="h-4 w-4"></i>
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

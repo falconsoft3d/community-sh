@@ -1,0 +1,20 @@
+name: nextcloud
+display_name: "Nextcloud"
+description: "Safe home for all your data - Self-contained (SQLite)"
+icon: "cloud"
+image: "nextcloud:latest"
+container_port: 80
+default_port: 8083
+environment:
+  NEXTCLOUD_ADMIN_USER: "admin"
+  NEXTCLOUD_ADMIN_PASSWORD: "admin"
+  NEXTCLOUD_TRUSTED_DOMAINS: "nextcloud.localhost localhost"
+volumes:
+  nextcloud_data:
+    host: "nextcloud_data"
+    container: "/var/www/html"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.nextcloud.rule: "Host(`nextcloud.localhost`)"
+  traefik.http.services.nextcloud.loadbalancer.server.port: "80"

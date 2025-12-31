@@ -1,0 +1,17 @@
+name: strapi
+display_name: "Strapi"
+description: "The leading open-source headless CMS (Bitnami Edition)"
+icon: "layout"
+image: "bitnami/strapi:latest"
+container_port: 1337
+default_port: 1337
+environment:
+  STRAPI_DATABASE_CLIENT: sqlite
+volumes:
+  strapi_data:
+    host: "strapi_data"
+    container: "/bitnami/strapi"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.strapi.rule: "Host(`strapi.localhost`)"

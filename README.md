@@ -73,8 +73,34 @@ sudo docker volume prune -f
 sudo docker compose up -d
 sleep 15
 
-```bash
 
+```
+
+## 🔒 SSL/HTTPS Configuration
+
+The platform supports conditional SSL/HTTPS configuration:
+
+- **Enable SSL**: Set `ENABLE_SSL=True` to force all traffic to HTTPS
+- **Disable SSL**: Set `ENABLE_SSL=False` to allow HTTP traffic
+
+For detailed configuration instructions, see [SSL/HTTPS Documentation](docs/SSL_HTTPS_CONFIG.md).
+
+To verify your SSL configuration, run:
+```bash
+python scripts/check_ssl_config.py
+```
+
+## 🛠️ Troubleshooting
+
+### Check SSL Configuration
+```bash
+python scripts/check_ssl_config.py
+```
+
+### View Logs
+```bash
+docker-compose logs -f app
+```
 
 **Made with ❤️ for the Marlon Falcón Hernández**
 

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'orchestrator.middleware.ConditionalSSLRedirectMiddleware',  # Custom SSL redirect middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -141,11 +142,36 @@ DEFAULT_FROM_EMAIL = 'noreply@community-sh.local'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# SSL/HTTPS Configuration
+# Control whether to force HTTPS or allow HTTP
+ENABLE_SSL = os.environ.get('ENABLE_SSL', 'False') == 'True'
+
 # Security settings for production
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # SSL/HTTPS settings - only if SSL is enabled
+    if ENABLE_SSL:
+        SECURE_SSL_REDIRECT = True
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
+        SECURE_HSTS_SECONDS = 31536000  # 1 year
+        SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+        SECURE_HSTS_PRELOAD = True
+    else:
+        # Explicitly disable SSL redirect when SSL is not enabled
+        SECURE_SSL_REDIRECT = False
+        SESSION_COOKIE_SECURE = False
+        CSRF_COOKIE_SECURE = False
+    
+    # General security settings (always enabled in production)
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+
+# Additional SSL/HTTPS settings
+# Paths that should be exempt from SSL redirect (e.g., health checks)
+SSL_REDIRECT_EXEMPT = os.environ.get('SSL_REDIRECT_EXEMPT', '').split(',') if os.environ.get('SSL_REDIRECT_EXEMPT') else []
+
+# Force HTTP when SSL is disabled (useful for development/testing)
+# WARNING: Only enable this in development environments
+FORCE_HTTP_WHEN_SSL_DISABLED = os.environ.get('FORCE_HTTP_WHEN_SSL_DISABLED', 'False') == 'True'
+

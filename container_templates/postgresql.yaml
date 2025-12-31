@@ -1,0 +1,19 @@
+name: postgresql
+display_name: "PostgreSQL"
+description: "Powerful, open source object-relational database system"
+icon: "database"
+image: "postgres:latest"
+container_port: 5432
+default_port: 5432
+environment:
+  POSTGRES_PASSWORD: "admin"
+  POSTGRES_USER: "admin"
+  POSTGRES_DB: "community"
+volumes:
+  postgres_data:
+    host: "postgres_data"
+    container: "/var/lib/postgresql/data"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.postgresql.rule: "Host(`postgresql.localhost`)"

@@ -13,18 +13,35 @@
         </div>
     </div>
 
-    {% if messages %}
-    {% for message in messages %}
-    <div class="rounded-md bg-red-50 border border-red-200 p-3">
-        <div class="flex items-center gap-2">
-            <i data-lucide="alert-circle" class="h-4 w-4 text-red-600"></i>
-            <span class="text-sm text-red-800">{{ message }}</span>
-        </div>
-    </div>
-    {% endfor %}
-    {% endif %}
-
-    <form method="post" x-data="{ template: 'n8n', customPort: 5678 }">
+    <form method="post"
+        x-init="{% if first_template %}updateFields('{{ first_template.key }}', {{ first_template.port }}, '{{ first_template.image }}', {{ first_template.container_port }}, '{{ first_template.description|escapejs }}', '{{ first_template.raw_yaml|escapejs }}'){% endif %}"
+        x-data="{
+        template: 'custom',
+        customPort: 8000,
+        containerPort: 80,
+        image: '',
+        description: '',
+        containerName: '',
+        rawYaml: '',
+        editMode: 'simple', // 'simple' or 'yaml'
+        suggestName() {
+            // Suggest container name based on template
+            if (this.template !== 'custom') {
+                this.containerName = this.template;
+            } else {
+                this.containerName = '';
+            }
+        },
+        updateFields(key, port, img, cPort, desc, yaml) {
+            this.template = key;
+            this.customPort = port;
+            this.image = img;
+            this.containerPort = cPort;
+            this.description = desc;
+            this.rawYaml = yaml;
+            this.suggestName();
+        }
+    }">
         {% csrf_token %}
 
         <!-- Template Selection -->
@@ -39,7 +56,8 @@
                     {% for key, tmpl in templates.items %}
                     <label class="relative flex cursor-pointer rounded-lg border p-4 hover:bg-accent transition-colors">
                         <input type="radio" name="template" value="{{ key }}" x-model="template"
-                            @change="customPort = {{ tmpl.port }}" class="sr-only peer" {% if forloop.first %}checked{% endif %}>
+                            @change="updateFields('{{ key }}', {{ tmpl.port }}, '{{ tmpl.image }}', {{ tmpl.container_port }}, '{{ tmpl.description|escapejs }}', '{{ tmpl.raw_yaml|escapejs }}')"
+                            class="sr-only peer" {% if forloop.first %}checked{% endif %}>
                         <div class="flex items-start gap-3 w-full">
                             <div
                                 class="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -58,7 +76,8 @@
                     {% endfor %}
 
                     <label class="relative flex cursor-pointer rounded-lg border p-4 hover:bg-accent transition-colors">
-                        <input type="radio" name="template" value="custom" x-model="template" class="sr-only peer">
+                        <input type="radio" name="template" value="custom" x-model="template"
+                            @change="updateFields('custom', 8000, '', 80, '', '')" class="sr-only peer">
                         <div class="flex items-start gap-3 w-full">
                             <div
                                 class="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -77,50 +96,90 @@
             </div>
         </div>
 
-        <!-- Container Configuration -->
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm mb-6">
-            <div class="p-6 border-b">
+        <!-- Mode Selection Tabs -->
+        <div class="flex items-center gap-2 mb-4 bg-muted p-1 rounded-lg w-fit">
+            <button type="button" @click="editMode = 'simple'"
+                :class="editMode === 'simple' ? 'bg-background shadow-sm' : 'hover:bg-background/50'"
+                class="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2">
+                <i data-lucide="sliders" class="h-4 w-4"></i>
+                Configuration
+            </button>
+            <button type="button" @click="editMode = 'yaml'"
+                :class="editMode === 'yaml' ? 'bg-background shadow-sm' : 'hover:bg-background/50'"
+                class="px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2">
+                <i data-lucide="file-code" class="h-4 w-4"></i>
+                YAML Editor
+            </button>
+        </div>
+
+        <!-- Container Configuration (Simple Mode) -->
+        <div x-show="editMode === 'simple'" x-transition
+            class="rounded-xl border bg-card text-card-foreground shadow-sm mb-6">
+            <div class="p-6 border-b flex items-center justify-between">
                 <h3 class="font-semibold text-lg">Configuration</h3>
+                <span class="text-xs font-mono px-2 py-1 bg-muted rounded" x-text="'Template: ' + template"></span>
             </div>
             <div class="p-6 space-y-4">
-                <div class="space-y-2">
-                    <label for="name" class="text-sm font-medium">Container Name <span
-                            class="text-destructive">*</span></label>
-                    <input type="text" id="name" name="name" required
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        placeholder="my-container">
-                    <p class="text-sm text-muted-foreground">Unique name for your container</p>
-                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label for="name" class="text-sm font-medium">Container Name <span
+                                class="text-destructive">*</span></label>
+                        <input type="text" id="name" name="name" required x-model="containerName"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="my-container">
+                    </div>
 
-                <div class="space-y-2">
-                    <label for="port" class="text-sm font-medium">Host Port <span
-                            class="text-destructive">*</span></label>
-                    <input type="number" id="port" name="port" x-model="customPort" required
-                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                    <p class="text-sm text-muted-foreground">Port to expose on the host machine</p>
-                </div>
-
-                <div x-show="template === 'custom'" class="space-y-4 pt-4 border-t">
                     <div class="space-y-2">
                         <label for="image" class="text-sm font-medium">Docker Image <span
                                 class="text-destructive">*</span></label>
-                        <input type="text" id="image" name="image"
+                        <input type="text" id="image" name="image" required x-model="image"
                             class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             placeholder="nginx:latest">
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label for="port" class="text-sm font-medium">Host Port <span
+                                class="text-destructive">*</span></label>
+                        <input type="number" id="port" name="port" x-model="customPort" required
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     </div>
 
                     <div class="space-y-2">
                         <label for="container_port" class="text-sm font-medium">Container Port <span
                                 class="text-destructive">*</span></label>
-                        <input type="number" id="container_port" name="container_port"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            placeholder="80">
+                        <input type="number" id="container_port" name="container_port" x-model="containerPort" required
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                     </div>
+                </div>
 
+                <div class="space-y-2">
+                    <label for="description" class="text-sm font-medium">Description</label>
+                    <textarea id="description" name="description" rows="3" x-model="description"
+                        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- YAML Editor (Advanced Mode) -->
+        <div x-show="editMode === 'yaml'" x-transition
+            class="rounded-xl border bg-card text-card-foreground shadow-sm mb-6">
+            <div class="p-6 border-b flex items-center justify-between">
+                <h3 class="font-semibold text-lg">YAML Template Editor</h3>
+                <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-medium">Advanced mode</span>
+            </div>
+            <div class="p-6">
+                <div class="space-y-4">
                     <div class="space-y-2">
-                        <label for="description" class="text-sm font-medium">Description</label>
-                        <textarea id="description" name="description" rows="3"
-                            class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"></textarea>
+                        <label for="yaml_config" class="text-sm font-medium">Template YAML Content</label>
+                        <textarea id="yaml_config" name="yaml_config" rows="15" x-model="rawYaml"
+                            class="flex w-full rounded-md border border-input bg-zinc-950 text-zinc-50 font-mono px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            placeholder="# YAML configuration here..."></textarea>
+                        <p class="text-xs text-muted-foreground mt-2">
+                            <i data-lucide="info" class="inline h-3 w-3 mr-1"></i>
+                            Editing YAML allows you to modify environment variables, volumes, and networks directly.
+                        </p>
                     </div>
                 </div>
             </div>

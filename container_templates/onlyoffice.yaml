@@ -1,0 +1,29 @@
+name: onlyoffice
+display_name: "ONLYOFFICE Docs"
+description: "Online editors for text documents, spreadsheets, and presentations"
+icon: "file-text"
+image: "onlyoffice/documentserver:latest"
+container_port: 80
+default_port: 8085
+environment:
+  JWT_SECRET: "your_secret_jwt_key"
+  JWT_HEADER: "Authorization"
+  JWT_IN_BODY: "true"
+volumes:
+  onlyoffice_data:
+    host: "onlyoffice_data"
+    container: "/var/www/onlyoffice/Data"
+  onlyoffice_logs:
+    host: "onlyoffice_logs"
+    container: "/var/log/onlyoffice"
+  onlyoffice_lib:
+    host: "onlyoffice_lib"
+    container: "/var/lib/onlyoffice"
+  onlyoffice_db:
+    host: "onlyoffice_db"
+    container: "/var/lib/postgresql"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.onlyoffice.rule: "Host(`onlyoffice.localhost`)"
+  traefik.http.services.onlyoffice.loadbalancer.server.port: "80"

@@ -1,0 +1,15 @@
+name: ollama
+display_name: "Ollama"
+description: "Run large language models locally"
+icon: "cpu"
+image: "ollama/ollama:latest"
+container_port: 11434
+default_port: 11434
+volumes:
+  ollama_data:
+    host: "ollama_data"
+    container: "/root/.ollama"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.ollama.rule: "Host(`ollama.localhost`)"

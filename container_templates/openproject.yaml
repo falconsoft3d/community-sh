@@ -1,0 +1,23 @@
+name: openproject
+display_name: "OpenProject"
+description: "Open source project management software"
+icon: "layout"
+image: "openproject/community:latest"
+container_port: 80
+default_port: 8084
+environment:
+  OPENPROJECT_SECRET_KEY_BASE: "skip_this_in_production_use_a_secret"
+  OPENPROJECT_HOST__NAME: "localhost:8084"
+  OPENPROJECT_HTTPS: "false"
+volumes:
+  openproject_assets:
+    host: "openproject_assets"
+    container: "/var/openproject/assets"
+  openproject_pgdata:
+    host: "openproject_pgdata"
+    container: "/var/lib/postgresql/data"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.openproject.rule: "Host(`openproject.localhost`)"
+  traefik.http.services.openproject.loadbalancer.server.port: "80"

@@ -1,0 +1,24 @@
+name: portainer
+display_name: "Portainer - Docker Management"
+description: "Lightweight management UI for Docker environments"
+icon: "container"
+image: "portainer/portainer-ce:latest"
+container_port: 9000
+default_port: 9000
+
+environment: {}
+
+volumes:
+  portainer_data:
+    host: "./instances/portainer_data"
+    container: "/data"
+  docker_socket:
+    host: "/var/run/docker.sock"
+    container: "/var/run/docker.sock"
+
+network: "traefik"
+
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.portainer.rule: "Host(`{container_name}.localhost`)"
+  traefik.http.services.portainer.loadbalancer.server.port: "9000"

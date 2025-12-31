@@ -1,0 +1,24 @@
+name: listmonk
+display_name: "listmonk"
+description: "High performance, self-hosted newsletter and mailing list manager"
+icon: "mail"
+image: "listmonk/listmonk:latest"
+container_port: 9000
+default_port: 8086
+environment:
+  LISTMONK_app__address: "0.0.0.0:9000"
+  LISTMONK_db__host: "postgresql"
+  LISTMONK_db__user: "admin"
+  LISTMONK_db__password: "admin"
+  LISTMONK_db__port: "5432"
+  LISTMONK_db__database: "community"
+  LISTMONK_db__ssl_mode: "disable"
+volumes:
+  listmonk_data:
+    host: "listmonk_data"
+    container: "/listmonk/uploads"
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.listmonk.rule: "Host(`listmonk.localhost`)"
+  traefik.http.services.listmonk.loadbalancer.server.port: "9000"

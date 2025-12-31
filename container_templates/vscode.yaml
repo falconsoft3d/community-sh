@@ -1,0 +1,23 @@
+name: vscode
+display_name: "VS Code - Code Server"
+description: "Visual Studio Code running in the browser"
+icon: "code"
+image: "codercom/code-server:latest"
+container_port: 8080
+default_port: 8080
+
+environment:
+  PASSWORD: "admin"
+  SUDO_PASSWORD: "admin"
+
+volumes:
+  vscode_data:
+    host: "vscode_data"
+    container: "/home/coder"
+
+network: "traefik"
+
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.vscode.rule: "Host(`vscode.localhost`)"
+  traefik.http.services.vscode.loadbalancer.server.port: "8080"

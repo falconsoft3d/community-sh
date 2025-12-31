@@ -1,0 +1,11 @@
+name: excalidraw
+display_name: "Excalidraw"
+description: "Virtual whiteboard for sketching hand-drawn like diagrams"
+icon: "edit-3"
+image: "excalidraw/excalidraw:latest"
+container_port: 80
+default_port: 8082
+network: "traefik"
+labels:
+  traefik.enable: "true"
+  traefik.http.routers.excalidraw.rule: "Host(`excalidraw.localhost`)"
