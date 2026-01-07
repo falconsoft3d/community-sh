@@ -11,13 +11,15 @@ class TraefikService:
     """Service for managing Traefik dynamic configuration"""
     
     @staticmethod
-    def generate_dynamic_config(domain=None, ssl_enabled=False):
+    def generate_dynamic_config(domain=None, ssl_enabled=False, cert_path=None, key_path=None):
         """
         Generate Traefik dynamic configuration file based on GitHubConfig
         
         Args:
             domain: Main domain from GitHubConfig.main_domain
             ssl_enabled: Whether SSL is enabled from GitHubConfig.ssl_enabled
+            cert_path: Path to SSL certificate file
+            key_path: Path to SSL key file
         
         Returns:
             tuple: (success, message)
@@ -53,11 +55,44 @@ class TraefikService:
                     }
                 }
                 
+                # Add HTTPS router if SSL is enabled and certificates exist
+                if ssl_enabled and cert_path and key_path and os.path.exists(cert_path) and os.path.exists(key_path):
+                    # Add HTTPS router
+                    config['http']['routers']['app-domain-secure'] = {
+                        'rule': f'Host(`{domain}`) || Host(`www.{domain}`)',
+                        'entryPoints': ['websecure'],
+                        'service': 'app-domain-service',
+                        'priority': 50,
+                        'tls': {}
+                    }
+                    
+                    # Add HTTP to HTTPS redirect
+                    config['http']['routers']['app-domain']['middlewares'] = ['redirect-to-https']
+                    config['http']['middlewares'] = {
+                        'redirect-to-https': {
+                            'redirectScheme': {
+                                'scheme': 'https',
+                                'permanent': True
+                            }
+                        }
+                    }
+                    
+                    # Configure TLS certificates
+                    config['tls'] = {
+                        'certificates': [
+                            {
+                                'certFile': cert_path,
+                                'keyFile': key_path
+                            }
+                        ]
+                    }
+                
                 # Write configuration to file
                 with open(config_file, 'w') as f:
                     yaml.dump(config, f, default_flow_style=False)
                 
-                return True, f"Configuración de Traefik generada para {domain}"
+                ssl_status = " con HTTPS" if ssl_enabled and cert_path else " (HTTP)"
+                return True, f"Configuración de Traefik generada para {domain}{ssl_status}"
             else:
                 # Remove configuration file if no domain is set
                 if os.path.exists(config_file):

@@ -749,11 +749,14 @@ def settings_view(request):
             # Generate dynamic Traefik configuration
             success, msg = TraefikService.generate_dynamic_config(
                 domain=config.main_domain if config.main_domain else None,
-                ssl_enabled=config.ssl_enabled
+                ssl_enabled=config.ssl_enabled,
+                cert_path=config.ssl_certificate_path if config.ssl_enabled else None,
+                key_path=config.ssl_key_path if config.ssl_enabled else None
             )
             if success:
                 if config.main_domain:
-                    messages.info(request, f'✅ Dominio {config.main_domain} configurado correctamente. Traefik lo detectará automáticamente.')
+                    protocol = "HTTPS" if config.ssl_enabled and config.ssl_certificate_path else "HTTP"
+                    messages.info(request, f'✅ Dominio {config.main_domain} configurado con {protocol}. Traefik lo detectará automáticamente.')
                 else:
                     messages.info(request, 'Dominio eliminado, volviendo a localhost.')
             else:
@@ -898,7 +901,7 @@ def generate_ssl_certificate(request):
             return redirect('settings')
         
         # Generate certificate
-        cert_path, key_path, success, message = SSLService.generate_certificate(domain, email)
+        success, message, cert_path, key_path = SSLService.generate_certificate(domain, email)
         
         if success:
             # Update config with new paths
@@ -906,20 +909,23 @@ def generate_ssl_certificate(request):
             config.ssl_certificate_path = cert_path
             config.ssl_key_path = key_path
             config.ssl_enabled = True
+            config.ssl_email = email
             config.save()
             
             # Update Traefik configuration for HTTPS
             from .traefik_service import TraefikService
-            traefik_success, traefik_msg = TraefikService.update_docker_compose_labels(
-                domain=domain, 
-                ssl_enabled=True
+            traefik_success, traefik_msg = TraefikService.generate_dynamic_config(
+                domain=domain,
+                ssl_enabled=True,
+                cert_path=cert_path,
+                key_path=key_path
             )
             
             messages.success(request, message)
             if traefik_success:
-                messages.info(request, 'Certificado SSL generado. Por favor, ejecuta "docker-compose up -d --force-recreate app traefik" para aplicar HTTPS en Traefik.')
+                messages.success(request, f'✅ {traefik_msg}. HTTPS configurado correctamente.')
             else:
-                messages.warning(request, f'Certificado generado, pero considera actualizar Traefik manualmente: {traefik_msg}')
+                messages.warning(request, f'Certificado generado pero error en Traefik: {traefik_msg}')
         else:
             messages.error(request, message)
     
