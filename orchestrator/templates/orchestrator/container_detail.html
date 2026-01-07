@@ -50,7 +50,18 @@
                 <i data-lucide="info" class="inline-block h-4 w-4 mr-2"></i>
                 Information
             </button>
-
+            <button @click="activeTab = 'domains'"
+                :class="activeTab === 'domains' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="globe" class="inline-block h-4 w-4 mr-2"></i>
+                Domains
+            </button>
+            <button @click="activeTab = 'logs'"
+                :class="activeTab === 'logs' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="file-text" class="inline-block h-4 w-4 mr-2"></i>
+                Logs
+            </button>
         </nav>
     </div>
 
@@ -191,21 +202,117 @@
                 <h3 class="font-semibold text-lg">Domain Configuration</h3>
                 <p class="text-sm text-muted-foreground mt-1">Configure custom domains and SSL certificates</p>
             </div>
-            <div class="p-6">
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div class="flex items-start gap-3">
-                        <i data-lucide="info" class="h-5 w-5 text-blue-600 mt-0.5"></i>
-                        <div>
-                            <h4 class="font-medium text-blue-900 mb-1">Domain configuration coming soon</h4>
-                            <p class="text-sm text-blue-700">Custom domain and SSL certificate management for containers
-                                will be available in a future update.</p>
-                            <div class="mt-3 text-sm text-blue-700">
-                                <p><strong>Current access:</strong></p>
-                                <p class="font-mono mt-1">{{ container.url }}</p>
+            <div class="p-6 space-y-6">
+                <!-- Current URLs -->
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-sm font-medium">Primary URL</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <input type="text" readonly value="{{ container.url }}"
+                                class="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                            <button onclick="navigator.clipboard.writeText('{{ container.url }}'); this.innerHTML='<i data-lucide=\'check\' class=\'h-4 w-4\'></i>'; lucide.createIcons(); setTimeout(() => this.innerHTML='<i data-lucide=\'copy\' class=\'h-4 w-4\'></i>'; lucide.createIcons(), 2000)"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3">
+                                <i data-lucide="copy" class="h-4 w-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">Alternative URL (IP:Port)</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <input type="text" readonly value="{{ container.url_with_port }}"
+                                class="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm">
+                            <button onclick="navigator.clipboard.writeText('{{ container.url_with_port }}'); this.innerHTML='<i data-lucide=\'check\' class=\'h-4 w-4\'></i>'; lucide.createIcons(); setTimeout(() => this.innerHTML='<i data-lucide=\'copy\' class=\'h-4 w-4\'></i>'; lucide.createIcons(), 2000)"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3">
+                                <i data-lucide="copy" class="h-4 w-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t pt-6">
+                    <h4 class="font-medium mb-4">Custom Domain</h4>
+                    <form method="post" action="{% url 'container-update-domain' container.pk %}">
+                        {% csrf_token %}
+                        <div class="space-y-4">
+                            <div>
+                                <label for="custom_domain" class="text-sm font-medium">Custom Domain</label>
+                                <input type="text" id="custom_domain" name="custom_domain"
+                                    value="{{ container.custom_domain|default:'' }}"
+                                    placeholder="ejemplo.midominio.com"
+                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-1">
+                                <p class="text-sm text-muted-foreground mt-1">Leave empty to use IP:Port</p>
+                            </div>
+                            <button type="submit"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                                <i data-lucide="save" class="mr-2 h-4 w-4"></i>
+                                Save Domain
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- SSL Certificate Section -->
+                {% if container.custom_domain and not container.ssl_enabled %}
+                <div class="border-t pt-6">
+                    <h4 class="font-medium mb-4">SSL Certificate</h4>
+                    <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="shield-plus" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+                            <div class="flex-1">
+                                <h5 class="text-sm font-medium text-blue-900 mb-2">Generate SSL Certificate with Let's Encrypt</h5>
+                                <p class="text-sm text-blue-700 mb-3">
+                                    Generate a free SSL certificate for your custom domain
+                                </p>
+                                <button type="button" 
+                                    onclick="document.getElementById('ssl-form-{{ container.pk }}').classList.toggle('hidden')"
+                                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 h-9 px-4 py-2">
+                                    <i data-lucide="key" class="mr-2 h-4 w-4"></i>
+                                    Generate SSL Certificate
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="ssl-form-{{ container.pk }}" method="post" action="{% url 'container-generate-ssl' container.pk %}" class="mt-4 hidden">
+                        {% csrf_token %}
+                        <div class="rounded-lg border bg-card p-4 space-y-4">
+                            <div>
+                                <label for="ssl_email" class="text-sm font-medium">Email for Let's Encrypt</label>
+                                <input type="email" id="ssl_email" name="email" required
+                                    value="{{ container.ssl_email|default:'' }}"
+                                    placeholder="tu@email.com"
+                                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-1">
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="submit"
+                                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                                    <i data-lucide="shield-check" class="mr-2 h-4 w-4"></i>
+                                    Confirm and Generate
+                                </button>
+                                <button type="button" 
+                                    onclick="document.getElementById('ssl-form-{{ container.pk }}').classList.add('hidden')"
+                                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                {% elif container.custom_domain and container.ssl_enabled %}
+                <div class="border-t pt-6">
+                    <div class="rounded-lg border border-green-200 bg-green-50 p-4">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="shield-check" class="h-5 w-5 text-green-600 mt-0.5"></i>
+                            <div>
+                                <h5 class="text-sm font-medium text-green-900 mb-1">SSL Certificate Active</h5>
+                                <p class="text-sm text-green-700">
+                                    Your container is protected with SSL/HTTPS
+                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -258,6 +365,40 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Tab -->
+    <div x-show="activeTab === 'logs'" class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 border-b flex items-center justify-between">
+                <div>
+                    <h3 class="font-semibold text-lg">Container Logs</h3>
+                    <p class="text-sm text-muted-foreground mt-1">View real-time logs from this container</p>
+                </div>
+                <button onclick="window.location.reload()"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
+                    <i data-lucide="refresh-cw" class="mr-2 h-4 w-4"></i> Refresh
+                </button>
+            </div>
+            <div class="p-6">
+                {% if container.status == 'running' %}
+                    {% if logs %}
+                    <pre class="bg-black text-green-400 p-4 rounded-lg overflow-x-auto text-xs font-mono max-h-[600px] overflow-y-auto">{{ logs }}</pre>
+                    {% else %}
+                    <div class="bg-muted rounded-lg p-8 text-center">
+                        <i data-lucide="file-text" class="h-12 w-12 mx-auto text-muted-foreground mb-4"></i>
+                        <p class="text-muted-foreground">No logs available at the moment</p>
+                    </div>
+                    {% endif %}
+                {% else %}
+                <div class="bg-muted rounded-lg p-8 text-center">
+                    <i data-lucide="alert-circle" class="h-12 w-12 mx-auto text-muted-foreground mb-4"></i>
+                    <p class="text-muted-foreground">Container must be running to view logs</p>
+                    <p class="text-sm text-muted-foreground mt-2">Start the container to see its logs</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

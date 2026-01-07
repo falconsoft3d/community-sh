@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'orchestrator.middleware.ConditionalSSLRedirectMiddleware',  # Custom SSL redirect middleware
+    'orchestrator.middleware.DynamicAllowedHostsMiddleware',  # Dynamic ALLOWED_HOSTS validation
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

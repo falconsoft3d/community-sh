@@ -62,20 +62,6 @@
                         md: "calc(var(--radius) - 2px)",
                         sm: "calc(var(--radius) - 4px)",
                     },
-                    animation: {
-                        'slide-in-right': 'slideInRight 0.3s ease-out forwards',
-                        'slide-out-right': 'slideOutRight 0.3s ease-in forwards',
-                    },
-                    keyframes: {
-                        slideInRight: {
-                            '0%': { transform: 'translateX(100%)', opacity: '0' },
-                            '100%': { transform: 'translateX(0)', opacity: '1' },
-                        },
-                        slideOutRight: {
-                            '0%': { transform: 'translateX(0)', opacity: '1' },
-                            '100%': { transform: 'translateX(100%)', opacity: '0' },
-                        },
-                    },
                 }
             }
         }
@@ -107,42 +93,9 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-
-        /* Toast Animations */
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideOutRight {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-
-            to {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-        }
-
-        .animate-slide-in-right {
-            animation: slideInRight 0.3s ease-out forwards;
-        }
-
-        .animate-slide-out-right {
-            animation: slideOutRight 0.3s ease-in forwards;
-        }
-
-        .toast-notification {
-            transition: all 0.3s ease;
+        
+        [x-cloak] {
+            display: none !important;
         }
     </style>
 </head>
@@ -203,8 +156,7 @@
         <!-- Main Content -->
         <div class="flex flex-col w-full">
             {% if user.is_authenticated %}
-            <header
-                class="flex h-14 items-center gap-4 bg-card shadow-sm px-4 lg:h-[60px] lg:px-6 mx-4 mt-4 mb-2 rounded-lg border">
+            <header class="flex h-14 items-center gap-4 bg-card shadow-sm px-4 lg:h-[60px] lg:px-6 mx-4 mt-4 mb-2 rounded-lg border">
                 <!-- Mobile Trigger could go here -->
                 <div class="w-full flex-1">
                     <!-- Breadcrumb or Title -->
@@ -216,8 +168,7 @@
                         <button @click="open = !open"
                             class="h-8 w-8 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors overflow-hidden">
                             {% if user.profile.avatar %}
-                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}"
-                                class="h-full w-full object-cover">
+                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="h-full w-full object-cover">
                             {% else %}
                             <span class="text-xs font-bold">{{ user.username|slice:":1"|upper }}</span>
                             {% endif %}
@@ -258,46 +209,50 @@
     </div>
 
     <!-- Toast Notifications -->
-    {% include "orchestrator/includes/messages_toast.html" %}
-
-    <!-- Toast Notifications Script -->
-    <script>
-        // Function to close a toast notification
-        function closeToast(toastElement) {
-            if (!toastElement) return;
-
-            // Add slide-out animation
-            toastElement.classList.remove('animate-slide-in-right');
-            toastElement.classList.add('animate-slide-out-right');
-
-            // Remove element after animation completes
-            setTimeout(() => {
-                toastElement.remove();
-
-                // If no more toasts, hide container
-                const container = document.getElementById('toast-container');
-                if (container && container.querySelectorAll('.toast-notification').length === 0) {
-                    container.style.display = 'none';
-                }
-            }, 300); // Match animation duration
-        }
-
-        // Auto-dismiss toasts after 5 seconds
-        document.addEventListener('DOMContentLoaded', function () {
-            const toasts = document.querySelectorAll('.toast-notification');
-
-            toasts.forEach((toast, index) => {
-                // Auto-dismiss after 5 seconds (with stagger for multiple toasts)
-                setTimeout(() => {
-                    closeToast(toast);
-                }, 5000 + (index * 100)); // Stagger dismissals by 100ms
-            });
-        });
-    </script>
+    {% if messages %}
+    <div class="fixed top-4 right-4 z-50 space-y-2">
+        {% for message in messages %}
+        <div x-data="{ show: true }" 
+             x-show="show" 
+             x-init="setTimeout(() => show = false, 5000)"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-x-full"
+             x-transition:enter-end="opacity-100 transform translate-x-0"
+             x-transition:leave="transition ease-in duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="flex items-center gap-3 rounded-lg border shadow-lg p-4 min-w-[300px] max-w-md
+             {% if 'success' in message.tags %}bg-green-50 border-green-200 text-green-900{% endif %}
+             {% if 'error' in message.tags %}bg-red-50 border-red-200 text-red-900{% endif %}
+             {% if 'info' in message.tags %}bg-blue-50 border-blue-200 text-blue-900{% endif %}
+             {% if 'warning' in message.tags %}bg-yellow-50 border-yellow-200 text-yellow-900{% endif %}">
+            <div class="flex-1">
+                <div class="flex items-start gap-2">
+                    <i data-lucide="{% if 'success' in message.tags %}check-circle{% elif 'error' in message.tags %}alert-circle{% elif 'warning' in message.tags %}alert-triangle{% else %}info{% endif %}" 
+                       class="h-5 w-5 flex-shrink-0
+                       {% if 'success' in message.tags %}text-green-600{% endif %}
+                       {% if 'error' in message.tags %}text-red-600{% endif %}
+                       {% if 'info' in message.tags %}text-blue-600{% endif %}
+                       {% if 'warning' in message.tags %}text-yellow-600{% endif %}"></i>
+                    <p class="text-sm font-medium">{{ message }}</p>
+                </div>
+            </div>
+            <button @click="show = false" 
+                    class="flex-shrink-0 text-gray-400 hover:text-gray-600">
+                <i data-lucide="x" class="h-4 w-4"></i>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- Initialize Icons -->
     <script>
         lucide.createIcons();
+        // Re-initialize icons for dynamically added elements
+        document.addEventListener('alpine:initialized', () => {
+            setTimeout(() => lucide.createIcons(), 100);
+        });
     </script>
 </body>
 

@@ -18,11 +18,18 @@ class InstanceForm(forms.ModelForm):
     
     class Meta:
         model = Instance
-        fields = ['name', 'odoo_version', 'github_repo', 'github_branch', 'database_name']
+        fields = ['name', 'odoo_version', 'github_repo', 'github_branch', 'database_name', 'custom_domain']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'mi-empresa'}),
             'github_branch': forms.TextInput(attrs={'placeholder': 'main'}),
             'database_name': forms.TextInput(attrs={'placeholder': 'Dejar vacío para auto-detección'}),
+            'custom_domain': forms.TextInput(attrs={'placeholder': 'ejemplo.midominio.com'}),
+        }
+        labels = {
+            'custom_domain': 'Dominio Personalizado (opcional)',
+        }
+        help_texts = {
+            'custom_domain': 'Dominio personalizado para acceder a esta instancia (ej: sh.midominio.local)',
         }
     
     def __init__(self, *args, **kwargs):

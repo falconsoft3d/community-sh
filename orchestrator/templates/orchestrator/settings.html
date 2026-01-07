@@ -13,7 +13,7 @@
     <!-- Tabs Navigation -->
     <div class="border-b">
         <nav class="flex gap-4 overflow-x-auto">
-            <button @click="activeTab = 'github'; window.location.hash = 'github'" 
+            <button type="button" @click="activeTab = 'github'; window.location.hash = 'github'" 
                 :class="activeTab === 'github' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="github" class="inline-block h-4 w-4 mr-2"></i>
@@ -46,6 +46,10 @@
         </nav>
     </div>
 
+    <!-- Main Settings Form -->
+    <form method="post" action="{% url 'settings' %}">
+        {% csrf_token %}
+
     <!-- GitHub Integration Tab -->
     <div x-show="activeTab === 'github'" class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -57,10 +61,8 @@
                 <p class="text-sm text-muted-foreground">Conecta tu cuenta de GitHub para desplegar repositorios automáticamente</p>
             </div>
             <div class="p-6">
-                <form method="post" class="space-y-6">
-                    {% csrf_token %}
-
-                    {% if messages %}
+                <!-- GitHub Settings Section -->
+                {% if messages %}
                     {% for message in messages %}
                     <div class="rounded-md bg-green-50 border border-green-200 p-3">
                         <div class="flex items-center gap-2">
@@ -131,19 +133,18 @@
                     {% endif %}
 
                     <div class="flex items-center gap-4 pt-4">
-                        <button type="submit"
+                        <button type="submit" name="section" value="github"
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                             <i data-lucide="save" class="mr-2 h-4 w-4"></i>
-                            Guardar Configuración
+                            Save GitHub Settings
                         </button>
                     </div>
-                </form>
             </div>
         </div>
     </div>
 
     <!-- Domain & SSL Tab -->
-    <div x-show="activeTab === 'domain'" class="space-y-6">
+    <div x-show="activeTab === 'domain'" x-cloak class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <div class="flex items-center gap-2">
@@ -153,10 +154,8 @@
                 <p class="text-sm text-muted-foreground">Configura el dominio principal y habilita SSL/HTTPS</p>
             </div>
             <div class="p-6">
-                <form method="post" class="space-y-6">
-                    {% csrf_token %}
-                    
-                    <div class="space-y-2">
+                <!-- Domain & SSL Settings Section -->
+                <div class="space-y-2">
                         <label for="main_domain" class="text-sm font-medium leading-none">
                             Dominio Principal
                         </label>
@@ -182,31 +181,7 @@
                         </p>
                     </div>
 
-                    <div class="space-y-2">
-                        <label for="ssl_certificate_path" class="text-sm font-medium leading-none">
-                            Ruta del Certificado SSL
-                        </label>
-                        <input type="text" id="ssl_certificate_path" name="ssl_certificate_path"
-                            value="{{ config.ssl_certificate_path|default:'' }}"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            placeholder="/etc/ssl/certs/certificate.crt" readonly>
-                        <p class="text-sm text-muted-foreground">
-                            Ruta completa al archivo del certificado SSL (se autocompletará al generar con Let's Encrypt)
-                        </p>
-                    </div>
-
-                    <div class="space-y-2">
-                        <label for="ssl_key_path" class="text-sm font-medium leading-none">
-                            Ruta de la Clave Privada SSL
-                        </label>
-                        <input type="text" id="ssl_key_path" name="ssl_key_path"
-                            value="{{ config.ssl_key_path|default:'' }}"
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            placeholder="/etc/ssl/private/private.key" readonly>
-                        <p class="text-sm text-muted-foreground">
-                            Ruta completa al archivo de la clave privada SSL (se autocompletará al generar con Let's Encrypt)
-                        </p>
-                    </div>
+                    <!-- SSL Certificate and Key paths hidden - auto-generated by Let's Encrypt -->
 
                     <!-- Let's Encrypt Auto-generation -->
                     <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
@@ -227,13 +202,15 @@
                         </div>
                     </div>
 
+                    </form> <!-- Close main form temporarily -->
+
                     <!-- Let's Encrypt Form (Hidden by default) -->
                     <div id="letsencrypt-form" style="display: none;" class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-4">
                         <h4 class="text-sm font-medium">Configuración de Let's Encrypt</h4>
                         <p class="text-sm text-muted-foreground">
                             <strong>Nota:</strong> Tu dominio debe estar apuntando a este servidor y el puerto 80 debe estar disponible.
                         </p>
-                        <form method="post" action="{% url 'generate-ssl' %}" onsubmit="return confirm('¿Estás seguro de generar un nuevo certificado SSL? Asegúrate de que tu dominio esté configurado correctamente.');">
+                        <form id="ssl-generation-form" method="post" action="{% url 'generate-ssl' %}" onsubmit="return confirm('¿Estás seguro de generar un nuevo certificado SSL? Asegúrate de que tu dominio esté configurado correctamente.');">
                             {% csrf_token %}
                             <div class="space-y-4">
                                 <div class="space-y-2">
@@ -259,7 +236,8 @@
                                         Email para notificaciones de renovación de Let's Encrypt
                                     </p>
                                 </div>
-                                <button type="submit"
+                                <button type="button" 
+                                    onclick="if(confirm('¿Estás seguro de generar un nuevo certificado SSL? Asegúrate de que tu dominio esté configurado correctamente.')) { document.getElementById('ssl-generation-form').submit(); }"
                                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2">
                                     <i data-lucide="play" class="mr-2 h-4 w-4"></i>
                                     Generar Certificado Ahora
@@ -268,14 +246,61 @@
                         </form>
                     </div>
 
+                    <form method="post" action="{% url 'settings' %}"> <!-- Reopen main form -->
+                    {% csrf_token %}
+
                     {% if config.ssl_enabled and config.main_domain %}
                     <div class="rounded-lg border border-green-200 bg-green-50 p-4">
                         <div class="flex items-start gap-3">
                             <i data-lucide="shield-check" class="h-5 w-5 text-green-600 mt-0.5"></i>
                             <div class="flex-1">
-                                <h4 class="text-sm font-medium text-green-900">SSL Configurado</h4>
+                                <h4 class="text-sm font-medium text-green-900">SSL Configurado ✓</h4>
                                 <p class="text-sm text-green-700 mt-1">
                                     Tu dominio {{ config.main_domain }} está configurado con SSL/HTTPS
+                                </p>
+                                <p class="text-xs text-green-600 mt-2">
+                                    Certificado: {{ config.ssl_certificate_path|truncatechars:60 }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif config.main_domain %}
+                
+                    <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 mt-2">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="globe" class="h-5 w-5 text-blue-600 mt-0.5"></i>
+                            <div class="flex-1">
+                                <h4 class="text-sm font-medium text-blue-900">Dominio Configurado (HTTP)</h4>
+                                <p class="text-sm text-blue-700 mt-1">
+                                    Tu dominio {{ config.main_domain }} está configurado para HTTP
+                                </p>
+                                <p class="text-xs text-blue-600 mt-2">
+                                    💡 Considera generar un certificado SSL para mayor seguridad
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Instrucciones después de guardar -->
+                    {% if config.main_domain %}
+                    <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-4 mt-2">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="alert-circle" class="h-5 w-5 text-yellow-600 mt-0.5"></i>
+                            <div class="flex-1">
+                                <h4 class="text-sm font-medium text-yellow-900">Importante: Aplicar Cambios</h4>
+                                <p class="text-sm text-yellow-700 mt-1">
+                                    Después de guardar la configuración, ejecuta este comando para aplicar los cambios:
+                                </p>
+                                <div class="mt-2 bg-yellow-100 rounded p-2 font-mono text-xs">
+                                    {% if config.ssl_enabled %}
+                                    docker-compose up -d --force-recreate app traefik
+                                    {% else %}
+                                    docker-compose up -d --force-recreate app
+                                    {% endif %}
+                                </div>
+                                <p class="text-xs text-yellow-600 mt-2">
+                                    O usa el script de ayuda: <code class="bg-yellow-100 px-1 rounded">./scripts/apply_domain_config.sh</code>
                                 </p>
                             </div>
                         </div>
@@ -283,13 +308,12 @@
                     {% endif %}
 
                     <div class="flex items-center gap-4 pt-4">
-                        <button type="submit"
+                        <button type="submit" name="section" value="domain"
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                             <i data-lucide="save" class="mr-2 h-4 w-4"></i>
-                            Guardar Configuración
+                            Save Domain & SSL Settings
                         </button>
                     </div>
-                </form>
             </div>
         </div>
     </div>
@@ -305,10 +329,8 @@
                 <p class="text-sm text-muted-foreground">Opciones generales de la plataforma</p>
             </div>
             <div class="p-6">
-                <form method="post" class="space-y-6">
-                    {% csrf_token %}
-                    
-                    <div class="space-y-2">
+                <!-- General Settings Section -->
+                <div class="space-y-2">
                         <div class="flex items-center space-x-2">
                             <input type="checkbox" id="registration_enabled" name="registration_enabled" {% if config.registration_enabled %}checked{% endif %}
                                 class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
@@ -380,13 +402,12 @@
                     </div>
 
                     <div class="flex items-center gap-4 pt-4">
-                        <button type="submit"
+                        <button type="submit" name="section" value="general"
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                             <i data-lucide="save" class="mr-2 h-4 w-4"></i>
-                            Guardar Configuración
+                            Save General Settings
                         </button>
                     </div>
-                </form>
             </div>
         </div>
     </div>
@@ -402,10 +423,8 @@
                 <p class="text-sm text-muted-foreground">Configura respaldos automáticos periódicos para todas las instancias</p>
             </div>
             <div class="p-6">
-                <form method="post" class="space-y-6">
-                    {% csrf_token %}
-
-                    <!-- Activar respaldos automáticos -->
+                <!-- Backups Settings Section -->
+                <!-- Activar respaldos automáticos -->
                     <div class="space-y-2">
                         <div class="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
                             <input type="checkbox" 
@@ -502,13 +521,12 @@
                             <i data-lucide="play" class="h-4 w-4 mr-2"></i>
                             Ejecutar Respaldos Ahora
                         </a>
-                        <button type="submit"
+                        <button type="submit" name="section" value="backups"
                             class="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
                             <i data-lucide="save" class="h-4 w-4 mr-2"></i>
-                            Guardar Configuración
+                            Save Backup Settings
                         </button>
                     </div>
-                </form>
             </div>
         </div>
     </div>
@@ -585,5 +603,7 @@
             </div>
         </div>
     </div>
+
+    </form> <!-- End Main Settings Form -->
 </div>
 {% endblock %}

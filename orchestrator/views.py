@@ -631,33 +631,87 @@ def settings_view(request):
     config, created = GitHubConfig.objects.get_or_create(user=request.user)
     
     if request.method == 'POST':
-        # Update configuration
-        config.personal_access_token = request.POST.get('personal_access_token', '')
-        config.default_organization = request.POST.get('default_organization', '')
-        config.webhook_secret = request.POST.get('webhook_secret', '')
-        config.registration_enabled = request.POST.get('registration_enabled') == 'on'
-        config.public_website_enabled = request.POST.get('public_website_enabled') == 'on'
-        config.two_factor_required = request.POST.get('two_factor_required') == 'on'
+        # Debug: print all POST data
+        import sys
+        print("=== POST DATA ===", file=sys.stderr)
+        for key, value in request.POST.items():
+            print(f"{key}: {value}", file=sys.stderr)
+        print("=================", file=sys.stderr)
         
-        # Update email notifications
-        config.email_notifications_enabled = request.POST.get('email_notifications_enabled') == 'on'
-        config.notification_emails = request.POST.get('notification_emails', '')
+        # Update configuration based on which fields are present in POST
+        # This allows each tab to submit independently without affecting others
         
-        # Update automatic backups configuration
-        config.auto_backup_enabled = request.POST.get('auto_backup_enabled') == 'on'
-        config.auto_backup_frequency_unit = request.POST.get('auto_backup_frequency_unit', 'day')
-        config.auto_backup_frequency_value = int(request.POST.get('auto_backup_frequency_value', 5))
-        config.auto_backup_retention = int(request.POST.get('auto_backup_retention', 5))
+        # Update GitHub configuration if present
+        if 'personal_access_token' in request.POST:
+            config.personal_access_token = request.POST.get('personal_access_token', '')
+            config.default_organization = request.POST.get('default_organization', '')
+            config.webhook_secret = request.POST.get('webhook_secret', '')
         
-        # Update domain and SSL configuration
-        config.main_domain = request.POST.get('main_domain', '')
-        config.ssl_enabled = request.POST.get('ssl_enabled') == 'on'
-        config.ssl_certificate_path = request.POST.get('ssl_certificate_path', '')
-        config.ssl_key_path = request.POST.get('ssl_key_path', '')
+        # Update general settings if present
+        if 'registration_enabled' in request.POST or request.POST.get('registration_enabled') == 'on':
+            config.registration_enabled = request.POST.get('registration_enabled') == 'on'
+        if 'public_website_enabled' in request.POST or request.POST.get('public_website_enabled') == 'on':
+            config.public_website_enabled = request.POST.get('public_website_enabled') == 'on'
+        if 'two_factor_required' in request.POST or request.POST.get('two_factor_required') == 'on':
+            config.two_factor_required = request.POST.get('two_factor_required') == 'on'
+        
+        # Update email notifications if present
+        if 'email_notifications_enabled' in request.POST or request.POST.get('email_notifications_enabled') == 'on':
+            config.email_notifications_enabled = request.POST.get('email_notifications_enabled') == 'on'
+        if 'notification_emails' in request.POST:
+            config.notification_emails = request.POST.get('notification_emails', '')
+        
+        # Update automatic backups configuration if present
+        if 'auto_backup_enabled' in request.POST or request.POST.get('auto_backup_enabled') == 'on':
+            config.auto_backup_enabled = request.POST.get('auto_backup_enabled') == 'on'
+        if 'auto_backup_frequency_unit' in request.POST:
+            config.auto_backup_frequency_unit = request.POST.get('auto_backup_frequency_unit', 'day')
+        if 'auto_backup_frequency_value' in request.POST:
+            config.auto_backup_frequency_value = int(request.POST.get('auto_backup_frequency_value', 5))
+        if 'auto_backup_retention' in request.POST:
+            config.auto_backup_retention = int(request.POST.get('auto_backup_retention', 5))
+        
+        # Update domain and SSL configuration if present
+        old_domain = config.main_domain
+        old_ssl_enabled = config.ssl_enabled
+        
+        # Check which section is being saved
+        section = request.POST.get('section', '')
+        
+        if section == 'domain':
+            # Update domain and SSL when saving Domain & SSL section
+            config.main_domain = request.POST.get('main_domain', '').strip()
+            # Checkboxes not checked don't appear in POST, so we need to check explicitly
+            config.ssl_enabled = 'ssl_enabled' in request.POST
+            
+            # If domain is removed, also clear SSL settings
+            if not config.main_domain:
+                config.ssl_enabled = False
+                config.ssl_certificate_path = ''
+                config.ssl_key_path = ''
+                config.ssl_email = ''
         
         config.save()
         
-        messages.success(request, 'Configuración guardada exitosamente')
+        # Update Traefik configuration if domain or SSL settings changed
+        # Also update if domain was removed (changed from something to empty)
+        if section == 'domain' and (old_domain != config.main_domain or old_ssl_enabled != config.ssl_enabled):
+            from .traefik_service import TraefikService
+            # If domain is empty, use localhost as default
+            domain_to_use = config.main_domain if config.main_domain else 'localhost'
+            success, msg = TraefikService.update_docker_compose_labels(
+                domain=domain_to_use, 
+                ssl_enabled=config.ssl_enabled if config.main_domain else False
+            )
+            if success:
+                if config.main_domain:
+                    messages.info(request, 'Dominio configurado. Por favor, ejecuta "docker-compose restart app" para aplicar los cambios de Traefik.')
+                else:
+                    messages.info(request, 'Dominio eliminado, volviendo a localhost. Por favor, ejecuta "docker-compose restart app" para aplicar los cambios.')
+            else:
+                messages.warning(request, f'Configuración guardada, pero hubo un problema con Traefik: {msg}')
+        
+        messages.success(request, 'Settings saved successfully')
         return redirect('settings')
     
     return render(request, 'orchestrator/settings.html', {'config': config})
@@ -805,7 +859,19 @@ def generate_ssl_certificate(request):
             config.ssl_key_path = key_path
             config.ssl_enabled = True
             config.save()
+            
+            # Update Traefik configuration for HTTPS
+            from .traefik_service import TraefikService
+            traefik_success, traefik_msg = TraefikService.update_docker_compose_labels(
+                domain=domain, 
+                ssl_enabled=True
+            )
+            
             messages.success(request, message)
+            if traefik_success:
+                messages.info(request, 'Certificado SSL generado. Por favor, ejecuta "docker-compose up -d --force-recreate app traefik" para aplicar HTTPS en Traefik.')
+            else:
+                messages.warning(request, f'Certificado generado, pero considera actualizar Traefik manualmente: {traefik_msg}')
         else:
             messages.error(request, message)
     

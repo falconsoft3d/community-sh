@@ -94,10 +94,18 @@
                     </td>
                     <td class="p-4 align-middle">
                         {% if instance.status == 'running' %}
-                        <a href="http://{{ instance.name }}.localhost" target="_blank"
-                            class="font-medium text-primary underline-offset-4 hover:underline flex items-center gap-1">
-                            Open <i data-lucide="external-link" class="h-3 w-3"></i>
-                        </a>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ instance.url }}" target="_blank"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
+                                <i data-lucide="external-link" class="h-3 w-3 mr-1"></i>
+                                Primary
+                            </a>
+                            <a href="{{ instance.url_with_port }}" target="_blank"
+                                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
+                                <i data-lucide="link" class="h-3 w-3 mr-1"></i>
+                                Alt
+                            </a>
+                        </div>
                         {% else %}
                         <span class="text-muted-foreground">-</span>
                         {% endif %}

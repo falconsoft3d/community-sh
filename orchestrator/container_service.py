@@ -45,10 +45,15 @@ class ContainerService:
                     volumes[host_path] = {'bind': container_path, 'mode': 'rw'}
             
             # Prepare Traefik labels for automatic routing
+            # Use custom domain if set, otherwise use container.name.localhost
+            domain = container.custom_domain if container.custom_domain else f"{container.name}.localhost"
+            
             labels = {
                 'traefik.enable': 'true',
-                f'traefik.http.routers.{container.name}.rule': f'Host(`{container.name}.localhost`)',
+                'traefik.docker.network': 'community-sh_web',
+                f'traefik.http.routers.{container.name}.rule': f'Host(`{domain}`)',
                 f'traefik.http.routers.{container.name}.entrypoints': 'web',
+                f'traefik.http.routers.{container.name}.priority': '100',
                 f'traefik.http.services.{container.name}.loadbalancer.server.port': str(container.container_port),
             }
             
@@ -89,6 +94,16 @@ class ContainerService:
                 restart_policy={'Name': 'unless-stopped'}
             )
             
+            # Connect to community-sh_web network for Traefik routing
+            try:
+                web_network = self.client.networks.get("community-sh_web")
+                web_network.connect(docker_container)
+                print(f"Container {container.name} connected to community-sh_web network")
+            except docker.errors.NotFound:
+                print("Warning: community-sh_web network not found. Traefik routing may not work.")
+            except Exception as e:
+                print(f"Warning: Could not connect to community-sh_web: {str(e)}")
+            
             container.container_id = docker_container.id
             container.status = 'running'
             container.save()
@@ -123,13 +138,19 @@ class ContainerService:
             return False, f"Error starting container: {str(e)}"
     
     def restart_container(self, container):
-        """Restart a container"""
+        """Restart a container by recreating it with updated configuration"""
         try:
-            docker_container = self.client.containers.get(container.container_id)
-            docker_container.restart()
-            container.status = 'running'
-            container.save()
-            return True, f"Container {container.name} restarted"
+            # Stop and remove existing container
+            if container.container_id:
+                try:
+                    docker_container = self.client.containers.get(container.container_id)
+                    docker_container.stop()
+                    docker_container.remove()
+                except docker.errors.NotFound:
+                    pass
+            
+            # Recreate container with updated configuration
+            return self.create_container(container)
         except Exception as e:
             return False, f"Error restarting container: {str(e)}"
     

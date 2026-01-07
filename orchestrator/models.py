@@ -77,6 +77,25 @@ class Instance(models.Model):
             return f"{uri}:{self.port}"
             
         return uri
+    
+    @property
+    def url_with_port(self):
+        """Get the URL with IP and port (used as alternative URL)"""
+        server_ip = os.environ.get('SERVER_IP', '127.0.0.1')
+        if not server_ip:
+            server_ip = '127.0.0.1'
+        
+        # Handle IPv6 formatting (wrap in brackets for URL)
+        display_ip = f"[{server_ip}]" if ":" in server_ip and "[" not in server_ip else server_ip
+        
+        # Get port from container if exists
+        uri = f"http://{display_ip}"
+        
+        # If we have a mapped port, use it
+        if self.port:
+            return f"{uri}:{self.port}"
+            
+        return uri
 
 # Import additional models
 from .config_models import GitHubConfig

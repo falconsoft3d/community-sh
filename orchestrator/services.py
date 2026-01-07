@@ -50,53 +50,12 @@ class DockerService:
             # 5. Start Odoo
             odoo_container_name = f"odoo_{instance.name}"
             
-            # Prepare data persistence directory
-            data_path = os.path.join(workspace_path, 'data')
-            os.makedirs(data_path, exist_ok=True)
-            
-            # Pre-create Odoo internal directories to ensure they exist before bind mount
-            # and have the correct permissions immediately
-            sessions_path = os.path.join(data_path, 'sessions')
-            filestore_path = os.path.join(data_path, 'filestore')
-            os.makedirs(sessions_path, exist_ok=True)
-            os.makedirs(filestore_path, exist_ok=True)
-            
-            # Ensure permissions are correct for Odoo user (UID 101)
-            # We use a recursive method to ensure subdirectories like 'sessions' are also fixed
-            try:
-                # Use shell command for recursive chmod as it's more reliable
-                import subprocess
-                subprocess.run(['chmod', '-R', '777', data_path], check=True)
-                
-                # Also try to chown to 101:101 (default odoo user in docker)
-                # This helps in many Linux environments
-                try:
-                    subprocess.run(['chown', '-R', '101:101', data_path], check=True)
-                except:
-                    pass
-            except Exception as e:
-                print(f"Warning: Could not set recursive permissions on {data_path}: {e}")
-            
-            # Helper to translate container path to host path (for Docker-in-Docker)
-            # Docker daemon running on host needs the host machine paths
-            def get_host_path(local_path):
-                # In local development (Mac/Windows), the path might be the same
-                # In production (EasyPanel/Docker-in-Docker), we need to translate /app to /opt/project
-                host_workdir = os.environ.get('HOST_WORKDIR')
-                if not host_workdir:
-                    return local_path
-                return local_path.replace(str(settings.BASE_DIR), host_workdir)
-
             volumes = {}
-            # Mount data directory for Odoo filestore and sessions
-            # USE host-translated path for the Docker daemon!
-            volumes[get_host_path(data_path)] = {'bind': '/var/lib/odoo', 'mode': 'rw'}
-            
             # If we cloned addons, mount them
             addons_path = os.path.join(workspace_path, 'addons')
             if os.path.exists(addons_path):
                 # We mount it to /mnt/extra-addons which is standard in Odoo images
-                volumes[get_host_path(addons_path)] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
+                volumes[addons_path] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
             
             
             # Check if container already exists (redeploy scenario)
@@ -130,16 +89,26 @@ class DockerService:
                 network=network_name,
                 volumes=volumes,
                 ports={'8069/tcp': None}, # Let Docker assign a random host port
-                user='root',
                 detach=True,
                 labels={
                     "traefik.enable": "true",
-                    "traefik.docker.network": "web",
-                    "traefik.http.routers.odoo_" + instance.name + ".rule": f"Host(`{instance.name}.localhost`)",
+                    "traefik.docker.network": "community-sh_web",
+                    "traefik.http.routers.odoo_" + instance.name + ".rule": f"Host(`{instance.custom_domain if instance.custom_domain else instance.name + '.localhost'}`)",
                     "traefik.http.routers.odoo_" + instance.name + ".entrypoints": "web",
+                    "traefik.http.routers.odoo_" + instance.name + ".priority": "100",
                     "traefik.http.services.odoo_" + instance.name + ".loadbalancer.server.port": "8069",
                 }
             )
+            
+            # Connect to the community-sh_web network for Traefik routing
+            try:
+                web_network = self.client.networks.get("community-sh_web")
+                web_network.connect(odoo_container)
+                print(f"Container {odoo_container_name} connected to community-sh_web network")
+            except docker.errors.NotFound:
+                print("Warning: community-sh_web network not found. Traefik routing may not work.")
+            except Exception as e:
+                print(f"Warning: Could not connect to community-sh_web: {str(e)}")
             
             # If this is a redeploy, update all modules
             if is_redeploy:

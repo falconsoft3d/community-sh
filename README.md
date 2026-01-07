@@ -88,12 +88,31 @@ sudo ./easy-install.sh
 
 ## 🔒 SSL/HTTPS Configuration
 
-The platform supports conditional SSL/HTTPS configuration:
+La plataforma soporta configuración automática de dominios personalizados y SSL/HTTPS:
+
+### Configuración Rápida de Dominio y SSL
+
+1. **Configurar Dominio Principal:**
+   - Ve a Settings → Domain & SSL
+   - Ingresa tu dominio (ej: `midominio.com`)
+   - Guarda la configuración
+   - Ejecuta: `docker-compose up -d --force-recreate app`
+
+2. **Generar Certificado SSL Automático:**
+   - En la misma pestaña, haz clic en "Generar Certificado SSL"
+   - Completa tu dominio y email
+   - El sistema generará automáticamente el certificado con Let's Encrypt
+   - Ejecuta: `docker-compose up -d --force-recreate app traefik`
+
+### Configuración Manual SSL
 
 - **Enable SSL**: Set `ENABLE_SSL=True` to force all traffic to HTTPS
 - **Disable SSL**: Set `ENABLE_SSL=False` to allow HTTP traffic
 
-For detailed configuration instructions, see [SSL/HTTPS Documentation](docs/SSL_HTTPS_CONFIG.md).
+Para instrucciones detalladas, consulta:
+- [Configuración Automática de Dominio y SSL](docs/DOMAIN_SSL_AUTO_CONFIG.md)
+- [Configuración Manual SSL/HTTPS](docs/SSL_HTTPS_CONFIG.md)
+- [Configuración SSL con Let's Encrypt](docs/SSL_SETUP.md)
 
 To verify your SSL configuration, run:
 ```bash

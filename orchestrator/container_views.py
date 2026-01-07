@@ -206,3 +206,80 @@ def container_delete(request, pk):
             return redirect('container-detail', pk=pk)
     
     return redirect('container-detail', pk=pk)
+
+@login_required
+def container_update_domain(request, pk):
+    """Update container custom domain"""
+    container = get_object_or_404(Container, pk=pk, created_by=request.user)
+    
+    if request.method == 'POST':
+        old_domain = container.custom_domain
+        container.custom_domain = request.POST.get('custom_domain', '').strip()
+        
+        # If domain is removed, also clear SSL settings
+        if not container.custom_domain:
+            container.ssl_enabled = False
+            container.ssl_certificate_path = ''
+            container.ssl_key_path = ''
+            container.ssl_email = ''
+        
+        container.save()
+        
+        # Restart container if running to apply new domain
+        if container.status == 'running' and old_domain != container.custom_domain:
+            service = ContainerService()
+            service.restart_container(container)
+            messages.success(request, 'Domain updated and container restarted')
+        else:
+            messages.success(request, 'Domain configuration saved')
+    
+    return redirect('container-detail', pk=pk)
+
+@login_required
+def container_generate_ssl(request, pk):
+    """Generate SSL certificate for container custom domain"""
+    container = get_object_or_404(Container, pk=pk, created_by=request.user)
+    
+    if request.method == 'POST':
+        if not container.custom_domain:
+            messages.error(request, 'Primero debes configurar un dominio personalizado')
+            return redirect('container-detail', pk=pk)
+        
+        email = request.POST.get('email', '').strip()
+        
+        if not email:
+            messages.error(request, 'El email es requerido')
+            return redirect('container-detail', pk=pk)
+        
+        try:
+            from .services import SSLService
+            ssl_service = SSLService()
+            
+            # Generate SSL certificate
+            success, message, cert_path, key_path = ssl_service.generate_certificate(
+                container.custom_domain, 
+                email
+            )
+            
+            if success:
+                container.ssl_enabled = True
+                container.ssl_certificate_path = cert_path
+                container.ssl_key_path = key_path
+                container.ssl_email = email
+                container.save()
+                
+                # Restart container if running to apply SSL
+                if container.status == 'running':
+                    service = ContainerService()
+                    service.restart_container(container)
+                
+                messages.success(request, f'✅ Certificado SSL generado correctamente para {container.custom_domain}')
+            else:
+                messages.error(request, f'❌ Error al generar certificado: {message}')
+                
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+        
+        return redirect('container-detail', pk=pk)
+    
+    return redirect('container-detail', pk=pk)

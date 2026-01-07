@@ -155,10 +155,17 @@
                     <label class="text-sm font-medium leading-none">URL Principal</label>
                     <div>
                         {% if object.status == 'running' %}
-                        <a href="{{ object.url }}" target="_blank"
-                            class="text-sm text-primary hover:underline flex items-center gap-1">
-                            {{ object.url }} <i data-lucide="external-link" class="h-3 w-3"></i>
-                        </a>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ object.url }}" target="_blank"
+                                class="text-sm text-primary hover:underline flex items-center gap-1 flex-1">
+                                {{ object.url }} <i data-lucide="external-link" class="h-3 w-3"></i>
+                            </a>
+                            <button onclick="navigator.clipboard.writeText('{{ object.url }}'); this.querySelector('i').setAttribute('data-lucide', 'check'); lucide.createIcons(); setTimeout(() => { this.querySelector('i').setAttribute('data-lucide', 'copy'); lucide.createIcons(); }, 2000)"
+                                class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                                title="Copiar URL">
+                                <i data-lucide="copy" class="h-3 w-3"></i>
+                            </button>
+                        </div>
                         {% else %}
                         <span class="text-sm text-muted-foreground">-</span>
                         {% endif %}
@@ -169,10 +176,17 @@
                     <label class="text-sm font-medium leading-none">URL Alternativa</label>
                     <div>
                         {% if object.status == 'running' and object.port %}
-                        <a href="{{ object.url }}" target="_blank"
-                            class="text-sm text-primary hover:underline flex items-center gap-1">
-                            {{ object.url }} <i data-lucide="external-link" class="h-3 w-3"></i>
-                        </a>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ object.url_with_port }}" target="_blank"
+                                class="text-sm text-primary hover:underline flex items-center gap-1 flex-1">
+                                {{ object.url_with_port }} <i data-lucide="external-link" class="h-3 w-3"></i>
+                            </a>
+                            <button onclick="navigator.clipboard.writeText('{{ object.url_with_port }}'); this.querySelector('i').setAttribute('data-lucide', 'check'); lucide.createIcons(); setTimeout(() => { this.querySelector('i').setAttribute('data-lucide', 'copy'); lucide.createIcons(); }, 2000)"
+                                class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                                title="Copiar URL">
+                                <i data-lucide="copy" class="h-3 w-3"></i>
+                            </button>
+                        </div>
                         <p class="text-xs text-muted-foreground mt-1">Acceso directo por puerto (disponible
                             inmediatamente)</p>
                         {% else %}

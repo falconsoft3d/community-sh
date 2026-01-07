@@ -49,7 +49,9 @@ from .container_views import (
     container_start,
     container_stop,
     container_restart,
-    container_delete
+    container_delete,
+    container_update_domain,
+    container_generate_ssl
 )
 
 router = DefaultRouter()
@@ -78,6 +80,8 @@ urlpatterns = [
     path('container/<int:pk>/stop/', container_stop, name='container-stop'),
     path('container/<int:pk>/restart/', container_restart, name='container-restart'),
     path('container/<int:pk>/delete/', container_delete, name='container-delete'),
+    path('container/<int:pk>/update-domain/', container_update_domain, name='container-update-domain'),
+    path('container/<int:pk>/generate-ssl/', container_generate_ssl, name='container-generate-ssl'),
     path('instance/<int:pk>/deploy/', instance_deploy, name='instance-deploy'),
     path('instance/<int:pk>/stop/', instance_stop, name='instance-stop'),
     path('instance/<int:pk>/restart/', instance_restart, name='instance-restart'),
