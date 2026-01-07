@@ -20,6 +20,8 @@ services:
       - "80:80"
       - "443:443"
       - "8080:8080" # Dashboard
+    environment:
+      - DOCKER_API_VERSION=1.44
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
