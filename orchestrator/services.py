@@ -874,12 +874,19 @@ class SSLService:
             return False
     
     @staticmethod
+    def is_running_in_docker():
+        """Check if the application is running inside Docker"""
+        import os
+        return os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER', False)
+    
+    @staticmethod
     def install_certbot():
         """Install certbot based on the operating system"""
         import subprocess
         import platform
         
         system = platform.system()
+        in_docker = SSLService.is_running_in_docker()
         
         try:
             if system == "Darwin":  # macOS
@@ -887,11 +894,19 @@ class SSLService:
             elif system == "Linux":
                 # Try apt-get first (Debian/Ubuntu)
                 try:
-                    subprocess.run(['sudo', 'apt-get', 'update'], check=True)
-                    subprocess.run(['sudo', 'apt-get', 'install', '-y', 'certbot'], check=True)
+                    if in_docker:
+                        # En Docker no usamos sudo
+                        subprocess.run(['apt-get', 'update'], check=True)
+                        subprocess.run(['apt-get', 'install', '-y', 'certbot'], check=True)
+                    else:
+                        subprocess.run(['sudo', 'apt-get', 'update'], check=True)
+                        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'certbot'], check=True)
                 except subprocess.CalledProcessError:
                     # Try yum (RHEL/CentOS)
-                    subprocess.run(['sudo', 'yum', 'install', '-y', 'certbot'], check=True)
+                    if in_docker:
+                        subprocess.run(['yum', 'install', '-y', 'certbot'], check=True)
+                    else:
+                        subprocess.run(['sudo', 'yum', 'install', '-y', 'certbot'], check=True)
             else:
                 raise Exception(f"Unsupported operating system: {system}")
             return True
@@ -925,15 +940,29 @@ class SSLService:
         try:
             # Use certbot standalone mode to generate certificate
             # This requires port 80 to be available
-            cmd = [
-                'sudo', 'certbot', 'certonly',
-                '--standalone',
-                '--non-interactive',
-                '--agree-tos',
-                '--email', email,
-                '-d', domain,
-                '--preferred-challenges', 'http'
-            ]
+            in_docker = SSLService.is_running_in_docker()
+            
+            if in_docker:
+                # En Docker no usamos sudo
+                cmd = [
+                    'certbot', 'certonly',
+                    '--standalone',
+                    '--non-interactive',
+                    '--agree-tos',
+                    '--email', email,
+                    '-d', domain,
+                    '--preferred-challenges', 'http'
+                ]
+            else:
+                cmd = [
+                    'sudo', 'certbot', 'certonly',
+                    '--standalone',
+                    '--non-interactive',
+                    '--agree-tos',
+                    '--email', email,
+                    '-d', domain,
+                    '--preferred-challenges', 'http'
+                ]
             
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             
@@ -979,7 +1008,11 @@ class SSLService:
         import subprocess
         
         try:
-            cmd = ['sudo', 'certbot', 'renew', '--cert-name', domain]
+            in_docker = SSLService.is_running_in_docker()
+            if in_docker:
+                cmd = ['certbot', 'renew', '--cert-name', domain]
+            else:
+                cmd = ['sudo', 'certbot', 'renew', '--cert-name', domain]
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             if result.returncode == 0:
