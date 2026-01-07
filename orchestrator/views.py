@@ -380,7 +380,15 @@ def instance_configure_domain(request, pk):
         instance.custom_domain = domain
         instance.save()
         
-        messages.success(request, f'Dominio {domain} configurado correctamente')
+        # Generate Traefik configuration for this instance
+        from .traefik_service import TraefikService
+        success, msg = TraefikService.generate_instance_config(instance)
+        
+        if success:
+            messages.success(request, f'✅ Dominio {domain} configurado correctamente')
+        else:
+            messages.warning(request, f'Dominio guardado pero error en Traefik: {msg}')
+        
         return redirect('instance-detail', pk=pk)
     
     return redirect('instance-detail', pk=pk)

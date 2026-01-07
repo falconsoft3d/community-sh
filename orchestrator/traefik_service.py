@@ -111,7 +111,7 @@ class TraefikService:
                         f'instance-{instance.name}-service': {
                             'loadBalancer': {
                                 'servers': [
-                                    {'url': f'http://localhost:{port}'}
+                                    {'url': f'http://host.docker.internal:{port}'}
                                 ]
                             }
                         }

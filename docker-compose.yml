@@ -3,8 +3,7 @@ services:
     image: "traefik:v2.5"
     command:
       - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker=false"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
@@ -23,7 +22,6 @@ services:
     environment:
       - DOCKER_API_VERSION=1.44
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
       - "./traefik:/etc/traefik/dynamic"
     networks:

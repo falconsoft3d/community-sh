@@ -1,0 +1,13 @@
+http:
+  routers:
+    instance-odoo17:
+      entryPoints:
+      - web
+      priority: 100
+      rule: Host(`midominio.local`)
+      service: instance-odoo17-service
+  services:
+    instance-odoo17-service:
+      loadBalancer:
+        servers:
+        - url: http://host.docker.internal:59911
