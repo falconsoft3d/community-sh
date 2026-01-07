@@ -1015,6 +1015,7 @@ class SSLService:
                         '--agree-tos',
                         '--email', email,
                         '-d', domain,
+                        '-d', f'www.{domain}',  # Include www subdomain
                         '--preferred-challenges', 'http',
                         '--force-renewal',  # Force renewal to ensure certs are in mounted volume
                         '-v'
