@@ -1027,8 +1027,6 @@ class SSLService:
             # Check if certificate already exists
             if "Certificate not yet due for renewal" in result.stdout or "Keeping the existing certificate" in result.stderr:
                 # Certificate already exists, find it
-                in_docker = self.is_running_in_docker()
-                
                 if in_docker:
                     letsencrypt_dir = '/opt/community-sh/letsencrypt'
                 else:
@@ -1058,8 +1056,6 @@ class SSLService:
             if result.returncode == 0:
                 # Certificates are stored in letsencrypt/live/domain/ within the project
                 # In Docker, we need to check the HOST path, not the container path
-                in_docker = self.is_running_in_docker()
-                
                 if in_docker:
                     letsencrypt_dir = '/opt/community-sh/letsencrypt'
                 else:
