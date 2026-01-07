@@ -999,6 +999,32 @@ class SSLService:
             full_output = f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
             print(f"Certbot output:\n{full_output}", flush=True)
             
+            # Check if certificate already exists
+            if "Certificate not yet due for renewal" in result.stdout or "Keeping the existing certificate" in result.stderr:
+                # Certificate already exists, find it
+                from django.conf import settings
+                letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
+                
+                # Check in archive first (actual files)
+                archive_dir = os.path.join(letsencrypt_dir, 'archive', domain)
+                if os.path.exists(archive_dir):
+                    cert_files = [f for f in os.listdir(archive_dir) if f.startswith('fullchain')]
+                    if cert_files:
+                        cert_files.sort()  # Get the latest
+                        cert_path = os.path.join(archive_dir, cert_files[-1])
+                        key_path = cert_path.replace('fullchain', 'privkey')
+                        if os.path.exists(key_path):
+                            return True, "Certificado SSL ya existe y está vigente", cert_path, key_path
+                
+                # Check in live (symlinks)
+                live_dir = os.path.join(letsencrypt_dir, 'live', domain)
+                cert_path = os.path.join(live_dir, 'fullchain.pem')
+                key_path = os.path.join(live_dir, 'privkey.pem')
+                if os.path.exists(cert_path) and os.path.exists(key_path):
+                    return True, "Certificado SSL ya existe y está vigente", cert_path, key_path
+                
+                return False, "Certificado existe pero no se pudo localizar en el sistema de archivos", None, None
+            
             if result.returncode == 0:
                 # Certificates are stored in letsencrypt/live/domain/ within the project
                 from django.conf import settings
