@@ -57,6 +57,19 @@ class TraefikService:
                 
                 # Add HTTPS router if SSL is enabled and certificates exist
                 if ssl_enabled and cert_path and key_path and os.path.exists(cert_path) and os.path.exists(key_path):
+                    # Convert host paths to Traefik container paths
+                    # Host: /opt/community-sh/letsencrypt/live/... -> Traefik: /letsencrypt/live/...
+                    traefik_cert_path = cert_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
+                    traefik_key_path = key_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
+                    
+                    # Also handle local development paths
+                    if settings.BASE_DIR in traefik_cert_path:
+                        base_dir_str = str(settings.BASE_DIR)
+                        traefik_cert_path = traefik_cert_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
+                        traefik_key_path = traefik_key_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
+                    
+                    print(f"Traefik cert paths: {traefik_cert_path}, {traefik_key_path}", flush=True)
+                    
                     # Add HTTPS router
                     config['http']['routers']['app-domain-secure'] = {
                         'rule': f'Host(`{domain}`) || Host(`www.{domain}`)',
@@ -81,8 +94,8 @@ class TraefikService:
                     config['tls'] = {
                         'certificates': [
                             {
-                                'certFile': cert_path,
-                                'keyFile': key_path
+                                'certFile': traefik_cert_path,
+                                'keyFile': traefik_key_path
                             }
                         ]
                     }
