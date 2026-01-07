@@ -954,10 +954,16 @@ class SSLService:
                 if in_docker:
                     # Run certbot as a separate Docker container with host network
                     # This gives certbot direct access to port 80 on the host
+                    # Mount the project's letsencrypt directory
+                    import os as os_module
+                    from django.conf import settings
+                    letsencrypt_dir = os_module.path.join(settings.BASE_DIR, 'letsencrypt')
+                    os_module.makedirs(letsencrypt_dir, exist_ok=True)
+                    
                     cmd = [
                         'docker', 'run', '--rm',
                         '--network', 'host',
-                        '-v', '/etc/letsencrypt:/etc/letsencrypt',
+                        '-v', f'{letsencrypt_dir}:/etc/letsencrypt',
                         '-v', '/var/lib/letsencrypt:/var/lib/letsencrypt',
                         'certbot/certbot', 'certonly',
                         '--standalone',
@@ -990,9 +996,11 @@ class SSLService:
                     pass
             
             if result.returncode == 0:
-                # Certificates are stored in /etc/letsencrypt/live/domain/
-                cert_path = f"/etc/letsencrypt/live/{domain}/fullchain.pem"
-                key_path = f"/etc/letsencrypt/live/{domain}/privkey.pem"
+                # Certificates are stored in letsencrypt/live/domain/ within the project
+                from django.conf import settings
+                letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
+                cert_path = os.path.join(letsencrypt_dir, 'live', domain, 'fullchain.pem')
+                key_path = os.path.join(letsencrypt_dir, 'live', domain, 'privkey.pem')
                 
                 # Verify files exist
                 if os.path.exists(cert_path) and os.path.exists(key_path):
