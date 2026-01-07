@@ -172,11 +172,14 @@ class TraefikService:
             print(f"Instance {instance.name} backend URL: {backend_url}", flush=True)
             
             # Create routing configuration for the instance domain
+            # Include both www and non-www versions
+            domain_rule = f'Host(`{instance.custom_domain}`) || Host(`www.{instance.custom_domain}`)'
+            
             config = {
                 'http': {
                     'routers': {
                         f'instance-{instance.name}': {
-                            'rule': f'Host(`{instance.custom_domain}`)',
+                            'rule': domain_rule,
                             'entryPoints': ['web'],
                             'service': f'instance-{instance.name}-service',
                             'priority': 100  # Higher priority than app
@@ -217,9 +220,9 @@ class TraefikService:
                     
                     print(f"Adding HTTPS config with certs: {traefik_cert_path}", flush=True)
                     
-                    # Add HTTPS router
+                    # Add HTTPS router (include both www and non-www)
                     config['http']['routers'][f'instance-{instance.name}-secure'] = {
-                        'rule': f'Host(`{instance.custom_domain}`)',
+                        'rule': domain_rule,
                         'entryPoints': ['websecure'],
                         'service': f'instance-{instance.name}-service',
                         'priority': 100,
