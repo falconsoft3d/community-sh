@@ -954,26 +954,31 @@ class SSLService:
                 if in_docker:
                     # Run certbot as a separate Docker container with host network
                     # This gives certbot direct access to port 80 on the host
-                    # Mount the project's letsencrypt directory
+                    # IMPORTANT: We need to mount the HOST path, not the container path
                     import os as os_module
                     from django.conf import settings
-                    letsencrypt_dir = os_module.path.join(settings.BASE_DIR, 'letsencrypt')
-                    os_module.makedirs(letsencrypt_dir, exist_ok=True)
-                    os_module.chmod(letsencrypt_dir, 0o755)
                     
-                    # Create subdirectories that certbot needs
+                    # Get the container's internal path
+                    container_letsencrypt_dir = os_module.path.join(settings.BASE_DIR, 'letsencrypt')
+                    os_module.makedirs(container_letsencrypt_dir, exist_ok=True)
+                    
+                    # For production, we need the HOST path (not the container path)
+                    # In docker-compose, /app maps to /opt/community-sh on the host
+                    # So /app/letsencrypt maps to /opt/community-sh/letsencrypt
+                    host_letsencrypt_dir = '/opt/community-sh/letsencrypt'
+                    
+                    # Create subdirectories on the host via docker exec
                     for subdir in ['live', 'archive', 'renewal', 'accounts']:
-                        subdir_path = os_module.path.join(letsencrypt_dir, subdir)
-                        os_module.makedirs(subdir_path, exist_ok=True)
-                        os_module.chmod(subdir_path, 0o755)
+                        subdir_path = os_module.path.join(host_letsencrypt_dir, subdir)
+                        subprocess.run(['mkdir', '-p', subdir_path], capture_output=True)
+                        subprocess.run(['chmod', '755', subdir_path], capture_output=True)
                     
-                    print(f"Letsencrypt dir: {letsencrypt_dir}", flush=True)
-                    print(f"Permissions: {oct(os_module.stat(letsencrypt_dir).st_mode)[-3:]}", flush=True)
+                    print(f"Host letsencrypt dir: {host_letsencrypt_dir}", flush=True)
                     
                     cmd = [
                         'docker', 'run', '--rm',
                         '--network', 'host',
-                        '-v', f'{letsencrypt_dir}:/etc/letsencrypt',
+                        '-v', f'{host_letsencrypt_dir}:/etc/letsencrypt',
                         '-v', '/var/lib/letsencrypt:/var/lib/letsencrypt',
                         'certbot/certbot', 'certonly',
                         '--standalone',
@@ -1001,14 +1006,11 @@ class SSLService:
                 
                 # Log what files were created after certbot ran
                 if in_docker:
-                    import os as os_module
-                    from django.conf import settings
-                    letsencrypt_dir = os_module.path.join(settings.BASE_DIR, 'letsencrypt')
-                    print(f"\n=== Files in letsencrypt dir after certbot ===", flush=True)
-                    for root, dirs, files in os_module.walk(letsencrypt_dir):
-                        for file in files:
-                            filepath = os_module.path.join(root, file)
-                            print(f"  {filepath}", flush=True)
+                    host_letsencrypt_dir = '/opt/community-sh/letsencrypt'
+                    print(f"\n=== Files in host letsencrypt dir after certbot ===", flush=True)
+                    list_result = subprocess.run(['find', host_letsencrypt_dir, '-type', 'f'], 
+                                                capture_output=True, text=True)
+                    print(f"{list_result.stdout}", flush=True)
                     print(f"=== End of file list ===\n", flush=True)
             finally:
                 # Always restart Traefik after certbot finishes
@@ -1025,8 +1027,13 @@ class SSLService:
             # Check if certificate already exists
             if "Certificate not yet due for renewal" in result.stdout or "Keeping the existing certificate" in result.stderr:
                 # Certificate already exists, find it
-                from django.conf import settings
-                letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
+                in_docker = self.is_running_in_docker()
+                
+                if in_docker:
+                    letsencrypt_dir = '/opt/community-sh/letsencrypt'
+                else:
+                    from django.conf import settings
+                    letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
                 
                 # Check in archive first (actual files)
                 archive_dir = os.path.join(letsencrypt_dir, 'archive', domain)
@@ -1050,8 +1057,14 @@ class SSLService:
             
             if result.returncode == 0:
                 # Certificates are stored in letsencrypt/live/domain/ within the project
-                from django.conf import settings
-                letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
+                # In Docker, we need to check the HOST path, not the container path
+                in_docker = self.is_running_in_docker()
+                
+                if in_docker:
+                    letsencrypt_dir = '/opt/community-sh/letsencrypt'
+                else:
+                    from django.conf import settings
+                    letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
                 
                 # Check all possible locations
                 cert_paths_to_check = [
