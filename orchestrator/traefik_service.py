@@ -45,7 +45,7 @@ class TraefikService:
                             'app-domain-service': {
                                 'loadBalancer': {
                                     'servers': [
-                                        {'url': 'http://community-sh-app-1:8000'}
+                                        {'url': 'http://app:8000'}
                                     ]
                                 }
                             }
@@ -66,6 +66,67 @@ class TraefikService:
                 
         except Exception as e:
             return False, f"Error al generar configuración: {str(e)}"
+    
+    @staticmethod
+    def generate_instance_config(instance):
+        """
+        Generate Traefik dynamic configuration file for an instance with custom domain
+        
+        Args:
+            instance: Instance object with custom_domain
+        
+        Returns:
+            tuple: (success, message)
+        """
+        try:
+            if not instance.custom_domain:
+                # Remove config file if instance no longer has custom domain
+                traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
+                config_file = os.path.join(traefik_dir, f'instance-{instance.name}.yml')
+                if os.path.exists(config_file):
+                    os.remove(config_file)
+                return True, "Configuración de instancia eliminada"
+            
+            # Create traefik directory if it doesn't exist
+            traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
+            os.makedirs(traefik_dir, exist_ok=True)
+            
+            config_file = os.path.join(traefik_dir, f'instance-{instance.name}.yml')
+            
+            # Get instance port
+            port = instance.port
+            
+            # Create routing configuration for the instance domain
+            config = {
+                'http': {
+                    'routers': {
+                        f'instance-{instance.name}': {
+                            'rule': f'Host(`{instance.custom_domain}`)',
+                            'entryPoints': ['web'],
+                            'service': f'instance-{instance.name}-service',
+                            'priority': 100  # Higher priority than app
+                        }
+                    },
+                    'services': {
+                        f'instance-{instance.name}-service': {
+                            'loadBalancer': {
+                                'servers': [
+                                    {'url': f'http://localhost:{port}'}
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+            
+            # Write configuration to file
+            with open(config_file, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            
+            return True, f"Configuración de Traefik generada para instancia {instance.name}"
+                
+        except Exception as e:
+            return False, f"Error al generar configuración de instancia: {str(e)}"
     
     @staticmethod
     def update_app_routing(domain=None, ssl_enabled=False, cert_path=None, key_path=None):

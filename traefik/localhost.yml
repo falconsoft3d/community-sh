@@ -11,4 +11,4 @@ http:
     app-localhost-service:
       loadBalancer:
         servers:
-          - url: "http://community-sh-app-1:8000"
+          - url: "http://app:8000"

@@ -1,9 +1,10 @@
 services:
   traefik:
-    image: "traefik:v3.0"
+    image: "traefik:v2.10"
     command:
       - "--api.insecure=true"
-      - "--providers.docker=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
@@ -20,6 +21,7 @@ services:
       - "443:443"
       - "8080:8080" # Dashboard
     volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
       - "./traefik:/etc/traefik/dynamic"
     networks:
