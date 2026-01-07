@@ -937,11 +937,40 @@ class SSLService:
         if not email or '@' not in email:
             return False, "Email inválido. Se requiere un email válido para Let's Encrypt", None, None
         
+        # Check if certificates already exist BEFORE trying to generate new ones
+        in_docker = SSLService.is_running_in_docker()
+        
+        if in_docker:
+            letsencrypt_dir = '/opt/community-sh/letsencrypt'
+        else:
+            from django.conf import settings
+            letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
+        
+        # Check in live directory first (symlinks)
+        live_dir = os.path.join(letsencrypt_dir, 'live', domain)
+        cert_path = os.path.join(live_dir, 'fullchain.pem')
+        key_path = os.path.join(live_dir, 'privkey.pem')
+        
+        if os.path.exists(cert_path) and os.path.exists(key_path):
+            print(f"Certificates already exist at {cert_path}", flush=True)
+            return True, "Certificado SSL ya existe y está vigente", cert_path, key_path
+        
+        # Check in archive directory
+        archive_dir = os.path.join(letsencrypt_dir, 'archive', domain)
+        if os.path.exists(archive_dir):
+            cert_files = [f for f in os.listdir(archive_dir) if f.startswith('fullchain')]
+            if cert_files:
+                cert_files.sort()  # Get the latest
+                cert_path = os.path.join(archive_dir, cert_files[-1])
+                key_path = cert_path.replace('fullchain', 'privkey')
+                if os.path.exists(key_path):
+                    print(f"Certificates found in archive at {cert_path}", flush=True)
+                    return True, "Certificado SSL encontrado en archivo", cert_path, key_path
+        
         try:
             # Use certbot standalone mode to generate certificate
             # This requires port 80 to be available
             # We need to stop Traefik temporarily to free port 80
-            in_docker = SSLService.is_running_in_docker()
             
             # Stop Traefik container to free port 80
             try:
