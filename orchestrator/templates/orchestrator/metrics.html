@@ -138,5 +138,93 @@
             </div>
         </div>
     </div>
+    </div>
+
+    <!-- Resource Usage Tab -->
+    <div x-show="activeTab === 'resources'" class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 border-b">
+                <h3 class="font-semibold text-lg">Container Resource Usage</h3>
+                <p class="text-sm text-muted-foreground mt-1">Real-time CPU and memory usage by container</p>
+            </div>
+            <div class="p-6">
+                <div class="relative w-full overflow-auto">
+                    <table class="w-full caption-bottom text-sm">
+                        <thead class="[&_tr]:border-b">
+                            <tr class="border-b transition-colors hover:bg-muted/50">
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Container</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">CPU Usage</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Memory Usage</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Memory Limit</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Network I/O</th>
+                            </tr>
+                        </thead>
+                        <tbody class="[&_tr:last-child]:border-0">
+                            {% if container_stats %}
+                                {% for stat in container_stats %}
+                                <tr class="border-b transition-colors hover:bg-muted/50">
+                                    <td class="p-4 align-middle font-medium">
+                                        {{ stat.name }}
+                                    </td>
+                                    <td class="p-4 align-middle">
+                                        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
+                                            Running
+                                        </span>
+                                    </td>
+                                    <td class="p-4 align-middle">
+                                        <div class="flex items-center gap-2">
+                                            <div class="text-sm font-medium">{{ stat.cpu_percent }}%</div>
+                                            <div class="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                                <div class="h-full bg-primary transition-all" style="width: {{ stat.cpu_percent }}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="p-4 align-middle">
+                                        <div class="flex items-center gap-2">
+                                            <div class="text-sm font-medium">{{ stat.memory_percent }}%</div>
+                                            <div class="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                                                <div class="h-full {% if stat.memory_percent > 80 %}bg-red-500{% elif stat.memory_percent > 60 %}bg-yellow-500{% else %}bg-green-500{% endif %} transition-all" style="width: {{ stat.memory_percent }}%"></div>
+                                            </div>
+                                        </div>
+                                        <div class="text-xs text-muted-foreground mt-1">{{ stat.memory_usage }}</div>
+                                    </td>
+                                    <td class="p-4 align-middle">
+                                        <span class="text-sm">{{ stat.memory_limit }}</span>
+                                    </td>
+                                    <td class="p-4 align-middle">
+                                        <div class="text-xs">
+                                            <div class="text-muted-foreground">↓ {{ stat.network_rx }}</div>
+                                            <div class="text-muted-foreground">↑ {{ stat.network_tx }}</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="p-12 text-center">
+                                    <div class="flex flex-col items-center gap-4">
+                                        <i data-lucide="activity" class="h-12 w-12 text-muted-foreground"></i>
+                                        <div>
+                                            <h3 class="text-lg font-semibold mb-2">No running containers</h3>
+                                            <p class="text-muted-foreground">Start some containers to see their resource usage</p>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        lucide.createIcons();
+    });
+</script>
 {% endblock %}

@@ -598,6 +598,46 @@ def metrics_view(request):
     instances_stopped = next((item['count'] for item in status_counts if item['status'] == 'stopped'), 0)
     instances_error = next((item['count'] for item in status_counts if item['status'] == 'error'), 0)
     
+    # Container resource usage stats
+    container_stats = []
+    running_containers = client.containers.list()
+    for container in running_containers:
+        try:
+            stats = container.stats(stream=False)
+            
+            # Calculate CPU percentage
+            cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - stats['precpu_stats']['cpu_usage']['total_usage']
+            system_delta = stats['cpu_stats']['system_cpu_usage'] - stats['precpu_stats']['system_cpu_usage']
+            cpu_percent = 0.0
+            if system_delta > 0 and cpu_delta > 0:
+                cpu_percent = (cpu_delta / system_delta) * len(stats['cpu_stats']['cpu_usage'].get('percpu_usage', [1])) * 100.0
+            
+            # Calculate memory usage
+            memory_usage = stats['memory_stats'].get('usage', 0)
+            memory_limit = stats['memory_stats'].get('limit', 1)
+            memory_percent = (memory_usage / memory_limit) * 100 if memory_limit > 0 else 0
+            
+            # Network I/O
+            network_rx = 0
+            network_tx = 0
+            if 'networks' in stats:
+                for interface, data in stats['networks'].items():
+                    network_rx += data.get('rx_bytes', 0)
+                    network_tx += data.get('tx_bytes', 0)
+            
+            container_stats.append({
+                'name': container.name,
+                'cpu_percent': round(cpu_percent, 2),
+                'memory_percent': round(memory_percent, 2),
+                'memory_usage': f"{round(memory_usage / (1024**2), 2)} MB",
+                'memory_limit': f"{round(memory_limit / (1024**2), 2)} MB",
+                'network_rx': f"{round(network_rx / (1024**2), 2)} MB",
+                'network_tx': f"{round(network_tx / (1024**2), 2)} MB",
+            })
+        except Exception as e:
+            print(f"Error getting stats for {container.name}: {e}")
+            continue
+    
     context = {
         'metrics': {
             'cpu_percent': cpu_percent,
@@ -617,7 +657,8 @@ def metrics_view(request):
             'instances_deploying': instances_deploying,
             'instances_stopped': instances_stopped,
             'instances_error': instances_error,
-        }
+        },
+        'container_stats': container_stats,
     }
     
     return render(request, 'orchestrator/metrics.html', context)

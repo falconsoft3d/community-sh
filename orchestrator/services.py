@@ -902,7 +902,7 @@ class SSLService:
     def generate_certificate(domain, email):
         """
         Generate SSL certificate using Let's Encrypt
-        Returns tuple: (certificate_path, key_path, success, message)
+        Returns tuple: (success, message, cert_path, key_path)
         """
         import subprocess
         import os
@@ -912,15 +912,15 @@ class SSLService:
             try:
                 SSLService.install_certbot()
             except Exception as e:
-                return None, None, False, f"Certbot no está instalado y falló la instalación automática: {str(e)}"
+                return False, f"Certbot no está instalado y falló la instalación automática: {str(e)}", None, None
         
         # Validate domain
         if not domain or '.' not in domain:
-            return None, None, False, "Dominio inválido. Debe ser un dominio válido (ej: ejemplo.com)"
+            return False, "Dominio inválido. Debe ser un dominio válido (ej: ejemplo.com)", None, None
         
         # Validate email
         if not email or '@' not in email:
-            return None, None, False, "Email inválido. Se requiere un email válido para Let's Encrypt"
+            return False, "Email inválido. Se requiere un email válido para Let's Encrypt", None, None
         
         try:
             # Use certbot standalone mode to generate certificate
@@ -931,10 +931,11 @@ class SSLService:
                 '--non-interactive',
                 '--agree-tos',
                 '--email', email,
-                '-d', domain
+                '-d', domain,
+                '--preferred-challenges', 'http'
             ]
             
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             
             if result.returncode == 0:
                 # Certificates are stored in /etc/letsencrypt/live/domain/
@@ -943,17 +944,34 @@ class SSLService:
                 
                 # Verify files exist
                 if os.path.exists(cert_path) and os.path.exists(key_path):
-                    return cert_path, key_path, True, "Certificado SSL generado exitosamente"
+                    return True, "Certificado SSL generado exitosamente", cert_path, key_path
                 else:
-                    return None, None, False, "Certificado generado pero no se encontraron los archivos"
+                    return False, f"Certificado generado pero no se encontraron los archivos en {cert_path}", None, None
             else:
-                error_msg = result.stderr or result.stdout
-                return None, None, False, f"Error al generar certificado: {error_msg}"
+                error_msg = result.stderr or result.stdout or "Error desconocido"
+                # Extract more useful error information
+                if "Timeout" in error_msg or "timeout" in error_msg:
+                    return False, "Timeout: El servidor no pudo validar el dominio. Asegúrate de que el puerto 80 esté abierto y el dominio apunte a este servidor.", None, None
+                elif "Connection refused" in error_msg:
+                    return False, "Conexión rechazada: El puerto 80 puede estar bloqueado o en uso.", None, None
+                elif "DNS" in error_msg:
+                    return False, f"Error de DNS: El dominio {domain} no puede ser resuelto. Verifica la configuración DNS.", None, None
+                else:
+                    return False, f"Error al generar certificado: {error_msg[:500]}", None, None
                 
+        except subprocess.TimeoutExpired:
+            return False, "Timeout: La generación del certificado tardó demasiado. Verifica que el puerto 80 esté accesible desde internet.", None, None
         except subprocess.CalledProcessError as e:
-            return None, None, False, f"Error ejecutando certbot: {str(e)}"
+            return False, f"Error ejecutando certbot: {str(e)}", None, None
         except Exception as e:
-            return None, None, False, f"Error inesperado: {str(e)}"
+            return False, f"Error inesperado: {str(e)}", None, None
+                
+        except subprocess.TimeoutExpired:
+            return False, "Timeout: La generación del certificado tardó demasiado. Verifica que el puerto 80 esté accesible desde internet.", None, None
+        except subprocess.CalledProcessError as e:
+            return False, f"Error ejecutando certbot: {str(e)}", None, None
+        except Exception as e:
+            return False, f"Error inesperado: {str(e)}", None, None
     
     @staticmethod
     def renew_certificate(domain):
