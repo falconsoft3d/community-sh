@@ -972,6 +972,7 @@ class SSLService:
                         '--email', email,
                         '-d', domain,
                         '--preferred-challenges', 'http',
+                        '--force-renewal',  # Force renewal to ensure certs are in mounted volume
                         '-v'
                     ]
                 else:
