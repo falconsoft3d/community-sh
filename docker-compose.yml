@@ -59,6 +59,7 @@ services:
       - ./media:/app/media
       - ./backups:/app/backups
       - ./instances:/app/instances
+      - ./letsencrypt:/opt/community-sh/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - "traefik.enable=true"
