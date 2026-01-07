@@ -37,15 +37,15 @@ class TraefikService:
                             'app-domain': {
                                 'rule': f'Host(`{domain}`) || Host(`www.{domain}`)',
                                 'entryPoints': ['web'],
-                                'service': 'app-service',
-                                'priority': 10
+                                'service': 'app-domain-service',
+                                'priority': 50  # Higher priority than Docker labels
                             }
                         },
                         'services': {
-                            'app-service': {
+                            'app-domain-service': {
                                 'loadBalancer': {
                                     'servers': [
-                                        {'url': 'http://app:8000'}
+                                        {'url': 'http://community-sh-app-1:8000'}
                                     ]
                                 }
                             }
