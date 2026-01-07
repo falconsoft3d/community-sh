@@ -995,18 +995,42 @@ class SSLService:
                 except:
                     pass
             
+            # Log the full output for debugging
+            full_output = f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
+            print(f"Certbot output:\n{full_output}", flush=True)
+            
             if result.returncode == 0:
                 # Certificates are stored in letsencrypt/live/domain/ within the project
                 from django.conf import settings
                 letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
-                cert_path = os.path.join(letsencrypt_dir, 'live', domain, 'fullchain.pem')
-                key_path = os.path.join(letsencrypt_dir, 'live', domain, 'privkey.pem')
                 
-                # Verify files exist
-                if os.path.exists(cert_path) and os.path.exists(key_path):
+                # Check all possible locations
+                cert_paths_to_check = [
+                    os.path.join(letsencrypt_dir, 'live', domain, 'fullchain.pem'),
+                    os.path.join(letsencrypt_dir, 'archive', domain, 'fullchain1.pem'),
+                ]
+                
+                cert_path = None
+                key_path = None
+                
+                for check_cert in cert_paths_to_check:
+                    check_key = check_cert.replace('fullchain', 'privkey')
+                    if os.path.exists(check_cert) and os.path.exists(check_key):
+                        cert_path = check_cert
+                        key_path = check_key
+                        break
+                
+                if cert_path and key_path:
                     return True, "Certificado SSL generado exitosamente", cert_path, key_path
                 else:
-                    return False, f"Certificado generado pero no se encontraron los archivos en {cert_path}", None, None
+                    # List what files actually exist for debugging
+                    import subprocess
+                    find_result = subprocess.run(
+                        ['find', letsencrypt_dir, '-name', '*.pem'],
+                        capture_output=True, text=True
+                    )
+                    files_found = find_result.stdout.strip()
+                    return False, f"Certificado generado pero no se encontró en las rutas esperadas. Archivos encontrados:\n{files_found}", None, None
             else:
                 error_msg = result.stderr or result.stdout or "Error desconocido"
                 
