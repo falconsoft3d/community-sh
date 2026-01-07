@@ -153,13 +153,17 @@ class TraefikService:
                 # Get Docker gateway IP
                 try:
                     result = subprocess.run(
-                        ['docker', 'network', 'inspect', 'community-sh_web', '-f', '{{range .IPAM.Config}}{{.Gateway}}{{end}}'],
+                        ['/usr/bin/docker', 'network', 'inspect', 'community-sh_web', '-f', '{{range .IPAM.Config}}{{.Gateway}}{{end}}'],
                         capture_output=True, text=True, timeout=5
                     )
                     gateway_ip = result.stdout.strip()
-                    backend_url = f'http://{gateway_ip}:{port}'
-                except:
+                    if gateway_ip:
+                        backend_url = f'http://{gateway_ip}:{port}'
+                    else:
+                        backend_url = f'http://172.18.0.1:{port}'
+                except Exception as e:
                     # Fallback to common gateway IP
+                    print(f"Could not get gateway IP: {e}, using fallback", flush=True)
                     backend_url = f'http://172.18.0.1:{port}'
             else:
                 # macOS/Windows - use host.docker.internal
