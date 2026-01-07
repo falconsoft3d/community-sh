@@ -1,0 +1,14 @@
+http:
+  routers:
+    app-localhost:
+      rule: "Host(`localhost`)"
+      entryPoints:
+        - web
+      service: app-localhost-service
+      priority: 1
+  
+  services:
+    app-localhost-service:
+      loadBalancer:
+        servers:
+          - url: "http://community-sh-app-1:8000"
