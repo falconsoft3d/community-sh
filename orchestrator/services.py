@@ -945,27 +945,28 @@ class SSLService:
             
             # Stop Traefik container to free port 80
             try:
-                if in_docker:
-                    subprocess.run(['docker', 'stop', 'community-sh-traefik-1'], 
-                                 capture_output=True, text=True, timeout=10)
-                else:
-                    subprocess.run(['sudo', 'docker', 'stop', 'community-sh-traefik-1'], 
-                                 capture_output=True, text=True, timeout=10)
+                stop_cmd = ['docker', 'stop', 'community-sh-traefik-1']
+                subprocess.run(stop_cmd, capture_output=True, text=True, timeout=10)
             except:
                 pass  # If Traefik is not running, continue anyway
             
             try:
                 if in_docker:
-                    # En Docker no usamos sudo
+                    # Run certbot as a separate Docker container with host network
+                    # This gives certbot direct access to port 80 on the host
                     cmd = [
-                        'certbot', 'certonly',
+                        'docker', 'run', '--rm',
+                        '--network', 'host',
+                        '-v', '/etc/letsencrypt:/etc/letsencrypt',
+                        '-v', '/var/lib/letsencrypt:/var/lib/letsencrypt',
+                        'certbot/certbot', 'certonly',
                         '--standalone',
                         '--non-interactive',
                         '--agree-tos',
                         '--email', email,
                         '-d', domain,
                         '--preferred-challenges', 'http',
-                        '-v'  # Verbose mode for better error messages
+                        '-v'
                     ]
                 else:
                     cmd = [
@@ -983,12 +984,8 @@ class SSLService:
             finally:
                 # Always restart Traefik after certbot finishes
                 try:
-                    if in_docker:
-                        subprocess.run(['docker', 'start', 'community-sh-traefik-1'], 
-                                     capture_output=True, text=True, timeout=10)
-                    else:
-                        subprocess.run(['sudo', 'docker', 'start', 'community-sh-traefik-1'], 
-                                     capture_output=True, text=True, timeout=10)
+                    start_cmd = ['docker', 'start', 'community-sh-traefik-1']
+                    subprocess.run(start_cmd, capture_output=True, text=True, timeout=10)
                 except:
                     pass
             
