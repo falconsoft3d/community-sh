@@ -940,31 +940,55 @@ class SSLService:
         try:
             # Use certbot standalone mode to generate certificate
             # This requires port 80 to be available
+            # We need to stop Traefik temporarily to free port 80
             in_docker = SSLService.is_running_in_docker()
             
-            if in_docker:
-                # En Docker no usamos sudo
-                cmd = [
-                    'certbot', 'certonly',
-                    '--standalone',
-                    '--non-interactive',
-                    '--agree-tos',
-                    '--email', email,
-                    '-d', domain,
-                    '--preferred-challenges', 'http'
-                ]
-            else:
-                cmd = [
-                    'sudo', 'certbot', 'certonly',
-                    '--standalone',
-                    '--non-interactive',
-                    '--agree-tos',
-                    '--email', email,
-                    '-d', domain,
-                    '--preferred-challenges', 'http'
-                ]
+            # Stop Traefik container to free port 80
+            try:
+                if in_docker:
+                    subprocess.run(['docker', 'stop', 'community-sh-traefik-1'], 
+                                 capture_output=True, text=True, timeout=10)
+                else:
+                    subprocess.run(['sudo', 'docker', 'stop', 'community-sh-traefik-1'], 
+                                 capture_output=True, text=True, timeout=10)
+            except:
+                pass  # If Traefik is not running, continue anyway
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            try:
+                if in_docker:
+                    # En Docker no usamos sudo
+                    cmd = [
+                        'certbot', 'certonly',
+                        '--standalone',
+                        '--non-interactive',
+                        '--agree-tos',
+                        '--email', email,
+                        '-d', domain,
+                        '--preferred-challenges', 'http'
+                    ]
+                else:
+                    cmd = [
+                        'sudo', 'certbot', 'certonly',
+                        '--standalone',
+                        '--non-interactive',
+                        '--agree-tos',
+                        '--email', email,
+                        '-d', domain,
+                        '--preferred-challenges', 'http'
+                    ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            finally:
+                # Always restart Traefik after certbot finishes
+                try:
+                    if in_docker:
+                        subprocess.run(['docker', 'start', 'community-sh-traefik-1'], 
+                                     capture_output=True, text=True, timeout=10)
+                    else:
+                        subprocess.run(['sudo', 'docker', 'start', 'community-sh-traefik-1'], 
+                                     capture_output=True, text=True, timeout=10)
+                except:
+                    pass
             
             if result.returncode == 0:
                 # Certificates are stored in /etc/letsencrypt/live/domain/
