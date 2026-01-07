@@ -388,21 +388,27 @@ def instance_configure_domain(request, pk):
         
         instance.custom_domain = domain
         
-        # Check if certificates exist for this domain in GitHubConfig
-        from .config_models import GitHubConfig
-        try:
-            config = GitHubConfig.objects.get(user=request.user)
-            # If the domain matches and there are certificates, copy them to the instance
-            if config.main_domain == domain and config.ssl_certificate_path and config.ssl_key_path:
-                import os
-                if os.path.exists(config.ssl_certificate_path) and os.path.exists(config.ssl_key_path):
-                    instance.ssl_enabled = True
-                    instance.ssl_certificate_path = config.ssl_certificate_path
-                    instance.ssl_key_path = config.ssl_key_path
-                    instance.ssl_email = config.ssl_email
-                    print(f"Auto-configured SSL for instance {instance.name} from GitHubConfig", flush=True)
-        except GitHubConfig.DoesNotExist:
-            pass
+        # Check if certificates exist for this domain
+        import os
+        from django.conf import settings
+        
+        # Check in production path
+        cert_path = f'/opt/community-sh/letsencrypt/live/{domain}/fullchain.pem'
+        key_path = f'/opt/community-sh/letsencrypt/live/{domain}/privkey.pem'
+        
+        # Check in local development path
+        if not os.path.exists(cert_path):
+            cert_path = os.path.join(settings.BASE_DIR, 'letsencrypt', 'live', domain, 'fullchain.pem')
+            key_path = os.path.join(settings.BASE_DIR, 'letsencrypt', 'live', domain, 'privkey.pem')
+        
+        # If certificates exist, auto-configure SSL
+        if os.path.exists(cert_path) and os.path.exists(key_path):
+            instance.ssl_enabled = True
+            instance.ssl_certificate_path = cert_path
+            instance.ssl_key_path = key_path
+            print(f"Auto-configured SSL for instance {instance.name} with existing certificates", flush=True)
+        else:
+            print(f"No certificates found for domain {domain} at {cert_path}", flush=True)
         
         instance.save()
         
