@@ -959,6 +959,16 @@ class SSLService:
                     from django.conf import settings
                     letsencrypt_dir = os_module.path.join(settings.BASE_DIR, 'letsencrypt')
                     os_module.makedirs(letsencrypt_dir, exist_ok=True)
+                    os_module.chmod(letsencrypt_dir, 0o755)
+                    
+                    # Create subdirectories that certbot needs
+                    for subdir in ['live', 'archive', 'renewal', 'accounts']:
+                        subdir_path = os_module.path.join(letsencrypt_dir, subdir)
+                        os_module.makedirs(subdir_path, exist_ok=True)
+                        os_module.chmod(subdir_path, 0o755)
+                    
+                    print(f"Letsencrypt dir: {letsencrypt_dir}", flush=True)
+                    print(f"Permissions: {oct(os_module.stat(letsencrypt_dir).st_mode)[-3:]}", flush=True)
                     
                     cmd = [
                         'docker', 'run', '--rm',
@@ -988,6 +998,18 @@ class SSLService:
                     ]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                
+                # Log what files were created after certbot ran
+                if in_docker:
+                    import os as os_module
+                    from django.conf import settings
+                    letsencrypt_dir = os_module.path.join(settings.BASE_DIR, 'letsencrypt')
+                    print(f"\n=== Files in letsencrypt dir after certbot ===", flush=True)
+                    for root, dirs, files in os_module.walk(letsencrypt_dir):
+                        for file in files:
+                            filepath = os_module.path.join(root, file)
+                            print(f"  {filepath}", flush=True)
+                    print(f"=== End of file list ===\n", flush=True)
             finally:
                 # Always restart Traefik after certbot finishes
                 try:
