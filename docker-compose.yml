@@ -59,7 +59,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`localhost`)"
+      - "traefik.http.routers.app.rule=Host(`localhost`) || Host(`${MAIN_DOMAIN:-localhost}`) || Host(`www.${MAIN_DOMAIN:-localhost}`)"
       - "traefik.http.routers.app.entrypoints=web"
       - "traefik.http.services.app.loadbalancer.server.port=8000"
     depends_on:

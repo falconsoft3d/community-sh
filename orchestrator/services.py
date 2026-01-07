@@ -964,7 +964,8 @@ class SSLService:
                         '--agree-tos',
                         '--email', email,
                         '-d', domain,
-                        '--preferred-challenges', 'http'
+                        '--preferred-challenges', 'http',
+                        '-v'  # Verbose mode for better error messages
                     ]
                 else:
                     cmd = [
@@ -974,7 +975,8 @@ class SSLService:
                         '--agree-tos',
                         '--email', email,
                         '-d', domain,
-                        '--preferred-challenges', 'http'
+                        '--preferred-challenges', 'http',
+                        '-v'  # Verbose mode for better error messages
                     ]
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -1002,15 +1004,29 @@ class SSLService:
                     return False, f"Certificado generado pero no se encontraron los archivos en {cert_path}", None, None
             else:
                 error_msg = result.stderr or result.stdout or "Error desconocido"
+                
+                # Try to read the log file for more details
+                log_content = ""
+                try:
+                    with open('/var/log/letsencrypt/letsencrypt.log', 'r') as f:
+                        # Get last 20 lines
+                        lines = f.readlines()
+                        log_content = ''.join(lines[-20:])
+                except:
+                    pass
+                
                 # Extract more useful error information
                 if "Timeout" in error_msg or "timeout" in error_msg:
                     return False, "Timeout: El servidor no pudo validar el dominio. Asegúrate de que el puerto 80 esté abierto y el dominio apunte a este servidor.", None, None
-                elif "Connection refused" in error_msg:
-                    return False, "Conexión rechazada: El puerto 80 puede estar bloqueado o en uso.", None, None
-                elif "DNS" in error_msg:
-                    return False, f"Error de DNS: El dominio {domain} no puede ser resuelto. Verifica la configuración DNS.", None, None
+                elif "Connection refused" in error_msg or "Connection refused" in log_content:
+                    return False, "Conexión rechazada: El puerto 80 puede estar bloqueado o en uso. Certbot no pudo conectarse al puerto 80 para validar el dominio.", None, None
+                elif "DNS" in error_msg or "DNS" in log_content:
+                    return False, f"Error de DNS: El dominio {domain} no puede ser resuelto. Verifica que el dominio apunte a la IP correcta: {error_msg[:200]}", None, None
+                elif "Invalid response" in log_content or "404" in log_content:
+                    return False, f"Let's Encrypt no pudo validar el dominio. Asegúrate de que: 1) El dominio {domain} apunte a este servidor, 2) El puerto 80 esté accesible desde internet, 3) No haya firewall bloqueando. Log: {log_content[-500:]}", None, None
                 else:
-                    return False, f"Error al generar certificado: {error_msg[:500]}", None, None
+                    full_error = f"{error_msg}\n\nÚltimas líneas del log:\n{log_content[-800:]}" if log_content else error_msg
+                    return False, f"Error al generar certificado: {full_error[:1000]}", None, None
                 
         except subprocess.TimeoutExpired:
             return False, "Timeout: La generación del certificado tardó demasiado. Verifica que el puerto 80 esté accesible desde internet.", None, None

@@ -56,6 +56,19 @@ fi
 echo -e "\n${GREEN}[4/5] Configuring environment...${NC}"
 PUBLIC_IP=$(curl -4 -s ifconfig.me 2>/dev/null || curl -4 -s icanhazip.com 2>/dev/null || hostname -I | awk '{print $1}')
 
+# Ask for main domain
+echo -e "\n${YELLOW}Domain Configuration:${NC}"
+echo -e "Enter your main domain (e.g., example.com) or press Enter to use IP only:"
+read -p "Main Domain: " MAIN_DOMAIN
+
+# If no domain provided, use localhost as default
+if [ -z "$MAIN_DOMAIN" ]; then
+    MAIN_DOMAIN="localhost"
+    echo -e "${YELLOW}No domain provided. Using localhost (access via IP: ${PUBLIC_IP})${NC}"
+else
+    echo -e "${GREEN}✓ Domain configured: ${MAIN_DOMAIN}${NC}"
+fi
+
 # Generate secrets
 SECRET_KEY=$(openssl rand -base64 50 | tr -d '\n/')
 DB_PASSWORD="postgres"  # Default password for simplicity
@@ -76,7 +89,10 @@ DATABASE_URL=postgres://postgres:${DB_PASSWORD}@db:5432/community_sh
 
 # Network Configuration
 SERVER_IP=${PUBLIC_IP}
+MAIN_DOMAIN=${MAIN_DOMAIN}
+
 # Server IP: ${PUBLIC_IP}
+# Main Domain: ${MAIN_DOMAIN}
 # To restrict access, edit ALLOWED_HOSTS above
 # Example: ALLOWED_HOSTS=your-domain.com,www.your-domain.com,${PUBLIC_IP}
 EOL
@@ -101,8 +117,15 @@ echo -e "\n${BLUE}==================================================${NC}"
 echo -e "${GREEN}   ✨ Installation Complete! ✨   ${NC}"
 echo -e "${BLUE}==================================================${NC}"
 echo -e "\n${GREEN}Access your application:${NC}"
-echo -e "  → http://${PUBLIC_IP}:8000"
+if [ "$MAIN_DOMAIN" != "localhost" ]; then
+    echo -e "  → http://${MAIN_DOMAIN}"
+    echo -e "  → http://www.${MAIN_DOMAIN}"
+    echo -e "  → http://${PUBLIC_IP}:8000"
+else
+    echo -e "  → http://${PUBLIC_IP}:8000"
+fi
 echo -e "\n${YELLOW}Configuration:${NC}"
+echo -e "  → Main Domain: ${MAIN_DOMAIN}"
 echo -e "  → ALLOWED_HOSTS: * (all IPs allowed)"
 echo -e "  → DEBUG: False"
 echo -e "  → Database: PostgreSQL"
