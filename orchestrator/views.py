@@ -738,17 +738,16 @@ def settings_view(request):
         # Also update if domain was removed (changed from something to empty)
         if section == 'domain' and (old_domain != config.main_domain or old_ssl_enabled != config.ssl_enabled):
             from .traefik_service import TraefikService
-            # If domain is empty, use localhost as default
-            domain_to_use = config.main_domain if config.main_domain else 'localhost'
-            success, msg = TraefikService.update_docker_compose_labels(
-                domain=domain_to_use, 
-                ssl_enabled=config.ssl_enabled if config.main_domain else False
+            # Generate dynamic Traefik configuration
+            success, msg = TraefikService.generate_dynamic_config(
+                domain=config.main_domain if config.main_domain else None,
+                ssl_enabled=config.ssl_enabled
             )
             if success:
                 if config.main_domain:
-                    messages.info(request, 'Dominio configurado. Por favor, ejecuta "docker-compose restart app" para aplicar los cambios de Traefik.')
+                    messages.info(request, f'✅ Dominio {config.main_domain} configurado correctamente. Traefik lo detectará automáticamente.')
                 else:
-                    messages.info(request, 'Dominio eliminado, volviendo a localhost. Por favor, ejecuta "docker-compose restart app" para aplicar los cambios.')
+                    messages.info(request, 'Dominio eliminado, volviendo a localhost.')
             else:
                 messages.warning(request, f'Configuración guardada, pero hubo un problema con Traefik: {msg}')
         

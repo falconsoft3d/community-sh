@@ -3,11 +3,69 @@ Servicio para gestionar la configuración dinámica de Traefik
 """
 import docker
 import os
+import yaml
 from django.conf import settings
 
 
 class TraefikService:
     """Service for managing Traefik dynamic configuration"""
+    
+    @staticmethod
+    def generate_dynamic_config(domain=None, ssl_enabled=False):
+        """
+        Generate Traefik dynamic configuration file based on GitHubConfig
+        
+        Args:
+            domain: Main domain from GitHubConfig.main_domain
+            ssl_enabled: Whether SSL is enabled from GitHubConfig.ssl_enabled
+        
+        Returns:
+            tuple: (success, message)
+        """
+        try:
+            # Create traefik directory if it doesn't exist
+            traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
+            os.makedirs(traefik_dir, exist_ok=True)
+            
+            config_file = os.path.join(traefik_dir, 'dynamic.yml')
+            
+            if domain:
+                # Create routing configuration for the main domain
+                config = {
+                    'http': {
+                        'routers': {
+                            'app-domain': {
+                                'rule': f'Host(`{domain}`) || Host(`www.{domain}`)',
+                                'entryPoints': ['web'],
+                                'service': 'app-service',
+                                'priority': 10
+                            }
+                        },
+                        'services': {
+                            'app-service': {
+                                'loadBalancer': {
+                                    'servers': [
+                                        {'url': 'http://app:8000'}
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                # Write configuration to file
+                with open(config_file, 'w') as f:
+                    yaml.dump(config, f, default_flow_style=False)
+                
+                return True, f"Configuración de Traefik generada para {domain}"
+            else:
+                # Remove configuration file if no domain is set
+                if os.path.exists(config_file):
+                    os.remove(config_file)
+                return True, "Configuración de dominio eliminada"
+                
+        except Exception as e:
+            return False, f"Error al generar configuración: {str(e)}"
     
     @staticmethod
     def update_app_routing(domain=None, ssl_enabled=False, cert_path=None, key_path=None):
