@@ -144,6 +144,29 @@ class TraefikService:
             # Get instance port
             port = instance.port
             
+            # Get backend URL based on platform
+            # In Linux, host.docker.internal doesn't work, use gateway IP
+            import platform
+            import subprocess
+            
+            if platform.system() == 'Linux':
+                # Get Docker gateway IP
+                try:
+                    result = subprocess.run(
+                        ['docker', 'network', 'inspect', 'community-sh_web', '-f', '{{range .IPAM.Config}}{{.Gateway}}{{end}}'],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    gateway_ip = result.stdout.strip()
+                    backend_url = f'http://{gateway_ip}:{port}'
+                except:
+                    # Fallback to common gateway IP
+                    backend_url = f'http://172.18.0.1:{port}'
+            else:
+                # macOS/Windows - use host.docker.internal
+                backend_url = f'http://host.docker.internal:{port}'
+            
+            print(f"Instance {instance.name} backend URL: {backend_url}", flush=True)
+            
             # Create routing configuration for the instance domain
             config = {
                 'http': {
@@ -159,13 +182,56 @@ class TraefikService:
                         f'instance-{instance.name}-service': {
                             'loadBalancer': {
                                 'servers': [
-                                    {'url': f'http://host.docker.internal:{port}'}
+                                    {'url': backend_url}
                                 ]
                             }
                         }
                     }
                 }
             }
+            
+            # Add HTTPS router if SSL is enabled for this instance
+            if instance.ssl_enabled and instance.ssl_certificate_path and instance.ssl_key_path:
+                if os.path.exists(instance.ssl_certificate_path) and os.path.exists(instance.ssl_key_path):
+                    # Convert host paths to Traefik container paths
+                    traefik_cert_path = instance.ssl_certificate_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
+                    traefik_key_path = instance.ssl_key_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
+                    
+                    # Also handle local development paths
+                    if str(settings.BASE_DIR) in traefik_cert_path:
+                        base_dir_str = str(settings.BASE_DIR)
+                        traefik_cert_path = traefik_cert_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
+                        traefik_key_path = traefik_key_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
+                    
+                    # Add HTTPS router
+                    config['http']['routers'][f'instance-{instance.name}-secure'] = {
+                        'rule': f'Host(`{instance.custom_domain}`)',
+                        'entryPoints': ['websecure'],
+                        'service': f'instance-{instance.name}-service',
+                        'priority': 100,
+                        'tls': {}
+                    }
+                    
+                    # Add HTTP to HTTPS redirect
+                    config['http']['routers'][f'instance-{instance.name}']['middlewares'] = ['redirect-to-https']
+                    config['http']['middlewares'] = {
+                        'redirect-to-https': {
+                            'redirectScheme': {
+                                'scheme': 'https',
+                                'permanent': True
+                            }
+                        }
+                    }
+                    
+                    # Add TLS certificates
+                    config['tls'] = {
+                        'certificates': [
+                            {
+                                'certFile': traefik_cert_path,
+                                'keyFile': traefik_key_path
+                            }
+                        ]
+                    }
             
             # Write configuration to file
             with open(config_file, 'w') as f:
