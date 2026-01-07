@@ -1,13 +1,38 @@
 {% extends "orchestrator/base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-6" x-data="{ activeTab: 'overview' }">
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-3xl font-bold tracking-tight">System Metrics</h1>
             <p class="text-muted-foreground mt-2">Server resource and status monitoring</p>
         </div>
+        <button onclick="window.location.reload()"
+            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+            <i data-lucide="refresh-cw" class="mr-2 h-4 w-4"></i> Refresh
+        </button>
     </div>
+
+    <!-- Tabs Navigation -->
+    <div class="border-b border-border">
+        <nav class="flex space-x-8" aria-label="Tabs">
+            <button @click="activeTab = 'overview'"
+                :class="activeTab === 'overview' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="gauge" class="inline-block h-4 w-4 mr-2"></i>
+                Overview
+            </button>
+            <button @click="activeTab = 'resources'"
+                :class="activeTab === 'resources' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="activity" class="inline-block h-4 w-4 mr-2"></i>
+                Resource Usage
+            </button>
+        </nav>
+    </div>
+
+    <!-- Overview Tab -->
+    <div x-show="activeTab === 'overview'" class="space-y-6">
 
     <!-- System Metrics Grid -->
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
