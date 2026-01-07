@@ -251,6 +251,15 @@ def instance_deploy(request, pk):
         service = DockerService()
         try:
             service.deploy_instance(instance)
+            
+            # Generate Traefik configuration if instance has custom domain
+            if instance.custom_domain:
+                from .traefik_service import TraefikService
+                success, msg = TraefikService.generate_instance_config(instance)
+                if success:
+                    print(f"Traefik config generated for {instance.name}: {msg}", flush=True)
+                else:
+                    print(f"Warning: Could not generate Traefik config for {instance.name}: {msg}", flush=True)
         except Exception as e:
             print(f"Error deploying: {e}")
     return HttpResponseRedirect(reverse_lazy('instance-detail', args=[pk]))
@@ -519,6 +528,17 @@ def instance_delete(request, pk):
         # Send email notification before deleting
         from .email_notifications import send_instance_notification
         send_instance_notification('deleted', instance, request.user)
+        
+        # Remove Traefik configuration file if exists
+        if instance.custom_domain:
+            from .traefik_service import TraefikService
+            import os
+            from django.conf import settings
+            traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
+            config_file = os.path.join(traefik_dir, f'instance-{instance.name}.yml')
+            if os.path.exists(config_file):
+                os.remove(config_file)
+                print(f"Removed Traefik config for {instance.name}", flush=True)
         
         service = DockerService()
         service.delete_instance(instance)
