@@ -192,7 +192,15 @@ class TraefikService:
             
             # Add HTTPS router if SSL is enabled for this instance
             if instance.ssl_enabled and instance.ssl_certificate_path and instance.ssl_key_path:
-                if os.path.exists(instance.ssl_certificate_path) and os.path.exists(instance.ssl_key_path):
+                print(f"Instance {instance.name} has SSL enabled", flush=True)
+                print(f"Cert path: {instance.ssl_certificate_path}", flush=True)
+                print(f"Key path: {instance.ssl_key_path}", flush=True)
+                cert_exists = os.path.exists(instance.ssl_certificate_path)
+                key_exists = os.path.exists(instance.ssl_key_path)
+                print(f"Cert exists: {cert_exists}", flush=True)
+                print(f"Key exists: {key_exists}", flush=True)
+                
+                if cert_exists and key_exists:
                     # Convert host paths to Traefik container paths
                     traefik_cert_path = instance.ssl_certificate_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
                     traefik_key_path = instance.ssl_key_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
@@ -202,6 +210,8 @@ class TraefikService:
                         base_dir_str = str(settings.BASE_DIR)
                         traefik_cert_path = traefik_cert_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
                         traefik_key_path = traefik_key_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
+                    
+                    print(f"Adding HTTPS config with certs: {traefik_cert_path}", flush=True)
                     
                     # Add HTTPS router
                     config['http']['routers'][f'instance-{instance.name}-secure'] = {
@@ -232,6 +242,8 @@ class TraefikService:
                             }
                         ]
                     }
+                else:
+                    print(f"Certificates not found on filesystem", flush=True)
             
             # Write configuration to file
             with open(config_file, 'w') as f:
