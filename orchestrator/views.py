@@ -387,6 +387,23 @@ def instance_configure_domain(request, pk):
             return redirect('instance-detail', pk=pk)
         
         instance.custom_domain = domain
+        
+        # Check if certificates exist for this domain in GitHubConfig
+        from .config_models import GitHubConfig
+        try:
+            config = GitHubConfig.objects.get(user=request.user)
+            # If the domain matches and there are certificates, copy them to the instance
+            if config.main_domain == domain and config.ssl_certificate_path and config.ssl_key_path:
+                import os
+                if os.path.exists(config.ssl_certificate_path) and os.path.exists(config.ssl_key_path):
+                    instance.ssl_enabled = True
+                    instance.ssl_certificate_path = config.ssl_certificate_path
+                    instance.ssl_key_path = config.ssl_key_path
+                    instance.ssl_email = config.ssl_email
+                    print(f"Auto-configured SSL for instance {instance.name} from GitHubConfig", flush=True)
+        except GitHubConfig.DoesNotExist:
+            pass
+        
         instance.save()
         
         # Generate Traefik configuration for this instance
