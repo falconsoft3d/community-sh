@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.15'
+VERSION = '1.0.16'
 
 CHANGELOG = [
+    {
+        'version': '1.0.16',
+        'date': '2026-10-28',
+        'notes': [
+            "Historial de Metrics con horas y minutos en los ejes y fecha y hora completas en el tooltip",
+        ],
+    },
     {
         'version': '1.0.15',
         'date': '2026-10-28',

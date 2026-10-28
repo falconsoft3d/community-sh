@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.15**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.16**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.16 — 2026-10-28
+
+- Historial de Metrics con horas y minutos en los ejes y fecha y hora completas en el tooltip
 
 ## 1.0.15 — 2026-10-28
 
