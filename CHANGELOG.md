@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.13**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.14**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.14 — 2026-10-28
+
+- Favicon propio en el panel y la página principal
 
 ## 1.0.13 — 2026-10-28
 

@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.13'
+VERSION = '1.0.14'
 
 CHANGELOG = [
+    {
+        'version': '1.0.14',
+        'date': '2026-10-28',
+        'notes': [
+            "Favicon propio en el panel y la página principal",
+        ],
+    },
     {
         'version': '1.0.13',
         'date': '2026-10-28',
