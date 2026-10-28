@@ -25,8 +25,24 @@ def home(request):
         pass
     
     from ..blog_models import BlogPost
+    from ..models import Instance
+    from ..permissions import is_registration_enabled
+    from ..template_services import get_template_loader
+    
     featured_posts = BlogPost.objects.filter(published=True, featured=True)[:3]
-    return render(request, 'orchestrator/home.html', {'featured_posts': featured_posts})
+    # App catalog comes from container_templates/*.yaml ("n8n - Workflow Automation" -> "n8n")
+    apps = [
+        template['display_name'].split(' - ')[0]
+        for template in get_template_loader().list_available_templates()
+        if template['name'] != 'custom'
+    ]
+    odoo_versions = [value for value, _label in Instance._meta.get_field('odoo_version').choices]
+    return render(request, 'orchestrator/home.html', {
+        'featured_posts': featured_posts,
+        'apps': apps,
+        'odoo_versions': odoo_versions,
+        'registration_enabled': is_registration_enabled(),
+    })
 
 
 def blog_list(request):
