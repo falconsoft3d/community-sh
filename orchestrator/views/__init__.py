@@ -13,6 +13,7 @@ from .todo import (
     todo_create,
     todo_status,
     todo_delete,
+    todo_edit,
 )
 from .mcp import (
     mcp_endpoint,
@@ -96,6 +97,7 @@ __all__ = [
     'todo_create',
     'todo_status',
     'todo_delete',
+    'todo_edit',
     'mcp_endpoint',
     'mcp_token_create',
     'mcp_token_revoke',

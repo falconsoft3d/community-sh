@@ -3,9 +3,18 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.19'
+VERSION = '1.0.20'
 
 CHANGELOG = [
+    {
+        'version': '1.0.20',
+        'date': '2026-10-28',
+        'notes': [
+            "Todo: KPIs de tareas hechas, sin terminar, en curso y porcentaje completado",
+            "Todo: el formulario de nueva tarea se abre con el botón «Nueva tarea»; las tareas se pueden editar y las completadas muestran su descripción",
+            "Icono de llave en los accesos «Entrar como admin»",
+        ],
+    },
     {
         'version': '1.0.19',
         'date': '2026-10-28',

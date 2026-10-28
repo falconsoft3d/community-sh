@@ -7,6 +7,12 @@ fills the .po catalogs (run `manage.py makemessages -l es -l en` first, then
 
 # Strings written in Spanish in the code -> English
 ES_TO_EN = {
+    'Nueva tarea': 'New task',
+    'Hechas': 'Done',
+    'Sin terminar': 'Unfinished',
+    'Completado': 'Completed',
+    'Guardar': 'Save',
+    'Ver descripción': 'Show description',
     'Filtrar por proyecto': 'Filter by project',
     'Todos los proyectos': 'All projects',
     'Instancia': 'Instance',

@@ -1,6 +1,12 @@
 # Changelog
 
-Versión actual: **1.0.19**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.20**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.20 — 2026-10-28
+
+- Todo: KPIs de tareas hechas, sin terminar, en curso y porcentaje completado
+- Todo: el formulario de nueva tarea se abre con el botón «Nueva tarea»; las tareas se pueden editar y las completadas muestran su descripción
+- Icono de llave en los accesos «Entrar como admin»
 
 ## 1.0.19 — 2026-10-28
 

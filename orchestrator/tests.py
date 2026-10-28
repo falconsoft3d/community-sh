@@ -1131,6 +1131,19 @@ class TodoTests(MCPServerTests):
         todo.refresh_from_db()
         self.assertEqual((todo.status, todo.completed_in_version), ('pending', ''))
 
+    def test_edit_and_kpis(self):
+        from .todo_models import Todo
+        todo = Todo.objects.create(title='Viejo', created_by=self.alice)
+        Todo.objects.create(title='Hecha', created_by=self.alice, status='done')
+        self.client.force_login(self.alice)
+        self.client.post(reverse('todo-edit', args=[todo.pk]), {'title': 'Nuevo', 'description': 'línea 1\r\nlínea 2'})
+        todo.refresh_from_db()
+        self.assertEqual((todo.title, todo.description), ('Nuevo', 'línea 1\r\nlínea 2'))
+        kpis = self.client.get(reverse('todo-list')).context['kpis']
+        self.assertEqual(kpis, {'done': 1, 'open': 1, 'in_progress': 0, 'percent': 50})
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(reverse('todo-edit', args=[todo.pk]), {'title': 'x'}).status_code, 404)
+
     def test_scoping_and_clients(self):
         from .todo_models import Todo
         Todo.objects.create(title='de bob', created_by=self.bob)
