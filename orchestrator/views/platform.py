@@ -135,7 +135,10 @@ def settings_view(request):
     from ..mcp_models import MCPToken
     from ..permissions import get_global_config
     global_config = get_global_config()
+    new_token = request.session.pop('new_personal_token', None)
     return render(request, 'orchestrator/settings.html', {
+        'new_token': new_token,
+        'example_token': new_token['token'] if new_token else 'TU_TOKEN',
         'config': config,
         'mcp_enabled': bool(global_config and global_config.mcp_enabled),
         'mcp_tokens': MCPToken.objects.filter(user=request.user),

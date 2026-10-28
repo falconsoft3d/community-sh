@@ -56,10 +56,12 @@ def mcp_endpoint(request):
 @login_required
 @require_POST
 def mcp_token_create(request):
-    name = request.POST.get('name', '').strip()[:100] or 'Claude'
+    tab = _token_tab(request)
+    name = request.POST.get('name', '').strip()[:100] or ('API' if tab == 'api' else 'Claude')
     _record, token = MCPToken.issue(request.user, name)
-    messages.warning(request, f'Token "{name}" creado: {token} — cópialo ahora, no se volverá a mostrar.')
-    return redirect(reverse('settings') + '#mcp')
+    # Shown once on the next settings page (with a copy button), then dropped
+    request.session['new_personal_token'] = {'name': name, 'token': token}
+    return redirect(reverse('settings') + f'#{tab}')
 
 
 @login_required
@@ -67,4 +69,8 @@ def mcp_token_create(request):
 def mcp_token_revoke(request, token_id):
     MCPToken.objects.filter(pk=token_id, user=request.user).delete()
     messages.success(request, 'Token revocado')
-    return redirect(reverse('settings') + '#mcp')
+    return redirect(reverse('settings') + f'#{_token_tab(request)}')
+
+
+def _token_tab(request):
+    return 'api' if request.POST.get('tab') == 'api' else 'mcp'

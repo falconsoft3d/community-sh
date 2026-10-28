@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.20'
+VERSION = '1.0.21'
 
 CHANGELOG = [
+    {
+        'version': '1.0.21',
+        'date': '2026-10-28',
+        'notes': [
+            "API: botón «Generar token» en la pestaña API de Configuración; el token nuevo se muestra una vez con botón de copiar y los ejemplos (curl, Claude) ya lo incluyen",
+        ],
+    },
     {
         'version': '1.0.20',
         'date': '2026-10-28',

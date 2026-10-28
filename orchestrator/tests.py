@@ -1203,6 +1203,16 @@ class MetricsHistoryTests(BaseTestCase):
 
 
 class RestAPITests(MCPServerTests):
+    def test_generate_token_from_api_tab_shown_once(self):
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('mcp-token-create'), {'name': 'script', 'tab': 'api'})
+        self.assertEqual(response['Location'], reverse('settings') + '#api')
+        page = self.client.get(reverse('settings'))
+        token = page.context['new_token']['token']
+        self.assertContains(page, f'Bearer {token}')  # the examples use it
+        self.assertEqual(self.api('get', '/api/projects/', token=token).status_code, 200)
+        self.assertIsNone(self.client.get(reverse('settings')).context['new_token'])
+
     def api(self, method, path, data=None, token=None):
         import json
         kwargs = {'HTTP_AUTHORIZATION': f'Bearer {token or self.token}'}

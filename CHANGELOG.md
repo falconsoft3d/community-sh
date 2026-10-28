@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.20**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.21**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.21 — 2026-10-28
+
+- API: botón «Generar token» en la pestaña API de Configuración; el token nuevo se muestra una vez con botón de copiar y los ejemplos (curl, Claude) ya lo incluyen
 
 ## 1.0.20 — 2026-10-28
 

@@ -736,16 +736,17 @@
                 </div>
                 <div class="space-y-1">
                     <p class="font-medium">Autenticación</p>
-                    <p class="text-muted-foreground">Cabecera <code class="font-mono">Authorization: Bearer TU_TOKEN</code> con un token personal. Son los mismos tokens que el servidor MCP: créalos o revócalos en la pestaña <button type="button" class="text-primary hover:underline" @click="activeTab = 'mcp'; window.location.hash = 'mcp'">MCP (Claude)</button>.</p>
+                    <p class="text-muted-foreground">Cabecera <code class="font-mono">Authorization: Bearer TU_TOKEN</code> con un token personal. Genera uno aquí; sirve también para el servidor MCP.</p>
                 </div>
+                {% include 'orchestrator/_personal_tokens.html' with tab='api' %}
                 <div class="space-y-1">
                     <p class="font-medium">Ejemplo</p>
-                    <pre class="overflow-x-auto rounded-lg bg-black p-3 text-xs text-green-400">curl -H "Authorization: Bearer TU_TOKEN" {{ api_url }}instances/
+                    <pre class="overflow-x-auto rounded-lg bg-black p-3 text-xs text-green-400">curl -H "Authorization: Bearer {{ example_token }}" {{ api_url }}instances/
 
-curl -X POST -H "Authorization: Bearer TU_TOKEN" {{ api_url }}instances/12/backup/
+curl -X POST -H "Authorization: Bearer {{ example_token }}" {{ api_url }}instances/12/backup/
 # → {"task_id": 345, "status": "pending"}
 
-curl -H "Authorization: Bearer TU_TOKEN" {{ api_url }}tasks/345/</pre>
+curl -H "Authorization: Bearer {{ example_token }}" {{ api_url }}tasks/345/</pre>
                 </div>
                 <div class="overflow-x-auto rounded-lg border">
                     <table class="w-full">
@@ -804,44 +805,18 @@ curl -H "Authorization: Bearer TU_TOKEN" {{ api_url }}tasks/345/</pre>
                 <p class="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">El servidor MCP está desactivado{% if not user.is_superuser %}: pídele a un administrador que lo active{% endif %}.</p>
                 {% endif %}
 
-                <div class="space-y-3">
-                    <h4 class="text-sm font-semibold">Tus tokens</h4>
-                    <ul class="divide-y rounded-lg border text-sm">
-                        {% for token in mcp_tokens %}
-                        <li class="flex items-center gap-3 px-4 py-3">
-                            <i data-lucide="key-round" class="h-4 w-4 text-muted-foreground"></i>
-                            <div class="flex-1">
-                                <div class="font-medium">{{ token.name }} <span class="font-mono text-xs text-muted-foreground">…{{ token.hint }}</span></div>
-                                <div class="text-xs text-muted-foreground">Creado {{ token.created_at|date:"d M Y H:i" }} · último uso {{ token.last_used_at|date:"d M Y H:i"|default:"nunca" }}</div>
-                            </div>
-                            <form method="post" action="{% url 'mcp-token-revoke' token.pk %}" onsubmit="return confirm('¿Revocar este token? Claude dejará de poder usarlo.');">
-                                {% csrf_token %}
-                                <button type="submit" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent">Revocar</button>
-                            </form>
-                        </li>
-                        {% empty %}
-                        <li class="px-4 py-3 text-muted-foreground">Aún no tienes tokens.</li>
-                        {% endfor %}
-                    </ul>
-                    <form method="post" action="{% url 'mcp-token-create' %}" class="flex flex-wrap gap-2">
-                        {% csrf_token %}
-                        <input name="name" placeholder="Ej.: Claude Code en mi portátil" aria-label="Nombre del token" class="h-10 min-w-[16rem] flex-1 rounded-md border border-input bg-background px-3 text-sm">
-                        <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                            <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Crear token
-                        </button>
-                    </form>
-                </div>
+                {% include 'orchestrator/_personal_tokens.html' with tab='mcp' %}
 
                 <div class="space-y-3">
                     <h4 class="text-sm font-semibold">Conectar Claude</h4>
                     <p class="text-sm text-muted-foreground"><strong>Claude Code</strong> (sustituye TU_TOKEN por el token creado):</p>
-                    <pre class="overflow-x-auto rounded-lg bg-black p-3 text-xs text-green-400">claude mcp add --transport http community-sh {{ mcp_url }} --header "Authorization: Bearer TU_TOKEN"</pre>
+                    <pre class="overflow-x-auto rounded-lg bg-black p-3 text-xs text-green-400">claude mcp add --transport http community-sh {{ mcp_url }} --header "Authorization: Bearer {{ example_token }}"</pre>
                     <p class="text-sm text-muted-foreground"><strong>Claude Desktop</strong>: añade esto a <code class="font-mono">claude_desktop_config.json</code> (usa el puente <code class="font-mono">mcp-remote</code>, requiere Node.js) y reinicia Claude:</p>
                     <pre class="overflow-x-auto rounded-lg bg-black p-3 text-xs text-green-400">{
   "mcpServers": {
     "community-sh": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "{{ mcp_url }}", "--header", "Authorization: Bearer TU_TOKEN"]
+      "args": ["-y", "mcp-remote", "{{ mcp_url }}", "--header", "Authorization: Bearer {{ example_token }}"]
     }
   }
 }</pre>
