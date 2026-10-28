@@ -1,19 +1,20 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="mx-auto w-full max-w-2xl">
     <nav class="text-sm text-muted-foreground mb-1">
-        <a href="{% url 'project-list' %}" class="hover:text-foreground">Proyectos</a>
+        <a href="{% url 'project-list' %}" class="hover:text-foreground">{% translate "Proyectos" %}</a>
         <span class="mx-1">/</span>
         {% if project %}
         <a href="{% url 'project-detail' project.pk %}" class="hover:text-foreground">{{ project.name }}</a>
         <span class="mx-1">/</span>
-        <span class="text-foreground font-medium">Editar</span>
+        <span class="text-foreground font-medium">{% translate "Editar" %}</span>
         {% else %}
-        <span class="text-foreground font-medium">Nuevo</span>
+        <span class="text-foreground font-medium">{% translate "Nuevo" %}</span>
         {% endif %}
     </nav>
-    <h1 class="text-2xl font-bold tracking-tight">{% if project %}Editar proyecto{% else %}Nuevo proyecto{% endif %}</h1>
+    <h1 class="text-2xl font-bold tracking-tight">{% if project %}{% translate "Editar proyecto" %}{% else %}{% translate "Nuevo proyecto" %}{% endif %}</h1>
 
     <form method="post" class="mt-6 space-y-5 rounded-xl border bg-card text-card-foreground shadow-sm p-6">
         {% csrf_token %}
@@ -30,11 +31,11 @@
         <div class="flex justify-end gap-2 pt-2">
             <a href="{% if project %}{% url 'project-detail' project.pk %}{% else %}{% url 'project-list' %}{% endif %}"
                 class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                Cancelar
+                {% translate "Cancelar" %}
             </a>
             <button type="submit"
                 class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                {% if project %}Guardar cambios{% else %}Crear proyecto{% endif %}
+                {% if project %}{% translate "Guardar cambios" %}{% else %}{% translate "Crear proyecto" %}{% endif %}
             </button>
         </div>
     </form>

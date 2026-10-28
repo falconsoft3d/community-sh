@@ -1,6 +1,6 @@
-{% load static %}
+{% load i18n %}{% load static %}
 <!DOCTYPE html>
-<html lang="en">
+{% load i18n %}{% get_current_language as LANGUAGE_CODE %}<html lang="{{ LANGUAGE_CODE }}">
 
 <head>
     <meta charset="UTF-8">
@@ -191,18 +191,18 @@
                         <a href="{% url 'project-list' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'projects' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="folder-kanban" class="h-4 w-4"></i>
-                            Proyectos
+                            {% translate "Proyectos" %}
                         </a>
                         <a href="{% url 'instance-list' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'instances' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="server" class="h-4 w-4"></i>
-                            Instances
+                            {% translate "Instances" %}
                         </a>
                         {% if not user_is_client %}
                         <a href="{% url 'container-list' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'containers' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="box" class="h-4 w-4"></i>
-                            Containers
+                            {% translate "Containers" %}
                         </a>
                         {% endif %}
                         {% if user.is_superuser %}
@@ -216,39 +216,32 @@
                         <a href="{% url 'metrics' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'metrics' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
-                            Metrics
+                            {% translate "Metrics" %}
                         </a>
                         {% endif %}
                         <a href="{% url 'backup-list' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'backups' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="archive" class="h-4 w-4"></i>
-                            Backups
+                            {% translate "Backups" %}
                         </a>
-                        {% if user.is_superuser %}
-                        <a href="{% url 'client-list' %}"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'clients' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="building-2" class="h-4 w-4"></i>
-                            Clientes
-                        </a>
-                        {% endif %}
                         {% if user.is_superuser %}
                         <a href="{% url 'user-list' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'users' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="users" class="h-4 w-4"></i>
-                            Usuarios
+                            {% translate "Usuarios" %}
                         </a>
                         {% endif %}
                         {% if not user_is_client %}
                         <a href="{% url 'settings' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'settings' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="settings" class="h-4 w-4"></i>
-                            Settings
+                            {% translate "Settings" %}
                         </a>
                         {% endif %}
                         <a href="{% url 'about' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'about' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="info" class="h-4 w-4"></i>
-                            About
+                            {% translate "About" %}
                         </a>
                     </nav>
                 </div>
@@ -266,6 +259,7 @@
                     <h1 class="font-semibold text-lg">Community SH</h1>
                 </div>
                 <div class="flex items-center gap-4">
+                    {% include "orchestrator/includes/language_switcher.html" %}
                     {% include "orchestrator/includes/theme_toggle.html" %}
                     <span class="text-sm font-medium">{{ user.username }}</span>
                     <div class="relative" x-data="{ open: false }">
@@ -283,14 +277,14 @@
                                 <a href="{% url 'user-profile' %}"
                                     class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground">
                                     <i data-lucide="user" class="h-4 w-4"></i>
-                                    Mi Perfil
+                                    {% translate "Mi Perfil" %}
                                 </a>
                                 <form action="{% url 'logout' %}" method="post">
                                     {% csrf_token %}
                                     <button type="submit"
                                         class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground">
                                         <i data-lucide="log-out" class="h-4 w-4"></i>
-                                        Logout
+                                        {% translate "Logout" %}
                                     </button>
                                 </form>
                             </div>
@@ -313,7 +307,8 @@
     </div>
 
     {% if not user.is_authenticated %}
-    <div class="fixed bottom-4 right-4 z-50 rounded-full border bg-card shadow-lg">
+    <div class="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border bg-card p-1 pl-2 shadow-lg">
+        {% include "orchestrator/includes/language_switcher.html" %}
         {% include "orchestrator/includes/theme_toggle.html" %}
     </div>
     {% endif %}

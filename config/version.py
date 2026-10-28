@@ -1,8 +1,17 @@
 """Community SH version. Bump it with every change and add an entry to CHANGELOG (newest first)."""
 
-VERSION = '2.0.0'
+VERSION = '2.1.0'
 
 CHANGELOG = [
+    {
+        'version': '2.1.0',
+        'date': '2026-10-28',
+        'notes': [
+            'Idiomas español e inglés con selector en la cabecera y la landing (sigue el idioma del navegador)',
+            'El cliente de un proyecto es un usuario: se asigna en el proyecto; la casilla "Cliente" en Usuarios limita a ver y operar',
+            'Versión visible en la landing, el menú y About',
+        ],
+    },
     {
         'version': '2.0.0',
         'date': '2026-10-28',

@@ -1,12 +1,13 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 {{ metrics|json_script:"metrics-initial" }}
 <div class="flex flex-col gap-6" x-data="liveMetrics()" x-init="start()">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-3xl font-bold tracking-tight">System Metrics</h1>
-            <p class="text-muted-foreground mt-2">Server resource and status monitoring</p>
+            <h1 class="text-3xl font-bold tracking-tight">{% translate "System Metrics" %}</h1>
+            <p class="text-muted-foreground mt-2">{% translate "Server resource and status monitoring" %}</p>
         </div>
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
             <span class="relative flex h-2.5 w-2.5">
@@ -19,18 +20,18 @@
 
     <!-- Tabs Navigation -->
     <div class="border-b border-border">
-        <nav class="flex space-x-8" aria-label="Tabs">
+        <nav class="flex space-x-8" aria-label="{% translate "Tabs" %}">
             <button @click="activeTab = 'overview'"
                 :class="activeTab === 'overview' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="gauge" class="inline-block h-4 w-4 mr-2"></i>
-                Overview
+                {% translate "Overview" %}
             </button>
             <button @click="activeTab = 'resources'"
                 :class="activeTab === 'resources' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="activity" class="inline-block h-4 w-4 mr-2"></i>
-                Resource Usage
+                {% translate "Resource Usage" %}
             </button>
         </nav>
     </div>
@@ -43,19 +44,19 @@
         <!-- CPU Usage -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">CPU Usage</h3>
+                <h3 class="tracking-tight text-sm font-medium">{% translate "CPU Usage" %}</h3>
                 <i data-lucide="cpu" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
                 <div class="text-2xl font-bold"><span x-text="m.cpu_percent">{{ metrics.cpu_percent }}</span>%</div>
-                <p class="text-xs text-muted-foreground"><span x-text="m.cpu_count">{{ metrics.cpu_count }}</span> núcleos</p>
+                <p class="text-xs text-muted-foreground"><span x-text="m.cpu_count">{{ metrics.cpu_count }}</span> {% translate "núcleos" %}</p>
             </div>
         </div>
 
         <!-- Memory Usage -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">RAM Usage</h3>
+                <h3 class="tracking-tight text-sm font-medium">{% translate "RAM Usage" %}</h3>
                 <i data-lucide="memory-stick" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
@@ -68,7 +69,7 @@
         <!-- Disk Usage -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Disk Usage</h3>
+                <h3 class="tracking-tight text-sm font-medium">{% translate "Disk Usage" %}</h3>
                 <i data-lucide="hard-drive" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
@@ -81,12 +82,12 @@
         <!-- Active Containers -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 class="tracking-tight text-sm font-medium">Active Containers</h3>
+                <h3 class="tracking-tight text-sm font-medium">{% translate "Active Containers" %}</h3>
                 <i data-lucide="box" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
                 <div class="text-2xl font-bold"><span x-text="m.containers_running">{{ metrics.containers_running }}</span></div>
-                <p class="text-xs text-muted-foreground"><span x-text="m.containers_total">{{ metrics.containers_total }}</span> total</p>
+                <p class="text-xs text-muted-foreground"><span x-text="m.containers_total">{{ metrics.containers_total }}</span> {% translate "total" %}</p>
             </div>
         </div>
     </div>
@@ -94,22 +95,22 @@
     <!-- Instances Status -->
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-col space-y-1.5 p-6 pb-4">
-            <h3 class="font-semibold leading-none tracking-tight">Instance Status</h3>
-            <p class="text-sm text-muted-foreground">Distribution of instances by state</p>
+            <h3 class="font-semibold leading-none tracking-tight">{% translate "Instance Status" %}</h3>
+            <p class="text-sm text-muted-foreground">{% translate "Distribution of instances by state" %}</p>
         </div>
         <div class="p-6 pt-0">
             <div class="grid gap-4 md:grid-cols-4">
                 <div class="flex flex-col">
                     <span class="text-2xl font-bold text-green-600"><span x-text="m.instances_running">{{ metrics.instances_running }}</span></span>
-                    <span class="text-xs text-muted-foreground">Running</span>
+                    <span class="text-xs text-muted-foreground">{% translate "Running" %}</span>
                 </div>
                 <div class="flex flex-col">
                     <span class="text-2xl font-bold text-yellow-600"><span x-text="m.instances_deploying">{{ metrics.instances_deploying }}</span></span>
-                    <span class="text-xs text-muted-foreground">Deploying</span>
+                    <span class="text-xs text-muted-foreground">{% translate "Deploying" %}</span>
                 </div>
                 <div class="flex flex-col">
                     <span class="text-2xl font-bold text-gray-600"><span x-text="m.instances_stopped">{{ metrics.instances_stopped }}</span></span>
-                    <span class="text-xs text-muted-foreground">Stopped</span>
+                    <span class="text-xs text-muted-foreground">{% translate "Stopped" %}</span>
                 </div>
                 <div class="flex flex-col">
                     <span class="text-2xl font-bold text-red-600"><span x-text="m.instances_error">{{ metrics.instances_error }}</span></span>
@@ -122,21 +123,21 @@
     <!-- Docker Info -->
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-col space-y-1.5 p-6 pb-4">
-            <h3 class="font-semibold leading-none tracking-tight">Docker information</h3>
-            <p class="text-sm text-muted-foreground">Docker environment details</p>
+            <h3 class="font-semibold leading-none tracking-tight">{% translate "Docker information" %}</h3>
+            <p class="text-sm text-muted-foreground">{% translate "Docker environment details" %}</p>
         </div>
         <div class="p-6 pt-0">
             <div class="grid gap-4 md:grid-cols-3">
                 <div class="flex flex-col space-y-1">
-                    <span class="text-sm font-medium">Version</span>
+                    <span class="text-sm font-medium">{% translate "Version" %}</span>
                     <span class="text-sm text-muted-foreground"><span x-text="m.docker_version">{{ metrics.docker_version }}</span></span>
                 </div>
                 <div class="flex flex-col space-y-1">
-                    <span class="text-sm font-medium">Images</span>
+                    <span class="text-sm font-medium">{% translate "Images" %}</span>
                     <span class="text-sm text-muted-foreground"><span x-text="m.docker_images">{{ metrics.docker_images }}</span></span>
                 </div>
                 <div class="flex flex-col space-y-1">
-                    <span class="text-sm font-medium">Networks</span>
+                    <span class="text-sm font-medium">{% translate "Networks" %}</span>
                     <span class="text-sm text-muted-foreground"><span x-text="m.docker_networks">{{ metrics.docker_networks }}</span></span>
                 </div>
             </div>
@@ -148,20 +149,20 @@
     <div x-show="activeTab === 'resources'" class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 border-b">
-                <h3 class="font-semibold text-lg">Container Resource Usage</h3>
-                <p class="text-sm text-muted-foreground mt-1">Real-time CPU and memory usage by container</p>
+                <h3 class="font-semibold text-lg">{% translate "Container Resource Usage" %}</h3>
+                <p class="text-sm text-muted-foreground mt-1">{% translate "Real-time CPU and memory usage by container" %}</p>
             </div>
             <div class="p-6">
                 <div class="relative w-full overflow-auto">
                     <table class="w-full caption-bottom text-sm">
                         <thead class="[&_tr]:border-b">
                             <tr class="border-b transition-colors hover:bg-muted/50">
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Container</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">CPU Usage</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Memory Usage</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Memory Limit</th>
-                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Network I/O</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Container" %}</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Status" %}</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "CPU Usage" %}</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Memory Usage" %}</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Memory Limit" %}</th>
+                                <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Network I/O" %}</th>
                             </tr>
                         </thead>
                         <tbody class="[&_tr:last-child]:border-0">
@@ -169,7 +170,7 @@
                                 <tr class="border-b transition-colors hover:bg-muted/50">
                                     <td class="p-4 align-middle font-medium" x-text="stat.name"></td>
                                     <td class="p-4 align-middle">
-                                        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800">Running</span>
+                                        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800">{% translate "Running" %}</span>
                                     </td>
                                     <td class="p-4 align-middle">
                                         <div class="flex items-center gap-2">
@@ -204,7 +205,7 @@
                                         <i data-lucide="activity" class="h-12 w-12 text-muted-foreground"></i>
                                         <div>
                                             <h3 class="text-lg font-semibold mb-2" x-text="m.containers ? 'No running containers' : 'Cargando…'"></h3>
-                                            <p class="text-muted-foreground">Start some containers to see their resource usage</p>
+                                            <p class="text-muted-foreground">{% translate "Start some containers to see their resource usage" %}</p>
                                         </div>
                                     </div>
                                 </td>

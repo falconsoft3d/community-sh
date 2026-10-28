@@ -57,6 +57,11 @@
                                 <i data-lucide="shield" class="mr-1 h-3 w-3"></i>
                                 Superuser
                             </span>
+                            {% elif user_item.profile.is_client %}
+                            <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-purple-100 text-purple-800 border-transparent">
+                                <i data-lucide="building-2" class="mr-1 h-3 w-3"></i>
+                                Cliente{% if user_item.profile.company %} · {{ user_item.profile.company }}{% endif %}
+                            </span>
                             {% elif user_item.is_staff %}
                             <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200">
                                 <i data-lucide="user-check" class="mr-1 h-3 w-3"></i>

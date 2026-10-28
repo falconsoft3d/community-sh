@@ -1,17 +1,18 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-        <h1 class="text-lg font-semibold md:text-2xl">Backups</h1>
+        <h1 class="text-lg font-semibold md:text-2xl">{% translate "Backups" %}</h1>
         <p class="text-sm text-muted-foreground">
             {{ backups|length }} respaldo{{ backups|length|pluralize }} · {{ total_size|filesizeformat }}
         </p>
     </div>
     <form method="get" class="ml-auto">
-        <select name="project" onchange="this.form.submit()" aria-label="Filtrar por proyecto"
+        <select name="project" onchange="this.form.submit()" aria-label="{% translate "Filtrar por proyecto" %}"
             class="h-10 rounded-md border border-input bg-background px-3 text-sm">
-            <option value="">Todos los proyectos</option>
+            <option value="">{% translate "Todos los proyectos" %}</option>
             {% for project in projects %}
             <option value="{{ project.pk }}" {% if selected_project == project.pk|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>
             {% endfor %}
@@ -25,12 +26,12 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b text-left text-muted-foreground">
-                    <th class="h-12 px-4 font-medium">Instancia</th>
-                    <th class="h-12 px-4 font-medium">Archivo</th>
-                    <th class="h-12 px-4 font-medium">Contenido</th>
-                    <th class="h-12 px-4 font-medium">Tamaño</th>
-                    <th class="h-12 px-4 font-medium">Fecha</th>
-                    <th class="h-12 px-4 font-medium text-right">Acciones</th>
+                    <th class="h-12 px-4 font-medium">{% translate "Instancia" %}</th>
+                    <th class="h-12 px-4 font-medium">{% translate "Archivo" %}</th>
+                    <th class="h-12 px-4 font-medium">{% translate "Contenido" %}</th>
+                    <th class="h-12 px-4 font-medium">{% translate "Tamaño" %}</th>
+                    <th class="h-12 px-4 font-medium">{% translate "Fecha" %}</th>
+                    <th class="h-12 px-4 font-medium text-right">{% translate "Acciones" %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -46,32 +47,32 @@
                     <td class="p-4 font-mono text-xs">{{ backup.filename }}</td>
                     <td class="p-4">
                         {% if backup.include_filestore %}
-                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">BD + filestore</span>
+                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">{% translate "BD + filestore" %}</span>
                         {% else %}
-                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">Solo BD</span>
+                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">{% translate "Solo BD" %}</span>
                         {% endif %}
                     </td>
                     <td class="p-4">{{ backup.file_size|filesizeformat }}</td>
                     <td class="p-4 text-muted-foreground">{{ backup.created_at|date:"d M Y H:i" }}</td>
                     <td class="p-4">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{% url 'backup-download' backup.pk %}" title="Descargar"
+                            <a href="{% url 'backup-download' backup.pk %}" title="{% translate "Descargar" %}"
                                 class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent h-8 px-3 text-xs font-medium">
-                                <i data-lucide="download" class="mr-1.5 h-3.5 w-3.5"></i> Descargar
+                                <i data-lucide="download" class="mr-1.5 h-3.5 w-3.5"></i> {% translate "Descargar" %}
                             </a>
                             {% if backup.can_manage %}
                             <form action="{% url 'backup-restore-action' backup.pk %}" method="post"
                                 onsubmit="return confirm('Esto sobrescribirá la base de datos y archivos actuales de {{ backup.instance.name|escapejs }}. ¿Restaurar?');">
                                 {% csrf_token %}
-                                <button type="submit" title="Restaurar"
+                                <button type="submit" title="{% translate "Restaurar" %}"
                                     class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent h-8 px-3 text-xs font-medium">
-                                    <i data-lucide="rotate-ccw" class="mr-1.5 h-3.5 w-3.5"></i> Restaurar
+                                    <i data-lucide="rotate-ccw" class="mr-1.5 h-3.5 w-3.5"></i> {% translate "Restaurar" %}
                                 </button>
                             </form>
                             <form action="{% url 'backup-delete' backup.pk %}" method="post"
                                 onsubmit="return confirm('¿Eliminar este backup?');">
                                 {% csrf_token %}
-                                <button type="submit" title="Eliminar" aria-label="Eliminar"
+                                <button type="submit" title="{% translate "Eliminar" %}" aria-label="{% translate "Eliminar" %}"
                                     class="inline-flex items-center justify-center rounded-md text-destructive hover:bg-accent h-8 w-8">
                                     <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
                                 </button>
@@ -87,8 +88,8 @@
     {% else %}
     <div class="p-10 text-center">
         <i data-lucide="archive" class="mx-auto h-10 w-10 text-muted-foreground"></i>
-        <h2 class="mt-3 font-semibold">No hay backups</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Crea uno desde la pestaña Backups de una instancia, o activa los automáticos en Settings.</p>
+        <h2 class="mt-3 font-semibold">{% translate "No hay backups" %}</h2>
+        <p class="mt-1 text-sm text-muted-foreground">{% translate "Crea uno desde la pestaña Backups de una instancia, o activa los automáticos en Settings." %}</p>
     </div>
     {% endif %}
 </div>

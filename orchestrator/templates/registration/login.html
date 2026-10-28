@@ -1,4 +1,5 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content_full %}
 <div class="flex min-h-screen items-center justify-center bg-muted/40 px-4">
@@ -6,7 +7,7 @@
         <div class="flex flex-col space-y-2 text-center">
             <i data-lucide="package-2" class="mx-auto h-10 w-10"></i>
             <h1 class="text-2xl font-semibold tracking-tight">Community SH</h1>
-            <p class="text-sm text-muted-foreground">Enter your credentials to sign in to your account</p>
+            <p class="text-sm text-muted-foreground">{% translate "Enter your credentials to sign in to your account" %}</p>
         </div>
 
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -15,13 +16,13 @@
                     {% csrf_token %}
 
                     <div class="space-y-2">
-                        <label class="text-sm font-medium leading-none" for="id_username">Username</label>
+                        <label class="text-sm font-medium leading-none" for="id_username">{% translate "Username" %}</label>
                         <input
                             class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             type="text" name="username" id="id_username" autocomplete="username" required autofocus>
                     </div>
                     <div class="space-y-2">
-                        <label class="text-sm font-medium leading-none" for="id_password">Password</label>
+                        <label class="text-sm font-medium leading-none" for="id_password">{% translate "Password" %}</label>
                         <input
                             class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             type="password" name="password" id="id_password" autocomplete="current-password" required>
@@ -31,22 +32,21 @@
                         <input type="checkbox" name="remember_me" id="remember_me"
                             class="h-4 w-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-ring focus:ring-offset-2">
                         <label for="remember_me" class="text-sm font-medium leading-none cursor-pointer">
-                            Recordarme
+                            {% translate "Recordarme" %}
                         </label>
                     </div>
 
                     <button
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 w-full"
                         type="submit">
-                        Sign In
+                        {% translate "Sign In" %}
                     </button>
                 </form>
             </div>
         </div>
         {% if registration_enabled %}
         <p class="px-8 text-center text-sm text-muted-foreground">
-            <a href="{% url 'register' %}" class="hover:text-brand underline underline-offset-4">Don't have an account?
-                Sign Up</a>
+            <a href="{% url 'register' %}" class="hover:text-brand underline underline-offset-4">{% translate "Don't have an account? Sign Up" %}</a>
         </p>
         {% endif %}
     </div>

@@ -1,12 +1,13 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-lg font-semibold md:text-2xl">Instances</h1>
+    <h1 class="text-lg font-semibold md:text-2xl">{% translate "Instances" %}</h1>
     <form method="get" class="ml-auto">
-        <select name="project" onchange="this.form.submit()" aria-label="Filtrar por proyecto"
+        <select name="project" onchange="this.form.submit()" aria-label="{% translate "Filtrar por proyecto" %}"
             class="h-10 rounded-md border border-input bg-background px-3 text-sm">
-            <option value="">Todos los proyectos</option>
+            <option value="">{% translate "Todos los proyectos" %}</option>
             {% for project in projects %}
             <option value="{{ project.pk }}" {% if selected_project == project.pk|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>
             {% endfor %}
@@ -14,7 +15,7 @@
     </form>
     <a href="{% url 'instance-create' %}{% if selected_project %}?project={{ selected_project }}{% endif %}"
         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-        <i data-lucide="plus" class="mr-2 h-4 w-4"></i> New Instance
+        <i data-lucide="plus" class="mr-2 h-4 w-4"></i> {% translate "New Instance" %}
     </a>
 </div>
 
@@ -25,13 +26,13 @@
             <thead class="[&_tr]:border-b">
                 <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                     <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">ID</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Origen</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Version</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Created</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Link</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Actions</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Name" %}</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Origen" %}</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Version" %}</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Status" %}</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Created" %}</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Link" %}</th>
+                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Actions" %}</th>
                 </tr>
             </thead>
             <tbody class="[&_tr:last-child]:border-0">
@@ -63,7 +64,7 @@
                         {% elif instance.origin == 'duplicate' %}
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-purple-100 text-purple-800">
-                            <i data-lucide="copy" class="h-3 w-3 mr-1"></i>Duplicado
+                            <i data-lucide="copy" class="h-3 w-3 mr-1"></i>{% translate "Duplicado" %}
                         </div>
                         {% elif instance.origin == 'manual' %}
                         <div
@@ -86,11 +87,11 @@
                         {% if instance.status == 'running' %}
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-100 text-green-800">
-                            Running</div>
+                            {% translate "Running" %}</div>
                         {% elif instance.status == 'deploying' %}
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-yellow-100 text-yellow-800">
-                            Deploying</div>
+                            {% translate "Deploying" %}</div>
                         {% else %}
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">
@@ -112,7 +113,7 @@
                             <a href="{{ instance.url }}" target="_blank"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
                                 <i data-lucide="external-link" class="h-3 w-3 mr-1"></i>
-                                Primary
+                                {% translate "Primary" %}
                             </a>
                             <a href="{{ instance.url_with_port }}" target="_blank"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
@@ -156,20 +157,19 @@
     <div x-show="confirmModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         @click.self="confirmModal = false">
         <div class="bg-card rounded-lg shadow-lg p-6 max-w-md w-full mx-4" @click.stop>
-            <h3 class="text-lg font-semibold mb-2">Confirm Action</h3>
+            <h3 class="text-lg font-semibold mb-2">{% translate "Confirm Action" %}</h3>
             <p class="text-muted-foreground mb-4">
-                Are you sure you want to <span class="font-semibold" x-text="actionName.toLowerCase()"></span> the
-                instance <span class="font-semibold" x-text="instanceName"></span>?
+                {% translate "Are you sure you want to" %} <span class="font-semibold" x-text="actionName.toLowerCase()"></span> {% translate "the instance" %} <span class="font-semibold" x-text="instanceName"></span>?
             </p>
             <div class="flex justify-end gap-3">
                 <button @click="confirmModal = false"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                    Cancel
+                    {% translate "Cancel" %}
                 </button>
                 <form x-ref="actionForm" method="post" :action="actionUrl" class="hidden">{% csrf_token %}</form>
                 <button @click="$refs.actionForm.submit()"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                    Confirm
+                    {% translate "Confirm" %}
                 </button>
             </div>
         </div>
@@ -178,7 +178,7 @@
 
 {% if is_paginated %}
 <div class="flex items-center justify-center mt-6">
-    <nav class="flex items-center gap-2" role="navigation" aria-label="Pagination">
+    <nav class="flex items-center gap-2" role="navigation" aria-label="{% translate "Pagination" %}">
         {% if page_obj.has_previous %}
         <a href="?page={{ page_obj.previous_page_number }}"
             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 w-9">

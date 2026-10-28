@@ -54,6 +54,10 @@ def user_create(request):
         user.is_superuser = is_superuser
         user.is_staff = is_staff
         user.save()
+        # A client only sees and operates the projects assigned to it
+        user.profile.is_client = request.POST.get('is_client') == 'on' and not is_superuser
+        user.profile.company = request.POST.get('company', '').strip()
+        user.profile.save()
         
         messages.success(request, f'Usuario "{username}" creado exitosamente')
         return redirect('user-list')
@@ -89,6 +93,9 @@ def user_edit(request, user_id):
             user_to_edit.set_password(new_password)
         
         user_to_edit.save()
+        user_to_edit.profile.is_client = request.POST.get('is_client') == 'on' and not is_superuser
+        user_to_edit.profile.company = request.POST.get('company', '').strip()
+        user_to_edit.profile.save()
         
         messages.success(request, f'Usuario "{user_to_edit.username}" actualizado exitosamente')
         return redirect('user-list')

@@ -18,15 +18,6 @@ from .docker import (
     docker_network_remove,
     docker_prune,
 )
-from .clients import (
-    client_list,
-    client_create,
-    client_detail,
-    client_edit,
-    client_reset_password,
-    client_toggle_active,
-    client_delete,
-)
 from .projects import (
     project_list,
     project_create,
@@ -88,13 +79,6 @@ __all__ = [
     'docker_volume_remove',
     'docker_network_remove',
     'docker_prune',
-    'client_list',
-    'client_create',
-    'client_detail',
-    'client_edit',
-    'client_reset_password',
-    'client_toggle_active',
-    'client_delete',
     'project_list',
     'project_create',
     'project_detail',
