@@ -63,6 +63,7 @@ from .instances import (
 )
 from .backups import (
     backup_list,
+    backup_import,
     instance_backup,
     instance_restore,
     instance_backups_list,
@@ -139,6 +140,7 @@ __all__ = [
     'instance_delete',
     'instance_duplicate',
     'backup_list',
+    'backup_import',
     'instance_backup',
     'instance_restore',
     'instance_backups_list',

@@ -1,6 +1,13 @@
 # Changelog
 
-Versión actual: **1.0.14**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.15**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.15 — 2026-10-28
+
+- Importar backups del gestor de bases de datos de Odoo (.zip con dump.sql y filestore) y volcados .dump, además de los del panel
+- Menú Backups → «Importar un backup y crear una instancia» (detecta la versión de Odoo y la base) y «Restaurar desde un archivo» en cada instancia
+- Backups probados en las 11 versiones (10 a 20): crear, exportar, importar, duplicar y crear instancia desde backup
+- Si la IA no consigue instalar un módulo, la base queda como estaba (antes Odoo dejaba de ejecutar sus tareas programadas)
 
 ## 1.0.14 — 2026-10-28
 

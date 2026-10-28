@@ -502,8 +502,8 @@ class TaskQueueTests(BaseTestCase):
         from .task_models import Task
         path = tempfile.mktemp(suffix='.zip')
         self.addCleanup(lambda: os.path.exists(path) and os.remove(path))
-        import os
         with zipfile.ZipFile(path, 'w') as zf:
+            zf.writestr('database.dump', 'PGDMP')
             zf.writestr('metadata.json', json.dumps({'database_name': 'alice_db', 'odoo_version': '16.0'}))
         backup = Backup.objects.create(instance=self.alice_instance, filename='a.zip', file_path=path, file_size=1)
         self.client.force_login(self.alice)
@@ -1224,3 +1224,83 @@ class RestAPITests(MCPServerTests):
         todo = self.api('post', '/api/todos/', {'title': 'Desde la API'}).json()
         done = self.api('patch', f"/api/todos/{todo['id']}/", {'status': 'done', 'completion_note': 'ok'}).json()
         self.assertEqual((done['status'], done['completion_note']), ('done', 'ok'))
+
+
+class BackupImportTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        import tempfile, shutil
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        settings_patch = override_settings(BASE_DIR=self.tmp)
+        settings_patch.enable()
+        self.addCleanup(settings_patch.disable)
+
+    def odoo_zip(self, version='17.0', db='prod'):
+        import io, json, zipfile
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w') as zf:
+            zf.writestr('dump.sql', 'SELECT 1;')
+            zf.writestr('manifest.json', json.dumps({'db_name': db, 'version': version}))
+            zf.writestr('filestore/ab/abcdef', 'file')
+        return buffer.getvalue()
+
+    def test_detects_the_three_formats(self):
+        import zipfile
+        from .services.docker_service import read_backup_metadata
+        odoo_path = os.path.join(self.tmp, 'odoo.zip')
+        open(odoo_path, 'wb').write(self.odoo_zip('16.0+e'))
+        self.assertEqual(read_backup_metadata(odoo_path), {'format': 'odoo', 'database_name': 'prod', 'odoo_version': '16.0', 'has_filestore': True})
+        panel_path = os.path.join(self.tmp, 'panel.zip')
+        with zipfile.ZipFile(panel_path, 'w') as zf:
+            zf.writestr('database.dump', 'PGDMP')
+            zf.writestr('metadata.json', '{"database_name": "qa", "odoo_version": "18.0"}')
+        self.assertEqual(read_backup_metadata(panel_path)['format'], 'panel')
+        dump_path = os.path.join(self.tmp, 'x.dump')
+        open(dump_path, 'wb').write(b'PGDMP\x01\x0e')
+        self.assertEqual(read_backup_metadata(dump_path)['format'], 'pg_dump')
+        bad = os.path.join(self.tmp, 'bad.txt')
+        open(bad, 'w').write('hello')
+        with self.assertRaises(Exception):
+            read_backup_metadata(bad)
+
+    def test_import_creates_instance_backup_and_task(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        upload = SimpleUploadedFile('prod.zip', self.odoo_zip('17.0', 'prod'))
+        self.client.post(reverse('backup-import'), {'backup_file': upload, 'name': 'imported', 'project': self.alice_project.pk})
+        instance = Instance.objects.get(name='imported')
+        self.assertEqual((instance.odoo_version, instance.database_name, instance.owner, instance.project),
+                         ('17.0', 'prod', self.alice, self.alice_project))
+        backup = instance.backups.get()
+        self.assertTrue(backup.include_filestore)
+        self.assertEqual(Task.objects.get(kind='create_from_backup').params, {'backup_id': backup.pk})
+
+    def test_import_rejects_unknown_version_and_other_projects(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.alice)
+        self.client.post(reverse('backup-import'), {'backup_file': SimpleUploadedFile('a.dump', b'PGDMP\x01'),
+                                                    'name': 'noversion', 'project': self.alice_project.pk})
+        self.client.post(reverse('backup-import'), {'backup_file': SimpleUploadedFile('b.zip', self.odoo_zip()),
+                                                    'name': 'notmine', 'project': self.bob_project.pk})
+        self.assertFalse(Instance.objects.filter(name__in=['noversion', 'notmine']).exists())
+
+
+class AIModuleInstallTests(BaseTestCase):
+    def test_failed_install_resets_pending_module_states(self):
+        from .task_models import Task
+        from .tasks import enqueue, run_task
+        odoo = mock.Mock(attrs={'Mounts': [{'Destination': '/mnt/extra-addons'}]})
+        odoo.exec_run.return_value = mock.Mock(exit_code=1, output=b'Traceback ... External ID not found')
+        db = mock.Mock()
+        service = self.docker.return_value
+        service._get_container.side_effect = lambda name: odoo if name.startswith('odoo_') else db
+        self.alice_instance.database_name = 'qa'
+        self.alice_instance.save()
+        task = run_task(enqueue(Task.Kind.AI_MODULE, self.alice_instance, self.alice, module='bad_mod', upgrade=False))
+        self.assertEqual(task.status, 'failed')
+        self.assertIn('la base queda como estaba', task.result)
+        sql = db.exec_run.call_args.args[0][-1]
+        self.assertIn("'to install' THEN 'uninstalled'", sql)
+        odoo.restart.assert_not_called()

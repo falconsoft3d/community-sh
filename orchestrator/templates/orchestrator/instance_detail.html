@@ -514,6 +514,20 @@
                 </form>
             </div>
         </div>
+        {% if can_manage %}
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
+            <h3 class="font-semibold leading-none tracking-tight mb-1">Restaurar desde un archivo</h3>
+            <p class="mb-4 text-sm text-muted-foreground">Sustituye la base de datos y el filestore de esta instancia. Acepta backups del panel, del gestor de bases de datos de Odoo (.zip) o un volcado .dump.</p>
+            <form method="post" action="{% url 'instance-restore' object.pk %}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3"
+                onsubmit="return confirm('Se sobrescribirán la base de datos y el filestore actuales. ¿Continuar?');">
+                {% csrf_token %}
+                <input type="file" name="backup_file" required accept=".zip,.dump" class="text-sm">
+                <button type="submit" class="inline-flex h-10 items-center rounded-md bg-yellow-600 px-4 text-sm font-medium text-white hover:bg-yellow-700">
+                    <i data-lucide="upload" class="mr-2 h-4 w-4"></i> Restaurar
+                </button>
+            </form>
+        </div>
+        {% endif %}
 
         <!-- Backups List -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">

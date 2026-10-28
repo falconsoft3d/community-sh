@@ -115,9 +115,6 @@ def backup_restore_action(request, backup_id):
 @login_required
 def backup_create_instance(request, backup_id):
     """Create a new instance from a backup"""
-    import zipfile
-    import json
-    
     backup = get_backup_for_user(request.user, backup_id, manage=True)
     
     if request.method == 'POST':
@@ -138,21 +135,21 @@ def backup_create_instance(request, backup_id):
             return redirect('instance-backups', pk=backup.instance.pk)
         
         try:
-            with zipfile.ZipFile(backup.file_path, 'r') as zipf:
-                metadata = json.loads(zipf.read('metadata.json'))
+            from ..services.docker_service import read_backup_metadata
+            metadata = read_backup_metadata(backup.file_path)
             
             # Use the same database name from the original backup
             original_db_name = metadata.get('database_name') or new_name.replace('-', '_')
             validate_database_name(original_db_name)
-        except (OSError, KeyError, ValueError, zipfile.BadZipFile, ValidationError) as e:
+        except (Exception, ValidationError) as e:
             messages.error(request, f'No se pudo leer el respaldo: {e}')
             return redirect('instance-backups', pk=backup.instance.pk)
         
         new_instance = Instance.objects.create(
             name=new_name,
-            odoo_version=metadata.get('odoo_version', backup.instance.odoo_version),
-            github_repo=metadata.get('github_repo', backup.instance.github_repo),
-            github_branch=metadata.get('github_branch', backup.instance.github_branch),
+            odoo_version=metadata.get('odoo_version') or backup.instance.odoo_version,
+            github_repo=backup.instance.github_repo,
+            github_branch=backup.instance.github_branch,
             database_name=original_db_name,
             status=Instance.Status.DEPLOYING,
             origin='backup',
@@ -194,9 +191,78 @@ def backup_list(request):
     backups = list(backups.order_by('-created_at')[:200])
     for backup in backups:
         backup.can_manage = can_manage(request.user, backup.instance)
+    from ..permissions import managed_projects_for
     return render(request, 'orchestrator/backup_list.html', {
         'backups': backups,
+        'managed_projects': managed_projects_for(request.user),
+        'odoo_versions': [v for v, _ in Instance._meta.get_field('odoo_version').choices],
         'projects': projects_for(request.user),
         'selected_project': selected_project,
         'total_size': sum(b.file_size for b in backups),
     })
+
+
+
+@login_required
+@require_POST
+def backup_import(request):
+    """Upload a backup (panel ZIP, Odoo database-manager ZIP or .dump) and create an instance from it."""
+    import uuid
+    from django.conf import settings
+    from ..backup_models import Backup
+    from ..permissions import is_client, managed_projects_for
+    from ..services.docker_service import read_backup_metadata
+
+    if is_client(request.user):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+    upload = request.FILES.get('backup_file')
+    name = request.POST.get('name', '').strip().lower()
+    project = managed_projects_for(request.user).filter(pk=request.POST.get('project') or 0).first()
+    try:
+        validate_resource_name(name)
+    except ValidationError as e:
+        messages.error(request, e.messages[0])
+        return redirect('backup-list')
+    if not upload or project is None:
+        messages.error(request, 'Elige un archivo y un proyecto')
+        return redirect('backup-list')
+    if Instance.objects.filter(name=name).exists():
+        messages.error(request, f'Ya existe una instancia con el nombre "{name}"')
+        return redirect('backup-list')
+
+    backups_dir = os.path.join(settings.BASE_DIR, 'backups')
+    os.makedirs(backups_dir, exist_ok=True)
+    file_path = os.path.join(backups_dir, f'imported_{name}_{uuid.uuid4().hex[:8]}{os.path.splitext(upload.name)[1] or ".zip"}')
+    with open(file_path, 'wb') as f:
+        for chunk in upload.chunks():
+            f.write(chunk)
+    try:
+        metadata = read_backup_metadata(file_path)
+        database_name = metadata['database_name'] or name.replace('-', '_')
+        validate_database_name(database_name)
+    except (Exception, ValidationError) as e:
+        os.remove(file_path)
+        messages.error(request, f'No se pudo leer el respaldo: {e}')
+        return redirect('backup-list')
+
+    odoo_version = request.POST.get('odoo_version') or metadata['odoo_version']
+    valid_versions = {value for value, _ in Instance._meta.get_field('odoo_version').choices}
+    if odoo_version not in valid_versions:
+        os.remove(file_path)
+        messages.error(request, 'No se pudo detectar la versión de Odoo del respaldo: elígela en el formulario')
+        return redirect('backup-list')
+
+    instance = Instance.objects.create(
+        name=name, odoo_version=odoo_version, database_name=database_name, project=project,
+        owner=project.owner if request.user.is_superuser else request.user,
+        status=Instance.Status.DEPLOYING, origin='backup',
+    )
+    backup = Backup.objects.create(
+        instance=instance, filename=upload.name, file_path=file_path, file_size=os.path.getsize(file_path),
+        include_filestore=metadata['has_filestore'], created_by=request.user,
+    )
+    enqueue(Task.Kind.CREATE_FROM_BACKUP, instance, request.user, backup_id=backup.pk)
+    formats = {'panel': 'backup del panel', 'odoo': 'backup de Odoo', 'pg_dump': 'volcado de PostgreSQL (sin filestore)'}
+    messages.info(request, f'Importando {formats[metadata["format"]]} como «{name}» (Odoo {odoo_version}). Sigue el progreso en la instancia.')
+    return redirect('instance-detail', pk=instance.pk)

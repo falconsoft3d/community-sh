@@ -250,7 +250,13 @@ def ai_module(task):
         result = container.exec_run(f'odoo {flag} {module} -d {database} --stop-after-init', detach=False)
         output = result.output.decode('utf-8', errors='replace')
         if result.exit_code != 0 or 'Traceback' in output:
-            raise Exception(f'Error instalando {module} en {database}:\n{output[-3000:]}')
+            # A failed -i/-u leaves modules marked "to install/upgrade": Odoo then skips its crons
+            # and reports inconsistent states, so put them back as they were
+            db_container.exec_run(['psql', '-U', 'odoo', '-d', database, '-c',
+                                   "UPDATE ir_module_module SET state = CASE state WHEN 'to install' THEN 'uninstalled' "
+                                   "ELSE 'installed' END WHERE state IN ('to install', 'to upgrade', 'to remove')"],
+                                  environment={'PGPASSWORD': 'odoo'})
+            raise Exception(f'Error instalando {module} en {database} (la base queda como estaba):\n{output[-3000:]}')
         notes.append(f'{module} {"actualizado" if flag == "-u" else "instalado"} en {database}')
     container.restart()
     return '\n'.join(notes)

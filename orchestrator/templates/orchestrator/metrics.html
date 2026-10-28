@@ -267,11 +267,19 @@
                 { key: '30d', label: '{% translate "30 días" %}' }, { key: '12m', label: '{% translate "12 meses" %}' },
             ],
             range: '24h', points: [], loading: true,
+            // Axis ticks: hours and minutes (with the day beyond 24 h); daily points only need the date
             format(ms) {
                 const date = new Date(ms);
-                if (this.range === '24h') return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                if (this.range === '12m') return date.toLocaleDateString([], { month: 'short', year: '2-digit' });
-                return date.toLocaleDateString([], { day: '2-digit', month: 'short' }) + (this.range === '7d' ? ' ' + date.toLocaleTimeString([], { hour: '2-digit' }) + 'h' : '');
+                const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                if (this.range === '24h') return time;
+                if (this.range === '12m') return date.toLocaleDateString([], { day: '2-digit', month: 'short', year: '2-digit' });
+                return date.toLocaleDateString([], { day: '2-digit', month: 'short' }) + ' ' + time;
+            },
+            // Tooltip: full date and time of the interval
+            formatFull(ms) {
+                const date = new Date(ms);
+                const day = date.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+                return this.range === '12m' ? day : day + ' · ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             },
             summary(key) {
                 if (!this.points.length) return '';
@@ -299,7 +307,7 @@
                         plugins: {
                             legend: { display: false },
                             tooltip: { callbacks: {
-                                title: items => this.format(items[0].parsed.x),
+                                title: items => this.formatFull(items[0].parsed.x),
                                 label: item => ` ${label} ${item.parsed.y.toFixed(1)}%  ({% translate "pico" %} ${item.raw.max.toFixed(1)}%)`,
                             } },
                         },

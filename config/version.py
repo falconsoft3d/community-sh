@@ -3,9 +3,19 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.14'
+VERSION = '1.0.15'
 
 CHANGELOG = [
+    {
+        'version': '1.0.15',
+        'date': '2026-10-28',
+        'notes': [
+            "Importar backups del gestor de bases de datos de Odoo (.zip con dump.sql y filestore) y volcados .dump, además de los del panel",
+            "Menú Backups → «Importar un backup y crear una instancia» (detecta la versión de Odoo y la base) y «Restaurar desde un archivo» en cada instancia",
+            "Backups probados en las 11 versiones (10 a 20): crear, exportar, importar, duplicar y crear instancia desde backup",
+            "Si la IA no consigue instalar un módulo, la base queda como estaba (antes Odoo dejaba de ejecutar sus tareas programadas)",
+        ],
+    },
     {
         'version': '1.0.14',
         'date': '2026-10-28',

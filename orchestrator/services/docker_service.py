@@ -26,6 +26,35 @@ def odoo_config_target(odoo_version):
     return '/etc/odoo/odoo.conf'
 
 
+def read_backup_metadata(path):
+    """
+    Describe a backup file. Formats: the panel's ZIP (database.dump + metadata.json), Odoo's own
+    database-manager ZIP (dump.sql + filestore/ + manifest.json) and a bare pg_dump custom file.
+    Returns {'format', 'database_name', 'odoo_version', 'has_filestore'}.
+    """
+    import json
+    import zipfile
+    if not zipfile.is_zipfile(path):
+        with open(path, 'rb') as f:
+            if f.read(5) != b'PGDMP':
+                raise Exception('Formato no reconocido: sube un ZIP del panel, un ZIP de Odoo o un .dump de PostgreSQL')
+        return {'format': 'pg_dump', 'database_name': None, 'odoo_version': None, 'has_filestore': False}
+    with zipfile.ZipFile(path) as zf:
+        names = set(zf.namelist())
+        has_filestore = any(n.startswith('filestore/') and not n.endswith('/') for n in names)
+        if 'database.dump' in names:
+            metadata = json.loads(zf.read('metadata.json')) if 'metadata.json' in names else {}
+            return {'format': 'panel', 'database_name': metadata.get('database_name'),
+                    'odoo_version': metadata.get('odoo_version'), 'has_filestore': has_filestore}
+        if 'dump.sql' in names:
+            manifest = json.loads(zf.read('manifest.json')) if 'manifest.json' in names else {}
+            version = str(manifest.get('version') or manifest.get('version_info', [''])[0] or '')
+            major = version.split('.')[0] if version else ''
+            return {'format': 'odoo', 'database_name': manifest.get('db_name'),
+                    'odoo_version': f'{major}.0' if major.isdigit() else None, 'has_filestore': has_filestore}
+    raise Exception('El ZIP no contiene database.dump (backup del panel) ni dump.sql (backup de Odoo)')
+
+
 def postgres_image(odoo_version):
     """PostgreSQL release each Odoo version supports (Odoo 20 needs 16+, Odoo 10-11 predate 12)."""
     major = int(float(odoo_version))
@@ -470,10 +499,10 @@ class DockerService:
         """
         Stops and removes containers, networks and the instance directory.
         """
-        # 1. Stop and Remove Odoo Container
-        if instance.container_id:
+        # 1. Stop and Remove Odoo Container (by id, or by name if the id isn't known)
+        if instance.container_id or self._get_container(f"odoo_{instance.name}"):
             try:
-                container = self.client.containers.get(instance.container_id)
+                container = self.client.containers.get(instance.container_id or f"odoo_{instance.name}")
                 container.stop()
                 container.remove(v=True)
             except docker.errors.NotFound:
@@ -979,6 +1008,15 @@ class DockerService:
         import json
         
         print(f"Restoring instance {instance.name} from backup...")
+        backup_format = read_backup_metadata(backup_file_path)['format']
+        if backup_format == 'pg_dump':
+            # A bare custom-format dump: wrap it like a panel backup without filestore
+            wrapped = tempfile.NamedTemporaryFile(suffix='.zip', delete=False).name
+            with zipfile.ZipFile(wrapped, 'w') as zf:
+                zf.write(backup_file_path, 'database.dump')
+                zf.writestr('metadata.json', '{}')
+            backup_file_path, backup_format = wrapped, 'panel'
+        native = backup_format == 'odoo'
         
         try:
             with zipfile.ZipFile(backup_file_path, 'r') as zipf:
@@ -994,10 +1032,14 @@ class DockerService:
                 temp_dir = tempfile.mkdtemp()
                 zipf.extractall(temp_dir)
                 
-                # Read metadata
+                # Read metadata (Odoo's own backups carry manifest.json instead)
                 metadata_path = os.path.join(temp_dir, 'metadata.json')
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
+                if os.path.exists(metadata_path):
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                else:
+                    metadata = {'database_name': read_backup_metadata(backup_file_path)['database_name']}
+                    metadata = {k: v for k, v in metadata.items() if v}
                 
                 print(f"Backup metadata: {metadata}")
                 
@@ -1005,8 +1047,8 @@ class DockerService:
                 print("Restoring database...")
                 db_container = self.client.containers.get(f"db_{instance.name}")
                 
-                # Read dump file
-                dump_path = os.path.join(temp_dir, 'database.dump')
+                # Read dump file: custom format (panel) or plain SQL (Odoo database manager)
+                dump_path = os.path.join(temp_dir, 'dump.sql' if native else 'database.dump')
                 with open(dump_path, 'rb') as f:
                     dump_data = f.read()
                 
@@ -1015,7 +1057,7 @@ class DockerService:
                 import io
                 tar_stream = io.BytesIO()
                 tar = tarfile.open(fileobj=tar_stream, mode='w')
-                tarinfo = tarfile.TarInfo(name='restore.dump')
+                tarinfo = tarfile.TarInfo(name='restore.sql' if native else 'restore.dump')
                 tarinfo.size = len(dump_data)
                 tar.addfile(tarinfo, io.BytesIO(dump_data))
                 tar.close()
@@ -1063,10 +1105,16 @@ class DockerService:
                     raise Exception(f"No se pudo crear la base de datos {odoo_db_name}: {create_result.output.decode()}")
                 
                 # Restore dump to the database (without -c flag to avoid clean errors)
-                restore_result = db_container.exec_run(
-                    f"pg_restore -U odoo -d {odoo_db_name} --no-owner --no-acl /tmp/restore.dump",
-                    environment={"PGPASSWORD": "odoo"}
-                )
+                if native:
+                    restore_result = db_container.exec_run(
+                        ['psql', '-U', 'odoo', '-d', odoo_db_name, '-q', '-f', '/tmp/restore.sql'],
+                        environment={"PGPASSWORD": "odoo"}
+                    )
+                else:
+                    restore_result = db_container.exec_run(
+                        f"pg_restore -U odoo -d {odoo_db_name} --no-owner --no-acl /tmp/restore.dump",
+                        environment={"PGPASSWORD": "odoo"}
+                    )
                 print(f"Database restore completed. Exit code: {restore_result.exit_code}")
                 if restore_result.output:
                     print(f"Restore output: {restore_result.output.decode()}")
@@ -1097,8 +1145,9 @@ class DockerService:
                         # We need to get the actual files from inside that subdirectory
                         actual_filestore_dir = filestore_dir
                         
-                        # If there's a single subdirectory, use that as the actual filestore
-                        if len(filestore_contents) == 1 and os.path.isdir(os.path.join(filestore_dir, filestore_contents[0])):
+                        # Panel backups nest the files under the original database name; Odoo's own
+                        # backups put them directly in filestore/
+                        if not native and len(filestore_contents) == 1 and os.path.isdir(os.path.join(filestore_dir, filestore_contents[0])):
                             actual_filestore_dir = os.path.join(filestore_dir, filestore_contents[0])
                             print(f"Using subdirectory as filestore source: {actual_filestore_dir}")
                         

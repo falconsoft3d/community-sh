@@ -20,6 +20,44 @@
     </form>
 </div>
 
+{% if managed_projects %}
+<details class="mt-4 rounded-xl border bg-card text-card-foreground shadow-sm" {% if not backups %}open{% endif %}>
+    <summary class="cursor-pointer select-none px-5 py-3 text-sm font-medium">
+        <i data-lucide="upload" class="mr-1 inline h-4 w-4"></i> Importar un backup y crear una instancia
+    </summary>
+    <form method="post" action="{% url 'backup-import' %}" enctype="multipart/form-data" class="grid gap-4 border-t p-5 md:grid-cols-2">
+        {% csrf_token %}
+        <label class="space-y-1 text-sm md:col-span-2">
+            <span class="font-medium">Archivo</span>
+            <input type="file" name="backup_file" required accept=".zip,.dump" class="block w-full text-sm">
+            <span class="block text-xs text-muted-foreground">Backup de este panel (.zip), backup del gestor de bases de datos de Odoo (.zip con dump.sql y filestore) o volcado de PostgreSQL (.dump).</span>
+        </label>
+        <label class="space-y-1 text-sm">
+            <span class="font-medium">Nombre de la nueva instancia</span>
+            <input name="name" required placeholder="cliente-importado" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+        </label>
+        <label class="space-y-1 text-sm">
+            <span class="font-medium">Proyecto</span>
+            <select name="project" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                {% for project in managed_projects %}<option value="{{ project.pk }}">{{ project.name }}</option>{% endfor %}
+            </select>
+        </label>
+        <label class="space-y-1 text-sm">
+            <span class="font-medium">Versión de Odoo</span>
+            <select name="odoo_version" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">Detectar del archivo</option>
+                {% for version in odoo_versions %}<option value="{{ version }}">{{ version }}</option>{% endfor %}
+            </select>
+        </label>
+        <div class="flex items-end justify-end">
+            <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                <i data-lucide="upload" class="mr-2 h-4 w-4"></i> Importar
+            </button>
+        </div>
+    </form>
+</details>
+{% endif %}
+
 <div class="rounded-md border bg-card text-card-foreground shadow-sm mt-4">
     {% if backups %}
     <div class="overflow-x-auto">
