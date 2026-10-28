@@ -2,7 +2,9 @@
 Middleware para manejar redirecciones SSL/HTTPS de manera condicional
 """
 from django.conf import settings
-from django.http import HttpResponsePermanentRedirect, HttpResponseForbidden
+from django.http import HttpResponsePermanentRedirect, HttpResponseForbidden, JsonResponse
+from django.shortcuts import redirect
+from django.urls import reverse
 from django.utils.deprecation import MiddlewareMixin
 
 
@@ -68,10 +70,9 @@ class DynamicAllowedHostsMiddleware(MiddlewareMixin):
         
         # Intentar obtener el dominio principal desde la configuración
         try:
-            from orchestrator.config_models import GitHubConfig
+            from orchestrator.permissions import get_global_config
             
-            # Obtener el primer config (en un sistema multiusuario, esto debería ajustarse)
-            config = GitHubConfig.objects.first()
+            config = get_global_config()
             
             if config and config.main_domain:
                 # Agregar el dominio principal y su variante con www
@@ -86,3 +87,32 @@ class DynamicAllowedHostsMiddleware(MiddlewareMixin):
             return HttpResponseForbidden(f'Host "{host}" no permitido. Configure el dominio en Settings.')
         
         return None
+
+
+class TwoFactorEnforcementMiddleware(MiddlewareMixin):
+    """
+    Si el administrador exige 2FA, los usuarios que aún no lo tienen activo
+    solo pueden acceder a la página de configuración de 2FA (o cerrar sesión).
+    """
+
+    def process_request(self, request):
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return None
+
+        from orchestrator.permissions import is_two_factor_required
+        if not is_two_factor_required():
+            return None
+
+        profile = getattr(user, 'profile', None)
+        if profile and profile.two_factor_enabled and profile.two_factor_secret:
+            return None
+
+        allowed_paths = {reverse('two-factor-setup'), reverse('logout')}
+        exempt_prefixes = tuple('/' + prefix.lstrip('/') for prefix in (settings.STATIC_URL, settings.MEDIA_URL))
+        if request.path in allowed_paths or request.path.startswith(exempt_prefixes):
+            return None
+
+        if request.path.startswith('/api/'):
+            return JsonResponse({'detail': 'Two-factor authentication setup required.'}, status=403)
+        return redirect('two-factor-setup')

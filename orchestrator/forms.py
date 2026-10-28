@@ -1,6 +1,7 @@
 from django import forms
 from .models import Instance
 from .config_models import GitHubConfig
+from .permissions import domain_in_use
 import requests
 
 class InstanceForm(forms.ModelForm):
@@ -75,3 +76,12 @@ class InstanceForm(forms.ModelForm):
                 field.widget.attrs.update({
                     'class': 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
                 })
+
+    def clean_name(self):
+        return (self.cleaned_data.get('name') or '').strip().lower()
+
+    def clean_custom_domain(self):
+        domain = (self.cleaned_data.get('custom_domain') or '').strip().lower()
+        if domain and domain_in_use(domain, exclude_instance=self.instance if self.instance.pk else None):
+            raise forms.ValidationError('Este dominio ya está en uso.')
+        return domain or None

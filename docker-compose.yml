@@ -2,7 +2,6 @@ services:
   traefik:
     image: "traefik:v2.5"
     command:
-      - "--api.insecure=true"
       - "--providers.docker=false"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
@@ -18,7 +17,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080" # Dashboard
     environment:
       - DOCKER_API_VERSION=1.44
     volumes:
@@ -35,7 +33,7 @@ services:
     environment:
       - POSTGRES_DB=community_sh
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD in .env}
     networks:
       - web
 
@@ -43,13 +41,14 @@ services:
     build: .
     image: community-sh-app
     restart: always
-    command: python manage.py runserver 0.0.0.0:8000 --insecure
+    # Long timeout: deploys/backups still run inside the request (see Phase 3)
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 4 --timeout 900
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@db:5432/community_sh}
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-your-secret-key-here}
-      - DEBUG=${DEBUG:-True}
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      - DEBUG=${DEBUG:-False}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
       # IMPORTANT: This must match the absolute path on the HOST machine
       - HOST_WORKDIR=${HOST_WORKDIR}
@@ -76,9 +75,9 @@ services:
     restart: always
     command: /bin/sh -c "while true; do python manage.py run_auto_backups; sleep 60; done"
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/community_sh
-      - DJANGO_SECRET_KEY=django-insecure-your-secret-key-here
-      - DEBUG=False
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      - DEBUG=${DEBUG:-False}
     volumes:
       - ./media:/app/media
       - ./backups:/app/backups

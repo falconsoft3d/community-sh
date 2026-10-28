@@ -66,6 +66,10 @@ def two_factor_setup(request):
                 })
         
         elif action == 'disable':
+            from .permissions import is_two_factor_required
+            if is_two_factor_required():
+                messages.error(request, 'La autenticación de dos factores es obligatoria en esta plataforma')
+                return redirect('user-profile')
             profile.two_factor_enabled = False
             profile.two_factor_secret = ''
             profile.save()

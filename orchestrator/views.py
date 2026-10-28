@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from .models import Instance
 from .serializers import InstanceSerializer
 from .services import DockerService
@@ -13,12 +14,31 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.views.decorators.http import require_POST
 import os
+from .permissions import (
+    IsOwnerOrSuperuser,
+    domain_in_use,
+    get_backup_for_user,
+    get_global_config,
+    get_instance_for_user,
+    instances_for,
+    superuser_required,
+    validate_domain,
+    validate_resource_name,
+)
 
 # API ViewSet
 class InstanceViewSet(viewsets.ModelViewSet):
-    queryset = Instance.objects.all()
     serializer_class = InstanceSerializer
+    permission_classes = [IsAuthenticated, IsOwnerOrSuperuser]
+
+    def get_queryset(self):
+        return instances_for(self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
     @action(detail=True, methods=['post'])
     def deploy(self, request, pk=None):
@@ -47,7 +67,7 @@ def home(request):
     
     # Check if public website is enabled
     try:
-        config = GitHubConfig.objects.first()
+        config = get_global_config()
         if config and not config.public_website_enabled:
             # If user is already authenticated, go to dashboard
             if request.user.is_authenticated:
@@ -64,7 +84,7 @@ def home(request):
 @login_required
 def dashboard(request):
     """Dashboard view for logged in users"""
-    instances = Instance.objects.all().order_by('-created_at')
+    instances = instances_for(request.user).order_by('-created_at')
     return render(request, 'orchestrator/dashboard.html', {'instances': instances})
 
 def blog_list(request):
@@ -74,7 +94,7 @@ def blog_list(request):
     
     # Check if public website is enabled
     try:
-        config = GitHubConfig.objects.first()
+        config = get_global_config()
         if config and not config.public_website_enabled:
             if request.user.is_authenticated:
                 return redirect('instance-list')
@@ -93,7 +113,7 @@ def blog_detail(request, slug):
     
     # Check if public website is enabled
     try:
-        config = GitHubConfig.objects.first()
+        config = get_global_config()
         if config and not config.public_website_enabled:
             if request.user.is_authenticated:
                 return redirect('instance-list')
@@ -125,6 +145,9 @@ class InstanceListView(LoginRequiredMixin, ListView):
     model = Instance
     ordering = ['-created_at']
 
+    def get_queryset(self):
+        return instances_for(self.request.user).order_by(*self.ordering)
+
 class InstanceCreateView(LoginRequiredMixin, CreateView):
     model = Instance
     from .forms import InstanceForm
@@ -139,6 +162,7 @@ class InstanceCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         # Set origin to manual
         form.instance.origin = 'manual'
+        form.instance.owner = self.request.user
         # Save the instance first
         response = super().form_valid(form)
         
@@ -233,6 +257,9 @@ class InstanceCreateView(LoginRequiredMixin, CreateView):
 class InstanceDetailView(LoginRequiredMixin, DetailView):
     model = Instance
 
+    def get_queryset(self):
+        return instances_for(self.request.user)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         service = DockerService()
@@ -246,7 +273,7 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
 
 @login_required
 def instance_deploy(request, pk):
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     if request.method == 'POST':
         service = DockerService()
         try:
@@ -266,7 +293,7 @@ def instance_deploy(request, pk):
 
 @login_required
 def instance_stop(request, pk):
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     if request.method == 'POST':
         service = DockerService()
         service.stop_instance(instance)
@@ -274,7 +301,7 @@ def instance_stop(request, pk):
 
 @login_required
 def instance_restart(request, pk):
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     if request.method == 'POST':
         service = DockerService()
         service.restart_instance(instance)
@@ -282,7 +309,7 @@ def instance_restart(request, pk):
 
 @login_required
 def instance_logs_api(request, pk):
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     service = DockerService()
     logs = service.get_logs(instance, lines=200)
     return JsonResponse({'logs': logs})
@@ -290,7 +317,7 @@ def instance_logs_api(request, pk):
 @login_required
 def instance_console_exec(request, pk):
     """Execute commands in the container console"""
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     
     if request.method == 'POST':
         import json
@@ -312,7 +339,7 @@ def instance_console_exec(request, pk):
 @login_required
 def instance_install_requirements(request, pk):
     """Install Python packages from requirements.txt file"""
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     
     if request.method == 'POST':
         requirements_file = request.FILES.get('requirements')
@@ -370,7 +397,7 @@ def instance_install_requirements(request, pk):
 @login_required
 def instance_configure_domain(request, pk):
     """Configure custom domain for an instance"""
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     
     if request.method == 'POST':
         domain = request.POST.get('domain', '').strip()
@@ -379,11 +406,14 @@ def instance_configure_domain(request, pk):
             messages.error(request, 'El dominio es requerido')
             return redirect('instance-detail', pk=pk)
         
-        # Basic domain validation
-        import re
-        domain_pattern = r'^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$'
-        if not re.match(domain_pattern, domain.lower()):
+        domain = domain.lower()
+        try:
+            validate_domain(domain)
+        except ValidationError:
             messages.error(request, 'Formato de dominio inválido')
+            return redirect('instance-detail', pk=pk)
+        if domain_in_use(domain, exclude_instance=instance):
+            messages.error(request, f'El dominio {domain} ya está en uso')
             return redirect('instance-detail', pk=pk)
         
         instance.custom_domain = domain
@@ -428,7 +458,7 @@ def instance_configure_domain(request, pk):
 @login_required
 def instance_generate_ssl(request, pk):
     """Generate SSL certificate for instance custom domain"""
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     
     if request.method == 'POST':
         if not instance.custom_domain:
@@ -472,7 +502,7 @@ def instance_generate_ssl(request, pk):
 @login_required
 def instance_update_name(request, pk):
     """Update instance name"""
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     
     if request.method == 'POST':
         new_name = request.POST.get('name', '').strip().lower()
@@ -481,10 +511,10 @@ def instance_update_name(request, pk):
             messages.error(request, 'El nombre no puede estar vacío')
             return redirect('instance-detail', pk=pk)
         
-        # Validate name format (lowercase, numbers, hyphens only)
-        import re
-        if not re.match(r'^[a-z0-9-]+$', new_name):
-            messages.error(request, 'El nombre solo puede contener letras minúsculas, números y guiones')
+        try:
+            validate_resource_name(new_name)
+        except ValidationError as e:
+            messages.error(request, e.messages[0])
             return redirect('instance-detail', pk=pk)
         
         # Check if name is already taken
@@ -504,7 +534,7 @@ def instance_update_name(request, pk):
 @login_required
 def instance_install_module(request, pk):
     """Upload and install a module ZIP file"""
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     
     if request.method == 'POST':
         module_file = request.FILES.get('module_file')
@@ -546,7 +576,7 @@ def instance_install_module(request, pk):
 
 @login_required
 def instance_delete(request, pk):
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     if request.method == 'POST':
         # Send email notification before deleting
         from .email_notifications import send_instance_notification
@@ -571,7 +601,7 @@ def instance_delete(request, pk):
 
 @login_required
 def instance_duplicate(request, pk):
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     
     if request.method == 'GET':
         # Show the duplication form
@@ -579,11 +609,18 @@ def instance_duplicate(request, pk):
     
     elif request.method == 'POST':
         # Process the duplication
-        new_name = request.POST.get('new_name', '').strip()
-        
+        new_name = request.POST.get('new_name', '').strip().lower()
+
         if not new_name:
             from django.contrib import messages
             messages.error(request, 'Debes proporcionar un nombre para la nueva instancia')
+            return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
+
+        try:
+            validate_resource_name(new_name)
+        except ValidationError as e:
+            from django.contrib import messages
+            messages.error(request, e.messages[0])
             return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
         
         # Check if name already exists
@@ -596,6 +633,8 @@ def instance_duplicate(request, pk):
         service = DockerService()
         try:
             new_instance = service.copy_instance(instance, new_name)
+            new_instance.owner = instance.owner or request.user
+            new_instance.save(update_fields=['owner'])
             
             # Send email notification
             from .email_notifications import send_instance_notification
@@ -612,6 +651,7 @@ def instance_duplicate(request, pk):
     return redirect('instance-detail', pk=pk)
 
 @login_required
+@superuser_required
 def metrics_view(request):
     import psutil
     import docker
@@ -723,13 +763,6 @@ def settings_view(request):
     config, created = GitHubConfig.objects.get_or_create(user=request.user)
     
     if request.method == 'POST':
-        # Debug: print all POST data
-        import sys
-        print("=== POST DATA ===", file=sys.stderr)
-        for key, value in request.POST.items():
-            print(f"{key}: {value}", file=sys.stderr)
-        print("=================", file=sys.stderr)
-        
         # Update configuration based on which fields are present in POST
         # This allows each tab to submit independently without affecting others
         
@@ -738,7 +771,13 @@ def settings_view(request):
             config.personal_access_token = request.POST.get('personal_access_token', '')
             config.default_organization = request.POST.get('default_organization', '')
             config.webhook_secret = request.POST.get('webhook_secret', '')
-        
+
+        # The remaining sections are platform-wide: only superusers may change them
+        if not request.user.is_superuser:
+            config.save()
+            messages.success(request, 'Settings saved successfully')
+            return redirect('settings')
+
         # Update general settings if present
         if 'registration_enabled' in request.POST or request.POST.get('registration_enabled') == 'on':
             config.registration_enabled = request.POST.get('registration_enabled') == 'on'
@@ -772,7 +811,12 @@ def settings_view(request):
         
         if section == 'domain':
             # Update domain and SSL when saving Domain & SSL section
-            config.main_domain = request.POST.get('main_domain', '').strip()
+            config.main_domain = request.POST.get('main_domain', '').strip().lower()
+            try:
+                validate_domain(config.main_domain)
+            except ValidationError:
+                messages.error(request, 'Formato de dominio inválido')
+                return redirect('settings')
             # Checkboxes not checked don't appear in POST, so we need to check explicitly
             config.ssl_enabled = 'ssl_enabled' in request.POST
             
@@ -811,6 +855,8 @@ def settings_view(request):
     return render(request, 'orchestrator/settings.html', {'config': config})
 
 @login_required
+@superuser_required
+@require_POST
 def run_auto_backups_view(request):
     """Execute automatic backups for all instances"""
     from django.contrib import messages
@@ -924,6 +970,7 @@ def about(request):
     })
 
 @login_required
+@superuser_required
 def generate_ssl_certificate(request):
     """Generate SSL certificate using Let's Encrypt"""
     from .config_models import GitHubConfig
@@ -937,6 +984,13 @@ def generate_ssl_certificate(request):
         
         if not domain:
             messages.error(request, 'Debes proporcionar un dominio')
+            return redirect('settings')
+
+        domain = domain.strip().lower()
+        try:
+            validate_domain(domain)
+        except ValidationError:
+            messages.error(request, 'Formato de dominio inválido')
             return redirect('settings')
         
         if not email:
@@ -976,7 +1030,7 @@ def generate_ssl_certificate(request):
 
 @login_required
 def instance_backup(request, pk):
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     
     # Handle both GET and POST
     if request.method == 'POST':
@@ -1005,7 +1059,7 @@ def instance_backup(request, pk):
 
 @login_required
 def instance_restore(request, pk):
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     
     if request.method == 'POST':
         backup_file = request.FILES.get('backup_file')
@@ -1040,7 +1094,7 @@ def instance_restore(request, pk):
 
 @login_required
 def instance_backups_list(request, pk):
-    instance = get_object_or_404(Instance, pk=pk)
+    instance = get_instance_for_user(request.user, pk)
     from .backup_models import Backup
     backups = Backup.objects.filter(instance=instance)
     return render(request, 'orchestrator/instance_backups.html', {
@@ -1051,7 +1105,7 @@ def instance_backups_list(request, pk):
 @login_required
 def backup_download(request, backup_id):
     from .backup_models import Backup
-    backup = get_object_or_404(Backup, pk=backup_id)
+    backup = get_backup_for_user(request.user, backup_id)
     
     if not os.path.exists(backup.file_path):
         from django.contrib import messages
@@ -1066,7 +1120,7 @@ def backup_download(request, backup_id):
 @login_required
 def backup_delete(request, backup_id):
     from .backup_models import Backup
-    backup = get_object_or_404(Backup, pk=backup_id)
+    backup = get_backup_for_user(request.user, backup_id)
     instance_pk = backup.instance.pk
     
     if request.method == 'POST':
@@ -1085,7 +1139,7 @@ def backup_delete(request, backup_id):
 @login_required
 def backup_restore_action(request, backup_id):
     from .backup_models import Backup
-    backup = get_object_or_404(Backup, pk=backup_id)
+    backup = get_backup_for_user(request.user, backup_id)
     instance = backup.instance
     
     if request.method == 'POST':
@@ -1108,14 +1162,21 @@ def backup_create_instance(request, backup_id):
     import zipfile
     import json
     
-    backup = get_object_or_404(Backup, pk=backup_id)
+    backup = get_backup_for_user(request.user, backup_id)
     
     if request.method == 'POST':
-        new_name = request.POST.get('name', '')
-        
+        new_name = request.POST.get('name', '').strip().lower()
+
         if not new_name:
             from django.contrib import messages
             messages.error(request, 'Debes proporcionar un nombre para la nueva instancia')
+            return redirect('instance-backups', pk=backup.instance.pk)
+
+        try:
+            validate_resource_name(new_name)
+        except ValidationError as e:
+            from django.contrib import messages
+            messages.error(request, e.messages[0])
             return redirect('instance-backups', pk=backup.instance.pk)
         
         # Check if name already exists
@@ -1153,7 +1214,8 @@ def backup_create_instance(request, backup_id):
                 database_name=original_db_name,
                 port=port,
                 status='deploying',
-                origin='backup'
+                origin='backup',
+                owner=backup.instance.owner or request.user,
             )
             
             from django.contrib import messages

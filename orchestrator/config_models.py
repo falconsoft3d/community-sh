@@ -7,7 +7,7 @@ class GitHubConfig(models.Model):
     personal_access_token = models.CharField(max_length=255, blank=True, help_text="GitHub Personal Access Token")
     default_organization = models.CharField(max_length=255, blank=True, help_text="Default GitHub organization")
     webhook_secret = models.CharField(max_length=255, blank=True, help_text="Webhook secret for GitHub")
-    registration_enabled = models.BooleanField(default=True, help_text="Allow new user registrations")
+    registration_enabled = models.BooleanField(default=False, help_text="Allow new user registrations")
     public_website_enabled = models.BooleanField(default=True, help_text="Enable public website and blog")
     two_factor_required = models.BooleanField(default=False, help_text="Require two-factor authentication for all users")
     

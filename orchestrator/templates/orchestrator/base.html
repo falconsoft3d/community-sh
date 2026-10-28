@@ -125,11 +125,13 @@
                             <i data-lucide="box" class="h-4 w-4"></i>
                             Containers
                         </a>
-                        <a href="{% url 'metrics' %}"
+{% if user.is_superuser %}
+                                                <a href="{% url 'metrics' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'metrics' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
                             Metrics
                         </a>
+                        {% endif %}
                         {% if user.is_superuser %}
                         <a href="{% url 'user-list' %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary">

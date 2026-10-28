@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 import os
 import socket
+from .permissions import validate_resource_name, validate_domain
 
 def get_template_choices():
     """Get template choices from YAML files"""
@@ -24,7 +25,7 @@ class Container(models.Model):
         ('creating', 'Creating'),
     ]
     
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255, unique=True, validators=[validate_resource_name])
     template = models.CharField(max_length=50, choices=get_template_choices, default='custom')
     image = models.CharField(max_length=255, help_text="Docker image (e.g., n8nio/n8n:latest)")
     port = models.IntegerField(help_text="Host port to expose")
@@ -43,7 +44,7 @@ class Container(models.Model):
     command = models.CharField(max_length=255, blank=True, null=True, help_text="Custom command to run")
     
     # Domain and SSL
-    custom_domain = models.CharField(max_length=255, blank=True, null=True, help_text="Custom domain for this container")
+    custom_domain = models.CharField(max_length=255, blank=True, null=True, validators=[validate_domain], help_text="Custom domain for this container")
     ssl_enabled = models.BooleanField(default=False, help_text="Enable SSL/HTTPS")
     ssl_certificate_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_key_path = models.CharField(max_length=500, blank=True, null=True)

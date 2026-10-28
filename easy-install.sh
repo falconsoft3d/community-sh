@@ -71,7 +71,7 @@ fi
 
 # Generate secrets
 SECRET_KEY=$(openssl rand -base64 50 | tr -d '\n/')
-DB_PASSWORD="postgres"  # Default password for simplicity
+DB_PASSWORD=$(openssl rand -hex 24)
 
 # Create .env file with default configuration
 cat > .env <<EOL
@@ -129,7 +129,7 @@ echo -e "  → Main Domain: ${MAIN_DOMAIN}"
 echo -e "  → ALLOWED_HOSTS: * (all IPs allowed)"
 echo -e "  → DEBUG: False"
 echo -e "  → Database: PostgreSQL"
-echo -e "  → DB Password: postgres (default)"
+echo -e "  → DB Password: (random, stored in .env)"
 echo -e "\n${YELLOW}Configuration file:${NC}"
 echo -e "  ${INSTALL_DIR}/.env"
 echo -e "  Edit with: ${GREEN}nano ${INSTALL_DIR}/.env${NC}"
@@ -142,7 +142,6 @@ echo -e "\n  3. Customize settings (optional):"
 echo -e "     ${GREEN}nano ${INSTALL_DIR}/.env${NC}"
 echo -e "     ${GREEN}cd ${INSTALL_DIR} && sudo docker compose restart${NC}"
 echo -e "\n${RED}Security:${NC}"
-echo -e "  ⚠  Default DB password is 'postgres' - change it in .env for production"
 echo -e "  ⚠  Consider setting specific ALLOWED_HOSTS in .env"
 echo -e "  ⚠  Configure SSL in admin panel for HTTPS"
 echo -e "${BLUE}==================================================${NC}"

@@ -6,8 +6,8 @@ from .blog_models import BlogPost
 
 @admin.register(Instance)
 class InstanceAdmin(admin.ModelAdmin):
-    list_display = ['name', 'odoo_version', 'status', 'created_at']
-    list_filter = ['status', 'odoo_version']
+    list_display = ['name', 'owner', 'odoo_version', 'status', 'created_at']
+    list_filter = ['status', 'odoo_version', 'owner']
     search_fields = ['name']
 
 @admin.register(GitHubConfig)

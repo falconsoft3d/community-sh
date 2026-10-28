@@ -41,7 +41,9 @@ class ContainerService:
                         self.client.volumes.create(name=docker_volume_name)
                     volumes[docker_volume_name] = {'bind': container_path, 'mode': 'rw'}
                 else:
-                    # Absolute bind mount (use with caution)
+                    # Absolute bind mounts expose the host: admins only
+                    if not container.created_by.is_superuser:
+                        raise PermissionError(f"Host bind mount not allowed: {host_path}")
                     volumes[host_path] = {'bind': container_path, 'mode': 'rw'}
             
             # Prepare Traefik labels for automatic routing

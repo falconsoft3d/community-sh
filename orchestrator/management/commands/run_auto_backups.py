@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from orchestrator.models import Instance
-from orchestrator.config_models import GitHubConfig
+from orchestrator.permissions import get_global_config
 from orchestrator.services import DockerService
 from orchestrator.backup_models import Backup
 import os
@@ -10,10 +10,11 @@ class Command(BaseCommand):
     help = 'Runs automatic backups based on system configuration'
 
     def handle(self, *args, **options):
-        # 1. Find configurations with backup enabled
-        configs = GitHubConfig.objects.filter(auto_backup_enabled=True)
+        # 1. Backups are configured platform-wide by the admin
+        config = get_global_config()
+        configs = [config] if config and config.auto_backup_enabled else []
         
-        if not configs.exists():
+        if not configs:
             self.stdout.write(self.style.SUCCESS('No active backup configurations found.'))
             return
 

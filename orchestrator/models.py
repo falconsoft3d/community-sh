@@ -5,6 +5,7 @@ import os
 import socket
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from .permissions import validate_resource_name, validate_domain
 
 class Instance(models.Model):
     class Status(models.TextChoices):
@@ -13,7 +14,8 @@ class Instance(models.Model):
         STOPPED = 'stopped', _('Stopped')
         ERROR = 'error', _('Error')
 
-    name = models.CharField(max_length=100, unique=True, help_text="Subdomain name")
+    name = models.CharField(max_length=100, unique=True, validators=[validate_resource_name], help_text="Subdomain name")
+    owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='instances')
     odoo_version = models.CharField(max_length=10, choices=[
         ('10.0', '10.0'),
         ('11.0', '11.0'),
@@ -38,7 +40,7 @@ class Instance(models.Model):
     port = models.IntegerField(unique=True, null=True, blank=True)
     
     # Custom Domain & SSL
-    custom_domain = models.CharField(max_length=255, blank=True, null=True, help_text="Custom domain (e.g., ejemplo.com)")
+    custom_domain = models.CharField(max_length=255, blank=True, null=True, validators=[validate_domain], help_text="Custom domain (e.g., ejemplo.com)")
     ssl_enabled = models.BooleanField(default=False, help_text="SSL/HTTPS enabled")
     ssl_certificate_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_key_path = models.CharField(max_length=500, blank=True, null=True)
