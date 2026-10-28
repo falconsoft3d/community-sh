@@ -10,6 +10,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.views.decorators.http import require_POST
+from ..task_models import Task
+from ..tasks import enqueue
 from ..permissions import (
     domain_in_use,
     get_instance_for_user,
@@ -39,106 +42,23 @@ class InstanceCreateView(LoginRequiredMixin, CreateView):
     model = Instance
     from ..forms import InstanceForm
     form_class = InstanceForm
-    success_url = reverse_lazy('instance-list')
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
         return kwargs
     
+    def get_success_url(self):
+        return reverse_lazy('instance-detail', args=[self.object.pk])
+    
     def form_valid(self, form):
-        # Set origin to manual
         form.instance.origin = 'manual'
         form.instance.owner = self.request.user
-        # Save the instance first
         response = super().form_valid(form)
         
-        # Create GitHub branch if repository is configured
-        if self.object.github_repo and self.object.github_branch:
-            print("=" * 50)
-            print("CREATING GITHUB BRANCH FOR NEW INSTANCE")
-            print("=" * 50)
-            
-            original_branch = self.object.github_branch
-            new_branch = self.object.name
-            
-            print(f"GitHub Repo: {self.object.github_repo}")
-            print(f"Original Branch: {original_branch}")
-            print(f"New Branch: {new_branch}")
-            
-            # Get GitHub config
-            from ..config_models import GitHubConfig
-            github_config = GitHubConfig.objects.filter(user=self.request.user).first()
-            
-            if github_config and github_config.personal_access_token:
-                import subprocess
-                import tempfile
-                import shutil
-                import os
-                
-                temp_git_dir = tempfile.mkdtemp()
-                print(f"Created temp directory: {temp_git_dir}")
-                
-                try:
-                    # Parse repo URL to add token
-                    repo_url = self.object.github_repo.replace('https://', f'https://{github_config.personal_access_token}@')
-                    print(f"Cloning repository (branch: {original_branch})...")
-                    
-                    # Clone the repository
-                    result = subprocess.run(
-                        ['git', 'clone', '--branch', original_branch, '--single-branch', repo_url, temp_git_dir], 
-                        check=True, capture_output=True, text=True
-                    )
-                    print(f"Clone successful")
-                    
-                    # Create and checkout new branch
-                    print(f"Creating new branch: {new_branch}")
-                    result = subprocess.run(
-                        ['git', 'checkout', '-b', new_branch], 
-                        check=True, capture_output=True, text=True, cwd=temp_git_dir
-                    )
-                    
-                    # Push new branch to remote
-                    print(f"Pushing branch to remote...")
-                    result = subprocess.run(
-                        ['git', 'push', 'origin', new_branch], 
-                        check=True, capture_output=True, text=True, cwd=temp_git_dir
-                    )
-                    print(f"✅ Successfully created GitHub branch '{new_branch}'")
-                    
-                    # Update instance with new branch
-                    self.object.github_branch = new_branch
-                    self.object.save()
-                    print(f"Updated instance branch to: {new_branch}")
-                    
-                    from django.contrib import messages
-                    messages.success(self.request, f'✅ Rama de GitHub "{new_branch}" creada exitosamente')
-                    
-                except subprocess.CalledProcessError as e:
-                    print(f"❌ Git command failed: {e.stderr}")
-                    from django.contrib import messages
-                    messages.warning(self.request, f'Instancia creada pero no se pudo crear la rama en GitHub')
-                except Exception as e:
-                    print(f"❌ Unexpected error: {str(e)}")
-                finally:
-                    if os.path.exists(temp_git_dir):
-                        shutil.rmtree(temp_git_dir)
-            else:
-                print("⚠️ GitHub token not configured")
-            
-            print("=" * 50)
-        
-        # Then trigger deployment
-        service = DockerService()
-        try:
-            service.deploy_instance(self.object)
-        except Exception as e:
-            print(f"Error deploying instance: {e}")
-        
-        # Send email notification
-        from ..email_notifications import send_instance_notification
-        send_instance_notification('created', self.object, self.request.user)
-        
+        # The worker creates the instance's GitHub branch, deploys it and notifies
+        enqueue(Task.Kind.DEPLOY, self.object, self.request.user, create_branch=True, notify=True)
+        messages.info(self.request, 'Instancia creada. El despliegue está en cola y puede tardar unos minutos.')
         return response
 
 
@@ -156,29 +76,41 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         # Add backups to context
         from ..backup_models import Backup
         context['backups'] = Backup.objects.filter(instance=self.object).order_by('-created_at')
+        context['tasks'] = list(self.object.tasks.all()[:5])
+        context['has_active_tasks'] = any(task.is_active for task in context['tasks'])
         
         return context
 
 
 @login_required
+@require_POST
 def instance_deploy(request, pk):
     instance = get_instance_for_user(request.user, pk)
-    if request.method == 'POST':
-        service = DockerService()
-        try:
-            service.deploy_instance(instance)
-            
-            # Generate Traefik configuration if instance has custom domain
-            if instance.custom_domain:
-                from ..traefik_service import TraefikService
-                success, msg = TraefikService.generate_instance_config(instance)
-                if success:
-                    print(f"Traefik config generated for {instance.name}: {msg}", flush=True)
-                else:
-                    print(f"Warning: Could not generate Traefik config for {instance.name}: {msg}", flush=True)
-        except Exception as e:
-            print(f"Error deploying: {e}")
+    enqueue(Task.Kind.DEPLOY, instance, request.user)
+    messages.info(request, 'Despliegue en cola')
     return HttpResponseRedirect(reverse_lazy('instance-detail', args=[pk]))
+
+
+@login_required
+def instance_tasks_api(request, pk):
+    """Recent tasks of an instance, polled by the detail page while any is active."""
+    instance = get_instance_for_user(request.user, pk)
+    tasks = [
+        {
+            'id': task.id,
+            'kind': task.get_kind_display(),
+            'status': task.status,
+            'status_display': task.get_status_display(),
+            'result': task.result,
+            'created_at': task.created_at.isoformat(),
+        }
+        for task in instance.tasks.all()[:5]
+    ]
+    return JsonResponse({
+        'status': instance.status,
+        'active': any(t['status'] in (Task.Status.PENDING, Task.Status.RUNNING) for t in tasks),
+        'tasks': tasks,
+    })
 
 
 @login_required
@@ -397,90 +329,66 @@ def instance_generate_ssl(request, pk):
 
 
 @login_required
+@require_POST
 def instance_update_name(request, pk):
-    """Update instance name"""
+    """Rename an instance (its containers, network and workspace are moved by the worker)"""
     instance = get_instance_for_user(request.user, pk)
+    new_name = request.POST.get('name', '').strip().lower()
     
-    if request.method == 'POST':
-        new_name = request.POST.get('name', '').strip().lower()
-        
-        if not new_name:
-            messages.error(request, 'El nombre no puede estar vacío')
-            return redirect('instance-detail', pk=pk)
-        
-        try:
-            validate_resource_name(new_name)
-        except ValidationError as e:
-            messages.error(request, e.messages[0])
-            return redirect('instance-detail', pk=pk)
-        
-        # Check if name is already taken
-        if Instance.objects.filter(name=new_name).exclude(pk=pk).exists():
-            messages.error(request, f'Ya existe una instancia con el nombre "{new_name}"')
-            return redirect('instance-detail', pk=pk)
-        
-        old_name = instance.name
-        if new_name == old_name:
-            return redirect('instance-detail', pk=pk)
-        instance.name = new_name
-        
-        try:
-            DockerService().rename_instance(instance, old_name)
-        except Exception as e:
-            messages.error(request, f'Error al renombrar la instancia: {str(e)}')
-            return redirect('instance-detail', pk=pk)
-        
-        if instance.custom_domain:
-            from ..traefik_service import TraefikService
-            TraefikService.generate_instance_config(instance)
-        
-        messages.success(request, f'Nombre actualizado de "{old_name}" a "{new_name}"')
+    if not new_name:
+        messages.error(request, 'El nombre no puede estar vacío')
         return redirect('instance-detail', pk=pk)
     
+    try:
+        validate_resource_name(new_name)
+    except ValidationError as e:
+        messages.error(request, e.messages[0])
+        return redirect('instance-detail', pk=pk)
+    
+    if new_name == instance.name:
+        return redirect('instance-detail', pk=pk)
+    
+    if Instance.objects.filter(name=new_name).exclude(pk=pk).exists():
+        messages.error(request, f'Ya existe una instancia con el nombre "{new_name}"')
+        return redirect('instance-detail', pk=pk)
+    
+    enqueue(Task.Kind.RENAME, instance, request.user, new_name=new_name)
+    messages.info(request, f'Renombrado a "{new_name}" en cola')
     return redirect('instance-detail', pk=pk)
 
 
 @login_required
+@require_POST
 def instance_install_module(request, pk):
-    """Upload and install a module ZIP file"""
+    """Upload a module ZIP: the worker adds it to the GitHub repo and redeploys"""
     instance = get_instance_for_user(request.user, pk)
+    module_file = request.FILES.get('module_file')
     
-    if request.method == 'POST':
-        module_file = request.FILES.get('module_file')
-        
-        if not module_file:
-            messages.error(request, 'Debes seleccionar un archivo ZIP del módulo')
-            return redirect('instance-detail', pk=pk)
-        
-        if not module_file.name.endswith('.zip'):
-            messages.error(request, 'El archivo debe ser un ZIP')
-            return redirect('instance-detail', pk=pk)
-        
-        if not instance.github_repo:
-            messages.error(request, 'Esta instancia no tiene un repositorio de GitHub configurado')
-            return redirect('instance-detail', pk=pk)
-        
-        try:
-            from ..services import OdooModuleService
-            
-            messages.info(request, 'Procesando módulo... Se agregará al repositorio y se desplegará. Esto puede tomar varios minutos.')
-            
-            # Install module from uploaded ZIP (adds to GitHub repo and deploys)
-            success, message, module_name = OdooModuleService.install_module_from_zip(
-                instance, 
-                module_file
-            )
-            
-            if success:
-                messages.success(request, f'✅ {message}')
-            else:
-                messages.error(request, f'❌ {message}')
-                
-        except Exception as e:
-            messages.error(request, f'Error inesperado: {str(e)}')
-        
+    if not module_file:
+        messages.error(request, 'Debes seleccionar un archivo ZIP del módulo')
         return redirect('instance-detail', pk=pk)
     
+    if not module_file.name.endswith('.zip'):
+        messages.error(request, 'El archivo debe ser un ZIP')
+        return redirect('instance-detail', pk=pk)
+    
+    if not instance.github_repo:
+        messages.error(request, 'Esta instancia no tiene un repositorio de GitHub configurado')
+        return redirect('instance-detail', pk=pk)
+    
+    # Keep the upload where the worker can read it; the task deletes it afterwards
+    import os
+    import uuid
+    from django.conf import settings
+    uploads_dir = os.path.join(settings.BASE_DIR, 'backups', 'uploads')
+    os.makedirs(uploads_dir, exist_ok=True)
+    file_path = os.path.join(uploads_dir, f'{uuid.uuid4().hex}.zip')
+    with open(file_path, 'wb') as f:
+        for chunk in module_file.chunks():
+            f.write(chunk)
+    
+    enqueue(Task.Kind.INSTALL_MODULE, instance, request.user, file_path=file_path, label=module_file.name)
+    messages.info(request, 'Instalación del módulo en cola. Se agregará al repositorio y se redesplegará.')
     return redirect('instance-detail', pk=pk)
 
 
@@ -513,49 +421,25 @@ def instance_delete(request, pk):
 def instance_duplicate(request, pk):
     instance = get_instance_for_user(request.user, pk)
     
-    if request.method == 'GET':
-        # Show the duplication form
+    if request.method != 'POST':
         return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
     
-    elif request.method == 'POST':
-        # Process the duplication
-        new_name = request.POST.get('new_name', '').strip().lower()
-
-        if not new_name:
-            from django.contrib import messages
-            messages.error(request, 'Debes proporcionar un nombre para la nueva instancia')
-            return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
-
-        try:
-            validate_resource_name(new_name)
-        except ValidationError as e:
-            from django.contrib import messages
-            messages.error(request, e.messages[0])
-            return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
-        
-        # Check if name already exists
-        if Instance.objects.filter(name=new_name).exists():
-            from django.contrib import messages
-            messages.error(request, f'Ya existe una instancia con el nombre "{new_name}"')
-            return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
-        
-        # Perform the duplication
-        service = DockerService()
-        try:
-            new_instance = service.copy_instance(instance, new_name)
-            new_instance.owner = instance.owner or request.user
-            new_instance.save(update_fields=['owner'])
-            
-            # Send email notification
-            from ..email_notifications import send_instance_notification
-            send_instance_notification('created', new_instance, request.user)
-            
-            from django.contrib import messages
-            messages.success(request, f'Instancia duplicada exitosamente como "{new_name}"')
-            return redirect('instance-detail', pk=new_instance.pk)
-        except Exception as e:
-            from django.contrib import messages
-            messages.error(request, f'Error al duplicar instancia: {str(e)}')
-            return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
+    new_name = request.POST.get('new_name', '').strip().lower()
     
+    if not new_name:
+        messages.error(request, 'Debes proporcionar un nombre para la nueva instancia')
+        return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
+    
+    try:
+        validate_resource_name(new_name)
+    except ValidationError as e:
+        messages.error(request, e.messages[0])
+        return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
+    
+    if Instance.objects.filter(name=new_name).exists():
+        messages.error(request, f'Ya existe una instancia con el nombre "{new_name}"')
+        return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
+    
+    enqueue(Task.Kind.DUPLICATE, instance, request.user, new_name=new_name)
+    messages.info(request, f'Duplicación como "{new_name}" en cola. La nueva instancia aparecerá en la lista al terminar.')
     return redirect('instance-detail', pk=pk)

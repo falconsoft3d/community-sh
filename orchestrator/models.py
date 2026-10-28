@@ -110,6 +110,7 @@ class Instance(models.Model):
 from .config_models import GitHubConfig
 from .backup_models import Backup
 from .blog_models import BlogPost
+from .task_models import Task
 
 class UserProfile(models.Model):
     """Extended user profile with additional information"""

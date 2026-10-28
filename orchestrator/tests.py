@@ -24,8 +24,8 @@ class BaseTestCase(TestCase):
 
         # One mock shared by every views module that talks to Docker
         self.docker = mock.MagicMock()
-        for module in ('api', 'instances', 'backups'):
-            docker_patch = mock.patch(f'orchestrator.views.{module}.DockerService', self.docker)
+        for target in ('orchestrator.views.api', 'orchestrator.views.instances', 'orchestrator.tasks'):
+            docker_patch = mock.patch(f'{target}.DockerService', self.docker)
             docker_patch.start()
             self.addCleanup(docker_patch.stop)
 
@@ -332,7 +332,7 @@ class AutoBackupScheduleTests(TestCase):
             user=admin, auto_backup_enabled=True,
             auto_backup_frequency_unit='hour', auto_backup_frequency_value=6,
         )
-        patcher = mock.patch('orchestrator.management.commands.run_auto_backups.DockerService')
+        patcher = mock.patch('orchestrator.tasks.DockerService')
         self.service = patcher.start()
         self.addCleanup(patcher.stop)
         Instance.objects.create(name='acme')
@@ -394,3 +394,139 @@ class LockoutTests(TestCase):
         import pyotp
         self.client.post(reverse('two-factor-verify'), {'code': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
         self.assertNotIn('_auth_user_id', self.client.session)
+
+
+class TaskQueueTests(BaseTestCase):
+    def run_worker(self):
+        from io import StringIO
+        from django.core.management import call_command
+        call_command('run_worker', once=True, stdout=StringIO())
+
+    def test_create_view_enqueues_deploy(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.forms.requests'):
+            response = self.client.post(reverse('instance-create'), {'name': 'NewOne', 'odoo_version': '17.0'})
+        instance = Instance.objects.get(name='newone')
+        self.assertRedirects(response, reverse('instance-detail', args=[instance.pk]), fetch_redirect_response=False)
+        task = Task.objects.get(instance=instance)
+        self.assertEqual((task.kind, task.status, instance.status), ('deploy', 'pending', 'deploying'))
+        self.assertTrue(task.params['create_branch'])
+        self.docker.return_value.deploy_instance.assert_not_called()
+
+    def test_worker_runs_and_records_tasks(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        self.client.post(reverse('instance-deploy', args=[self.alice_instance.pk]))
+        self.client.post(reverse('instance-backup', args=[self.alice_instance.pk]), {'filestore': 'false'})
+        self.docker.return_value.backup_instance.side_effect = Exception('disk full')
+
+        self.run_worker()
+
+        self.docker.return_value.deploy_instance.assert_called_once()
+        deploy, backup = Task.objects.order_by('created_at')
+        self.assertEqual(deploy.status, 'done')
+        self.assertEqual((backup.status, backup.result), ('failed', 'disk full'))
+        self.assertIsNotNone(backup.finished_at)
+
+    def test_interrupted_tasks_are_marked_failed(self):
+        from .task_models import Task
+        task = Task.objects.create(kind='deploy', instance=self.alice_instance, status='running')
+        self.run_worker()
+        task.refresh_from_db()
+        self.assertEqual(task.status, 'failed')
+
+    def test_deploy_rejects_get(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('instance-deploy', args=[self.alice_instance.pk])).status_code, 405)
+
+    def test_tasks_api_is_scoped_and_reports_activity(self):
+        from .tasks import enqueue
+        enqueue('backup', self.alice_instance, self.alice)
+        self.client.force_login(self.alice)
+        data = self.client.get(reverse('instance-tasks-api', args=[self.alice_instance.pk])).json()
+        self.assertTrue(data['active'])
+        self.assertEqual(data['tasks'][0]['status'], 'pending')
+        self.assertEqual(self.client.get(reverse('instance-tasks-api', args=[self.bob_instance.pk])).status_code, 404)
+
+    def test_uploaded_restore_file_is_removed_after_task(self):
+        import os
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        upload = SimpleUploadedFile('b.zip', b'zipdata')
+        self.client.post(reverse('instance-restore', args=[self.alice_instance.pk]), {'backup_file': upload})
+        task = Task.objects.get(kind='restore')
+        path = task.params['file_path']
+        self.assertTrue(os.path.exists(path))
+
+        self.run_worker()
+
+        self.docker.return_value.restore_instance.assert_called_once_with(self.alice_instance, path)
+        self.assertFalse(os.path.exists(path))
+
+    def test_rename_and_duplicate_are_queued(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        self.client.post(reverse('instance-update-name', args=[self.alice_instance.pk]), {'name': 'alice-new'})
+        self.client.post(reverse('instance-duplicate', args=[self.alice_instance.pk]), {'new_name': 'alice-copy'})
+        self.assertEqual(set(Task.objects.values_list('kind', flat=True)), {'rename', 'duplicate'})
+        self.alice_instance.refresh_from_db()
+        self.assertEqual(self.alice_instance.name, 'alice-odoo')
+
+        self.docker.return_value.copy_instance.side_effect = lambda source, name: Instance.objects.create(name=name)
+        self.run_worker()
+
+        rename_call = self.docker.return_value.rename_instance.call_args
+        self.assertEqual((rename_call.args[0].name, rename_call.args[1]), ('alice-new', 'alice-odoo'))
+        self.assertEqual(Instance.objects.get(name='alice-copy').owner, self.alice)
+        self.assertFalse(Task.objects.exclude(status='done').exists())
+
+    def test_create_from_backup_creates_instance_and_task(self):
+        import json, tempfile, zipfile
+        from .task_models import Task
+        path = tempfile.mktemp(suffix='.zip')
+        self.addCleanup(lambda: os.path.exists(path) and os.remove(path))
+        import os
+        with zipfile.ZipFile(path, 'w') as zf:
+            zf.writestr('metadata.json', json.dumps({'database_name': 'alice_db', 'odoo_version': '16.0'}))
+        backup = Backup.objects.create(instance=self.alice_instance, filename='a.zip', file_path=path, file_size=1)
+        self.client.force_login(self.alice)
+
+        self.client.post(reverse('backup-create-instance', args=[backup.pk]), {'name': 'from-backup'})
+
+        instance = Instance.objects.get(name='from-backup')
+        self.assertEqual((instance.owner, instance.database_name, instance.odoo_version), (self.alice, 'alice_db', '16.0'))
+        self.assertEqual(Task.objects.get(instance=instance).params, {'backup_id': backup.pk})
+
+    def test_backup_with_bad_database_name_is_rejected(self):
+        import json, os, tempfile, zipfile
+        path = tempfile.mktemp(suffix='.zip')
+        self.addCleanup(lambda: os.path.exists(path) and os.remove(path))
+        with zipfile.ZipFile(path, 'w') as zf:
+            zf.writestr('metadata.json', json.dumps({'database_name': 'x"; DROP DATABASE y; --'}))
+        backup = Backup.objects.create(instance=self.alice_instance, filename='a.zip', file_path=path, file_size=1)
+        self.client.force_login(self.alice)
+        self.client.post(reverse('backup-create-instance', args=[backup.pk]), {'name': 'from-backup'})
+        self.assertFalse(Instance.objects.filter(name='from-backup').exists())
+
+
+class GitHubServiceTests(TestCase):
+    def test_token_is_redacted_from_errors(self):
+        import subprocess
+        from .services.github import create_branch
+        error = subprocess.CalledProcessError(128, 'git', stderr='fatal: https://secret-token@github.com/x/y not found')
+        with mock.patch('orchestrator.services.github.subprocess.run', side_effect=error):
+            ok, message = create_branch('https://github.com/x/y', 'main', 'new', 'secret-token')
+        self.assertFalse(ok)
+        self.assertNotIn('secret-token', message)
+
+
+
+class MediaServingTests(TestCase):
+    def test_media_is_routed_regardless_of_debug(self):
+        from django.urls import resolve
+        from django.views.static import serve
+        match = resolve('/media/avatars/a.png')
+        self.assertIs(match.func, serve)
+        self.assertEqual(match.kwargs['path'], 'avatars/a.png')

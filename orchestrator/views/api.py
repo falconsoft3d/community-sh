@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from ..serializers import InstanceSerializer
 from ..services import DockerService
+from ..task_models import Task
+from ..tasks import enqueue
 
 from ..permissions import (
     IsOwnerOrSuperuser,
@@ -26,13 +28,8 @@ class InstanceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def deploy(self, request, pk=None):
         instance = self.get_object()
-        service = DockerService()
-        try:
-            service.deploy_instance(instance)
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        task = enqueue(Task.Kind.DEPLOY, instance, request.user)
+        return Response({'task_id': task.pk, 'status': task.status}, status=status.HTTP_202_ACCEPTED)
 
     @action(detail=True, methods=['post'])
     def stop(self, request, pk=None):

@@ -1,5 +1,7 @@
 """Platform administration: metrics, settings, panel SSL and manual backups."""
 from ..models import Instance
+from ..task_models import Task
+from ..tasks import enqueue
 
 from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
@@ -221,83 +223,14 @@ def settings_view(request):
 @superuser_required
 @require_POST
 def run_auto_backups_view(request):
-    """Execute automatic backups for all instances"""
+    """Queue a backup of every instance (with the configured retention)"""
     from django.contrib import messages
     from ..config_models import GitHubConfig
-    from ..services import DockerService
-    from ..backup_models import Backup
-    import traceback
     
-    try:
-        # Get config from current user
-        config = GitHubConfig.objects.filter(user=request.user).first()
-        if not config:
-            messages.error(request, 'No se encontró la configuración')
-            return redirect('settings')
-        
-        # Get all running instances
-        instances = Instance.objects.filter(status='running')
-        if not instances.exists():
-            messages.info(request, 'No hay instancias en ejecución para respaldar')
-            return redirect('settings')
-        
-        print(f"Starting manual backup for {instances.count()} instances...")
-        docker_service = DockerService()
-        success_count = 0
-        error_count = 0
-        errors = []
-        
-        for instance in instances:
-            try:
-                print(f"Backing up instance: {instance.name}")
-                # Create backup with filestore
-                backup_record = docker_service.backup_instance(instance, include_filestore=True)
-                success_count += 1
-                print(f"Backup created for {instance.name}: {backup_record.filename}")
-                
-                # Clean old backups based on retention policy (per instance)
-                retention = config.auto_backup_retention if config.auto_backup_retention else 5
-                instance_backups = Backup.objects.filter(instance=instance).order_by('-created_at')
-                
-                print(f"Instance {instance.name} has {instance_backups.count()} backups, retention limit: {retention}")
-                
-                if instance_backups.count() > retention:
-                    old_backups = instance_backups[retention:]
-                    for old_backup in old_backups:
-                        try:
-                            import os
-                            if os.path.exists(old_backup.file_path):
-                                os.remove(old_backup.file_path)
-                                print(f"Deleted old backup file: {old_backup.file_path}")
-                            old_backup.delete()
-                            print(f"Deleted old backup record: {old_backup.filename}")
-                        except Exception as e:
-                            print(f"Error deleting old backup {old_backup.filename}: {str(e)}")
-                
-            except Exception as e:
-                error_count += 1
-                error_msg = f"{instance.name}: {str(e)}"
-                errors.append(error_msg)
-                print(f"Error backing up instance {instance.name}: {str(e)}")
-                print(traceback.format_exc())
-        
-        # Show results
-        if success_count > 0 and error_count == 0:
-            messages.success(request, f'✅ Respaldos completados exitosamente: {success_count} instancias respaldadas')
-        elif success_count > 0 and error_count > 0:
-            messages.warning(request, f'⚠️ Respaldos parciales: {success_count} exitosos, {error_count} con errores')
-            for error in errors[:3]:  # Show first 3 errors
-                messages.error(request, f'Error: {error}')
-        else:
-            messages.error(request, f'❌ Error al crear respaldos. {error_count} errores encontrados')
-            for error in errors[:3]:
-                messages.error(request, f'Error: {error}')
-        
-    except Exception as e:
-        messages.error(request, f'Error crítico al ejecutar respaldos: {str(e)}')
-        print(f"Critical error in run_auto_backups_view: {str(e)}")
-        print(traceback.format_exc())
-    
+    config = GitHubConfig.objects.filter(user=request.user).first()
+    retention = config.auto_backup_retention if config and config.auto_backup_retention else 5
+    enqueue(Task.Kind.BACKUP_ALL, user=request.user, retention=retention)
+    messages.info(request, 'Respaldo de todas las instancias en cola. El resultado aparecerá en Admin → Tasks.')
     return redirect('settings')
 
 

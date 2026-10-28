@@ -59,8 +59,8 @@ nano docker-compose.yml
 
 **Critical changes for Production:**
 - Change `DJANGO_SECRET_KEY` to a random long string.
-- Change `POSTGRES_PASSWORD` in both `db` service and `DATABASE_URL`.
-- Set `DEBUG=False` in `app` and `cron` services.
+- Set `DB_PASSWORD` in `.env` (used by the `db` service and `DATABASE_URL`).
+- Keep `DEBUG=False` (the default).
 - Update `ALLOWED_HOSTS` to your real domain (e.g. `community.yourdomain.com`).
 - Update Traefik labels if you are using a real domain instead of `localhost`.
 
@@ -74,8 +74,8 @@ docker-compose up -d --build
 This will start:
 - **db**: PostgreSQL database
 - **app**: Main Django application (port 8000 internally, exposed via Traefik)
-- **cron**: Background task scheduler for backups
-- **traefik**: Reverse proxy (ports 80 and 8080)
+- **worker**: Runs queued tasks (deploys, backups, restores) and scheduled backups
+- **traefik**: Reverse proxy (ports 80 and 443)
 
 ### 5. Create Admin User
 Once the containers are running, create your superuser:
@@ -101,9 +101,9 @@ To see logs for all services (follow mode):
 ```bash
 docker-compose logs -f
 ```
-To see specific logs (e.g., for the cron job):
+To see specific logs (e.g., for the worker):
 ```bash
-docker-compose logs -f cron
+docker-compose logs -f worker
 ```
 
 ### Update Application
@@ -128,7 +128,7 @@ docker-compose down
 ```
 
 ### Database Backups
-The `cron` container handles automated backups. To run a backup manually:
+The `worker` container runs automated backups on the schedule set in Settings → Backups. To run a backup manually:
 ```bash
 docker-compose exec app python manage.py run_auto_backups
 ```

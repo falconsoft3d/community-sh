@@ -1,10 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from orchestrator.models import Instance
 from orchestrator.permissions import get_global_config
-from orchestrator.services import DockerService
-from orchestrator.backup_models import Backup
-import os
 from datetime import timedelta
 
 UNIT_SECONDS = {'minute': 60, 'hour': 3600, 'day': 86400, 'week': 604800}
@@ -37,31 +33,9 @@ class Command(BaseCommand):
         self.perform_backups(config.auto_backup_retention)
 
     def perform_backups(self, retention):
-        service = DockerService()
-        instances = Instance.objects.all()
-
-        for instance in instances:
-            self.stdout.write(f"Backing up instance: {instance.name}")
-            try:
-                # Create backup
-                backup = service.backup_instance(instance, include_filestore=True)
-                self.stdout.write(self.style.SUCCESS(f"  - Backup created: {backup.filename}"))
-                
-                # Cleanup old backups
-                self.cleanup_backups(instance, retention)
-                
-            except Exception as e:
-                self.stdout.write(self.style.ERROR(f"  - Failed to backup {instance.name}: {str(e)}"))
-
-    def cleanup_backups(self, instance, retention):
-        backups = Backup.objects.filter(instance=instance).order_by('-created_at')
-        if backups.count() > retention:
-            to_delete = backups[retention:]
-            for backup in to_delete:
-                try:
-                    if os.path.exists(backup.file_path):
-                        os.remove(backup.file_path)
-                    backup.delete()
-                    self.stdout.write(f"  - Pruned old backup: {backup.filename}")
-                except Exception as e:
-                     self.stdout.write(self.style.WARNING(f"  - Failed to prune backup {backup.filename}: {str(e)}"))
+        from orchestrator.tasks import backup_all_instances
+        successes, errors = backup_all_instances(retention)
+        for filename in successes:
+            self.stdout.write(self.style.SUCCESS(f"  - Backup created: {filename}"))
+        for error in errors:
+            self.stdout.write(self.style.ERROR(f"  - Failed: {error}"))
