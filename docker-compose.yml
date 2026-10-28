@@ -2,7 +2,6 @@ services:
   traefik:
     image: "traefik:v2.5"
     command:
-      - "--api.insecure=true"
       - "--providers.docker=false"
       - "--providers.file.directory=/etc/traefik/dynamic"
       - "--providers.file.watch=true"
@@ -18,7 +17,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080" # Dashboard
     environment:
       - DOCKER_API_VERSION=1.44
     volumes:
@@ -35,21 +33,28 @@ services:
     environment:
       - POSTGRES_DB=community_sh
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d community_sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Internal network only: Odoo/user containers join "web" and must not reach the panel DB
     networks:
-      - web
+      - backend
 
   app:
     build: .
     image: community-sh-app
     restart: always
-    command: python manage.py runserver 0.0.0.0:8000 --insecure
+    # Deploys/backups run in the worker; the timeout covers certbot and instance deletion
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 4 --timeout 300
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@db:5432/community_sh}
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-your-secret-key-here}
-      - DEBUG=${DEBUG:-True}
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      - DEBUG=${DEBUG:-False}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
       # IMPORTANT: This must match the absolute path on the HOST machine
       - HOST_WORKDIR=${HOST_WORKDIR}
@@ -67,30 +72,49 @@ services:
       - "traefik.http.routers.app.entrypoints=web"
       - "traefik.http.services.app.loadbalancer.server.port=8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - web
+      - backend
 
-  cron:
+  # Runs queued tasks (deploys, backups, restores) and the scheduled backups.
+  # Keep a single worker: it marks tasks left running by a previous worker as failed.
+  worker:
     image: community-sh-app
     restart: always
-    command: /bin/sh -c "while true; do python manage.py run_auto_backups; sleep 60; done"
+    command: python manage.py run_worker
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/community_sh
-      - DJANGO_SECRET_KEY=django-insecure-your-secret-key-here
-      - DEBUG=False
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      - DEBUG=${DEBUG:-False}
+      - HOST_WORKDIR=${HOST_WORKDIR}
+      - SERVER_IP=${SERVER_IP}
+      - RUN_MIGRATIONS=false
+    # Same code and data as the app (db.sqlite3 is not baked into the image)
     volumes:
+      - ./:/app
       - ./media:/app/media
       - ./backups:/app/backups
+      - ./instances:/app/instances
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      - db
+      app:
+        condition: service_started
+    # web: git clones need internet; backend: panel database
     networks:
       - web
+      - backend
+
+networks:
+      - backend
 
 networks:
   web:
     driver: bridge
+  backend:
+    driver: bridge
+    internal: true
 
 volumes:
   postgres_data:

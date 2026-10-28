@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 import environ
+import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 # Initialize environ
 env = environ.Env(
@@ -30,11 +32,15 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-%4wj-b)i3a-#ah13iy_a&gkfm#sn29iseksjyaybdcin69^)j_')
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY or SECRET_KEY.startswith('django-insecure') or SECRET_KEY.startswith('cambia-esto'):
+    if not DEBUG:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set to a random value when DEBUG=False')
+    SECRET_KEY = SECRET_KEY or 'django-insecure-dev-only-key'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
@@ -54,12 +60,14 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'orchestrator.middleware.ConditionalSSLRedirectMiddleware',  # Custom SSL redirect middleware
     'orchestrator.middleware.DynamicAllowedHostsMiddleware',  # Dynamic ALLOWED_HOSTS validation
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'orchestrator.middleware.TwoFactorEnforcementMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -87,10 +95,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
+SQLITE_PATH = BASE_DIR / 'db.sqlite3'
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+
+if DATABASE_URL and not DATABASE_URL.startswith('sqlite'):
+    DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
+    # Older installs kept their data in db.sqlite3 even when DATABASE_URL pointed to
+    # Postgres; `manage.py migrate_from_sqlite` copies it over once.
+    if SQLITE_PATH.exists():
+        DATABASES['legacy_sqlite'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': SQLITE_PATH}
+else:
+    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': SQLITE_PATH}}
+    if DATABASE_URL.startswith('sqlite:///') and DATABASE_URL != 'sqlite:///db.sqlite3':
+        sqlite_name = Path(DATABASE_URL[len('sqlite:///'):])
+        DATABASES['default']['NAME'] = sqlite_name if sqlite_name.is_absolute() else BASE_DIR / sqlite_name
+
+
+# Shared across gunicorn workers (login/2FA attempt counters); created by `createcachetable`
+CACHES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache',
     }
 }
 
@@ -149,6 +174,16 @@ DEFAULT_FROM_EMAIL = 'noreply@community-sh.local'
 # EMAIL_USE_TLS = True
 # EMAIL_HOST_USER = 'your-email@gmail.com'
 # EMAIL_HOST_PASSWORD = 'your-app-password'
+
+# REST API: authenticated users only (session auth so 2FA enforcement applies)
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

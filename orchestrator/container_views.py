@@ -1,9 +1,23 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .container_models import Container
 from .container_service import ContainerService
 from .template_services import get_template_loader
+from django.core.exceptions import ValidationError
+from .permissions import domain_in_use, validate_domain, validate_resource_name
+
+
+def _restricted_config_error(config, template_network):
+    """Non-superusers can't mount host paths or join other networks."""
+    for volume_name, volume_config in (config.get('volumes') or {}).items():
+        host_path = volume_config.get('host', '') if isinstance(volume_config, dict) else volume_name
+        if str(host_path).startswith('/'):
+            return 'Solo un administrador puede montar rutas del host'
+    if config.get('network', 'bridge') != template_network:
+        return 'Solo un administrador puede cambiar la red del contenedor'
+    return None
 
 @login_required
 def container_list(request):
@@ -16,8 +30,14 @@ def container_create(request):
     """Create a new container"""
     if request.method == 'POST':
         template_key = request.POST.get('template')
-        name = request.POST.get('name')
-        
+        name = (request.POST.get('name') or '').strip().lower()
+
+        try:
+            validate_resource_name(name)
+        except ValidationError as e:
+            messages.error(request, e.messages[0])
+            return redirect('container-create')
+
         # Check if name already exists
         if Container.objects.filter(name=name).exists():
             messages.error(request, f'Container with name "{name}" already exists')
@@ -35,7 +55,8 @@ def container_create(request):
         if template_key and template_key != 'custom':
             loader = get_template_loader()
             template_defaults = loader.get_template_defaults(template_key)
-            
+            template_network = template_defaults.get('network', 'bridge')
+
             # Check if raw YAML was provided
             yaml_config = request.POST.get('yaml_config')
             if yaml_config:
@@ -44,7 +65,13 @@ def container_create(request):
                     template_defaults.update(yaml.safe_load(yaml_config))
                 except Exception as e:
                     messages.error(request, f"Error parsing YAML: {str(e)}")
-            
+
+            if not request.user.is_superuser:
+                error = _restricted_config_error(template_defaults, template_network)
+                if error:
+                    messages.error(request, error)
+                    return redirect('container-create')
+
             # Use POST values if provided, otherwise use template defaults
             image = request.POST.get('image', template_defaults['image'])
             port = int(request.POST.get('port', template_defaults['default_port']))
@@ -147,6 +174,7 @@ def container_detail(request, pk):
     })
 
 @login_required
+@require_POST
 def container_start(request, pk):
     """Start a container"""
     container = get_object_or_404(Container, pk=pk, created_by=request.user)
@@ -161,6 +189,7 @@ def container_start(request, pk):
     return redirect('container-detail', pk=pk)
 
 @login_required
+@require_POST
 def container_stop(request, pk):
     """Stop a container"""
     container = get_object_or_404(Container, pk=pk, created_by=request.user)
@@ -175,6 +204,7 @@ def container_stop(request, pk):
     return redirect('container-detail', pk=pk)
 
 @login_required
+@require_POST
 def container_restart(request, pk):
     """Restart a container"""
     container = get_object_or_404(Container, pk=pk, created_by=request.user)
@@ -214,8 +244,20 @@ def container_update_domain(request, pk):
     
     if request.method == 'POST':
         old_domain = container.custom_domain
-        container.custom_domain = request.POST.get('custom_domain', '').strip()
-        
+        new_domain = request.POST.get('custom_domain', '').strip().lower()
+
+        try:
+            validate_domain(new_domain)
+        except ValidationError:
+            messages.error(request, 'Formato de dominio inválido')
+            return redirect('container-detail', pk=pk)
+
+        if domain_in_use(new_domain, exclude_container=container):
+            messages.error(request, f'El dominio {new_domain} ya está en uso')
+            return redirect('container-detail', pk=pk)
+
+        container.custom_domain = new_domain
+
         # If domain is removed, also clear SSL settings
         if not container.custom_domain:
             container.ssl_enabled = False

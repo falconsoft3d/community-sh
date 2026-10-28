@@ -7,7 +7,7 @@ class GitHubConfig(models.Model):
     personal_access_token = models.CharField(max_length=255, blank=True, help_text="GitHub Personal Access Token")
     default_organization = models.CharField(max_length=255, blank=True, help_text="Default GitHub organization")
     webhook_secret = models.CharField(max_length=255, blank=True, help_text="Webhook secret for GitHub")
-    registration_enabled = models.BooleanField(default=True, help_text="Allow new user registrations")
+    registration_enabled = models.BooleanField(default=False, help_text="Allow new user registrations")
     public_website_enabled = models.BooleanField(default=True, help_text="Enable public website and blog")
     two_factor_required = models.BooleanField(default=False, help_text="Require two-factor authentication for all users")
     
@@ -31,6 +31,7 @@ class GitHubConfig(models.Model):
     )
     auto_backup_frequency_value = models.IntegerField(default=5, help_text="How often to run backups (e.g., every 5 days)")
     auto_backup_retention = models.IntegerField(default=5, help_text="Number of backups to keep. Older backups will be deleted automatically")
+    last_auto_backup_at = models.DateTimeField(null=True, blank=True, help_text="When the last automatic backup run started")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

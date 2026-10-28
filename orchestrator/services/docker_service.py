@@ -1,12 +1,89 @@
+"""Odoo instance lifecycle on Docker: deploy, copy, rename, backup and restore."""
 import docker
 import os
 import git
 from django.conf import settings
-from .models import Instance
+from ..models import Instance
+
+ODOO_DATA_DIR = '/var/lib/odoo'
+
+
+def host_path(path):
+    """
+    Translate a path inside this app's container into the path the Docker daemon sees.
+    The project is mounted at BASE_DIR; HOST_WORKDIR is where it lives on the host.
+    """
+    path = str(path)
+    base = str(settings.BASE_DIR)
+    host_workdir = os.environ.get('HOST_WORKDIR', '').rstrip('/')
+    if host_workdir and (path == base or path.startswith(base + os.sep)):
+        return host_workdir + path[len(base):]
+    return path
+
+
+def odoo_config_target(odoo_version):
+    # Odoo 10 images still read the old OpenERP config file name
+    return '/etc/odoo/openerp-server.conf' if odoo_version == '10.0' else '/etc/odoo/odoo.conf'
+
 
 class DockerService:
     def __init__(self):
         self.client = docker.from_env()
+
+    def _get_container(self, name):
+        try:
+            return self.client.containers.get(name)
+        except docker.errors.NotFound:
+            return None
+
+    def _resolve_data_volume(self, instance, container=None):
+        """
+        Volume holding /var/lib/odoo (filestore, sessions). Reuse the one the current
+        container already uses (older deployments got an anonymous volume) so that
+        redeploying never starts with an empty filestore.
+        """
+        if container is not None:
+            for mount in container.attrs.get('Mounts', []):
+                if mount.get('Destination') == ODOO_DATA_DIR and mount.get('Name'):
+                    return mount['Name']
+        return instance.data_volume or f"odoo_data_{instance.name}"
+
+    def _write_odoo_config(self, instance, workspace_path):
+        config_path = os.path.join(workspace_path, 'odoo.conf')
+        with open(config_path, 'w') as f:
+            f.write(
+                "[options]\n"
+                "addons_path = /mnt/extra-addons\n"
+                f"data_dir = {ODOO_DATA_DIR}\n"
+                f"admin_passwd = {instance.master_password}\n"
+                # In the config (not only entrypoint args) so `odoo` run via exec can connect too
+                f"db_host = db_{instance.name}\n"
+                "db_port = 5432\n"
+                "db_user = odoo\n"
+                "db_password = odoo\n"
+            )
+        os.chmod(config_path, 0o644)
+        return config_path
+
+    def _list_user_databases(self, db_container):
+        """Odoo databases in an instance's Postgres (everything except system DBs)."""
+        result = db_container.exec_run(
+            "psql -U odoo -d postgres -t -A -c \"SELECT datname FROM pg_database WHERE datistemplate = false;\"",
+            environment={"PGPASSWORD": "odoo"}
+        )
+        if result.exit_code != 0:
+            raise Exception(f"No se pudo listar las bases de datos: {result.output.decode('utf-8')}")
+        databases = [db.strip() for db in result.output.decode('utf-8').split('\n') if db.strip()]
+        return [db for db in databases if db not in ('postgres', 'template0', 'template1')]
+
+    def _wait_for_postgres(self, db_container, timeout=60):
+        import time
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if db_container.exec_run("pg_isready -U odoo").exit_code == 0:
+                return
+            time.sleep(1)
+        raise Exception(f"Database container {db_container.name} not ready after {timeout}s")
 
     def deploy_instance(self, instance):
         """
@@ -50,15 +127,23 @@ class DockerService:
             # 5. Start Odoo
             odoo_container_name = f"odoo_{instance.name}"
             
-            volumes = {}
+            # Check if container already exists (redeploy scenario)
+            existing_container = self._get_container(odoo_container_name)
+            data_volume = self._resolve_data_volume(instance, existing_container)
+            
+            # Bind mounts are resolved by the Docker daemon, so they need host paths
+            volumes = {
+                data_volume: {'bind': ODOO_DATA_DIR, 'mode': 'rw'},
+                host_path(self._write_odoo_config(instance, workspace_path)): {
+                    'bind': odoo_config_target(instance.odoo_version), 'mode': 'rw',
+                },
+            }
             # If we cloned addons, mount them
             addons_path = os.path.join(workspace_path, 'addons')
             if os.path.exists(addons_path):
                 # We mount it to /mnt/extra-addons which is standard in Odoo images
-                volumes[addons_path] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
+                volumes[host_path(addons_path)] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
             
-            
-            # Check if container already exists (redeploy scenario)
             is_redeploy = False
             try:
                 odoo_container = self.client.containers.get(odoo_container_name)
@@ -114,16 +199,16 @@ class DockerService:
             if is_redeploy:
                 print("Redeploy detected. Running module update...")
                 try:
-                    # Wait a bit for Odoo to start
-                    import time
-                    time.sleep(5)
+                    db_container = self.client.containers.get(db_container_name)
+                    self._wait_for_postgres(db_container)
+                    databases = [instance.database_name] if instance.database_name else self._list_user_databases(db_container)
                     
-                    # Run update all command
-                    result = odoo_container.exec_run(
-                        "odoo -u all -d postgres --stop-after-init",
-                        detach=False
-                    )
-                    print(f"Module update output: {result.output.decode('utf-8')}")
+                    for database in databases:
+                        result = odoo_container.exec_run(
+                            f"odoo -u all -d {database} --stop-after-init",
+                            detach=False
+                        )
+                        print(f"Module update for {database} (exit {result.exit_code}): {result.output.decode('utf-8')[-2000:]}")
                     
                     # Restart container to run normally
                     odoo_container.restart()
@@ -148,6 +233,7 @@ class DockerService:
                 instance.port = int(host_port)
             
             instance.container_id = odoo_container.id
+            instance.data_volume = data_volume
             instance.status = Instance.Status.RUNNING
             instance.save()
             
@@ -245,7 +331,6 @@ class DockerService:
             print(f"Container {container.name} restarted successfully")
         except docker.errors.NotFound:
             print(f"Container not found for instance {instance.name}")
-            pass
             
     def delete_instance(self, instance):
         """
@@ -256,18 +341,27 @@ class DockerService:
             try:
                 container = self.client.containers.get(instance.container_id)
                 container.stop()
-                container.remove()
+                container.remove(v=True)
             except docker.errors.NotFound:
                 pass
             except Exception as e:
                 print(f"Error removing Odoo container: {e}")
+        
+        # Named filestore volume (not removed by remove(v=True))
+        data_volume = instance.data_volume or f"odoo_data_{instance.name}"
+        try:
+            self.client.volumes.get(data_volume).remove()
+        except docker.errors.NotFound:
+            pass
+        except Exception as e:
+            print(f"Error removing data volume {data_volume}: {e}")
 
         # 2. Stop and Remove DB Container
         db_container_name = f"db_{instance.name}"
         try:
             container = self.client.containers.get(db_container_name)
             container.stop()
-            container.remove()
+            container.remove(v=True)
         except docker.errors.NotFound:
             pass
         except Exception as e:
@@ -338,6 +432,7 @@ class DockerService:
             odoo_version=instance.odoo_version,
             github_repo=instance.github_repo,
             github_branch=new_name,  # Use new name as branch name
+            database_name=instance.database_name,
             status=Instance.Status.DEPLOYING,
             origin='duplicate'
         )
@@ -352,10 +447,10 @@ class DockerService:
             try:
                 source_db_container = self.client.containers.get(db_source)
                 
-                # Create dump file inside the container
+                # Dump the whole cluster: Odoo databases are not the 'postgres' maintenance DB
                 print("Creating database dump...")
                 dump_result = source_db_container.exec_run(
-                    "pg_dump -U odoo -Fc postgres -f /tmp/db_dump.sql",
+                    "pg_dumpall -U odoo -f /tmp/db_dump.sql",
                     environment={"PGPASSWORD": "odoo"}
                 )
                 
@@ -388,10 +483,8 @@ class DockerService:
                     detach=True
                 )
                 
-                # Wait for database to be ready
-                import time
                 print("Waiting for new database to be ready...")
-                time.sleep(5)
+                self._wait_for_postgres(new_db_container)
                 
                 # Put the dump file into the new container
                 new_db_container.put_archive('/tmp', dump_data)
@@ -399,11 +492,11 @@ class DockerService:
                 # Restore database
                 print("Restoring database...")
                 restore_result = new_db_container.exec_run(
-                    "pg_restore -U odoo -d postgres -c /tmp/db_dump.sql",
+                    "psql -U odoo -d postgres -q -f /tmp/db_dump.sql",
                     environment={"PGPASSWORD": "odoo"}
                 )
                 
-                # Note: pg_restore may have warnings but still work
+                # Note: psql reports harmless errors (e.g. role "odoo" already exists)
                 print(f"Database restore completed. Exit code: {restore_result.exit_code}")
                 if restore_result.output:
                     print(f"Restore output: {restore_result.output.decode('utf-8')[:500]}")
@@ -412,15 +505,16 @@ class DockerService:
                 print(f"Source database container {db_source} not found")
                 raise
             
-            # 2. Copy the filestore
-            print("Step 2: Copying filestore...")
+            # 2. Copy the workspace (addons checkout)
+            print("Step 2: Copying workspace...")
             source_workspace = os.path.join(settings.BASE_DIR, 'instances', instance.name)
             target_workspace = os.path.join(settings.BASE_DIR, 'instances', new_name)
             
             if os.path.exists(source_workspace):
                 import shutil
-                shutil.copytree(source_workspace, target_workspace)
-                print(f"Filestore copied from {source_workspace} to {target_workspace}")
+                # odoo.conf is regenerated with the new instance's master password
+                shutil.copytree(source_workspace, target_workspace, ignore=shutil.ignore_patterns('odoo.conf'))
+                print(f"Workspace copied from {source_workspace} to {target_workspace}")
             
             # 3. Create new Git branch if repo exists
             if instance.github_repo:
@@ -451,6 +545,10 @@ class DockerService:
             print("Step 4: Deploying new instance...")
             self.deploy_instance(new_instance)
             
+            # 5. Copy the filestore (attachments) between the Odoo containers
+            print("Step 5: Copying filestore...")
+            self._copy_filestore(f"odoo_{instance.name}", f"odoo_{new_name}")
+            
             print(f"Successfully copied instance {instance.name} to {new_name}")
             return new_instance
             
@@ -459,6 +557,63 @@ class DockerService:
             new_instance.status = Instance.Status.ERROR
             new_instance.save()
             raise e
+
+    def rename_instance(self, instance, old_name):
+        """
+        Move an instance's Docker resources and workspace from old_name to
+        instance.name. The database container (and its data) is kept; the Odoo
+        container is recreated on the same filestore volume.
+        """
+        new_name = instance.name
+        old_odoo = self._get_container(f"odoo_{old_name}")
+        if old_odoo is not None:
+            instance.data_volume = self._resolve_data_volume(instance, old_odoo)
+            old_odoo.remove(force=True)  # keeps volumes
+        elif not instance.data_volume:
+            instance.data_volume = f"odoo_data_{old_name}"
+
+        db_container = self._get_container(f"db_{old_name}")
+        if db_container is not None:
+            db_container.rename(f"db_{new_name}")
+            try:
+                new_network = self.client.networks.get(f"net_{new_name}")
+            except docker.errors.NotFound:
+                new_network = self.client.networks.create(f"net_{new_name}", driver="bridge")
+            # Connecting after the rename registers the new DNS name
+            new_network.connect(db_container)
+            try:
+                old_network = self.client.networks.get(f"net_{old_name}")
+                old_network.disconnect(db_container)
+                old_network.remove()
+            except docker.errors.NotFound:
+                pass
+
+        instances_dir = os.path.join(settings.BASE_DIR, 'instances')
+        old_workspace = os.path.join(instances_dir, old_name)
+        new_workspace = os.path.join(instances_dir, new_name)
+        if os.path.exists(old_workspace) and not os.path.exists(new_workspace):
+            os.rename(old_workspace, new_workspace)
+
+        old_traefik_config = os.path.join(settings.BASE_DIR, 'traefik', f'instance-{old_name}.yml')
+        if os.path.exists(old_traefik_config):
+            os.remove(old_traefik_config)
+
+        instance.save()
+        if old_odoo is not None or db_container is not None:
+            self.deploy_instance(instance)
+
+    def _copy_filestore(self, source_name, target_name):
+        source = self._get_container(source_name)
+        target = self._get_container(target_name)
+        if source is None or target is None:
+            print(f"Warning: cannot copy filestore ({source_name} -> {target_name}): container missing")
+            return
+        try:
+            stream, _ = source.get_archive(f"{ODOO_DATA_DIR}/filestore")
+            target.put_archive(ODOO_DATA_DIR, b''.join(stream))
+            print(f"Filestore copied from {source_name} to {target_name}")
+        except docker.errors.NotFound:
+            print(f"No filestore found in {source_name}")
 
     def get_logs(self, instance, lines=100):
         if not instance.container_id:
@@ -654,7 +809,7 @@ class DockerService:
             print(f"Backup created successfully: {backup_path}")
             
             # Create backup record in database
-            from .backup_models import Backup
+            from ..backup_models import Backup
             file_size = os.path.getsize(backup_path)
             print(f"Backup file size: {file_size} bytes ({file_size / (1024 * 1024):.2f} MB)")
             
@@ -737,6 +892,10 @@ class DockerService:
                 else:
                     odoo_db_name = metadata.get('database_name', instance.name.replace('-', '_'))
                     print(f"Using metadata/default database name: {odoo_db_name}")
+                
+                # The name comes from an uploaded file and ends up in psql/pg_restore commands
+                from ..permissions import validate_database_name
+                validate_database_name(odoo_db_name)
                 
                 # Drop and recreate the database
                 print(f"Dropping and recreating database '{odoo_db_name}'...")
@@ -858,454 +1017,3 @@ class DockerService:
         except Exception as e:
             print(f"Error restoring backup: {str(e)}")
             raise e
-
-
-class SSLService:
-    """Service for managing SSL certificates with Let's Encrypt"""
-    
-    @staticmethod
-    def is_certbot_installed():
-        """Check if certbot is installed"""
-        import subprocess
-        try:
-            result = subprocess.run(['which', 'certbot'], capture_output=True, text=True)
-            return result.returncode == 0
-        except Exception:
-            return False
-    
-    @staticmethod
-    def is_running_in_docker():
-        """Check if the application is running inside Docker"""
-        import os
-        return os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER', False)
-    
-    @staticmethod
-    def install_certbot():
-        """Install certbot based on the operating system"""
-        import subprocess
-        import platform
-        
-        system = platform.system()
-        in_docker = SSLService.is_running_in_docker()
-        
-        try:
-            if system == "Darwin":  # macOS
-                subprocess.run(['brew', 'install', 'certbot'], check=True)
-            elif system == "Linux":
-                # Try apt-get first (Debian/Ubuntu)
-                try:
-                    if in_docker:
-                        # En Docker no usamos sudo
-                        subprocess.run(['apt-get', 'update'], check=True)
-                        subprocess.run(['apt-get', 'install', '-y', 'certbot'], check=True)
-                    else:
-                        subprocess.run(['sudo', 'apt-get', 'update'], check=True)
-                        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'certbot'], check=True)
-                except subprocess.CalledProcessError:
-                    # Try yum (RHEL/CentOS)
-                    if in_docker:
-                        subprocess.run(['yum', 'install', '-y', 'certbot'], check=True)
-                    else:
-                        subprocess.run(['sudo', 'yum', 'install', '-y', 'certbot'], check=True)
-            else:
-                raise Exception(f"Unsupported operating system: {system}")
-            return True
-        except subprocess.CalledProcessError as e:
-            raise Exception(f"Failed to install certbot: {str(e)}")
-    
-    @staticmethod
-    def generate_certificate(domain, email):
-        """
-        Generate SSL certificate using Let's Encrypt
-        Returns tuple: (success, message, cert_path, key_path)
-        """
-        import subprocess
-        import os
-        
-        # Check if certbot is installed
-        if not SSLService.is_certbot_installed():
-            try:
-                SSLService.install_certbot()
-            except Exception as e:
-                return False, f"Certbot no está instalado y falló la instalación automática: {str(e)}", None, None
-        
-        # Validate domain
-        if not domain or '.' not in domain:
-            return False, "Dominio inválido. Debe ser un dominio válido (ej: ejemplo.com)", None, None
-        
-        # Validate email
-        if not email or '@' not in email:
-            return False, "Email inválido. Se requiere un email válido para Let's Encrypt", None, None
-        
-        # Check if certificates already exist BEFORE trying to generate new ones
-        in_docker = SSLService.is_running_in_docker()
-        
-        if in_docker:
-            letsencrypt_dir = '/opt/community-sh/letsencrypt'
-        else:
-            from django.conf import settings
-            letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
-        
-        # Check in live directory first (symlinks)
-        live_dir = os.path.join(letsencrypt_dir, 'live', domain)
-        cert_path = os.path.join(live_dir, 'fullchain.pem')
-        key_path = os.path.join(live_dir, 'privkey.pem')
-        
-        if os.path.exists(cert_path) and os.path.exists(key_path):
-            print(f"Certificates already exist at {cert_path}", flush=True)
-            return True, "Certificado SSL ya existe y está vigente", cert_path, key_path
-        
-        # Check in archive directory
-        archive_dir = os.path.join(letsencrypt_dir, 'archive', domain)
-        if os.path.exists(archive_dir):
-            cert_files = [f for f in os.listdir(archive_dir) if f.startswith('fullchain')]
-            if cert_files:
-                cert_files.sort()  # Get the latest
-                cert_path = os.path.join(archive_dir, cert_files[-1])
-                key_path = cert_path.replace('fullchain', 'privkey')
-                if os.path.exists(key_path):
-                    print(f"Certificates found in archive at {cert_path}", flush=True)
-                    return True, "Certificado SSL encontrado en archivo", cert_path, key_path
-        
-        try:
-            # Use certbot standalone mode to generate certificate
-            # This requires port 80 to be available
-            # We need to stop Traefik temporarily to free port 80
-            
-            # Stop Traefik container to free port 80
-            try:
-                stop_cmd = ['docker', 'stop', 'community-sh-traefik-1']
-                subprocess.run(stop_cmd, capture_output=True, text=True, timeout=10)
-            except:
-                pass  # If Traefik is not running, continue anyway
-            
-            try:
-                if in_docker:
-                    # Run certbot as a separate Docker container with host network
-                    # This gives certbot direct access to port 80 on the host
-                    # IMPORTANT: We need to mount the HOST path, not the container path
-                    import os as os_module
-                    from django.conf import settings
-                    
-                    # Get the container's internal path
-                    container_letsencrypt_dir = os_module.path.join(settings.BASE_DIR, 'letsencrypt')
-                    os_module.makedirs(container_letsencrypt_dir, exist_ok=True)
-                    
-                    # For production, we need the HOST path (not the container path)
-                    # In docker-compose, /app maps to /opt/community-sh on the host
-                    # So /app/letsencrypt maps to /opt/community-sh/letsencrypt
-                    host_letsencrypt_dir = '/opt/community-sh/letsencrypt'
-                    
-                    # Create subdirectories on the host via docker exec
-                    for subdir in ['live', 'archive', 'renewal', 'accounts']:
-                        subdir_path = os_module.path.join(host_letsencrypt_dir, subdir)
-                        subprocess.run(['mkdir', '-p', subdir_path], capture_output=True)
-                        subprocess.run(['chmod', '755', subdir_path], capture_output=True)
-                    
-                    print(f"Host letsencrypt dir: {host_letsencrypt_dir}", flush=True)
-                    
-                    cmd = [
-                        'docker', 'run', '--rm',
-                        '--network', 'host',
-                        '-v', f'{host_letsencrypt_dir}:/etc/letsencrypt',
-                        '-v', '/var/lib/letsencrypt:/var/lib/letsencrypt',
-                        'certbot/certbot', 'certonly',
-                        '--standalone',
-                        '--non-interactive',
-                        '--agree-tos',
-                        '--email', email,
-                        '-d', domain,
-                        '-d', f'www.{domain}',  # Include www subdomain
-                        '--preferred-challenges', 'http',
-                        '--force-renewal',  # Force renewal to ensure certs are in mounted volume
-                        '-v'
-                    ]
-                else:
-                    cmd = [
-                        'sudo', 'certbot', 'certonly',
-                        '--standalone',
-                        '--non-interactive',
-                        '--agree-tos',
-                        '--email', email,
-                        '-d', domain,
-                        '--preferred-challenges', 'http',
-                        '-v'  # Verbose mode for better error messages
-                    ]
-                
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-                
-                # Log what files were created after certbot ran
-                if in_docker:
-                    host_letsencrypt_dir = '/opt/community-sh/letsencrypt'
-                    print(f"\n=== Files in host letsencrypt dir after certbot ===", flush=True)
-                    list_result = subprocess.run(['find', host_letsencrypt_dir, '-type', 'f'], 
-                                                capture_output=True, text=True)
-                    print(f"{list_result.stdout}", flush=True)
-                    print(f"=== End of file list ===\n", flush=True)
-            finally:
-                # Always restart Traefik after certbot finishes
-                try:
-                    start_cmd = ['docker', 'start', 'community-sh-traefik-1']
-                    subprocess.run(start_cmd, capture_output=True, text=True, timeout=10)
-                except:
-                    pass
-            
-            # Log the full output for debugging
-            full_output = f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
-            print(f"Certbot output:\n{full_output}", flush=True)
-            
-            # Check if certificate already exists
-            if "Certificate not yet due for renewal" in result.stdout or "Keeping the existing certificate" in result.stderr:
-                # Certificate already exists, find it
-                if in_docker:
-                    letsencrypt_dir = '/opt/community-sh/letsencrypt'
-                else:
-                    from django.conf import settings
-                    letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
-                
-                # Check in archive first (actual files)
-                archive_dir = os.path.join(letsencrypt_dir, 'archive', domain)
-                if os.path.exists(archive_dir):
-                    cert_files = [f for f in os.listdir(archive_dir) if f.startswith('fullchain')]
-                    if cert_files:
-                        cert_files.sort()  # Get the latest
-                        cert_path = os.path.join(archive_dir, cert_files[-1])
-                        key_path = cert_path.replace('fullchain', 'privkey')
-                        if os.path.exists(key_path):
-                            return True, "Certificado SSL ya existe y está vigente", cert_path, key_path
-                
-                # Check in live (symlinks)
-                live_dir = os.path.join(letsencrypt_dir, 'live', domain)
-                cert_path = os.path.join(live_dir, 'fullchain.pem')
-                key_path = os.path.join(live_dir, 'privkey.pem')
-                if os.path.exists(cert_path) and os.path.exists(key_path):
-                    return True, "Certificado SSL ya existe y está vigente", cert_path, key_path
-                
-                return False, "Certificado existe pero no se pudo localizar en el sistema de archivos", None, None
-            
-            if result.returncode == 0:
-                # Certificates are stored in letsencrypt/live/domain/ within the project
-                # In Docker, we need to check the HOST path, not the container path
-                if in_docker:
-                    letsencrypt_dir = '/opt/community-sh/letsencrypt'
-                else:
-                    from django.conf import settings
-                    letsencrypt_dir = os.path.join(settings.BASE_DIR, 'letsencrypt')
-                
-                # Check all possible locations
-                cert_paths_to_check = [
-                    os.path.join(letsencrypt_dir, 'live', domain, 'fullchain.pem'),
-                    os.path.join(letsencrypt_dir, 'archive', domain, 'fullchain1.pem'),
-                ]
-                
-                cert_path = None
-                key_path = None
-                
-                for check_cert in cert_paths_to_check:
-                    check_key = check_cert.replace('fullchain', 'privkey')
-                    if os.path.exists(check_cert) and os.path.exists(check_key):
-                        cert_path = check_cert
-                        key_path = check_key
-                        break
-                
-                if cert_path and key_path:
-                    return True, "Certificado SSL generado exitosamente", cert_path, key_path
-                else:
-                    # List what files actually exist for debugging
-                    import subprocess
-                    find_result = subprocess.run(
-                        ['find', letsencrypt_dir, '-name', '*.pem'],
-                        capture_output=True, text=True
-                    )
-                    files_found = find_result.stdout.strip()
-                    return False, f"Certificado generado pero no se encontró en las rutas esperadas. Archivos encontrados:\n{files_found}", None, None
-            else:
-                error_msg = result.stderr or result.stdout or "Error desconocido"
-                
-                # Try to read the log file for more details
-                log_content = ""
-                try:
-                    with open('/var/log/letsencrypt/letsencrypt.log', 'r') as f:
-                        # Get last 20 lines
-                        lines = f.readlines()
-                        log_content = ''.join(lines[-20:])
-                except:
-                    pass
-                
-                # Extract more useful error information
-                if "Timeout" in error_msg or "timeout" in error_msg:
-                    return False, "Timeout: El servidor no pudo validar el dominio. Asegúrate de que el puerto 80 esté abierto y el dominio apunte a este servidor.", None, None
-                elif "Connection refused" in error_msg or "Connection refused" in log_content:
-                    return False, "Conexión rechazada: El puerto 80 puede estar bloqueado o en uso. Certbot no pudo conectarse al puerto 80 para validar el dominio.", None, None
-                elif "DNS" in error_msg or "DNS" in log_content:
-                    return False, f"Error de DNS: El dominio {domain} no puede ser resuelto. Verifica que el dominio apunte a la IP correcta: {error_msg[:200]}", None, None
-                elif "Invalid response" in log_content or "404" in log_content:
-                    return False, f"Let's Encrypt no pudo validar el dominio. Asegúrate de que: 1) El dominio {domain} apunte a este servidor, 2) El puerto 80 esté accesible desde internet, 3) No haya firewall bloqueando. Log: {log_content[-500:]}", None, None
-                else:
-                    full_error = f"{error_msg}\n\nÚltimas líneas del log:\n{log_content[-800:]}" if log_content else error_msg
-                    return False, f"Error al generar certificado: {full_error[:1000]}", None, None
-                
-        except subprocess.TimeoutExpired:
-            return False, "Timeout: La generación del certificado tardó demasiado. Verifica que el puerto 80 esté accesible desde internet.", None, None
-        except subprocess.CalledProcessError as e:
-            return False, f"Error ejecutando certbot: {str(e)}", None, None
-        except Exception as e:
-            return False, f"Error inesperado: {str(e)}", None, None
-                
-        except subprocess.TimeoutExpired:
-            return False, "Timeout: La generación del certificado tardó demasiado. Verifica que el puerto 80 esté accesible desde internet.", None, None
-        except subprocess.CalledProcessError as e:
-            return False, f"Error ejecutando certbot: {str(e)}", None, None
-        except Exception as e:
-            return False, f"Error inesperado: {str(e)}", None, None
-    
-    @staticmethod
-    def renew_certificate(domain):
-        """Renew an existing SSL certificate"""
-        import subprocess
-        
-        try:
-            in_docker = SSLService.is_running_in_docker()
-            if in_docker:
-                cmd = ['certbot', 'renew', '--cert-name', domain]
-            else:
-                cmd = ['sudo', 'certbot', 'renew', '--cert-name', domain]
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            if result.returncode == 0:
-                return True, "Certificado renovado exitosamente"
-            else:
-                return False, f"Error al renovar certificado: {result.stderr or result.stdout}"
-        except Exception as e:
-            return False, f"Error al renovar certificado: {str(e)}"
-    
-    @staticmethod
-    def check_certificate_expiry(cert_path):
-        """Check when a certificate expires"""
-        import subprocess
-        from datetime import datetime
-        
-        try:
-            cmd = ['openssl', 'x509', '-enddate', '-noout', '-in', cert_path]
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            
-            # Parse output: notAfter=Jan 1 00:00:00 2025 GMT
-            date_str = result.stdout.strip().replace('notAfter=', '')
-            expiry_date = datetime.strptime(date_str, '%b %d %H:%M:%S %Y %Z')
-            
-            days_remaining = (expiry_date - datetime.now()).days
-            return days_remaining, expiry_date
-        except Exception as e:
-            return None, None
-
-
-class OdooModuleService:
-    """Service for installing Odoo modules from ZIP files"""
-    
-    @staticmethod
-    def install_module_from_zip(instance, zip_file):
-        """
-        Installs a module from an uploaded ZIP file by adding it to GitHub repo.
-        
-        Args:
-            instance: Instance object
-            zip_file: Uploaded ZIP file (Django UploadedFile)
-            
-        Returns:
-            tuple: (success: bool, message: str, module_name: str or None)
-        """
-        import zipfile
-        import tempfile
-        
-        try:
-            # 1. Verify instance has GitHub repo configured
-            if not instance.github_repo:
-                return False, "Esta instancia no tiene un repositorio de GitHub configurado", None
-            
-            # 2. Save uploaded file to temporary location
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as tmp_file:
-                for chunk in zip_file.chunks():
-                    tmp_file.write(chunk)
-                tmp_zip_path = tmp_file.name
-            
-            # 3. Extract to temporary directory first
-            temp_extract_path = tempfile.mkdtemp()
-            print(f"Extrayendo módulo temporalmente en: {temp_extract_path}")
-            
-            with zipfile.ZipFile(tmp_zip_path, 'r') as zip_ref:
-                zip_ref.extractall(temp_extract_path)
-            
-            # Clean up zip file
-            os.unlink(tmp_zip_path)
-            
-            # 4. Find the actual module directory name
-            extracted_module_name = None
-            module_temp_path = None
-            
-            for item in os.listdir(temp_extract_path):
-                item_path = os.path.join(temp_extract_path, item)
-                if os.path.isdir(item_path):
-                    if os.path.exists(os.path.join(item_path, '__manifest__.py')) or \
-                       os.path.exists(os.path.join(item_path, '__openerp__.py')):
-                        extracted_module_name = item
-                        module_temp_path = item_path
-                        break
-            
-            if not extracted_module_name:
-                import shutil
-                shutil.rmtree(temp_extract_path)
-                return False, "No se pudo identificar el módulo en el ZIP. Asegúrate de que contiene __manifest__.py", None
-            
-            # 5. Copy module to GitHub repo addons directory
-            workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
-            addons_path = os.path.join(workspace_path, 'addons')
-            os.makedirs(addons_path, exist_ok=True)
-            
-            module_dest_path = os.path.join(addons_path, extracted_module_name)
-            
-            # Copy module to repo
-            import shutil
-            if os.path.exists(module_dest_path):
-                shutil.rmtree(module_dest_path)
-            shutil.copytree(module_temp_path, module_dest_path)
-            
-            # Clean up temp directory
-            shutil.rmtree(temp_extract_path)
-            
-            print(f"Módulo copiado a: {module_dest_path}")
-            
-            # 6. Commit and push to GitHub
-            try:
-                repo = git.Repo(workspace_path)
-                
-                # Add the new module
-                repo.index.add([os.path.join('addons', extracted_module_name)])
-                
-                # Commit
-                commit_message = f"Add module {extracted_module_name}"
-                repo.index.commit(commit_message)
-                
-                # Push to remote
-                origin = repo.remote(name='origin')
-                origin.push()
-                
-                print(f"Módulo {extracted_module_name} agregado al repositorio y pusheado")
-                
-            except Exception as e:
-                print(f"Error en Git: {str(e)}")
-                return False, f"Error al hacer commit/push al repositorio: {str(e)}", extracted_module_name
-            
-            # 7. Deploy/upgrade the instance (this will update all modules)
-            docker_service = DockerService()
-            try:
-                docker_service.deploy_instance(instance)
-                
-                return True, f"Módulo '{extracted_module_name}' agregado al repositorio y desplegado exitosamente", extracted_module_name
-                
-            except Exception as e:
-                return False, f"Módulo agregado al repo pero error en deploy: {str(e)}", extracted_module_name
-            
-        except zipfile.BadZipFile:
-            return False, "El archivo no es un ZIP válido", None
-        except Exception as e:
-            return False, f"Error inesperado: {str(e)}", None

@@ -3,11 +3,12 @@ from .models import Instance
 from .config_models import GitHubConfig
 from .backup_models import Backup
 from .blog_models import BlogPost
+from .task_models import Task
 
 @admin.register(Instance)
 class InstanceAdmin(admin.ModelAdmin):
-    list_display = ['name', 'odoo_version', 'status', 'created_at']
-    list_filter = ['status', 'odoo_version']
+    list_display = ['name', 'owner', 'odoo_version', 'status', 'created_at']
+    list_filter = ['status', 'odoo_version', 'owner']
     search_fields = ['name']
 
 @admin.register(GitHubConfig)
@@ -41,3 +42,9 @@ class BlogPostAdmin(admin.ModelAdmin):
         if not obj.pk:  # If creating new post
             obj.author = request.user
         super().save_model(request, obj, form, change)
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    list_display = ['id', 'kind', 'status', 'instance', 'created_by', 'created_at', 'finished_at']
+    list_filter = ['status', 'kind']
+    readonly_fields = ['created_at', 'started_at', 'finished_at']

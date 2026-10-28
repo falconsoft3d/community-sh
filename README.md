@@ -42,14 +42,22 @@ sudo ./easy-install.sh
 ```bash
 git pull
 docker-compose up -d --build
-docker-compose exec app python manage.py migrate
 ```
+Migrations run automatically when the `app` container starts. The `cron` service was replaced
+by `worker`; remove the old container with `docker-compose up -d --remove-orphans`.
+
+> **Upgrading from versions that stored data in `db.sqlite3`:** if `.env` has a Postgres
+> `DATABASE_URL` (the default from `easy-install.sh`), the first start copies `db.sqlite3`
+> into Postgres automatically (`manage.py migrate_from_sqlite`) and keeps a
+> `db.sqlite3.pre-migration-*.bak` copy. `.env` must define `DB_PASSWORD` and
+> `DJANGO_SECRET_KEY`. Each Odoo instance now has its own master password (shown on the
+> instance page); it is applied on the next redeploy.
 
 **Docker Compose Commands Local**
 ```bash
 docker-compose up -d --build app
 docker-compose up -d --build
-docker-compose logs -f cron
+docker-compose logs -f worker
 docker-compose restart app
 docker-compose down
 docker-compose logs --tail=100 app

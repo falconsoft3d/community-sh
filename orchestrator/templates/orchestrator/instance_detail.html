@@ -54,6 +54,52 @@
         </div>
     </div>
 
+    <!-- Background tasks (deploys, backups, restores run in the worker) -->
+    {% if tasks %}
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="px-4 py-3 border-b flex items-center gap-2">
+            <i data-lucide="list-checks" class="h-4 w-4"></i>
+            <h3 class="text-sm font-semibold">Tareas recientes</h3>
+            {% if has_active_tasks %}
+            <span class="text-xs text-muted-foreground">· la página se actualizará al terminar</span>
+            {% endif %}
+        </div>
+        <ul class="divide-y">
+            {% for task in tasks %}
+            <li class="px-4 py-2 flex items-start gap-3 text-sm">
+                <span class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium
+                    {% if task.status == 'done' %}bg-green-100 text-green-800
+                    {% elif task.status == 'failed' %}bg-red-100 text-red-800
+                    {% elif task.status == 'running' %}bg-blue-100 text-blue-800
+                    {% else %}bg-muted text-muted-foreground{% endif %}">
+                    {{ task.get_status_display }}
+                </span>
+                <div class="min-w-0 flex-1">
+                    <div class="font-medium">{{ task.get_kind_display }}
+                        <span class="text-xs font-normal text-muted-foreground">· {{ task.created_at|timesince }}</span>
+                    </div>
+                    {% if task.result %}
+                    <pre class="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">{{ task.result|truncatechars:500 }}</pre>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% if has_active_tasks %}
+    <script>
+        (function () {
+            const url = "{% url 'instance-tasks-api' object.pk %}";
+            const poll = () => fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(response => response.json())
+                .then(data => data.active ? setTimeout(poll, 4000) : window.location.reload())
+                .catch(() => setTimeout(poll, 8000));
+            setTimeout(poll, 4000);
+        })();
+    </script>
+    {% endif %}
+    {% endif %}
+
     <!-- Tabs Navigation -->
     <div class="border-b border-border">
         <nav class="flex space-x-8" aria-label="Tabs">
@@ -198,6 +244,25 @@
                 <div class="space-y-1">
                     <label class="text-sm font-medium leading-none">Version</label>
                     <div class="text-sm text-muted-foreground">{{ object.odoo_version }}</div>
+                </div>
+
+                <div class="space-y-1" x-data="{ show: false }">
+                    <label class="text-sm font-medium leading-none">Master Password</label>
+                    <div class="flex items-center gap-2">
+                        <code class="text-sm text-muted-foreground flex-1 truncate"
+                            x-text="show ? '{{ object.master_password|escapejs }}' : '••••••••••••'">••••••••••••</code>
+                        <button type="button" @click="show = !show"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                            title="Mostrar/ocultar">
+                            <i data-lucide="eye" class="h-3 w-3"></i>
+                        </button>
+                        <button type="button" onclick="navigator.clipboard.writeText('{{ object.master_password|escapejs }}')"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                            title="Copiar contraseña">
+                            <i data-lucide="copy" class="h-3 w-3"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs text-muted-foreground mt-1">Para el gestor de bases de datos de Odoo (/web/database/manager). Se aplica al redesplegar.</p>
                 </div>
 
                 <div class="space-y-1">
@@ -364,14 +429,18 @@
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
             <h3 class="font-semibold leading-none tracking-tight mb-4">Create New Backup</h3>
             <div class="flex gap-3">
-                <a href="{% url 'instance-backup' object.pk %}?filestore=true"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                <form method="post" action="{% url 'instance-backup' object.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="filestore" value="true">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                     <i data-lucide="download" class="mr-2 h-4 w-4"></i> Full Backup (with filestore)
-                </a>
-                <a href="{% url 'instance-backup' object.pk %}?filestore=false"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                </button>
+                </form>
+                <form method="post" action="{% url 'instance-backup' object.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="filestore" value="false">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                     <i data-lucide="database" class="mr-2 h-4 w-4"></i> Database Only
-                </a>
+                </button>
+                </form>
             </div>
         </div>
 

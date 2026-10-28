@@ -15,19 +15,25 @@
         </div>
         <div class="flex items-center gap-2">
             {% if container.status == 'stopped' %}
-            <a href="{% url 'container-start' container.pk %}"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2">
+            <form method="post" action="{% url 'container-start' container.pk %}" class="inline">{% csrf_token %}
+                <button type="submit"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2">
                 <i data-lucide="play" class="mr-2 h-4 w-4"></i> Start
-            </a>
+            </button>
+            </form>
             {% elif container.status == 'running' %}
-            <a href="{% url 'container-restart' container.pk %}"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+            <form method="post" action="{% url 'container-restart' container.pk %}" class="inline">{% csrf_token %}
+                <button type="submit"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                 <i data-lucide="rotate-cw" class="mr-2 h-4 w-4"></i> Restart
-            </a>
-            <a href="{% url 'container-stop' container.pk %}"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-yellow-600 text-white hover:bg-yellow-700 h-10 px-4 py-2">
+            </button>
+            </form>
+            <form method="post" action="{% url 'container-stop' container.pk %}" class="inline">{% csrf_token %}
+                <button type="submit"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-yellow-600 text-white hover:bg-yellow-700 h-10 px-4 py-2">
                 <i data-lucide="square" class="mr-2 h-4 w-4"></i> Stop
-            </a>
+            </button>
+            </form>
             {% endif %}
             <div class="h-6 w-px bg-border mx-2"></div>
             <form method="post" action="{% url 'container-delete' container.pk %}"
