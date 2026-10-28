@@ -425,23 +425,8 @@ def instance_install_module(request, pk):
 def instance_delete(request, pk):
     instance = get_instance_for_user(request.user, pk, manage=True)
     if request.method == 'POST':
-        # Send email notification before deleting
-        from ..email_notifications import send_instance_notification
-        send_instance_notification('deleted', instance, request.user)
-        
-        # Remove Traefik configuration file if exists
-        if instance.custom_domain:
-            import os
-            from django.conf import settings
-            traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
-            config_file = os.path.join(traefik_dir, f'instance-{instance.name}.yml')
-            if os.path.exists(config_file):
-                os.remove(config_file)
-                print(f"Removed Traefik config for {instance.name}", flush=True)
-        
-        service = DockerService()
-        service.delete_instance(instance)
-        instance.delete()
+        from ..tasks import destroy_instance
+        destroy_instance(instance, request.user)
         return redirect('instance-list')
     return redirect('instance-detail', pk=pk)
 

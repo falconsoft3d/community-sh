@@ -1086,3 +1086,30 @@ class ReleaseNotesPaginationTests(TestCase):
         second = self.client.get('/?novedades=2')
         self.assertContains(second, f"v{CHANGELOG[3]['version']}")
         self.assertContains(second, '?novedades=1#novedades')
+
+
+class ProjectDeleteAllTests(BaseTestCase):
+    def test_needs_typed_name_then_worker_deletes_everything(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from .project_models import Project
+        from .task_models import Task
+        Backup.objects.create(instance=self.alice_instance, filename='a.zip', file_path='/nonexistent/a.zip', file_size=1)
+        self.client.force_login(self.alice)
+        url = reverse('project-delete', args=[self.alice_project.pk])
+        self.client.post(url, {'confirm': 'wrong'})
+        self.assertFalse(Task.objects.filter(kind='delete_project').exists())
+        self.client.post(url, {'confirm': 'ACME'})
+        self.client.post(url, {'confirm': 'ACME'})  # a second click doesn't queue twice
+        self.assertEqual(Task.objects.filter(kind='delete_project').count(), 1)
+
+        call_command('run_worker', once=True, stdout=StringIO())
+
+        self.docker.return_value.delete_instance.assert_called_once()
+        self.assertFalse(Project.objects.filter(pk=self.alice_project.pk).exists())
+        self.assertFalse(Instance.objects.filter(pk=self.alice_instance.pk).exists())
+        self.assertEqual(Task.objects.get(kind='delete_project').status, 'done')
+
+    def test_only_managers_delete(self):
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(reverse('project-delete', args=[self.alice_project.pk]), {'confirm': 'ACME'}).status_code, 404)

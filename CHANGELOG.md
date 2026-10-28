@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.8**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.9**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.9 — 2026-10-28
+
+- Eliminar un proyecto con todo: sus instancias, contenedores, bases de datos, filestores, workspaces y backups (confirmación escribiendo el nombre; lo ejecuta el worker)
+- Al borrar una instancia también se borran los archivos de sus backups (antes quedaban huérfanos en disco)
 
 ## 1.0.8 — 2026-10-28
 

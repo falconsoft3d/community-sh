@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.8'
+VERSION = '1.0.9'
 
 CHANGELOG = [
+    {
+        'version': '1.0.9',
+        'date': '2026-10-28',
+        'notes': [
+            "Eliminar un proyecto con todo: sus instancias, contenedores, bases de datos, filestores, workspaces y backups (confirmación escribiendo el nombre; lo ejecuta el worker)",
+            "Al borrar una instancia también se borran los archivos de sus backups (antes quedaban huérfanos en disco)",
+        ],
+    },
     {
         'version': '1.0.8',
         'date': '2026-10-28',

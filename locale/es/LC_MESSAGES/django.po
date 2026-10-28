@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 17:04+0000\n"
+"POT-Creation-Date: 2026-10-28 17:06+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -58,7 +58,7 @@ msgid "Todos los proyectos"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:29
-#: orchestrator/templates/orchestrator/project_detail.html:58
+#: orchestrator/templates/orchestrator/project_detail.html:86
 msgid "Instancia"
 msgstr ""
 
@@ -246,7 +246,7 @@ msgid "Licencia"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:168
-#: orchestrator/templates/orchestrator/project_detail.html:51
+#: orchestrator/templates/orchestrator/project_detail.html:79
 msgid "Instancias"
 msgstr ""
 
@@ -713,31 +713,56 @@ msgstr ""
 msgid "Editar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/project_detail.html:43
-msgid "Nueva instancia"
+#: orchestrator/templates/orchestrator/project_detail.html:44
+#: orchestrator/templates/orchestrator/project_detail.html:62
+msgid "Eliminar todo"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/project_detail.html:49
+msgid "Eliminar el proyecto y todas sus instancias"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/project_detail.html:50
+msgid ""
+"Se borrarán de forma permanente los contenedores, bases de datos, "
+"filestores, workspaces y backups de:"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/project_detail.html:55
+#, python-format
+msgid "Escribe <strong>%(name)s</strong> para confirmar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/project_detail.html:59
+#: orchestrator/templates/orchestrator/project_form.html:34
+msgid "Cancelar"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/project_detail.html:71
+msgid "Nueva instancia"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/project_detail.html:87
 msgid "Versión"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/project_detail.html:60
+#: orchestrator/templates/orchestrator/project_detail.html:88
 msgid "Estado"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/project_detail.html:61
+#: orchestrator/templates/orchestrator/project_detail.html:89
 msgid "Acceso"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/project_detail.html:88
+#: orchestrator/templates/orchestrator/project_detail.html:116
 msgid "Abrir"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/project_detail.html:102
+#: orchestrator/templates/orchestrator/project_detail.html:130
 msgid "Este proyecto todavía no tiene instancias."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/project_detail.html:106
+#: orchestrator/templates/orchestrator/project_detail.html:134
 msgid "Desplegar la primera instancia"
 msgstr ""
 
@@ -752,10 +777,6 @@ msgstr ""
 #: orchestrator/templates/orchestrator/project_form.html:17
 #: orchestrator/templates/orchestrator/project_list.html:13
 msgid "Nuevo proyecto"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/project_form.html:34
-msgid "Cancelar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/project_form.html:38

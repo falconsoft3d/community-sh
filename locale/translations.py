@@ -141,6 +141,11 @@ ES_TO_EN = {
     'Actual': 'Current',
     'Minimizar o expandir el menú': 'Collapse or expand the menu',
     'Páginas de novedades': 'Release notes pages',
+    'Eliminar todo': 'Delete everything',
+    'Eliminar el proyecto y todas sus instancias': 'Delete the project and all its instances',
+    'Se borrarán de forma permanente los contenedores, bases de datos, filestores, workspaces y backups de:':
+        'This permanently deletes the containers, databases, filestores, workspaces and backups of:',
+    'Escribe <strong>%(name)s</strong> para confirmar': 'Type <strong>%(name)s</strong> to confirm',
     'Más recientes': 'Newer',
     'Anteriores': 'Older',
     'Página %(page)s de %(pages)s': 'Page %(page)s of %(pages)s',

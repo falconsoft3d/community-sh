@@ -54,10 +54,22 @@ def project_edit(request, pk):
 @login_required
 @require_POST
 def project_delete(request, pk):
+    """Delete a project; with instances, they are all destroyed too (typed name confirmation)."""
+    from ..task_models import Task
+    from ..tasks import enqueue
     project = get_project_for_user(request.user, pk, manage=True)
-    if project.instances.exists():
-        messages.error(request, 'El proyecto tiene instancias: elimínalas o muévelas a otro proyecto antes de borrarlo')
+    if not project.instances.exists():
+        name = project.name
+        project.delete()
+        messages.success(request, f'Proyecto "{name}" eliminado')
+        return redirect('project-list')
+    if request.POST.get('confirm', '').strip() != project.name:
+        messages.error(request, 'Para eliminar el proyecto y todas sus instancias escribe su nombre exacto en la confirmación')
         return redirect('project-detail', pk=pk)
-    project.delete()
-    messages.success(request, f'Proyecto "{project.name}" eliminado')
+    if Task.objects.filter(kind=Task.Kind.DELETE_PROJECT, params__project_id=project.pk, status__in=['pending', 'running']).exists():
+        messages.info(request, 'La eliminación de este proyecto ya está en curso')
+        return redirect('project-list')
+    enqueue(Task.Kind.DELETE_PROJECT, user=request.user, project_id=project.pk)
+    count = project.instances.count()
+    messages.warning(request, f'Eliminación de "{project.name}" y sus {count} instancias en cola. Desaparecerán en unos minutos.')
     return redirect('project-list')

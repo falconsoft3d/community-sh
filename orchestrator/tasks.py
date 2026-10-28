@@ -89,6 +89,20 @@ def _create_instance_branch(instance, user, base_branch):
     return message
 
 
+def destroy_instance(instance, user=None):
+    """Remove an instance completely: containers, volumes, workspace, Traefik config and backup files."""
+    from django.conf import settings
+    send_instance_notification('deleted', instance, user)
+    traefik_config = os.path.join(settings.BASE_DIR, 'traefik', f'instance-{instance.name}.yml')
+    if os.path.exists(traefik_config):
+        os.remove(traefik_config)
+    DockerService().delete_instance(instance)
+    for backup_record in instance.backups.all():
+        if os.path.exists(backup_record.file_path):
+            os.remove(backup_record.file_path)
+    instance.delete()
+
+
 def backup_all_instances(retention, user=None):
     """Back up every instance and prune old backups. Returns (successes, errors)."""
     service = DockerService()
@@ -240,6 +254,21 @@ def ai_module(task):
         notes.append(f'{module} {"actualizado" if flag == "-u" else "instalado"} en {database}')
     container.restart()
     return '\n'.join(notes)
+
+
+@handler(Task.Kind.DELETE_PROJECT)
+def delete_project(task):
+    from .project_models import Project
+    project = Project.objects.filter(pk=task.params['project_id']).first()
+    if project is None:
+        return 'El proyecto ya no existe'
+    names = []
+    for instance in project.instances.all():
+        destroy_instance(instance, task.created_by)
+        names.append(instance.name)
+    name = project.name
+    project.delete()
+    return f'Proyecto «{name}» eliminado' + (f' con sus instancias: {", ".join(names)}' if names else '')
 
 
 @handler(Task.Kind.BACKUP_ALL)

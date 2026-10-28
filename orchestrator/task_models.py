@@ -16,6 +16,7 @@ class Task(models.Model):
         INSTALL_MODULE = 'install_module', 'Instalar módulo'
         PULL_IMAGE = 'pull_image', 'Descargar imagen'
         AI_MODULE = 'ai_module', 'Instalar módulo (IA)'
+        DELETE_PROJECT = 'delete_project', 'Eliminar proyecto'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'
