@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.30'
+VERSION = '1.0.31'
 
 CHANGELOG = [
+    {
+        'version': '1.0.31',
+        'date': '2026-10-28',
+        'notes': [
+            "Tema: los iconos de la pantalla de inicio van dentro de una tarjeta blanca con margen, como en Odoo Enterprise",
+        ],
+    },
     {
         'version': '1.0.30',
         'date': '2026-10-28',

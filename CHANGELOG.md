@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.30**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.31**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.31 — 2026-10-28
+
+- Tema: los iconos de la pantalla de inicio van dentro de una tarjeta blanca con margen, como en Odoo Enterprise
 
 ## 1.0.30 — 2026-10-28
 

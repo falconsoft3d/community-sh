@@ -31,11 +31,11 @@ PAGE = """<!DOCTYPE html>
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 30px 8px; }
   .app { display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 6px 4px; border-radius: 6px;
          color: #374151; text-decoration: none; outline: none; }
-  .app img, .app .placeholder { width: 64px; height: 64px; border-radius: 5px; background: #fff; object-fit: cover;
-         box-shadow: 0 1px 2px rgba(31,41,55,.12), 0 3px 8px rgba(31,41,55,.08); transition: transform .12s, box-shadow .12s; }
-  .app:hover img, .app:hover .placeholder, .app:focus-visible img, .app:focus-visible .placeholder {
-         transform: translateY(-2px); box-shadow: 0 2px 4px rgba(31,41,55,.14), 0 8px 18px rgba(31,41,55,.14); }
-  .app .placeholder { display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; color: #714b67; }
+  .app .tile { display: flex; align-items: center; justify-content: center; width: 68px; height: 68px; border-radius: 4px;
+         background: #fff; box-shadow: 0 1px 2px rgba(31,41,55,.12), 0 3px 8px rgba(31,41,55,.07); transition: transform .12s, box-shadow .12s; }
+  .app .tile img { width: 48px; height: 48px; object-fit: contain; }
+  .app:hover .tile, .app:focus-visible .tile { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(31,41,55,.14), 0 8px 18px rgba(31,41,55,.14); }
+  .app .placeholder { font-size: 24px; font-weight: 700; color: #714b67; }
   .app span { max-width: 124px; font-size: 14px; text-align: center; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .empty { text-align: center; color: #6b7280; display: none; }
   .version { position: fixed; left: 16px; bottom: 12px; font-size: 12px; color: #6b7280; }
@@ -81,11 +81,11 @@ PAGE = """<!DOCTYPE html>
 def _icon(menu):
     if menu.web_icon_data:
         data = menu.web_icon_data.decode() if isinstance(menu.web_icon_data, bytes) else menu.web_icon_data
-        return '<img src="data:image/png;base64,%s" alt="">' % data
+        return '<span class="tile"><img src="data:image/png;base64,%s" alt=""></span>' % data
     if menu.web_icon and ',' in menu.web_icon and not menu.web_icon.startswith('fa'):
         module, path = menu.web_icon.split(',', 1)
-        return '<img src="/%s/%s" alt="">' % (escape(module), escape(path))
-    return '<div class="placeholder">%s</div>' % escape((menu.name or '?')[:1].upper())
+        return '<span class="tile"><img src="/%s/%s" alt=""></span>' % (escape(module), escape(path))
+    return '<span class="tile placeholder">%s</span>' % escape((menu.name or '?')[:1].upper())
 
 
 def _app_action(menu):
