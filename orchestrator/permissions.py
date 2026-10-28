@@ -78,34 +78,73 @@ def domain_in_use(domain, exclude_instance=None, exclude_container=None):
     return instances.exists() or containers.exists()
 
 
+def is_client(user):
+    profile = getattr(user, 'profile', None)
+    return bool(user.is_authenticated and not user.is_superuser and profile and profile.is_client)
+
+
+def can_manage(user, obj):
+    """Owners and superusers manage; clients only see and operate (start, deploy, backups)."""
+    return user.is_superuser or obj.owner_id == user.id
+
+
 def instances_for(user):
+    """Instances a user can see: their own, and as a client those of their projects."""
+    from django.db.models import Q
     from .models import Instance
     if user.is_superuser:
         return Instance.objects.all()
-    return Instance.objects.filter(owner=user)
+    return Instance.objects.filter(Q(owner=user) | Q(project__client=user))
 
 
 def projects_for(user):
+    from django.db.models import Q
     from .project_models import Project
     if user.is_superuser:
         return Project.objects.all()
-    return Project.objects.filter(owner=user)
+    return Project.objects.filter(Q(owner=user) | Q(client=user))
 
 
-def get_project_for_user(user, pk):
-    return get_object_or_404(projects_for(user), pk=pk)
+def managed_projects_for(user):
+    """Projects a user can put instances in (clients only operate theirs)."""
+    from .project_models import Project
+    return Project.objects.all() if user.is_superuser else Project.objects.filter(owner=user)
 
 
-def get_instance_for_user(user, pk):
-    return get_object_or_404(instances_for(user), pk=pk)
+def get_project_for_user(user, pk, manage=False):
+    project = get_object_or_404(projects_for(user), pk=pk)
+    if manage and not can_manage(user, project):
+        raise PermissionDenied
+    return project
 
 
-def get_backup_for_user(user, backup_id):
+def get_instance_for_user(user, pk, manage=False):
+    instance = get_object_or_404(instances_for(user), pk=pk)
+    if manage and not can_manage(user, instance):
+        raise PermissionDenied
+    return instance
+
+
+def get_backup_for_user(user, backup_id, manage=False):
+    from django.db.models import Q
     from .backup_models import Backup
     backups = Backup.objects.select_related('instance')
     if not user.is_superuser:
-        backups = backups.filter(instance__owner=user)
-    return get_object_or_404(backups, pk=backup_id)
+        backups = backups.filter(Q(instance__owner=user) | Q(instance__project__client=user))
+    backup = get_object_or_404(backups, pk=backup_id)
+    if manage and not can_manage(user, backup.instance):
+        raise PermissionDenied
+    return backup
+
+
+def management_required(view_func):
+    """Views that create things (projects, instances, containers): not for clients."""
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if is_client(request.user):
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return _wrapped
 
 
 # Brute-force protection for login and 2FA. Keyed by account, not IP: behind
@@ -143,5 +182,15 @@ def superuser_required(view_func):
 
 
 class IsOwnerOrSuperuser(permissions.BasePermission):
+    """Clients may read and run the operate actions; everything else needs the owner."""
+    CLIENT_ACTIONS = ('deploy', 'stop')
+
+    def has_permission(self, request, view):
+        if getattr(view, 'action', None) == 'create':
+            return not is_client(request.user)
+        return True
+
     def has_object_permission(self, request, view, obj):
-        return request.user.is_superuser or obj.owner_id == request.user.id
+        if can_manage(request.user, obj):
+            return True
+        return request.method in permissions.SAFE_METHODS or getattr(view, 'action', None) in self.CLIENT_ACTIONS

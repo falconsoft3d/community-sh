@@ -12,12 +12,16 @@
             <h1 class="text-3xl font-bold tracking-tight">{{ project.name }}</h1>
             <p class="mt-1 text-muted-foreground">
                 <i data-lucide="building-2" class="inline h-4 w-4 align-text-bottom"></i>
-                {{ project.client|default:"Sin cliente" }}
+                {% if project.client %}
+                {{ project.client_display }}
+                {% if user.is_superuser %}<a href="{% url 'client-detail' project.client.pk %}" class="ml-1 text-sm text-primary hover:underline">ver cliente</a>{% endif %}
+                {% else %}Sin cliente{% endif %}
             </p>
             {% if project.description %}
             <p class="mt-2 max-w-2xl text-sm text-muted-foreground">{{ project.description|linebreaksbr }}</p>
             {% endif %}
         </div>
+        {% if can_manage %}
         <div class="flex items-center gap-2">
             <a href="{% url 'project-edit' project.pk %}"
                 class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
@@ -38,6 +42,7 @@
                 <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Nueva instancia
             </a>
         </div>
+        {% endif %}
     </div>
 
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -94,10 +99,12 @@
         <div class="p-10 text-center">
             <i data-lucide="server" class="mx-auto h-8 w-8 text-muted-foreground"></i>
             <p class="mt-2 text-sm text-muted-foreground">Este proyecto todavía no tiene instancias.</p>
+            {% if can_manage %}
             <a href="{% url 'instance-create' %}?project={{ project.pk }}"
                 class="mt-4 inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                 <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Desplegar la primera instancia
             </a>
+            {% endif %}
         </div>
         {% endif %}
     </div>

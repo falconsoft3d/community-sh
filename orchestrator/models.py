@@ -122,6 +122,10 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True, help_text="User biography")
     phone = models.CharField(max_length=20, blank=True, help_text="Phone number")
     
+    # Clients log in to see and operate the instances of their projects
+    is_client = models.BooleanField(default=False, help_text="Client account: sees and operates only its projects")
+    company = models.CharField(max_length=150, blank=True, help_text="Client company name")
+    
     # Two-Factor Authentication
     two_factor_enabled = models.BooleanField(default=False, help_text="Enable two-factor authentication")
     two_factor_secret = models.CharField(max_length=32, blank=True, help_text="TOTP secret key")

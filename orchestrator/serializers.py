@@ -15,8 +15,8 @@ class InstanceSerializer(serializers.ModelSerializer):
         self.fields['project'].required = True
         self.fields['project'].allow_null = False
         if request is not None:
-            from .permissions import projects_for
-            self.fields['project'].queryset = projects_for(request.user)
+            from .permissions import managed_projects_for
+            self.fields['project'].queryset = managed_projects_for(request.user)
 
     def validate_custom_domain(self, value):
         if value and domain_in_use(value, exclude_instance=self.instance):

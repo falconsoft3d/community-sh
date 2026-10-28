@@ -9,13 +9,15 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.views.decorators.http import require_POST
 from ..task_models import Task
 from ..tasks import enqueue
 from ..permissions import (
+    can_manage,
     domain_in_use,
     get_instance_for_user,
+    is_client,
     instances_for,
     projects_for,
     validate_domain,
@@ -52,6 +54,11 @@ class InstanceCreateView(LoginRequiredMixin, CreateView):
     model = Instance
     from ..forms import InstanceForm
     form_class = InstanceForm
+    
+    def dispatch(self, request, *args, **kwargs):
+        if is_client(request.user):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
     
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -93,6 +100,7 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         # Add backups to context
         from ..backup_models import Backup
         context['backups'] = Backup.objects.filter(instance=self.object).order_by('-created_at')
+        context['can_manage'] = can_manage(self.request.user, self.object)
         context['tasks'] = list(self.object.tasks.all()[:5])
         context['has_active_tasks'] = any(task.is_active for task in context['tasks'])
         
@@ -159,7 +167,7 @@ def instance_logs_api(request, pk):
 @login_required
 def instance_console_exec(request, pk):
     """Execute commands in the container console"""
-    instance = get_instance_for_user(request.user, pk)
+    instance = get_instance_for_user(request.user, pk, manage=True)
     
     if request.method == 'POST':
         import json
@@ -182,7 +190,7 @@ def instance_console_exec(request, pk):
 @login_required
 def instance_install_requirements(request, pk):
     """Install Python packages from requirements.txt file"""
-    instance = get_instance_for_user(request.user, pk)
+    instance = get_instance_for_user(request.user, pk, manage=True)
     
     if request.method == 'POST':
         requirements_file = request.FILES.get('requirements')
@@ -241,7 +249,7 @@ def instance_install_requirements(request, pk):
 @login_required
 def instance_configure_domain(request, pk):
     """Configure custom domain for an instance"""
-    instance = get_instance_for_user(request.user, pk)
+    instance = get_instance_for_user(request.user, pk, manage=True)
     
     if request.method == 'POST':
         domain = request.POST.get('domain', '').strip()
@@ -303,7 +311,7 @@ def instance_configure_domain(request, pk):
 @login_required
 def instance_generate_ssl(request, pk):
     """Generate SSL certificate for instance custom domain"""
-    instance = get_instance_for_user(request.user, pk)
+    instance = get_instance_for_user(request.user, pk, manage=True)
     
     if request.method == 'POST':
         if not instance.custom_domain:
@@ -349,7 +357,7 @@ def instance_generate_ssl(request, pk):
 @require_POST
 def instance_update_name(request, pk):
     """Rename an instance (its containers, network and workspace are moved by the worker)"""
-    instance = get_instance_for_user(request.user, pk)
+    instance = get_instance_for_user(request.user, pk, manage=True)
     new_name = request.POST.get('name', '').strip().lower()
     
     if not new_name:
@@ -378,7 +386,7 @@ def instance_update_name(request, pk):
 @require_POST
 def instance_install_module(request, pk):
     """Upload a module ZIP: the worker adds it to the GitHub repo and redeploys"""
-    instance = get_instance_for_user(request.user, pk)
+    instance = get_instance_for_user(request.user, pk, manage=True)
     module_file = request.FILES.get('module_file')
     
     if not module_file:
@@ -411,7 +419,7 @@ def instance_install_module(request, pk):
 
 @login_required
 def instance_delete(request, pk):
-    instance = get_instance_for_user(request.user, pk)
+    instance = get_instance_for_user(request.user, pk, manage=True)
     if request.method == 'POST':
         # Send email notification before deleting
         from ..email_notifications import send_instance_notification
@@ -436,7 +444,7 @@ def instance_delete(request, pk):
 
 @login_required
 def instance_duplicate(request, pk):
-    instance = get_instance_for_user(request.user, pk)
+    instance = get_instance_for_user(request.user, pk, manage=True)
     
     if request.method != 'POST':
         return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})

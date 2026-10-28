@@ -205,6 +205,12 @@ def install_module(task):
     return message
 
 
+@handler(Task.Kind.PULL_IMAGE)
+def pull_image(task):
+    from .services import docker_admin
+    return f"Imagen descargada: {docker_admin.pull_image(task.params['image'])}"
+
+
 @handler(Task.Kind.BACKUP_ALL)
 def backup_all(task):
     successes, errors = backup_all_instances(task.params.get('retention', 5), user=task.created_by)

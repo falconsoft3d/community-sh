@@ -6,10 +6,12 @@
         <h1 class="text-lg font-semibold md:text-2xl">Proyectos</h1>
         <p class="text-sm text-muted-foreground">Cada proyecto agrupa las instancias de un cliente: producción, staging, pruebas…</p>
     </div>
+    {% if not user.profile.is_client or user.is_superuser %}
     <a href="{% url 'project-create' %}"
         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
         <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Nuevo proyecto
     </a>
+    {% endif %}
 </div>
 
 {% if projects %}
@@ -23,7 +25,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <h2 class="truncate font-semibold group-hover:underline">{{ project.name }}</h2>
-                <p class="truncate text-sm text-muted-foreground">{{ project.client|default:"Sin cliente" }}</p>
+                <p class="truncate text-sm text-muted-foreground">{{ project.client_display|default:"Sin cliente" }}</p>
             </div>
         </div>
         {% if project.description %}

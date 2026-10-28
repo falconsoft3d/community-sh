@@ -99,31 +99,8 @@ def blog_detail(request, slug):
 @login_required
 def about(request):
     """About page with version history"""
-    versions = [
-        {
-            'version': '1.0.0',
-            'date': '2025-12-31',
-            'notes': [
-                'Gestión completa de instancias Odoo (crear, desplegar, detener, reiniciar, eliminar)',
-                'Orquestación de contenedores Docker con PostgreSQL 13',
-                'Soporte multi-versión de Odoo (10.0 - 19.0)',
-                'Integración con repositorios GitHub para módulos personalizados',
-                'Sistema completo de backup y restauración',
-                'Crear nuevas instancias desde backups existentes',
-                'Logs en tiempo real y acceso a consola de contenedores',
-                'Gestión de certificados SSL/TLS con Let\'s Encrypt',
-                'Configuración de dominios personalizados',
-                'Monitoreo de recursos y métricas de contenedores',
-                'Autenticación de usuarios y gestión de perfiles',
-                'Interfaz con pestañas para detalles de instancia',
-                'Sistema de nomenclatura automática para instancias desde backup (name-copy-N)',
-                'Detección automática de bases de datos',
-                'Respaldo de filestore desde contenedores Docker',
-            ]
-        }
-    ]
-    
+    from config.version import CHANGELOG, VERSION
     return render(request, 'orchestrator/about.html', {
-        'current_version': '1.0.0',
-        'versions': versions
+        'current_version': VERSION,
+        'versions': CHANGELOG,
     })
