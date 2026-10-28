@@ -1304,3 +1304,32 @@ class AIModuleInstallTests(BaseTestCase):
         sql = db.exec_run.call_args.args[0][-1]
         self.assertIn("'to install' THEN 'uninstalled'", sql)
         odoo.restart.assert_not_called()
+
+
+class AdminLoginTests(BaseTestCase):
+    def test_signed_one_minute_link_for_odoo_12_and_later(self):
+        import hashlib
+        import hmac
+        import time
+        from urllib.parse import parse_qs, urlparse
+        from .services.docker_service import admin_login_secret
+        self.alice_instance.odoo_version, self.alice_instance.database_name = '17.0', 'acme'
+        self.alice_instance.save()
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk]))
+        url = urlparse(response['Location'])
+        query = {k: v[0] for k, v in parse_qs(url.query).items()}
+        self.assertEqual((url.path, query['db']), ('/community_sh/login', 'acme'))
+        self.assertLessEqual(int(query['exp']) - time.time(), 60)
+        expected = hmac.new(admin_login_secret(self.alice_instance).encode(),
+                            f"acme:{query['exp']}:{query['nonce']}".encode(), hashlib.sha256).hexdigest()
+        self.assertEqual(query['sig'], expected)
+
+    def test_not_for_odoo_10_and_11_or_other_users(self):
+        self.alice_instance.odoo_version = '11.0'
+        self.alice_instance.save()
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk]))
+        self.assertEqual(response['Location'], reverse('instance-detail', args=[self.alice_instance.pk]))
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk])).status_code, 404)

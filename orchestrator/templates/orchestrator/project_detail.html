@@ -115,6 +115,14 @@
                             <a href="{{ instance.url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline">
                                 {% translate "Abrir" %} <i data-lucide="external-link" class="h-3 w-3"></i>
                             </a>
+                            {% if can_manage and instance.status == 'running' and instance.odoo_version|slice:":2"|add:0 >= 12 %}
+                            <form action="{% url 'instance-admin-login' instance.pk %}" method="post" target="_blank" class="ml-3 inline">
+                                {% csrf_token %}
+                                <button type="submit" class="inline-flex items-center gap-1 text-primary hover:underline" title="Abre Odoo como administrador">
+                                    <i data-lucide="log-in" class="h-3 w-3"></i> Admin
+                                </button>
+                            </form>
+                            {% endif %}
                             {% else %}
                             <span class="text-muted-foreground">—</span>
                             {% endif %}

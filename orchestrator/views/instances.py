@@ -103,6 +103,8 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         from ..backup_models import Backup
         context['backups'] = Backup.objects.filter(instance=self.object).order_by('-created_at')
         context['can_manage'] = can_manage(self.request.user, self.object)
+        from ..services.docker_service import supports_admin_login
+        context['admin_login'] = context['can_manage'] and supports_admin_login(self.object)
         from ..services.ai import get_ai_config
         context['ai_enabled'] = context['can_manage'] and get_ai_config() is not None
         context['tasks'] = list(self.object.tasks.all()[:5])
@@ -583,3 +585,34 @@ def instance_ai_modules(request, pk):
     from ..services.ai_assistant import find_custom_modules
     instance = get_instance_for_user(request.user, pk, manage=True)
     return JsonResponse({'modules': find_custom_modules(instance)})
+
+
+@login_required
+@require_POST
+def instance_admin_login(request, pk):
+    """Open Odoo as its administrator through a signed, one-time, 60-second link."""
+    import hashlib
+    import hmac
+    import secrets
+    import time
+    from urllib.parse import urlencode
+    from ..services.docker_service import admin_login_secret, supports_admin_login
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    if not supports_admin_login(instance):
+        messages.error(request, 'Entrar como admin sin contraseña está disponible a partir de Odoo 12')
+        return redirect('instance-detail', pk=pk)
+    database = instance.database_name
+    if not database:
+        try:
+            service = DockerService()
+            databases = service._list_user_databases(service.client.containers.get(f'db_{instance.name}'))
+        except Exception:
+            databases = []
+        if not databases:
+            messages.error(request, 'La instancia todavía no tiene base de datos: créala primero desde Odoo')
+            return redirect('instance-detail', pk=pk)
+        database = databases[0]
+    expires, nonce = str(int(time.time()) + 60), secrets.token_urlsafe(16)
+    signature = hmac.new(admin_login_secret(instance).encode(), f'{database}:{expires}:{nonce}'.encode(), hashlib.sha256).hexdigest()
+    query = urlencode({'db': database, 'exp': expires, 'nonce': nonce, 'sig': signature})
+    return HttpResponseRedirect(f'{instance.url.rstrip("/")}/community_sh/login?{query}')

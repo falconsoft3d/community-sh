@@ -47,6 +47,15 @@
             </form>
             <div class="h-6 w-px bg-border mx-2"></div>
 {% if can_manage %}
+            {% if admin_login and object.status == 'running' %}
+            <form action="{% url 'instance-admin-login' object.pk %}" method="post" target="_blank">
+                {% csrf_token %}
+                <button type="submit" title="Abre Odoo con la sesión del administrador (enlace de un solo uso)"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    <i data-lucide="log-in" class="mr-2 h-4 w-4"></i> Entrar como admin
+                </button>
+            </form>
+            {% endif %}
             <a href="{% url 'instance-duplicate' object.pk %}"
                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                 <i data-lucide="copy" class="mr-2 h-4 w-4"></i> Duplicate

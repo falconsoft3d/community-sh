@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.16'
+VERSION = '1.0.17'
 
 CHANGELOG = [
+    {
+        'version': '1.0.17',
+        'date': '2026-10-28',
+        'notes': [
+            "Entrar como admin en Odoo 12-20 sin contraseña desde la instancia o el proyecto: enlace firmado, de un solo uso y válido 60 segundos (módulo community_sh_login, cargado como server-wide)",
+        ],
+    },
     {
         'version': '1.0.16',
         'date': '2026-10-28',

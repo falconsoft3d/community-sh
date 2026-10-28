@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.16**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.17**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.17 — 2026-10-28
+
+- Entrar como admin en Odoo 12-20 sin contraseña desde la instancia o el proyecto: enlace firmado, de un solo uso y válido 60 segundos (módulo community_sh_login, cargado como server-wide)
 
 ## 1.0.16 — 2026-10-28
 

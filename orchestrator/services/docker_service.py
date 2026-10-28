@@ -26,6 +26,20 @@ def odoo_config_target(odoo_version):
     return '/etc/odoo/odoo.conf'
 
 
+PANEL_ADDONS_DIR = '/mnt/community-sh-addons'
+ADMIN_LOGIN_MIN_VERSION = 12
+
+
+def admin_login_secret(instance):
+    """Key the panel and the instance's community_sh_login module share to sign admin links."""
+    import hashlib
+    return hashlib.sha256(f'community-sh-login:{instance.master_password}'.encode()).hexdigest()
+
+
+def supports_admin_login(instance):
+    return int(float(instance.odoo_version)) >= ADMIN_LOGIN_MIN_VERSION
+
+
 def read_backup_metadata(path):
     """
     Describe a backup file. Formats: the panel's ZIP (database.dump + metadata.json), Odoo's own
@@ -100,9 +114,16 @@ class DockerService:
         """
         config_dir = os.path.join(workspace_path, 'conf')
         os.makedirs(config_dir, exist_ok=True)
+        addons_paths = ['/mnt/extra-addons'] + [f'/mnt/repos/{slug}' for slug in extra_repos]
+        panel_login = ''
+        if supports_admin_login(instance):
+            # community_sh_login: one-time admin links from the panel (loaded without installing it)
+            addons_paths.append(PANEL_ADDONS_DIR)
+            panel_login = ("server_wide_modules = base,web,community_sh_login\n"
+                           f"community_sh_secret = {admin_login_secret(instance)}\n")
         content = (
             "[options]\n"
-            f"addons_path = {','.join(['/mnt/extra-addons'] + [f'/mnt/repos/{slug}' for slug in extra_repos])}\n"
+            f"addons_path = {','.join(addons_paths)}\n"
             f"data_dir = {ODOO_DATA_DIR}\n"
             f"admin_passwd = {instance.master_password}\n"
             # In the config (not only entrypoint args) so `odoo` run via exec can connect too
@@ -113,6 +134,7 @@ class DockerService:
             # Odoo 20 listens on 127.0.0.1 by default; Odoo 10 calls the option xmlrpc_interface
             "http_interface = 0.0.0.0\n"
             "xmlrpc_interface = 0.0.0.0\n"
+            + panel_login
         )
         config_path = os.path.join(config_dir, os.path.basename(odoo_config_target(instance.odoo_version)))
         with open(config_path, 'w') as f:
@@ -306,6 +328,7 @@ class DockerService:
                 host_path(self._write_odoo_config(instance, workspace_path, extra_repos)): {'bind': '/etc/odoo', 'mode': 'rw'},
                 host_path(addons_path): {'bind': '/mnt/extra-addons', 'mode': 'rw'},
                 host_path(os.path.join(workspace_path, 'repos')): {'bind': '/mnt/repos', 'mode': 'ro'},
+                host_path(os.path.join(settings.BASE_DIR, 'orchestrator', 'odoo_addons')): {'bind': PANEL_ADDONS_DIR, 'mode': 'ro'},
             }
             
             is_redeploy = False
