@@ -27,7 +27,6 @@ def odoo_config_target(odoo_version):
 
 
 PANEL_ADDONS_DIR = '/mnt/community-sh-addons'
-ADMIN_LOGIN_MIN_VERSION = 12
 
 
 def admin_login_secret(instance):
@@ -35,9 +34,6 @@ def admin_login_secret(instance):
     import hashlib
     return hashlib.sha256(f'community-sh-login:{instance.master_password}'.encode()).hexdigest()
 
-
-def supports_admin_login(instance):
-    return int(float(instance.odoo_version)) >= ADMIN_LOGIN_MIN_VERSION
 
 
 def read_backup_metadata(path):
@@ -115,12 +111,12 @@ class DockerService:
         config_dir = os.path.join(workspace_path, 'conf')
         os.makedirs(config_dir, exist_ok=True)
         addons_paths = ['/mnt/extra-addons'] + [f'/mnt/repos/{slug}' for slug in extra_repos]
-        panel_login = ''
-        if supports_admin_login(instance):
-            # community_sh_login: one-time admin links from the panel (loaded without installing it)
-            addons_paths.append(PANEL_ADDONS_DIR)
-            panel_login = ("server_wide_modules = base,web,community_sh_login\n"
-                           f"community_sh_secret = {admin_login_secret(instance)}\n")
+        # community_sh_login: one-time admin links from the panel (loaded without installing it)
+        addons_paths.append(PANEL_ADDONS_DIR)
+        # Odoo 10 also loads web_kanban server-wide by default
+        server_wide = 'base,web,web_kanban' if int(float(instance.odoo_version)) == 10 else 'base,web'
+        panel_login = (f"server_wide_modules = {server_wide},community_sh_login\n"
+                       f"community_sh_secret = {admin_login_secret(instance)}\n")
         content = (
             "[options]\n"
             f"addons_path = {','.join(addons_paths)}\n"

@@ -47,7 +47,7 @@
             </form>
             <div class="h-6 w-px bg-border mx-2"></div>
 {% if can_manage %}
-            {% if admin_login and object.status == 'running' %}
+            {% if can_manage and object.status == 'running' %}
             <form action="{% url 'instance-admin-login' object.pk %}" method="post" target="_blank">
                 {% csrf_token %}
                 <button type="submit" title="Abre Odoo con la sesión del administrador (enlace de un solo uso)"

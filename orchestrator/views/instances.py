@@ -103,8 +103,6 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         from ..backup_models import Backup
         context['backups'] = Backup.objects.filter(instance=self.object).order_by('-created_at')
         context['can_manage'] = can_manage(self.request.user, self.object)
-        from ..services.docker_service import supports_admin_login
-        context['admin_login'] = context['can_manage'] and supports_admin_login(self.object)
         from ..services.ai import get_ai_config
         context['ai_enabled'] = context['can_manage'] and get_ai_config() is not None
         context['tasks'] = list(self.object.tasks.all()[:5])
@@ -596,11 +594,8 @@ def instance_admin_login(request, pk):
     import secrets
     import time
     from urllib.parse import urlencode
-    from ..services.docker_service import admin_login_secret, supports_admin_login
+    from ..services.docker_service import admin_login_secret
     instance = get_instance_for_user(request.user, pk, manage=True)
-    if not supports_admin_login(instance):
-        messages.error(request, 'Entrar como admin sin contraseña está disponible a partir de Odoo 12')
-        return redirect('instance-detail', pk=pk)
     database = instance.database_name
     if not database:
         try:

@@ -1325,12 +1325,7 @@ class AdminLoginTests(BaseTestCase):
                             f"acme:{query['exp']}:{query['nonce']}".encode(), hashlib.sha256).hexdigest()
         self.assertEqual(query['sig'], expected)
 
-    def test_not_for_odoo_10_and_11_or_other_users(self):
-        self.alice_instance.odoo_version = '11.0'
-        self.alice_instance.save()
-        self.client.force_login(self.alice)
-        response = self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk]))
-        self.assertEqual(response['Location'], reverse('instance-detail', args=[self.alice_instance.pk]))
+    def test_only_managers(self):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk])).status_code, 404)
 

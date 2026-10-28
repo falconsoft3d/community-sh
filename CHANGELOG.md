@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.18**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.19**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.19 — 2026-10-28
+
+- Entrar como admin también en Odoo 10 y 11: entra con un administrador propio del panel («Administrador (Community SH)») con contraseña aleatoria; la contraseña del admin no se toca
 
 ## 1.0.18 — 2026-10-28
 
