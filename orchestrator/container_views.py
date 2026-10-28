@@ -22,8 +22,9 @@ def _restricted_config_error(config, template_network):
 @login_required
 def container_list(request):
     """List all containers"""
-    containers = Container.objects.filter(created_by=request.user)
-    return render(request, 'orchestrator/container_list.html', {'containers': containers})
+    from .pagination import paginate
+    containers = Container.objects.filter(created_by=request.user).order_by('-id')
+    return render(request, 'orchestrator/container_list.html', {'containers': paginate(request, containers)})
 
 @login_required
 @management_required

@@ -7,6 +7,16 @@ fills the .po catalogs (run `manage.py makemessages -l es -l en` first, then
 
 # Strings written in Spanish in the code -> English
 ES_TO_EN = {
+    'Paginación': 'Pagination',
+    '%(start)s–%(end)s de %(total)s': '%(start)s–%(end)s of %(total)s',
+    'Primera página': 'First page',
+    'Anterior': 'Previous',
+    'Página %(number)s de %(pages)s': 'Page %(number)s of %(pages)s',
+    'Siguiente': 'Next',
+    'Última página': 'Last page',
+    'Mostrar u ocultar las tareas completadas': 'Show or hide completed tasks',
+    'Ocultar': 'Hide',
+    'Ver': 'Show',
     'Odoo %(first)s a %(last)s aislado, con su propio Postgres, red Docker y volumen de datos.':
         'Isolated Odoo %(first)s to %(last)s, with its own Postgres, Docker network and data volume.',
     'Uno o varios repositorios de GitHub por instancia': 'One or more GitHub repositories per instance',

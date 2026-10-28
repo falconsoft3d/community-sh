@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block content %}
-<div class="flex flex-col gap-6" x-data="{ adding: false }">
+<div class="flex flex-col gap-6" x-data="{ adding: false, showDone: window.location.hash === '#hechas' }">
     <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
             <h1 class="text-lg font-semibold md:text-2xl">Todo</h1>
@@ -15,10 +15,13 @@
     </div>
 
     <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div class="rounded-xl border bg-card p-4 shadow-sm">
-            <p class="text-sm text-muted-foreground">{% translate "Hechas" %}</p>
+        <button type="button" @click="showDone = !showDone; if (showDone) $nextTick(() => $refs.done && $refs.done.scrollIntoView({ behavior: 'smooth' }))"
+            :aria-pressed="showDone.toString()" title="{% translate 'Mostrar u ocultar las tareas completadas' %}"
+            class="rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-primary/50" :class="showDone ? 'ring-2 ring-primary/40' : ''">
+            <p class="flex items-center justify-between text-sm text-muted-foreground">{% translate "Hechas" %}
+                <span class="text-xs" x-text="showDone ? '{% translate "Ocultar" %}' : '{% translate "Ver" %}'"></span></p>
             <p class="mt-1 text-2xl font-semibold">{{ kpis.done }}</p>
-        </div>
+        </button>
         <div class="rounded-xl border bg-card p-4 shadow-sm">
             <p class="text-sm text-muted-foreground">{% translate "Sin terminar" %}</p>
             <p class="mt-1 text-2xl font-semibold">{{ kpis.open }}</p>
@@ -50,7 +53,7 @@
     </form>
 
     <section class="rounded-xl border bg-card text-card-foreground shadow-sm">
-        <div class="border-b px-5 py-3"><h2 class="font-semibold">{% translate "Por hacer" %} <span class="text-sm font-normal text-muted-foreground">({{ pending|length }})</span></h2></div>
+        <div class="border-b px-5 py-3"><h2 class="font-semibold">{% translate "Por hacer" %} <span class="text-sm font-normal text-muted-foreground">({{ pending.paginator.count }})</span></h2></div>
         <ul class="divide-y">
             {% for todo in pending %}
             <li class="flex items-start gap-3 px-5 py-3" x-data="{ editing: false }">
@@ -94,10 +97,11 @@
             <li class="px-5 py-6 text-center text-sm text-muted-foreground">{% translate "No hay tareas pendientes." %}</li>
             {% endfor %}
         </ul>
+        {% include "orchestrator/includes/pagination.html" with page=pending %}
     </section>
 
     {% if done %}
-    <section class="rounded-xl border bg-card text-card-foreground shadow-sm">
+    <section x-show="showDone" x-cloak x-ref="done" class="rounded-xl border bg-card text-card-foreground shadow-sm">
         <div class="border-b px-5 py-3"><h2 class="font-semibold">{% translate "Completadas" %}</h2></div>
         <ul class="divide-y">
             {% for todo in done %}
@@ -122,6 +126,7 @@
             </li>
             {% endfor %}
         </ul>
+        {% include "orchestrator/includes/pagination.html" with page=done anchor="#hechas" %}
     </section>
     {% endif %}
 </div>

@@ -36,11 +36,16 @@ def _run(request, tab, func, success):
 @login_required
 @superuser_required
 def docker_overview(request):
+    from ..pagination import paginate
     try:
         data = docker_admin.overview()
     except docker.errors.DockerException as e:
         messages.error(request, f'No se pudo conectar con Docker: {e}')
         data = None
+    if data:
+        for key in ('containers', 'images', 'volumes', 'networks'):
+            data[f'{key}_total'] = len(data[key])
+            data[key] = paginate(request, data[key], param=f'{key}_page')
     pulls = Task.objects.filter(kind=Task.Kind.PULL_IMAGE).order_by('-created_at')[:5]
     return render(request, 'orchestrator/docker.html', {'docker': data, 'pulls': pulls})
 

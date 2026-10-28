@@ -28,7 +28,7 @@
                 class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                 <i data-lucide="pencil" class="mr-2 h-4 w-4"></i> {% translate "Editar" %}
             </a>
-            {% if not instances %}
+            {% if not all_instances %}
             <form method="post" action="{% url 'project-delete' project.pk %}"
                 onsubmit="return confirm('¿Eliminar el proyecto {{ project.name|escapejs }}?');">
                 {% csrf_token %}
@@ -49,7 +49,7 @@
                         <h3 class="text-lg font-semibold">{% translate "Eliminar el proyecto y todas sus instancias" %}</h3>
                         <p class="text-sm text-muted-foreground">{% translate "Se borrarán de forma permanente los contenedores, bases de datos, filestores, workspaces y backups de:" %}</p>
                         <ul class="max-h-40 overflow-y-auto rounded-md border bg-muted/40 px-4 py-2 text-sm">
-                            {% for instance in instances %}<li class="font-mono">{{ project.name }} / {{ instance.name }}</li>{% endfor %}
+                            {% for instance in all_instances %}<li class="font-mono">{{ project.name }} / {{ instance.name }}</li>{% endfor %}
                         </ul>
                         <label class="block space-y-2 text-sm">
                             <span>{% blocktranslate with name=project.name %}Escribe <strong>{{ name }}</strong> para confirmar{% endblocktranslate %}</span>
@@ -132,6 +132,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "orchestrator/includes/pagination.html" with page=instances %}
         {% else %}
         <div class="p-10 text-center">
             <i data-lucide="server" class="mx-auto h-8 w-8 text-muted-foreground"></i>

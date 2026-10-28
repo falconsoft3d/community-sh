@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from ..pagination import paginate
 from ..permissions import management_required
 from ..todo_models import Todo
 
@@ -19,8 +20,8 @@ def todo_list(request):
     counts = {status: todos.filter(status=status).count() for status in Todo.Status.values}
     total = sum(counts.values())
     return render(request, 'orchestrator/todo_list.html', {
-        'pending': todos.exclude(status=Todo.Status.DONE).order_by('status', 'created_at'),
-        'done': todos.filter(status=Todo.Status.DONE).order_by('-completed_at')[:50],
+        'pending': paginate(request, todos.exclude(status=Todo.Status.DONE).order_by('status', 'created_at')),
+        'done': paginate(request, todos.filter(status=Todo.Status.DONE).order_by('-completed_at'), param='done_page'),
         'statuses': Todo.Status.choices,
         'kpis': {
             'done': counts[Todo.Status.DONE],

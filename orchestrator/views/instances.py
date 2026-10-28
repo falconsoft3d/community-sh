@@ -39,6 +39,7 @@ def dashboard(request):
 class InstanceListView(LoginRequiredMixin, ListView):
     model = Instance
     ordering = ['-created_at']
+    paginate_by = 20
 
     def get_queryset(self):
         queryset = instances_for(self.request.user).select_related('project').order_by(*self.ordering)
@@ -50,6 +51,9 @@ class InstanceListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['projects'] = projects_for(self.request.user)
         context['selected_project'] = self.request.GET.get('project', '')
+        if context.get('page_obj'):
+            from ..pagination import with_links
+            with_links(self.request, context['page_obj'])
         return context
 
 

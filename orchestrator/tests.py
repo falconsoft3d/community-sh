@@ -1659,3 +1659,32 @@ class OdooMigrationTests(BaseTestCase):
         task = run_task(enqueue(Task.Kind.ODOO_MIGRATION, self.alice_instance, self.alice, credentials='gone', steps=['contacts']))
         self.assertEqual(task.status, 'failed')
         self.assertIn('caducaron', task.result)
+
+
+class SidebarCountTests(BaseTestCase):
+    def test_counts_follow_visibility(self):
+        from .todo_models import Todo
+        Todo.objects.create(title='abierta', created_by=self.alice)
+        Todo.objects.create(title='hecha', created_by=self.alice, status='done')
+        self.client.force_login(self.alice)
+        counts = self.client.get(reverse('project-list')).context['nav_counts']
+        self.assertEqual((counts['projects'], counts['instances'], counts['todo']), (1, 1, 1))
+        self.assertNotIn('users', counts)
+        with mock.patch('orchestrator.context_processors._docker_running', return_value=7):
+            self.client.force_login(self.admin)
+            counts = self.client.get(reverse('project-list')).context['nav_counts']
+        self.assertEqual((counts['instances'], counts['users'], counts['docker']), (2, 3, 7))
+
+
+class PaginationTests(BaseTestCase):
+    def test_lists_show_twenty_rows_and_keep_filters(self):
+        for number in range(25):
+            Instance.objects.create(name=f'bulk-{number}', owner=self.alice, project=self.alice_project)
+        self.client.force_login(self.alice)
+        first = self.client.get(reverse('instance-list') + f'?project={self.alice_project.pk}')
+        self.assertEqual(len(first.context['object_list']), 20)
+        self.assertContains(first, f'?project={self.alice_project.pk}&amp;page=2')
+        second = self.client.get(reverse('instance-list') + f'?project={self.alice_project.pk}&page=2')
+        self.assertEqual(len(second.context['object_list']), 6)  # 25 + alice-odoo
+        detail = self.client.get(reverse('project-detail', args=[self.alice_project.pk]))
+        self.assertEqual((len(detail.context['instances']), detail.context['all_instances'].count()), (20, 26))

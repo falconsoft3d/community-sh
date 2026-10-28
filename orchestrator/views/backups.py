@@ -188,7 +188,10 @@ def backup_list(request):
     selected_project = request.GET.get('project', '')
     if selected_project:
         backups = backups.filter(instance__project_id=selected_project)
-    backups = list(backups.order_by('-created_at')[:200])
+    from django.db.models import Sum
+    from ..pagination import paginate
+    total_size = backups.aggregate(total=Sum('file_size'))['total'] or 0
+    backups = paginate(request, backups.order_by('-created_at'))
     for backup in backups:
         backup.can_manage = can_manage(request.user, backup.instance)
     from ..permissions import managed_projects_for
@@ -198,7 +201,7 @@ def backup_list(request):
         'odoo_versions': [v for v, _ in Instance._meta.get_field('odoo_version').choices],
         'projects': projects_for(request.user),
         'selected_project': selected_project,
-        'total_size': sum(b.file_size for b in backups),
+        'total_size': total_size,
     })
 
 

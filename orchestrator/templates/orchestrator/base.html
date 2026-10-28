@@ -207,22 +207,22 @@
                     <nav class="grid items-start px-2 text-sm font-medium lg:px-4">
                         <a href="{% url 'project-list' %}" title="{% translate "Proyectos" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'projects' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="folder-kanban" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Proyectos" %}</span>
+                            <i data-lucide="folder-kanban" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Proyectos" %}</span>{% if nav_counts.projects != None and nav_counts.projects != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.projects }}</span>{% endif %}
                         </a>
                         <a href="{% url 'instance-list' %}" title="{% translate "Instances" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'instances' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="server" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Instances" %}</span>
+                            <i data-lucide="server" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Instances" %}</span>{% if nav_counts.instances != None and nav_counts.instances != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.instances }}</span>{% endif %}
                         </a>
                         {% if not user_is_client %}
                         <a href="{% url 'container-list' %}" title="{% translate "Containers" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'containers' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="box" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Containers" %}</span>
+                            <i data-lucide="box" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Containers" %}</span>{% if nav_counts.containers != None and nav_counts.containers != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.containers }}</span>{% endif %}
                         </a>
                         {% endif %}
                         {% if user.is_superuser %}
                         <a href="{% url 'docker-overview' %}" title="Docker"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'docker' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="container" class="h-4 w-4 shrink-0"></i><span class="nav-label">Docker</span>
+                            <i data-lucide="container" class="h-4 w-4 shrink-0"></i><span class="nav-label">Docker</span>{% if nav_counts.docker != None and nav_counts.docker != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.docker }}</span>{% endif %}
                         </a>
                         {% endif %}
                         {% if user.is_superuser %}
@@ -234,17 +234,17 @@
                         {% if not user_is_client %}
                         <a href="{% url 'todo-list' %}" title="Todo"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'todo' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="list-todo" class="h-4 w-4 shrink-0"></i><span class="nav-label">Todo</span>
+                            <i data-lucide="list-todo" class="h-4 w-4 shrink-0"></i><span class="nav-label">Todo</span>{% if nav_counts.todo != None and nav_counts.todo != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.todo }}</span>{% endif %}
                         </a>
                         {% endif %}
                         <a href="{% url 'backup-list' %}" title="{% translate "Backups" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'backups' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="archive" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Backups" %}</span>
+                            <i data-lucide="archive" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Backups" %}</span>{% if nav_counts.backups != None and nav_counts.backups != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.backups }}</span>{% endif %}
                         </a>
                         {% if user.is_superuser %}
                         <a href="{% url 'user-list' %}" title="{% translate "Usuarios" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'users' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="users" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Usuarios" %}</span>
+                            <i data-lucide="users" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Usuarios" %}</span>{% if nav_counts.users != None and nav_counts.users != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.users }}</span>{% endif %}
                         </a>
                         {% endif %}
                         {% if not user_is_client %}

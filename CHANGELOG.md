@@ -1,6 +1,13 @@
 # Changelog
 
-Versión actual: **1.0.23**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.24**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.24 — 2026-10-28
+
+- Contadores en el menú lateral: proyectos, instancias, contenedores, Docker, tareas pendientes, backups y usuarios
+- Todo: las tareas completadas se ocultan hasta pulsar «Hechas»
+- En la landing, el botón «Ir al panel» muestra tu foto cuando has iniciado sesión
+- Paginación de 20 filas en todas las listas (proyectos, instancias, backups, usuarios, contenedores, Todo y Docker), conservando los filtros
 
 ## 1.0.23 — 2026-10-28
 

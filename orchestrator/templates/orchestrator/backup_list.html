@@ -6,7 +6,7 @@
     <div>
         <h1 class="text-lg font-semibold md:text-2xl">{% translate "Backups" %}</h1>
         <p class="text-sm text-muted-foreground">
-            {{ backups|length }} respaldo{{ backups|length|pluralize }} · {{ total_size|filesizeformat }}
+            {{ backups.paginator.count }} respaldo{{ backups.paginator.count|pluralize }} · {{ total_size|filesizeformat }}
         </p>
     </div>
     <form method="get" class="ml-auto">
@@ -123,6 +123,7 @@
             </tbody>
         </table>
     </div>
+    {% include "orchestrator/includes/pagination.html" with page=backups %}
     {% else %}
     <div class="p-10 text-center">
         <i data-lucide="archive" class="mx-auto h-10 w-10 text-muted-foreground"></i>

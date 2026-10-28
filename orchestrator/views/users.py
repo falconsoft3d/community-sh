@@ -15,8 +15,9 @@ def user_list(request):
         messages.error(request, 'No tienes permisos para acceder a esta página')
         return redirect('instance-list')
     
+    from ..pagination import paginate
     users = User.objects.all().order_by('-date_joined')
-    return render(request, 'orchestrator/user_list.html', {'users': users})
+    return render(request, 'orchestrator/user_list.html', {'users': paginate(request, users)})
 
 
 @login_required

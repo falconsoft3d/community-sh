@@ -1,0 +1,17 @@
+{% load i18n %}{# Pagination for a page from orchestrator.pagination.paginate; optional anchor, e.g. "#images" #}
+{% if page.has_other_pages %}
+<nav class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-sm" aria-label="{% translate 'Paginación' %}">
+    <span class="text-muted-foreground">{% blocktranslate with start=page.start_index end=page.end_index total=page.paginator.count %}{{ start }}–{{ end }} de {{ total }}{% endblocktranslate %}</span>
+    <div class="flex items-center gap-1">
+        {% if page.has_previous %}
+        <a href="?{{ page.query }}{{ page.param }}=1{{ anchor }}" aria-label="{% translate 'Primera página' %}" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent">«</a>
+        <a href="?{{ page.query }}{{ page.param }}={{ page.previous_page_number }}{{ anchor }}" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 hover:bg-accent">{% translate "Anterior" %}</a>
+        {% endif %}
+        <span class="px-2 text-muted-foreground">{% blocktranslate with number=page.number pages=page.paginator.num_pages %}Página {{ number }} de {{ pages }}{% endblocktranslate %}</span>
+        {% if page.has_next %}
+        <a href="?{{ page.query }}{{ page.param }}={{ page.next_page_number }}{{ anchor }}" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 hover:bg-accent">{% translate "Siguiente" %}</a>
+        <a href="?{{ page.query }}{{ page.param }}={{ page.paginator.num_pages }}{{ anchor }}" aria-label="{% translate 'Última página' %}" class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent">»</a>
+        {% endif %}
+    </div>
+</nav>
+{% endif %}

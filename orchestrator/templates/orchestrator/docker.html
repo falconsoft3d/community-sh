@@ -15,22 +15,22 @@
         {% with card="rounded-xl border bg-card text-card-foreground shadow-sm p-5" %}
         <div class="{{ card }}">
             <p class="text-sm text-muted-foreground">Contenedores</p>
-            <p class="mt-1 text-2xl font-bold">{{ docker.containers|length }}</p>
+            <p class="mt-1 text-2xl font-bold">{{ docker.containers_total }}</p>
             <p class="text-xs text-muted-foreground">{{ docker.disk.containers|filesizeformat }} en disco</p>
         </div>
         <div class="{{ card }}">
             <p class="text-sm text-muted-foreground">Imágenes</p>
-            <p class="mt-1 text-2xl font-bold">{{ docker.images|length }}</p>
+            <p class="mt-1 text-2xl font-bold">{{ docker.images_total }}</p>
             <p class="text-xs text-muted-foreground">{{ docker.disk.images|filesizeformat }}</p>
         </div>
         <div class="{{ card }}">
             <p class="text-sm text-muted-foreground">Volúmenes</p>
-            <p class="mt-1 text-2xl font-bold">{{ docker.volumes|length }}</p>
+            <p class="mt-1 text-2xl font-bold">{{ docker.volumes_total }}</p>
             <p class="text-xs text-muted-foreground">{{ docker.disk.volumes|filesizeformat }}</p>
         </div>
         <div class="{{ card }}">
             <p class="text-sm text-muted-foreground">Redes</p>
-            <p class="mt-1 text-2xl font-bold">{{ docker.networks|length }}</p>
+            <p class="mt-1 text-2xl font-bold">{{ docker.networks_total }}</p>
             <p class="text-xs text-muted-foreground">Caché de build: {{ docker.disk.build_cache|filesizeformat }}</p>
         </div>
         {% endwith %}
@@ -112,6 +112,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "orchestrator/includes/pagination.html" with page=docker.containers anchor="#containers" %}
     </section>
 
     <!-- Images -->
@@ -179,6 +180,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "orchestrator/includes/pagination.html" with page=docker.images anchor="#images" %}
     </section>
 
     <!-- Volumes -->
@@ -227,6 +229,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "orchestrator/includes/pagination.html" with page=docker.volumes anchor="#volumes" %}
     </section>
 
     <!-- Networks -->
@@ -270,6 +273,7 @@
                 </tbody>
             </table>
         </div>
+        {% include "orchestrator/includes/pagination.html" with page=docker.networks anchor="#networks" %}
     </section>
 
     <!-- Logs modal -->

@@ -6,6 +6,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from ..forms import ProjectForm
+from ..pagination import paginate
 from ..permissions import can_manage, get_project_for_user, management_required, projects_for
 
 
@@ -14,8 +15,8 @@ def project_list(request):
     projects = projects_for(request.user).annotate(
         instance_count=Count('instances'),
         running_count=Count('instances', filter=Q(instances__status='running')),
-    ).select_related('owner')
-    return render(request, 'orchestrator/project_list.html', {'projects': projects})
+    ).select_related('owner').order_by('name')
+    return render(request, 'orchestrator/project_list.html', {'projects': paginate(request, projects)})
 
 
 @login_required
@@ -33,9 +34,11 @@ def project_create(request):
 @login_required
 def project_detail(request, pk):
     project = get_project_for_user(request.user, pk)
+    instances = project.instances.order_by('name')
     return render(request, 'orchestrator/project_detail.html', {
         'project': project,
-        'instances': project.instances.order_by('name'),
+        'instances': paginate(request, instances),
+        'all_instances': instances,
         'can_manage': can_manage(request.user, project),
     })
 

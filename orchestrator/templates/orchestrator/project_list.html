@@ -50,6 +50,7 @@
     </a>
     {% endfor %}
 </div>
+{% if projects.has_other_pages %}<div class="mt-4 rounded-xl border bg-card">{% include "orchestrator/includes/pagination.html" with page=projects %}</div>{% endif %}
 {% else %}
 <div class="mt-4 rounded-xl border border-dashed p-10 text-center">
     <i data-lucide="folder-plus" class="mx-auto h-10 w-10 text-muted-foreground"></i>
