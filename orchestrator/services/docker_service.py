@@ -65,6 +65,42 @@ class DockerService:
         os.chmod(config_path, 0o644)
         return config_path
 
+    def _ensure_image(self, image):
+        """
+        Pull the image if it isn't local. Returns the platform to run it with: None for the
+        native one, or 'linux/amd64' for images only published for amd64 (Odoo 10-15) on an
+        arm64 host, which Docker then runs emulated.
+        """
+        try:
+            self.client.images.get(image)
+            return None
+        except docker.errors.ImageNotFound:
+            pass
+        repository, tag = image.rsplit(':', 1)
+        try:
+            self.client.images.pull(repository, tag=tag)
+            return None
+        except docker.errors.APIError as e:
+            if 'no matching manifest' not in str(e):
+                raise Exception(f"No se pudo descargar la imagen {image}: {getattr(e, 'explanation', None) or e}")
+        print(f"{image} has no build for this architecture; using linux/amd64 (emulated, slower)")
+        self.client.images.pull(repository, tag=tag, platform='linux/amd64')
+        return 'linux/amd64'
+
+    def _published_port(self, container, container_port, timeout=10):
+        """Host port Docker assigned to container_port, or None if it never shows up."""
+        import time
+        deadline = time.monotonic() + timeout
+        while True:
+            container.reload()
+            # ports format: {'8069/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '32768'}]}
+            bindings = (container.attrs['NetworkSettings'].get('Ports') or {}).get(container_port)
+            if bindings:
+                return int(bindings[0]['HostPort'])
+            if time.monotonic() >= deadline:
+                return None
+            time.sleep(0.5)
+
     def _list_user_databases(self, db_container):
         """Odoo databases in an instance's Postgres (everything except system DBs)."""
         result = db_container.exec_run(
@@ -162,16 +198,31 @@ class DockerService:
             except docker.errors.NotFound:
                 print(f"Container {odoo_container_name} not found. This is a fresh deployment.")
             
+            # Start on Traefik's network and join the private network afterwards: Docker keeps
+            # published ports on the network the container started on, and older versions drop
+            # them when a network connected later becomes the gateway (sorts first by name).
+            try:
+                self.client.networks.get("community-sh_web")
+                start_network, extra_network = "community-sh_web", network_name
+            except docker.errors.NotFound:
+                print("Warning: community-sh_web network not found. Traefik routing may not work.")
+                start_network, extra_network = network_name, None
+            
+            odoo_image = f"odoo:{instance.odoo_version}"
+            platform = self._ensure_image(odoo_image)
+            run_options = {'platform': platform} if platform else {}
+            
             # Create the container
             odoo_container = self.client.containers.run(
-                f"odoo:{instance.odoo_version}",
+                odoo_image,
+                **run_options,
                 name=odoo_container_name,
                 environment={
                     "HOST": db_container_name,
                     "USER": "odoo",
                     "PASSWORD": "odoo",
                 },
-                network=network_name,
+                network=start_network,
                 volumes=volumes,
                 ports={'8069/tcp': None}, # Let Docker assign a random host port
                 detach=True,
@@ -185,15 +236,9 @@ class DockerService:
                 }
             )
             
-            # Connect to the community-sh_web network for Traefik routing
-            try:
-                web_network = self.client.networks.get("community-sh_web")
-                web_network.connect(odoo_container)
-                print(f"Container {odoo_container_name} connected to community-sh_web network")
-            except docker.errors.NotFound:
-                print("Warning: community-sh_web network not found. Traefik routing may not work.")
-            except Exception as e:
-                print(f"Warning: Could not connect to community-sh_web: {str(e)}")
+            # Private network shared with the instance's database
+            if extra_network:
+                self.client.networks.get(extra_network).connect(odoo_container)
             
             # If this is a redeploy, update all modules
             if is_redeploy:
@@ -217,20 +262,10 @@ class DockerService:
                     print(f"Warning: Error during module update: {str(e)}")
 
 
-            # Connect Odoo container to the proxy network (web)
-            try:
-                proxy_network = self.client.networks.get("web")
-                proxy_network.connect(odoo_container)
-            except Exception as e:
-                print(f"Warning: Could not connect to proxy network: {e}")
-
-            # Get the assigned port
-            odoo_container.reload()
-            # ports format: {'8069/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '32768'}]}
-            ports = odoo_container.attrs['NetworkSettings']['Ports']
-            if '8069/tcp' in ports and ports['8069/tcp']:
-                host_port = ports['8069/tcp'][0]['HostPort']
-                instance.port = int(host_port)
+            # Get the assigned port; Docker may publish it shortly after start
+            host_port = self._published_port(odoo_container, '8069/tcp')
+            if host_port:
+                instance.port = host_port
             
             instance.container_id = odoo_container.id
             instance.data_volume = data_volume
@@ -433,6 +468,7 @@ class DockerService:
             github_repo=instance.github_repo,
             github_branch=new_name,  # Use new name as branch name
             database_name=instance.database_name,
+            project=instance.project,
             status=Instance.Status.DEPLOYING,
             origin='duplicate'
         )

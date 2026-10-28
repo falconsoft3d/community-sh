@@ -82,6 +82,16 @@ class ContainerService:
             template_defaults = loader.get_template_defaults(container.template)
             user_config = template_defaults.get('user', None)
 
+            # Start on Traefik's network and join the template's network afterwards, so the
+            # published port survives (see DockerService.deploy_instance)
+            try:
+                self.client.networks.get("community-sh_web")
+                start_network = "community-sh_web"
+            except docker.errors.NotFound:
+                print("Warning: community-sh_web network not found. Traefik routing may not work.")
+                start_network = None
+            extra_network = container.network if start_network and container.network not in ('', 'bridge', start_network) else None
+            
             docker_container = self.client.containers.run(
                 image=container.image,
                 command=container.command,
@@ -89,22 +99,15 @@ class ContainerService:
                 ports={f'{container.container_port}/tcp': container.port},
                 environment=container.environment,
                 volumes=volumes,
-                network=container.network,
+                network=start_network or container.network,
                 labels=labels,
                 user=user_config,
                 detach=True,
                 restart_policy={'Name': 'unless-stopped'}
             )
             
-            # Connect to community-sh_web network for Traefik routing
-            try:
-                web_network = self.client.networks.get("community-sh_web")
-                web_network.connect(docker_container)
-                print(f"Container {container.name} connected to community-sh_web network")
-            except docker.errors.NotFound:
-                print("Warning: community-sh_web network not found. Traefik routing may not work.")
-            except Exception as e:
-                print(f"Warning: Could not connect to community-sh_web: {str(e)}")
+            if extra_network:
+                self.client.networks.get(extra_network).connect(docker_container)
             
             container.container_id = docker_container.id
             container.status = 'running'

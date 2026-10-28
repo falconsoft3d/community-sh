@@ -7,6 +7,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Community SH</title>
 
+    <!-- Light/dark theme (before any styles, so there is no flash) -->
+    <script src="{% static 'js/theme.js' %}"></script>
+
     <!-- Tailwind CSS (via CDN for development) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -21,10 +24,15 @@
 
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                    },
+                    // Plain `border` / `divide-*` use the theme color (Tailwind defaults to a fixed light gray)
+                    borderColor: {
+                        DEFAULT: "hsl(var(--border))",
                     },
                     colors: {
                         border: "hsl(var(--border))",
@@ -90,6 +98,70 @@
             --radius: 0.5rem;
         }
 
+        .dark {
+            --background: 222 47% 6%;
+            --foreground: 210 40% 96%;
+            --card: 222 40% 9.5%;
+            --card-foreground: 210 40% 96%;
+            --popover: 222 40% 10%;
+            --popover-foreground: 210 40% 96%;
+            --primary: 210 40% 96%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217 30% 15%;
+            --secondary-foreground: 210 40% 96%;
+            --muted: 217 30% 14%;
+            --muted-foreground: 215 20% 65%;
+            --accent: 217 30% 16%;
+            --accent-foreground: 210 40% 96%;
+            --destructive: 0 70% 50%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217 28% 17%;
+            --input: 217 28% 21%;
+            --ring: 215 20% 65%;
+        }
+
+        /* Many templates use fixed light Tailwind colors (alerts, badges, cards).
+           In dark mode remap them to the theme instead of editing every template. */
+        .dark .bg-white, .dark .bg-white\/90 { background-color: hsl(var(--card)); }
+        .dark .bg-gray-50, .dark .bg-slate-50, .dark .bg-gray-100, .dark .bg-slate-100 { background-color: hsl(var(--muted)); }
+        .dark .bg-gray-200, .dark .bg-slate-200 { background-color: hsl(var(--secondary)); }
+        .dark .hover\:bg-gray-50:hover, .dark .hover\:bg-slate-50:hover, .dark .hover\:bg-slate-100:hover, .dark .hover\:bg-gray-300:hover { background-color: hsl(var(--accent)); }
+        .dark .text-gray-900, .dark .text-gray-800, .dark .text-slate-900, .dark .text-slate-800 { color: hsl(var(--foreground)); }
+        .dark .text-gray-700, .dark .text-slate-700 { color: hsl(var(--foreground) / 0.85); }
+        .dark .text-gray-600, .dark .text-gray-500, .dark .text-slate-600, .dark .text-slate-500, .dark .hover\:text-gray-600:hover { color: hsl(var(--muted-foreground)); }
+        .dark .border-gray-200, .dark .border-gray-300, .dark .border-gray-400, .dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-300 { border-color: hsl(var(--border)); }
+        .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]), .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: hsl(var(--border)); }
+        .dark .bg-green-50 { background-color: rgb(34 197 94 / 0.1); }
+        .dark .bg-green-100, .dark .hover\:bg-green-100:hover { background-color: rgb(34 197 94 / 0.18); }
+        .dark .border-green-200 { border-color: rgb(34 197 94 / 0.35); }
+        .dark .text-green-700, .dark .text-green-800, .dark .text-green-900 { color: rgb(134 239 172); }
+        .dark .text-green-600 { color: rgb(74 222 128); }
+        .dark .bg-red-50 { background-color: rgb(239 68 68 / 0.1); }
+        .dark .bg-red-100, .dark .hover\:bg-red-100:hover { background-color: rgb(239 68 68 / 0.18); }
+        .dark .border-red-200 { border-color: rgb(239 68 68 / 0.35); }
+        .dark .text-red-700, .dark .text-red-800, .dark .text-red-900 { color: rgb(252 165 165); }
+        .dark .text-red-600 { color: rgb(248 113 113); }
+        .dark .bg-blue-50 { background-color: rgb(59 130 246 / 0.1); }
+        .dark .bg-blue-100, .dark .hover\:bg-blue-100:hover { background-color: rgb(59 130 246 / 0.18); }
+        .dark .border-blue-200 { border-color: rgb(59 130 246 / 0.35); }
+        .dark .text-blue-700, .dark .text-blue-800, .dark .text-blue-900 { color: rgb(147 197 253); }
+        .dark .text-blue-600 { color: rgb(96 165 250); }
+        .dark .bg-yellow-50 { background-color: rgb(234 179 8 / 0.1); }
+        .dark .bg-yellow-100, .dark .hover\:bg-yellow-100:hover { background-color: rgb(234 179 8 / 0.18); }
+        .dark .border-yellow-200 { border-color: rgb(234 179 8 / 0.35); }
+        .dark .text-yellow-700, .dark .text-yellow-800, .dark .text-yellow-900 { color: rgb(253 224 71); }
+        .dark .text-yellow-600 { color: rgb(250 204 21); }
+        .dark .bg-purple-50 { background-color: rgb(168 85 247 / 0.1); }
+        .dark .bg-purple-100, .dark .hover\:bg-purple-100:hover { background-color: rgb(168 85 247 / 0.18); }
+        .dark .border-purple-200 { border-color: rgb(168 85 247 / 0.35); }
+        .dark .text-purple-700, .dark .text-purple-800, .dark .text-purple-900 { color: rgb(216 180 254); }
+        .dark .text-purple-600 { color: rgb(192 132 252); }
+        .dark .bg-orange-50 { background-color: rgb(249 115 22 / 0.1); }
+        .dark .bg-orange-100, .dark .hover\:bg-orange-100:hover { background-color: rgb(249 115 22 / 0.18); }
+        .dark .border-orange-200 { border-color: rgb(249 115 22 / 0.35); }
+        .dark .text-orange-700, .dark .text-orange-800, .dark .text-orange-900 { color: rgb(253 186 116); }
+        .dark .text-orange-600 { color: rgb(251 146 60); }
+
         body {
             font-family: 'Inter', sans-serif;
         }
@@ -111,41 +183,70 @@
                     <a href="/" class="flex items-center gap-2 font-semibold">
                         <i data-lucide="package-2" class="h-6 w-6"></i>
                         <span class="">Community SH</span>
+                        <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">v{{ app_version }}</span>
                     </a>
                 </div>
                 <div class="flex-1">
                     <nav class="grid items-start px-2 text-sm font-medium lg:px-4">
+                        <a href="{% url 'project-list' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'projects' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="folder-kanban" class="h-4 w-4"></i>
+                            Proyectos
+                        </a>
                         <a href="{% url 'instance-list' %}"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'instance-list' %}bg-muted text-primary{% endif %}">
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'instances' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="server" class="h-4 w-4"></i>
                             Instances
                         </a>
+                        {% if not user_is_client %}
                         <a href="{% url 'container-list' %}"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'container-list' %}bg-muted text-primary{% endif %}">
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'containers' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="box" class="h-4 w-4"></i>
                             Containers
                         </a>
-{% if user.is_superuser %}
-                                                <a href="{% url 'metrics' %}"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'metrics' %}bg-muted text-primary{% endif %}">
+                        {% endif %}
+                        {% if user.is_superuser %}
+                        <a href="{% url 'docker-overview' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'docker' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="container" class="h-4 w-4"></i>
+                            Docker
+                        </a>
+                        {% endif %}
+                        {% if user.is_superuser %}
+                        <a href="{% url 'metrics' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'metrics' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
                             Metrics
                         </a>
                         {% endif %}
+                        <a href="{% url 'backup-list' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'backups' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="archive" class="h-4 w-4"></i>
+                            Backups
+                        </a>
+                        {% if user.is_superuser %}
+                        <a href="{% url 'client-list' %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'clients' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="building-2" class="h-4 w-4"></i>
+                            Clientes
+                        </a>
+                        {% endif %}
                         {% if user.is_superuser %}
                         <a href="{% url 'user-list' %}"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary">
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'users' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="users" class="h-4 w-4"></i>
                             Usuarios
                         </a>
                         {% endif %}
+                        {% if not user_is_client %}
                         <a href="{% url 'settings' %}"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary">
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'settings' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="settings" class="h-4 w-4"></i>
                             Settings
                         </a>
+                        {% endif %}
                         <a href="{% url 'about' %}"
-                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if request.resolver_match.url_name == 'about' %}bg-muted text-primary{% endif %}">
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'about' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="info" class="h-4 w-4"></i>
                             About
                         </a>
@@ -165,6 +266,7 @@
                     <h1 class="font-semibold text-lg">Community SH</h1>
                 </div>
                 <div class="flex items-center gap-4">
+                    {% include "orchestrator/includes/theme_toggle.html" %}
                     <span class="text-sm font-medium">{{ user.username }}</span>
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open"
@@ -209,6 +311,12 @@
             </main>
         </div>
     </div>
+
+    {% if not user.is_authenticated %}
+    <div class="fixed bottom-4 right-4 z-50 rounded-full border bg-card shadow-lg">
+        {% include "orchestrator/includes/theme_toggle.html" %}
+    </div>
+    {% endif %}
 
     <!-- Toast Notifications -->
     {% if messages %}

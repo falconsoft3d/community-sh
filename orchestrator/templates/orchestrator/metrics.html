@@ -1,16 +1,20 @@
 {% extends "orchestrator/base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-6" x-data="{ activeTab: 'overview' }">
+{{ metrics|json_script:"metrics-initial" }}
+<div class="flex flex-col gap-6" x-data="liveMetrics()" x-init="start()">
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-3xl font-bold tracking-tight">System Metrics</h1>
             <p class="text-muted-foreground mt-2">Server resource and status monitoring</p>
         </div>
-        <button onclick="window.location.reload()"
-            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-            <i data-lucide="refresh-cw" class="mr-2 h-4 w-4"></i> Refresh
-        </button>
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+            <span class="relative flex h-2.5 w-2.5">
+                <span class="absolute inline-flex h-full w-full rounded-full opacity-75" :class="error ? 'bg-red-500' : 'bg-green-500 animate-ping'"></span>
+                <span class="relative inline-flex h-2.5 w-2.5 rounded-full" :class="error ? 'bg-red-500' : 'bg-green-500'"></span>
+            </span>
+            <span x-text="error ? 'Sin conexión, reintentando…' : 'En vivo · ' + updatedAt"></span>
+        </div>
     </div>
 
     <!-- Tabs Navigation -->
@@ -43,8 +47,8 @@
                 <i data-lucide="cpu" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
-                <div class="text-2xl font-bold">{{ metrics.cpu_percent }}%</div>
-                <p class="text-xs text-muted-foreground">{{ metrics.cpu_count }} núcleos</p>
+                <div class="text-2xl font-bold"><span x-text="m.cpu_percent">{{ metrics.cpu_percent }}</span>%</div>
+                <p class="text-xs text-muted-foreground"><span x-text="m.cpu_count">{{ metrics.cpu_count }}</span> núcleos</p>
             </div>
         </div>
 
@@ -55,8 +59,8 @@
                 <i data-lucide="memory-stick" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
-                <div class="text-2xl font-bold">{{ metrics.memory_percent }}%</div>
-                <p class="text-xs text-muted-foreground">{{ metrics.memory_used_gb }} GB / {{ metrics.memory_total_gb }}
+                <div class="text-2xl font-bold"><span x-text="m.memory_percent">{{ metrics.memory_percent }}</span>%</div>
+                <p class="text-xs text-muted-foreground"><span x-text="m.memory_used_gb">{{ metrics.memory_used_gb }}</span> GB / <span x-text="m.memory_total_gb">{{ metrics.memory_total_gb }}</span>
                     GB</p>
             </div>
         </div>
@@ -68,8 +72,8 @@
                 <i data-lucide="hard-drive" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
-                <div class="text-2xl font-bold">{{ metrics.disk_percent }}%</div>
-                <p class="text-xs text-muted-foreground">{{ metrics.disk_used_gb }} GB / {{ metrics.disk_total_gb }} GB
+                <div class="text-2xl font-bold"><span x-text="m.disk_percent">{{ metrics.disk_percent }}</span>%</div>
+                <p class="text-xs text-muted-foreground"><span x-text="m.disk_used_gb">{{ metrics.disk_used_gb }}</span> GB / <span x-text="m.disk_total_gb">{{ metrics.disk_total_gb }}</span> GB
                 </p>
             </div>
         </div>
@@ -81,8 +85,8 @@
                 <i data-lucide="box" class="h-4 w-4 text-muted-foreground"></i>
             </div>
             <div class="p-6 pt-0">
-                <div class="text-2xl font-bold">{{ metrics.containers_running }}</div>
-                <p class="text-xs text-muted-foreground">{{ metrics.containers_total }} total</p>
+                <div class="text-2xl font-bold"><span x-text="m.containers_running">{{ metrics.containers_running }}</span></div>
+                <p class="text-xs text-muted-foreground"><span x-text="m.containers_total">{{ metrics.containers_total }}</span> total</p>
             </div>
         </div>
     </div>
@@ -96,19 +100,19 @@
         <div class="p-6 pt-0">
             <div class="grid gap-4 md:grid-cols-4">
                 <div class="flex flex-col">
-                    <span class="text-2xl font-bold text-green-600">{{ metrics.instances_running }}</span>
+                    <span class="text-2xl font-bold text-green-600"><span x-text="m.instances_running">{{ metrics.instances_running }}</span></span>
                     <span class="text-xs text-muted-foreground">Running</span>
                 </div>
                 <div class="flex flex-col">
-                    <span class="text-2xl font-bold text-yellow-600">{{ metrics.instances_deploying }}</span>
+                    <span class="text-2xl font-bold text-yellow-600"><span x-text="m.instances_deploying">{{ metrics.instances_deploying }}</span></span>
                     <span class="text-xs text-muted-foreground">Deploying</span>
                 </div>
                 <div class="flex flex-col">
-                    <span class="text-2xl font-bold text-gray-600">{{ metrics.instances_stopped }}</span>
+                    <span class="text-2xl font-bold text-gray-600"><span x-text="m.instances_stopped">{{ metrics.instances_stopped }}</span></span>
                     <span class="text-xs text-muted-foreground">Stopped</span>
                 </div>
                 <div class="flex flex-col">
-                    <span class="text-2xl font-bold text-red-600">{{ metrics.instances_error }}</span>
+                    <span class="text-2xl font-bold text-red-600"><span x-text="m.instances_error">{{ metrics.instances_error }}</span></span>
                     <span class="text-xs text-muted-foreground">Error</span>
                 </div>
             </div>
@@ -125,15 +129,15 @@
             <div class="grid gap-4 md:grid-cols-3">
                 <div class="flex flex-col space-y-1">
                     <span class="text-sm font-medium">Version</span>
-                    <span class="text-sm text-muted-foreground">{{ metrics.docker_version }}</span>
+                    <span class="text-sm text-muted-foreground"><span x-text="m.docker_version">{{ metrics.docker_version }}</span></span>
                 </div>
                 <div class="flex flex-col space-y-1">
                     <span class="text-sm font-medium">Images</span>
-                    <span class="text-sm text-muted-foreground">{{ metrics.docker_images }}</span>
+                    <span class="text-sm text-muted-foreground"><span x-text="m.docker_images">{{ metrics.docker_images }}</span></span>
                 </div>
                 <div class="flex flex-col space-y-1">
                     <span class="text-sm font-medium">Networks</span>
-                    <span class="text-sm text-muted-foreground">{{ metrics.docker_networks }}</span>
+                    <span class="text-sm text-muted-foreground"><span x-text="m.docker_networks">{{ metrics.docker_networks }}</span></span>
                 </div>
             </div>
         </div>
@@ -161,58 +165,50 @@
                             </tr>
                         </thead>
                         <tbody class="[&_tr:last-child]:border-0">
-                            {% if container_stats %}
-                                {% for stat in container_stats %}
+                            <template x-for="stat in (m.containers || [])" :key="stat.name">
                                 <tr class="border-b transition-colors hover:bg-muted/50">
-                                    <td class="p-4 align-middle font-medium">
-                                        {{ stat.name }}
-                                    </td>
+                                    <td class="p-4 align-middle font-medium" x-text="stat.name"></td>
                                     <td class="p-4 align-middle">
-                                        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
-                                            Running
-                                        </span>
+                                        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800">Running</span>
                                     </td>
                                     <td class="p-4 align-middle">
                                         <div class="flex items-center gap-2">
-                                            <div class="text-sm font-medium">{{ stat.cpu_percent }}%</div>
+                                            <div class="w-14 text-sm font-medium" x-text="stat.cpu_percent + '%'"></div>
                                             <div class="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                                <div class="h-full bg-primary transition-all" style="width: {{ stat.cpu_percent }}%"></div>
+                                                <div class="h-full bg-primary transition-all" :style="'width:' + Math.min(stat.cpu_percent, 100) + '%'"></div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="p-4 align-middle">
                                         <div class="flex items-center gap-2">
-                                            <div class="text-sm font-medium">{{ stat.memory_percent }}%</div>
+                                            <div class="w-14 text-sm font-medium" x-text="stat.memory_percent + '%'"></div>
                                             <div class="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                                                <div class="h-full {% if stat.memory_percent > 80 %}bg-red-500{% elif stat.memory_percent > 60 %}bg-yellow-500{% else %}bg-green-500{% endif %} transition-all" style="width: {{ stat.memory_percent }}%"></div>
+                                                <div class="h-full transition-all" :style="'width:' + Math.min(stat.memory_percent, 100) + '%'"
+                                                    :class="stat.memory_percent > 80 ? 'bg-red-500' : stat.memory_percent > 60 ? 'bg-yellow-500' : 'bg-green-500'"></div>
                                             </div>
                                         </div>
-                                        <div class="text-xs text-muted-foreground mt-1">{{ stat.memory_usage }}</div>
+                                        <div class="text-xs text-muted-foreground mt-1" x-text="stat.memory_usage_mb + ' MB'"></div>
                                     </td>
+                                    <td class="p-4 align-middle"><span class="text-sm" x-text="stat.memory_limit_mb + ' MB'"></span></td>
                                     <td class="p-4 align-middle">
-                                        <span class="text-sm">{{ stat.memory_limit }}</span>
-                                    </td>
-                                    <td class="p-4 align-middle">
-                                        <div class="text-xs">
-                                            <div class="text-muted-foreground">↓ {{ stat.network_rx }}</div>
-                                            <div class="text-muted-foreground">↑ {{ stat.network_tx }}</div>
+                                        <div class="text-xs text-muted-foreground">
+                                            <div x-text="'↓ ' + stat.network_rx_mb + ' MB'"></div>
+                                            <div x-text="'↑ ' + stat.network_tx_mb + ' MB'"></div>
                                         </div>
                                     </td>
                                 </tr>
-                                {% endfor %}
-                            {% else %}
-                            <tr>
+                            </template>
+                            <tr x-show="!m.containers || m.containers.length === 0">
                                 <td colspan="6" class="p-12 text-center">
                                     <div class="flex flex-col items-center gap-4">
                                         <i data-lucide="activity" class="h-12 w-12 text-muted-foreground"></i>
                                         <div>
-                                            <h3 class="text-lg font-semibold mb-2">No running containers</h3>
+                                            <h3 class="text-lg font-semibold mb-2" x-text="m.containers ? 'No running containers' : 'Cargando…'"></h3>
                                             <p class="text-muted-foreground">Start some containers to see their resource usage</p>
                                         </div>
                                     </div>
                                 </td>
                             </tr>
-                            {% endif %}
                         </tbody>
                     </table>
                 </div>
@@ -223,6 +219,33 @@
 </div>
 
 <script>
+    // Polls /metrics/data/ every 5 s; container stats are only requested while their tab is open
+    function liveMetrics() {
+        return {
+            activeTab: 'overview',
+            m: JSON.parse(document.getElementById('metrics-initial').textContent),
+            error: false,
+            updatedAt: new Date().toLocaleTimeString(),
+            start() {
+                this.$watch('activeTab', () => this.refresh());
+                setInterval(() => this.refresh(), 5000);
+            },
+            async refresh() {
+                if (document.hidden) return;
+                const url = "{% url 'metrics-data' %}" + (this.activeTab === 'resources' ? '?containers=1' : '');
+                try {
+                    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                    if (!response.ok) throw new Error(response.status);
+                    this.m = await response.json();
+                    this.error = false;
+                    this.updatedAt = new Date().toLocaleTimeString();
+                } catch (e) {
+                    this.error = true;
+                }
+            },
+        };
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         lucide.createIcons();
     });

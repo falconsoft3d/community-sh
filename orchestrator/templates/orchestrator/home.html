@@ -1,26 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+{% load static %}
+<html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Community SH</title>
+    <title>Community SH · Hosting de Odoo open source</title>
+    <!-- Light/dark theme (before any styles, so there is no flash) -->
+    <script src="{% static 'js/theme.js' %}"></script>
+    <meta name="description" content="Plataforma open source para desplegar y administrar instancias de Odoo y aplicaciones en Docker desde un único panel.">
 
-    <!-- Tailwind CSS (via CDN for development) -->
+    <!-- Tailwind CSS (via CDN, same as the rest of the site) -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        },
+                        ink: '#0f172a',
                     }
                 }
             }
@@ -28,245 +43,443 @@
     </script>
 </head>
 
-<body class="bg-white text-gray-900 antialiased min-h-screen">
+<body class="bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
 
 <!-- Navbar -->
-<nav class="sticky top-0 z-50 w-full bg-white border-b shadow-sm">
-    <div class="flex h-14 max-w-7xl items-center mx-auto px-6">
-        <div class="mr-4 flex">
-            <a href="{% url 'home' %}" class="mr-6 flex items-center space-x-2">
-                <i data-lucide="container" class="h-6 w-6 text-blue-600"></i>
-                <span class="font-bold text-xl">Community SH</span>
+<header class="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
+    <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <a href="{% url 'home' %}" class="flex items-center gap-2">
+            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
+                <i data-lucide="container" class="h-5 w-5"></i>
+            </span>
+            <span class="text-lg font-bold">Community SH</span>
+        </a>
+
+        <nav class="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex dark:text-slate-400">
+            <a href="#funcionalidades" class="hover:text-brand-600">Funcionalidades</a>
+            <a href="#arquitectura" class="hover:text-brand-600">Cómo funciona</a>
+            <a href="#instalacion" class="hover:text-brand-600">Instalación</a>
+            <a href="{% url 'blog-list' %}" class="hover:text-brand-600">Blog</a>
+        </nav>
+
+        <div class="flex items-center gap-3">
+            <button type="button" onclick="toggleTheme()" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro"
+                class="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                <i data-lucide="moon" class="h-5 w-5 dark:hidden"></i>
+                <i data-lucide="sun" class="hidden h-5 w-5 dark:block"></i>
+            </button>
+            <a href="https://github.com/falconsoft3d/community-sh" target="_blank" rel="noopener"
+                class="hidden h-9 w-9 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 sm:inline-flex dark:text-slate-400 dark:hover:bg-slate-800"
+                title="GitHub">
+                {% include "orchestrator/includes/github_icon.html" with cls="h-5 w-5" %}
             </a>
-        </div>
-        <div class="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-            <nav class="flex items-center space-x-6">
-                <a href="{% url 'blog-list' %}" class="text-sm font-medium transition-colors hover:text-blue-600">
-                    Blog
-                </a>
-                <a href="https://github.com/falconsoft3d/community-sh" target="_blank"
-                    class="text-sm font-medium transition-colors hover:text-blue-600">
-                    GitHub
-                </a>
-                <a href="https://github.com/falconsoft3d/community-sh#readme" target="_blank"
-                    class="text-sm font-medium transition-colors hover:text-blue-600">
-                    Documentation
-                </a>
-                {% if user.is_authenticated %}
-                <div class="flex items-center gap-2 pl-2 border-l">
-                    <a href="{% url 'instance-list' %}" class="text-sm font-medium transition-colors hover:text-blue-600">
-                        {{ user.username }}
-                    </a>
-                    <a href="{% url 'logout' %}"
-                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-gray-200 text-gray-900 hover:bg-gray-300 h-9 px-4 py-2">
-                        Sign Out
-                    </a>
-                </div>
-                {% else %}
-                <a href="{% url 'login' %}" class="text-sm font-medium transition-colors hover:text-blue-600">
-                    Sign In
-                </a>
-                <a href="{% url 'register' %}"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 h-9 px-4 py-2">
-                    Get Started
-                </a>
-                {% endif %}
-            </nav>
+            {% if user.is_authenticated %}
+            <form method="post" action="{% url 'logout' %}" class="hidden sm:block">
+                {% csrf_token %}
+                <button type="submit" class="text-sm font-medium text-slate-600 hover:text-brand-600 dark:text-slate-400">Cerrar sesión</button>
+            </form>
+            <a href="{% url 'instance-list' %}"
+                class="inline-flex h-9 items-center rounded-md bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
+                Ir al panel
+            </a>
+            {% else %}
+            <a href="{% url 'login' %}"
+                class="inline-flex h-9 items-center rounded-md bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
+                Iniciar sesión
+            </a>
+            {% endif %}
         </div>
     </div>
-</nav>
+</header>
 
-<div class="flex flex-col gap-12 max-w-6xl mx-auto py-12">
-    <!-- Hero Section -->
-    <div class="text-center space-y-6">
-        <div
-            class="inline-flex items-center rounded-full border px-4 py-1.5 text-sm font-semibold bg-primary/10 text-primary border-primary/20">
-            <i data-lucide="code-2" class="h-4 w-4 mr-2"></i>
-            Open Source Project
+<main>
+    <!-- Hero -->
+    <section class="relative overflow-hidden">
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-gradient-to-b from-brand-50 to-white dark:from-slate-900 dark:to-slate-950"></div>
+        <div class="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-16 sm:px-6 lg:grid-cols-2 lg:pt-24">
+            <div>
+                <span class="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white px-3 py-1 text-xs font-semibold text-brand-700 dark:border-brand-600/30 dark:bg-slate-900 dark:text-blue-300">
+                    <i data-lucide="code-2" class="h-3.5 w-3.5"></i>
+                    Open source · Licencia MIT · v{{ app_version }}
+                </span>
+                <h1 class="mt-5 text-4xl font-extrabold leading-tight tracking-tight text-ink sm:text-5xl dark:text-white">
+                    Tu propio hosting de Odoo, <span class="text-brand-600">en tu servidor</span>
+                </h1>
+                <p class="mt-5 max-w-xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
+                    Community SH es un panel para desplegar y administrar instancias de Odoo y otras aplicaciones
+                    sobre Docker. Cada instancia tiene su propia base de datos, dominio, SSL y backups, y todo se
+                    gestiona desde el navegador.
+                </p>
+
+                <div class="mt-8 flex flex-wrap gap-3">
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'instance-list' %}"
+                        class="inline-flex h-11 items-center rounded-md bg-brand-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
+                        <i data-lucide="layout-dashboard" class="mr-2 h-4 w-4"></i> Ir al panel
+                    </a>
+                    {% elif registration_enabled %}
+                    <a href="{% url 'register' %}"
+                        class="inline-flex h-11 items-center rounded-md bg-brand-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
+                        <i data-lucide="user-plus" class="mr-2 h-4 w-4"></i> Crear cuenta
+                    </a>
+                    {% else %}
+                    <a href="{% url 'login' %}"
+                        class="inline-flex h-11 items-center rounded-md bg-brand-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
+                        <i data-lucide="log-in" class="mr-2 h-4 w-4"></i> Iniciar sesión
+                    </a>
+                    {% endif %}
+                    <a href="https://github.com/falconsoft3d/community-sh" target="_blank" rel="noopener"
+                        class="inline-flex h-11 items-center rounded-md border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                        {% include "orchestrator/includes/github_icon.html" with cls="mr-2 h-4 w-4" %} Ver en GitHub
+                    </a>
+                </div>
+
+                <dl class="mt-10 grid max-w-md grid-cols-3 gap-6 text-sm">
+                    <div>
+                        <dt class="text-slate-500 dark:text-slate-400">Odoo</dt>
+                        <dd class="mt-1 text-lg font-bold text-ink dark:text-white">{{ odoo_versions|first|floatformat:0 }} → {{ odoo_versions|last|floatformat:0 }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-slate-500 dark:text-slate-400">Apps listas</dt>
+                        <dd class="mt-1 text-lg font-bold text-ink dark:text-white">{{ apps|length }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-slate-500 dark:text-slate-400">Licencia</dt>
+                        <dd class="mt-1 text-lg font-bold text-ink dark:text-white">MIT</dd>
+                    </div>
+                </dl>
+            </div>
+
+            <!-- Panel preview (illustrative) -->
+            <div class="relative" aria-hidden="true">
+                <div class="rounded-2xl border border-slate-200 bg-white shadow-xl shadow-brand-600/10 dark:border-slate-800 dark:bg-slate-900">
+                    <div class="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                        <span class="h-2.5 w-2.5 rounded-full bg-slate-200 dark:bg-slate-700"></span>
+                        <span class="h-2.5 w-2.5 rounded-full bg-slate-200 dark:bg-slate-700"></span>
+                        <span class="h-2.5 w-2.5 rounded-full bg-slate-200 dark:bg-slate-700"></span>
+                        <span class="ml-3 text-xs text-slate-400">Instancias</span>
+                    </div>
+                    <ul class="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+                        <li class="flex items-center gap-3 px-4 py-3">
+                            <i data-lucide="box" class="h-4 w-4 text-brand-600"></i>
+                            <div class="flex-1">
+                                <p class="font-semibold">mi-empresa</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Odoo 18 · erp.mi-empresa.com</p>
+                            </div>
+                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/15 dark:text-green-300">Running</span>
+                        </li>
+                        <li class="flex items-center gap-3 px-4 py-3">
+                            <i data-lucide="box" class="h-4 w-4 text-brand-600"></i>
+                            <div class="flex-1">
+                                <p class="font-semibold">mi-empresa-staging</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Odoo 18 · duplicada de mi-empresa</p>
+                            </div>
+                            <span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-500/15 dark:text-blue-300">Deploying</span>
+                        </li>
+                        <li class="flex items-center gap-3 px-4 py-3">
+                            <i data-lucide="workflow" class="h-4 w-4 text-brand-600"></i>
+                            <div class="flex-1">
+                                <p class="font-semibold">automatizaciones</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">n8n · contenedor</p>
+                            </div>
+                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/15 dark:text-green-300">Running</span>
+                        </li>
+                    </ul>
+                    <div class="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Tareas recientes</p>
+                        <p class="mt-1 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                            <i data-lucide="check-circle-2" class="h-3.5 w-3.5 text-green-600"></i>
+                            Respaldo creado: mi-empresa_backup.zip
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <h1
-            class="text-5xl font-bold tracking-tight sm:text-6xl bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Community SH
-        </h1>
-        <p class="text-xl text-muted-foreground max-w-3xl mx-auto">
-            A powerful open-source Odoo orchestration platform. Deploy, manage, and scale multiple Odoo instances with
-            ease.
-        </p>
+    </section>
 
-        <!-- Installation Command -->
-        <div class="max-w-3xl mx-auto mt-6">
-            <div class="rounded-lg border bg-muted/50 p-4">
-                <p class="text-sm text-muted-foreground mb-2">Quick Install (Linux/macOS):</p>
-                <div class="flex items-center gap-2">
-                    <code
-                        class="flex-1 text-sm bg-background px-4 py-2 rounded border font-mono overflow-x-auto">curl -sSL https://raw.githubusercontent.com/falconsoft3d/community-sh/main/install.sh | bash</code>
-                    <button
-                        onclick="navigator.clipboard.writeText('curl -sSL https://raw.githubusercontent.com/falconsoft3d/community-sh/main/install.sh | bash').then(() => alert('Copied!'))"
-                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
-                        <i data-lucide="copy" class="h-4 w-4"></i>
+    <!-- Features -->
+    <section id="funcionalidades" class="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-800 dark:bg-slate-900/60">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+            <div class="max-w-2xl">
+                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">Funcionalidades</p>
+                <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">Todo lo que necesitas para operar Odoo</h2>
+                <p class="mt-3 text-slate-600 dark:text-slate-400">Del primer despliegue a los backups diarios, sin entrar al servidor.</p>
+            </div>
+
+            <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {% with card="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900" icon="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-600/15" %}
+                <div class="{{ card }}">
+                    <div class="{{ icon }}"><i data-lucide="layers" class="h-5 w-5"></i></div>
+                    <h3 class="mt-4 font-semibold">Instancias aisladas</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Cada Odoo corre con su propio Postgres, red Docker y volumen de datos. Versiones
+                        {{ odoo_versions|first|floatformat:0 }} a {{ odoo_versions|last|floatformat:0 }}, y una contraseña maestra distinta por instancia.
+                    </p>
+                </div>
+                <div class="{{ card }}">
+                    <div class="{{ icon }}">{% include "orchestrator/includes/github_icon.html" with cls="h-5 w-5" %}</div>
+                    <h3 class="mt-4 font-semibold">GitHub y módulos</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Conecta un repositorio con tus addons: cada instancia tiene su rama. Sube un módulo en ZIP y se
+                        añade al repo y se redespliega.
+                    </p>
+                </div>
+                <div class="{{ card }}">
+                    <div class="{{ icon }}"><i data-lucide="archive-restore" class="h-5 w-5"></i></div>
+                    <h3 class="mt-4 font-semibold">Backups y restauración</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Respaldos con base de datos y filestore, manuales o programados con retención. Restaura o crea
+                        una instancia nueva a partir de cualquier backup.
+                    </p>
+                </div>
+                <div class="{{ card }}">
+                    <div class="{{ icon }}"><i data-lucide="copy" class="h-5 w-5"></i></div>
+                    <h3 class="mt-4 font-semibold">Duplicar para pruebas</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Clona una instancia con sus datos y adjuntos para tener staging o probar una actualización sin
+                        tocar producción.
+                    </p>
+                </div>
+                <div class="{{ card }}">
+                    <div class="{{ icon }}"><i data-lucide="globe-lock" class="h-5 w-5"></i></div>
+                    <h3 class="mt-4 font-semibold">Dominios y SSL</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Asigna un dominio propio a cada instancia o app. Traefik enruta el tráfico y Let's Encrypt
+                        genera los certificados HTTPS.
+                    </p>
+                </div>
+                <div class="{{ card }}">
+                    <div class="{{ icon }}"><i data-lucide="boxes" class="h-5 w-5"></i></div>
+                    <h3 class="mt-4 font-semibold">Más que Odoo</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        {{ apps|length }} plantillas de apps listas para lanzar junto a tu ERP, o cualquier imagen de Docker como
+                        contenedor personalizado.
+                    </p>
+                </div>
+                <div class="{{ card }}">
+                    <div class="{{ icon }}"><i data-lucide="shield-check" class="h-5 w-5"></i></div>
+                    <h3 class="mt-4 font-semibold">Seguro por defecto</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Cada usuario ve solo sus instancias. 2FA opcional u obligatorio, bloqueo por intentos fallidos y
+                        registro cerrado salvo que el administrador lo abra.
+                    </p>
+                </div>
+                <div class="{{ card }}">
+                    <div class="{{ icon }}"><i data-lucide="list-checks" class="h-5 w-5"></i></div>
+                    <h3 class="mt-4 font-semibold">Tareas en segundo plano</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Despliegues, backups y restauraciones corren en un worker. El panel responde al instante y te
+                        muestra el progreso y el resultado.
+                    </p>
+                </div>
+                <div class="{{ card }}">
+                    <div class="{{ icon }}"><i data-lucide="activity" class="h-5 w-5"></i></div>
+                    <h3 class="mt-4 font-semibold">Consola, logs y métricas</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                        Logs en vivo y consola de cada contenedor, instalación de requirements y métricas de CPU, RAM,
+                        disco y Docker del servidor.
+                    </p>
+                </div>
+                {% endwith %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Apps catalog -->
+    {% if apps %}
+    <section class="py-20">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+            <div class="grid gap-10 lg:grid-cols-3">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">Catálogo</p>
+                    <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">Apps a un clic</h2>
+                    <p class="mt-3 text-slate-600 dark:text-slate-400">
+                        Plantillas YAML que puedes ajustar o ampliar en <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-800">container_templates/</code>.
+                    </p>
+                </div>
+                <ul class="flex flex-wrap content-start gap-2 lg:col-span-2">
+                    {% for app in apps %}
+                    <li class="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">{{ app }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- Architecture -->
+    <section id="arquitectura" class="bg-ink py-20 text-slate-200 dark:border-y dark:border-slate-800">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+            <div class="max-w-2xl">
+                <p class="text-sm font-semibold uppercase tracking-wider text-brand-500">Cómo funciona</p>
+                <h2 class="mt-2 text-3xl font-bold tracking-tight text-white">Un servidor, todo en Docker</h2>
+                <p class="mt-3 text-slate-400">
+                    El panel habla con Docker en tu servidor. No hay servicios externos ni agentes que instalar.
+                </p>
+            </div>
+
+            <div class="mt-12 grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1.4fr] lg:items-center">
+                <div class="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+                    <div class="flex items-center gap-2 font-semibold text-white">
+                        <i data-lucide="globe" class="h-4 w-4 text-brand-500"></i> Traefik
+                    </div>
+                    <p class="mt-2 text-sm text-slate-400">Recibe el tráfico en los puertos 80/443, aplica el SSL y lo dirige por dominio.</p>
+                </div>
+                <i data-lucide="arrow-right" class="mx-auto hidden h-5 w-5 text-slate-500 lg:block dark:text-slate-400"></i>
+                <div class="space-y-3">
+                    <div class="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+                        <div class="flex items-center gap-2 font-semibold text-white">
+                            <i data-lucide="layout-dashboard" class="h-4 w-4 text-brand-500"></i> Panel (Django)
+                        </div>
+                        <p class="mt-2 text-sm text-slate-400">Interfaz web y API. Encola las operaciones largas.</p>
+                    </div>
+                    <div class="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
+                        <div class="flex items-center gap-2 font-semibold text-white">
+                            <i data-lucide="cpu" class="h-4 w-4 text-brand-500"></i> Worker
+                        </div>
+                        <p class="mt-2 text-sm text-slate-400">Despliega, respalda y restaura. Lanza los backups programados.</p>
+                    </div>
+                </div>
+                <i data-lucide="arrow-right" class="mx-auto hidden h-5 w-5 text-slate-500 lg:block dark:text-slate-400"></i>
+                <div class="rounded-xl border border-brand-600/40 bg-brand-600/10 p-5">
+                    <div class="flex items-center gap-2 font-semibold text-white">
+                        <i data-lucide="container" class="h-4 w-4 text-brand-500"></i> Docker
+                    </div>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-lg border border-slate-700 bg-ink p-3 text-sm">
+                            <p class="font-medium text-white">Instancia «mi-empresa»</p>
+                            <p class="mt-1 text-slate-400">Odoo + Postgres en su propia red, filestore en un volumen.</p>
+                        </div>
+                        <div class="rounded-lg border border-slate-700 bg-ink p-3 text-sm">
+                            <p class="font-medium text-white">Apps</p>
+                            <p class="mt-1 text-slate-400">n8n, WordPress, Metabase… con su dominio.</p>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-xs text-slate-400">La base de datos del panel vive en una red interna a la que las instancias no tienen acceso.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Install -->
+    <section id="instalacion" class="py-20">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+            <div class="max-w-2xl">
+                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">Instalación</p>
+                <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">En marcha en minutos</h2>
+            </div>
+
+            <ol class="mt-10 grid gap-5 md:grid-cols-3">
+                <li class="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">1</span>
+                    <h3 class="mt-4 font-semibold">Un servidor Linux</h3>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Con acceso root y los puertos 80 y 443 libres. El instalador se encarga de Docker.</p>
+                </li>
+                <li class="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">2</span>
+                    <h3 class="mt-4 font-semibold">Ejecuta el instalador</h3>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Genera las claves, configura tu dominio y levanta todos los servicios.</p>
+                </li>
+                <li class="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">3</span>
+                    <h3 class="mt-4 font-semibold">Crea tu primera instancia</h3>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">La primera cuenta que se registra es la de administrador. Elige versión de Odoo y despliega.</p>
+                </li>
+            </ol>
+
+            <div class="mt-8 rounded-xl bg-ink p-4 dark:ring-1 dark:ring-slate-800 sm:p-5">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-xs font-medium text-slate-400">Instalación rápida</p>
+                    <button type="button" id="copy-install"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-slate-800">
+                        <i data-lucide="copy" class="h-3.5 w-3.5"></i> <span>Copiar</span>
                     </button>
                 </div>
+                <pre class="mt-3 overflow-x-auto text-sm text-green-300"><code id="install-command">curl -sL https://raw.githubusercontent.com/falconsoft3d/community-sh/main/easy-install.sh | sudo bash</code></pre>
             </div>
-        </div>
-
-        <div class="flex items-center justify-center gap-4 pt-4">
-            <a href="{% url 'register' %}"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8">
-                <i data-lucide="user-plus" class="mr-2 h-4 w-4"></i>
-                Get Started
-            </a>
-            <a href="{% url 'login' %}"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-8">
-                <i data-lucide="log-in" class="mr-2 h-4 w-4"></i>
-                Sign In
-            </a>
-            <a href="https://github.com/falconsoft3d/community-sh" target="_blank"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-8">
-                <i data-lucide="github" class="mr-2 h-4 w-4"></i>
-                Star on GitHub
-            </a>
-        </div>
-    </div>
-
-    <!-- Features Grid -->
-    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-12">
-        <div class="rounded-xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div class="rounded-lg bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
-                <i data-lucide="database" class="h-6 w-6 text-primary"></i>
-            </div>
-            <h3 class="font-semibold text-lg mb-2">Multi-Instance Management</h3>
-            <p class="text-muted-foreground text-sm">
-                Deploy and manage multiple Odoo instances from a single dashboard. Each instance is isolated with its
-                own database and configuration.
+            <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                ¿Prefieres revisarlo antes? Descarga
+                <a href="https://github.com/falconsoft3d/community-sh/blob/main/easy-install.sh" target="_blank" rel="noopener" class="font-medium text-brand-600 hover:underline">easy-install.sh</a>
+                y lee el <a href="https://github.com/falconsoft3d/community-sh#readme" target="_blank" rel="noopener" class="font-medium text-brand-600 hover:underline">README</a>.
             </p>
         </div>
-
-        <div class="rounded-xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div class="rounded-lg bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
-                <i data-lucide="github" class="h-6 w-6 text-primary"></i>
-            </div>
-            <h3 class="font-semibold text-lg mb-2">GitHub Integration</h3>
-            <p class="text-muted-foreground text-sm">
-                Connect your GitHub repositories and deploy custom Odoo modules automatically. Support for branches and
-                webhooks.
-            </p>
-        </div>
-
-        <div class="rounded-xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div class="rounded-lg bg-primary/ w-12 h-12 flex items-center justify-center mb-4">
-                <i data-lucide="container" class="h-6 w-6 text-primary"></i>
-            </div>
-            <h3 class="font-semibold text-lg mb-2">Docker Powered</h3>
-            <p class="text-muted-foreground text-sm">
-                Built on Docker for maximum portability and scalability. Each instance runs in isolated containers with
-                Traefik routing.
-            </p>
-        </div>
-
-        <div class="rounded-xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div class="rounded-lg bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
-                <i data-lucide="archive" class="h-6 w-6 text-primary"></i>
-            </div>
-            <h3 class="font-semibold text-lg mb-2">Backup & Restore</h3>
-            <p class="text-muted-foreground text-sm">
-                Create full backups of your instances including database and filestore. Restore with a single click.
-            </p>
-        </div>
-
-        <div class="rounded-xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div class="rounded-lg bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
-                <i data-lucide="copy" class="h-6 w-6 text-primary"></i>
-            </div>
-            <h3 class="font-semibold text-lg mb-2">Instance Duplication</h3>
-            <p class="text-muted-foreground text-sm">
-                Clone existing instances with all data and configurations. Perfect for testing and staging environments.
-            </p>
-        </div>
-
-        <div class="rounded-xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div class="rounded-lg bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
-                <i data-lucide="bar-chart-3" class="h-6 w-6 text-primary"></i>
-            </div>
-            <h3 class="font-semibold text-lg mb-2">System Metrics</h3>
-            <p class="text-muted-foreground text-sm">
-                Monitor your infrastructure with real-time metrics for CPU, RAM, disk usage, and Docker container
-                status.
-            </p>
-        </div>
-    </div>
+    </section>
 
     <!-- Featured Blog Posts -->
     {% if featured_posts %}
-    <div class="mt-12">
-        <div class="text-center mb-8">
-            <h2 class="text-3xl font-bold tracking-tight">Latest from Our Blog</h2>
-            <p class="text-muted-foreground mt-2">Tutorials, guides and updates</p>
-        </div>
-        <div class="grid gap-6 md:grid-cols-3">
-            {% for post in featured_posts %}
-            <div class="rounded-xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
-                <h3 class="font-semibold text-lg mb-2">
-                    <a href="{% url 'blog-detail' post.slug %}" class="hover:text-primary transition-colors">
-                        {{ post.title }}
-                    </a>
-                </h3>
-                {% if post.excerpt %}
-                <p class="text-muted-foreground text-sm mb-4">{{ post.excerpt }}</p>
-                {% endif %}
-                <div class="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{{ post.created_at|date:"M d, Y" }}</span>
-                    <span>{{ post.reading_time }} min read</span>
+    <section class="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-800 dark:bg-slate-900/60">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+            <div class="flex items-end justify-between gap-4">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">Blog</p>
+                    <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">Guías y novedades</h2>
                 </div>
+                <a href="{% url 'blog-list' %}" class="hidden items-center text-sm font-semibold text-brand-600 hover:underline sm:inline-flex">
+                    Ver todo <i data-lucide="arrow-right" class="ml-1 h-4 w-4"></i>
+                </a>
             </div>
-            {% endfor %}
+            <div class="mt-8 grid gap-5 md:grid-cols-3">
+                {% for post in featured_posts %}
+                <a href="{% url 'blog-detail' post.slug %}" class="group rounded-xl border border-slate-200 bg-white p-6 hover:border-brand-500 dark:border-slate-800 dark:bg-slate-900">
+                    <h3 class="font-semibold group-hover:text-brand-600">{{ post.title }}</h3>
+                    {% if post.excerpt %}
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{{ post.excerpt }}</p>
+                    {% endif %}
+                    <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">{{ post.created_at|date:"d M Y" }} · {{ post.reading_time }} min de lectura</p>
+                </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="text-center mt-6">
-            <a href="{% url 'blog-list' %}"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                View All Posts
-                <i data-lucide="arrow-right" class="ml-2 h-4 w-4"></i>
-            </a>
-        </div>
-    </div>
+    </section>
     {% endif %}
 
     <!-- Call to Action -->
-    <div class="rounded-xl border bg-gradient-to-br from-primary/10 via-primary/5 to-background p-8 text-center mt-8">
-        <h2 class="text-3xl font-bold tracking-tight mb-4">Ready to Get Started?</h2>
-        <p class="text-muted-foreground mb-6 max-w-2xl mx-auto">
-            Community SH is completely free and open source. Deploy your own Odoo instances, contribute to the project,
-            or customize it for your needs.
-        </p>
-        <div class="flex items-center justify-center gap-4">
-            <a href="https://github.com/falconsoft3d/community-sh" target="_blank"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8">
-                <i data-lucide="github" class="mr-2 h-4 w-4"></i>
-                View on GitHub
-            </a>
-            <a href="https://github.com/falconsoft3d/community-sh#readme" target="_blank"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-8">
-                <i data-lucide="book-open" class="mr-2 h-4 w-4"></i>
-                Documentation
-            </a>
+    <section class="py-20">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+            <div class="rounded-2xl bg-brand-600 px-6 py-12 text-center text-white sm:px-12">
+                <h2 class="text-3xl font-bold tracking-tight">Libre, abierto y tuyo</h2>
+                <p class="mx-auto mt-3 max-w-2xl text-brand-100">
+                    Community SH es gratuito y de código abierto. Instálalo en tu servidor, adáptalo a tu equipo o
+                    contribuye al proyecto.
+                </p>
+                <div class="mt-8 flex flex-wrap justify-center gap-3">
+                    <a href="https://github.com/falconsoft3d/community-sh" target="_blank" rel="noopener"
+                        class="inline-flex h-11 items-center rounded-md bg-white px-6 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+                        {% include "orchestrator/includes/github_icon.html" with cls="mr-2 h-4 w-4" %} Ver en GitHub
+                    </a>
+                    <a href="https://github.com/falconsoft3d/community-sh/issues" target="_blank" rel="noopener"
+                        class="inline-flex h-11 items-center rounded-md border border-white/40 px-6 text-sm font-semibold text-white hover:bg-white/10">
+                        <i data-lucide="message-circle" class="mr-2 h-4 w-4"></i> Reportar un problema
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="border-t border-slate-200 py-8 dark:border-slate-800">
+    <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 text-sm text-slate-500 sm:flex-row sm:px-6 dark:text-slate-400">
+        <p>Hecho por Marlon Falcón Hernández · Licencia MIT · <a href="https://github.com/falconsoft3d/community-sh/releases" target="_blank" rel="noopener" class="hover:text-brand-600">v{{ app_version }}</a></p>
+        <div class="flex gap-5">
+            <a href="{% url 'blog-list' %}" class="hover:text-brand-600">Blog</a>
+            <a href="https://github.com/falconsoft3d/community-sh" target="_blank" rel="noopener" class="hover:text-brand-600">GitHub</a>
+            <a href="https://github.com/falconsoft3d/community-sh#readme" target="_blank" rel="noopener" class="hover:text-brand-600">Documentación</a>
         </div>
     </div>
+</footer>
 
-    <!-- Footer -->
-    <div class="text-center text-sm text-gray-600 pt-8 border-t">
-        <p>
-            Made with ❤️ by Marlon Falcon Hernández. ·
-            <a href="https://github.com/falconsoft3d/community-sh/blob/main/LICENSE" target="_blank"
-                class="text-blue-600 hover:underline">MIT License</a> ·
-            <a href="https://github.com/falconsoft3d/community-sh/issues" target="_blank"
-                class="text-blue-600 hover:underline">Report Issues</a>
-        </p>
-    </div>
-</div>
-
-<!-- Initialize Icons -->
 <script>
     lucide.createIcons();
+
+    document.getElementById('copy-install').addEventListener('click', function () {
+        const label = this.querySelector('span');
+        navigator.clipboard.writeText(document.getElementById('install-command').textContent).then(() => {
+            label.textContent = 'Copiado';
+            setTimeout(() => { label.textContent = 'Copiar'; }, 2000);
+        });
+    });
 </script>
 
 </body>
+
 </html>

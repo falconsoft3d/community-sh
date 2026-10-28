@@ -19,8 +19,11 @@ class BaseTestCase(TestCase):
         self.alice = User.objects.create_user('alice', password='pass-12345')
         self.bob = User.objects.create_user('bob', password='pass-12345')
         self.config = GitHubConfig.objects.create(user=self.admin)
-        self.alice_instance = Instance.objects.create(name='alice-odoo', owner=self.alice)
-        self.bob_instance = Instance.objects.create(name='bob-odoo', owner=self.bob)
+        from .project_models import Project
+        self.alice_project = Project.objects.create(name='ACME', owner=self.alice)
+        self.bob_project = Project.objects.create(name='Globex', owner=self.bob)
+        self.alice_instance = Instance.objects.create(name='alice-odoo', owner=self.alice, project=self.alice_project)
+        self.bob_instance = Instance.objects.create(name='bob-odoo', owner=self.bob, project=self.bob_project)
 
         # One mock shared by every views module that talks to Docker
         self.docker = mock.MagicMock()
@@ -54,9 +57,14 @@ class ApiPermissionTests(BaseTestCase):
 
     def test_api_create_sets_owner(self):
         self.client.force_login(self.alice)
-        response = self.client.post('/api/instances/', {'name': 'alice-two', 'owner': self.bob.pk})
+        response = self.client.post('/api/instances/', {'name': 'alice-two', 'owner': self.bob.pk, 'project': self.alice_project.pk})
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Instance.objects.get(name='alice-two').owner, self.alice)
+
+    def test_api_requires_own_project(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.post('/api/instances/', {'name': 'no-project'}).status_code, 400)
+        self.assertEqual(self.client.post('/api/instances/', {'name': 'other', 'project': self.bob_project.pk}).status_code, 400)
 
 
 class InstanceOwnershipTests(BaseTestCase):
@@ -406,7 +414,7 @@ class TaskQueueTests(BaseTestCase):
         from .task_models import Task
         self.client.force_login(self.alice)
         with mock.patch('orchestrator.forms.requests'):
-            response = self.client.post(reverse('instance-create'), {'name': 'NewOne', 'odoo_version': '17.0'})
+            response = self.client.post(reverse('instance-create'), {'name': 'NewOne', 'odoo_version': '17.0', 'project': self.alice_project.pk})
         instance = Instance.objects.get(name='newone')
         self.assertRedirects(response, reverse('instance-detail', args=[instance.pk]), fetch_redirect_response=False)
         task = Task.objects.get(instance=instance)
@@ -530,3 +538,191 @@ class MediaServingTests(TestCase):
         match = resolve('/media/avatars/a.png')
         self.assertIs(match.func, serve)
         self.assertEqual(match.kwargs['path'], 'avatars/a.png')
+
+
+class PublishedPortTests(TestCase):
+    def test_waits_until_docker_publishes_the_port(self):
+        from .services import DockerService
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        container = mock.Mock()
+        states = iter([{}, {'8069/tcp': None}, {'8069/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '55004'}]}])
+        container.reload.side_effect = lambda: setattr(container, 'attrs', {'NetworkSettings': {'Ports': next(states)}})
+        with mock.patch('time.sleep'):
+            self.assertEqual(service._published_port(container, '8069/tcp'), 55004)
+
+
+
+class ProjectTests(BaseTestCase):
+    def test_projects_are_scoped_to_owner(self):
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('project-list'))
+        self.assertContains(response, 'ACME')
+        self.assertNotContains(response, 'Globex')
+        self.assertEqual(self.client.get(reverse('project-detail', args=[self.bob_project.pk])).status_code, 404)
+
+    def test_create_and_detail_show_project_instances(self):
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('project-create'), {'name': 'Initech', 'client': 'Initech Inc.'})
+        from .project_models import Project
+        project = Project.objects.get(name='Initech')
+        self.assertEqual(project.owner, self.alice)
+        self.assertRedirects(response, reverse('project-detail', args=[project.pk]), fetch_redirect_response=False)
+        detail = self.client.get(reverse('project-detail', args=[self.alice_project.pk]))
+        self.assertContains(detail, 'alice-odoo')
+
+    def test_duplicate_project_name_is_rejected(self):
+        self.client.force_login(self.alice)
+        self.client.post(reverse('project-create'), {'name': 'acme'})
+        from .project_models import Project
+        self.assertEqual(Project.objects.filter(owner=self.alice).count(), 1)
+
+    def test_instance_form_cannot_use_other_users_project(self):
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.forms.requests'):
+            self.client.post(reverse('instance-create'), {'name': 'sneaky', 'odoo_version': '17.0', 'project': self.bob_project.pk})
+            self.client.post(reverse('instance-create'), {'name': 'orphan', 'odoo_version': '17.0'})
+        self.assertFalse(Instance.objects.filter(name__in=['sneaky', 'orphan']).exists())
+
+    def test_project_with_instances_cannot_be_deleted(self):
+        self.client.force_login(self.alice)
+        self.client.post(reverse('project-delete', args=[self.alice_project.pk]))
+        from .project_models import Project
+        self.assertTrue(Project.objects.filter(pk=self.alice_project.pk).exists())
+
+    def test_instance_list_filters_by_project_and_shows_project_name(self):
+        from .project_models import Project
+        other = Project.objects.create(name='Other', owner=self.alice)
+        Instance.objects.create(name='alice-other', owner=self.alice, project=other)
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('instance-list') + f'?project={other.pk}')
+        self.assertContains(response, 'alice-other')
+        self.assertNotContains(response, 'alice-odoo')
+        self.assertContains(response, f'href="{reverse("project-detail", args=[other.pk])}"')
+
+
+class EnsureImageTests(TestCase):
+    def setUp(self):
+        import docker
+        patcher = mock.patch('orchestrator.services.docker_service.docker.from_env')
+        self.client = patcher.start().return_value
+        self.addCleanup(patcher.stop)
+        self.client.images.get.side_effect = docker.errors.ImageNotFound('missing')
+        from .services import DockerService
+        self.service = DockerService()
+
+    def test_falls_back_to_amd64_when_no_native_build(self):
+        import docker
+        self.client.images.pull.side_effect = [docker.errors.APIError('no matching manifest for linux/arm64/v8'), None]
+        self.assertEqual(self.service._ensure_image('odoo:10.0'), 'linux/amd64')
+        self.client.images.pull.assert_called_with('odoo', tag='10.0', platform='linux/amd64')
+
+    def test_other_pull_errors_are_reported(self):
+        import docker
+        self.client.images.pull.side_effect = docker.errors.APIError('manifest unknown')
+        with self.assertRaisesMessage(Exception, 'No se pudo descargar la imagen odoo:99.0'):
+            self.service._ensure_image('odoo:99.0')
+
+
+class ClientTests(BaseTestCase):
+    def make_client(self, **extra):
+        self.client.force_login(self.admin)
+        data = {'company': 'Veolia', 'username': 'veolia', 'first_name': 'Ana', 'email': 'ana@veolia.example',
+                'projects': [self.alice_project.pk], **extra}
+        response = self.client.post(reverse('client-create'), data)
+        return User.objects.get(username='veolia'), response
+
+    def test_admin_creates_client_with_generated_password(self):
+        client_user, response = self.make_client()
+        self.assertTrue(client_user.profile.is_client)
+        self.assertEqual(client_user.profile.company, 'Veolia')
+        self.alice_project.refresh_from_db()
+        self.assertEqual(self.alice_project.client, client_user)
+        shown = [str(m) for m in response.wsgi_request._messages]
+        self.assertTrue(any('Contraseña inicial de veolia' in m for m in shown))
+
+    def test_clients_menu_is_admin_only(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('client-list')).status_code, 403)
+
+    def test_client_sees_and_operates_but_cannot_manage(self):
+        client_user, _ = self.make_client()
+        self.client.force_login(client_user)
+        pk = self.alice_instance.pk
+        self.assertContains(self.client.get(reverse('project-list')), 'ACME')
+        self.assertEqual(self.client.get(reverse('instance-detail', args=[pk])).status_code, 200)
+        self.assertEqual(self.client.get(reverse('instance-detail', args=[self.bob_instance.pk])).status_code, 404)
+        # Operate
+        self.client.post(reverse('instance-deploy', args=[pk]))
+        self.client.post(reverse('instance-backup', args=[pk]))
+        from .task_models import Task
+        self.assertEqual(set(Task.objects.values_list('kind', flat=True)), {'deploy', 'backup'})
+        # Manage: forbidden
+        for name in ('instance-delete', 'instance-duplicate', 'instance-console-exec', 'instance-update-name', 'instance-restore'):
+            self.assertEqual(self.client.post(reverse(name, args=[pk])).status_code, 403, name)
+        self.assertEqual(self.client.post(reverse('project-edit', args=[self.alice_project.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse('instance-create')).status_code, 403)
+        self.assertEqual(self.client.get(reverse('project-create')).status_code, 403)
+        self.assertEqual(self.client.get(reverse('container-create')).status_code, 403)
+        self.assertTrue(Instance.objects.filter(pk=pk).exists())
+
+    def test_client_api_is_read_and_operate_only(self):
+        client_user, _ = self.make_client()
+        self.client.force_login(client_user)
+        self.assertEqual([i['name'] for i in self.client.get('/api/instances/').json()], ['alice-odoo'])
+        self.assertEqual(self.client.post(f'/api/instances/{self.alice_instance.pk}/deploy/').status_code, 202)
+        self.assertEqual(self.client.delete(f'/api/instances/{self.alice_instance.pk}/').status_code, 403)
+        self.assertEqual(self.client.post('/api/instances/', {'name': 'x', 'project': self.alice_project.pk}).status_code, 403)
+
+    def test_deactivated_client_cannot_log_in(self):
+        client_user, _ = self.make_client(password='Cl1ent-pass-2026')
+        self.client.post(reverse('client-toggle-active', args=[client_user.pk]))
+        self.client.logout()
+        self.client.post(reverse('login'), {'username': 'veolia', 'password': 'Cl1ent-pass-2026'})
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+
+class BackupListTests(BaseTestCase):
+    def test_lists_only_visible_backups_and_filters_by_project(self):
+        Backup.objects.create(instance=self.alice_instance, filename='alice.zip', file_path='/x/a.zip', file_size=10)
+        Backup.objects.create(instance=self.bob_instance, filename='bob.zip', file_path='/x/b.zip', file_size=10)
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('backup-list'))
+        self.assertContains(response, 'alice.zip')
+        self.assertNotContains(response, 'bob.zip')
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse('backup-list') + f'?project={self.bob_project.pk}')
+        self.assertContains(response, 'bob.zip')
+        self.assertNotContains(response, 'alice.zip')
+
+
+class DockerAdminTests(BaseTestCase):
+    def test_docker_menu_is_admin_only(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('docker-overview')).status_code, 403)
+        self.assertEqual(self.client.post(reverse('docker-prune', args=['volumes'])).status_code, 403)
+
+    def test_panel_containers_are_protected(self):
+        from .services import docker_admin
+        panel = mock.Mock(labels={'com.docker.compose.project': 'community-sh'}, name='community-sh-db-1')
+        with mock.patch('orchestrator.services.docker_admin._client') as client:
+            client.return_value.containers.get.return_value = panel
+            with self.assertRaises(PermissionError):
+                docker_admin.container_action('abc', 'stop')
+        panel.stop.assert_not_called()
+
+    def test_volume_prune_requires_typed_confirmation(self):
+        self.client.force_login(self.admin)
+        with mock.patch('orchestrator.services.docker_admin.prune') as prune:
+            self.client.post(reverse('docker-prune', args=['volumes']))
+            prune.assert_not_called()
+            prune.return_value = (2, 1024)
+            self.client.post(reverse('docker-prune', args=['volumes']), {'confirm': 'BORRAR'})
+            prune.assert_called_once_with('volumes')
+
+    def test_pull_is_queued_and_validated(self):
+        from .task_models import Task
+        self.client.force_login(self.admin)
+        self.client.post(reverse('docker-image-pull'), {'image': 'odoo:18.0'})
+        self.client.post(reverse('docker-image-pull'), {'image': 'bad image; rm -rf /'})
+        self.assertEqual(list(Task.objects.values_list('params__image', flat=True)), ['odoo:18.0'])

@@ -52,3 +52,6 @@ backups/*.tar.gz
 
 # Docker
 docker-compose.override.yml
+
+# Instance workspaces (addons checkouts, odoo.conf with master passwords)
+/instances/

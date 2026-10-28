@@ -36,7 +36,7 @@ def instance_backup(request, pk):
 @login_required
 @require_POST
 def instance_restore(request, pk):
-    instance = get_instance_for_user(request.user, pk)
+    instance = get_instance_for_user(request.user, pk, manage=True)
     backup_file = request.FILES.get('backup_file')
     
     if not backup_file:
@@ -86,7 +86,7 @@ def backup_download(request, backup_id):
 
 @login_required
 def backup_delete(request, backup_id):
-    backup = get_backup_for_user(request.user, backup_id)
+    backup = get_backup_for_user(request.user, backup_id, manage=True)
     instance_pk = backup.instance.pk
     
     if request.method == 'POST':
@@ -106,7 +106,7 @@ def backup_delete(request, backup_id):
 @login_required
 @require_POST
 def backup_restore_action(request, backup_id):
-    backup = get_backup_for_user(request.user, backup_id)
+    backup = get_backup_for_user(request.user, backup_id, manage=True)
     enqueue(Task.Kind.RESTORE, backup.instance, request.user, file_path=backup.file_path, label=backup.filename)
     messages.info(request, f'Restauración desde {backup.filename} en cola')
     return redirect('instance-backups', pk=backup.instance.pk)
@@ -118,7 +118,7 @@ def backup_create_instance(request, backup_id):
     import zipfile
     import json
     
-    backup = get_backup_for_user(request.user, backup_id)
+    backup = get_backup_for_user(request.user, backup_id, manage=True)
     
     if request.method == 'POST':
         new_name = request.POST.get('name', '').strip().lower()
@@ -157,6 +157,7 @@ def backup_create_instance(request, backup_id):
             status=Instance.Status.DEPLOYING,
             origin='backup',
             owner=backup.instance.owner or request.user,
+            project=backup.instance.project,
         )
         # The worker creates the GitHub branch, deploys and restores the backup
         enqueue(Task.Kind.CREATE_FROM_BACKUP, new_instance, request.user, backup_id=backup.pk)
@@ -178,4 +179,24 @@ def backup_create_instance(request, backup_id):
         'backup': backup,
         'source_instance': backup.instance,
         'suggested_name': suggested_name
+    })
+
+
+@login_required
+def backup_list(request):
+    """All backups the user can see, newest first, optionally filtered by project."""
+    from ..backup_models import Backup
+    from ..permissions import can_manage, instances_for, projects_for
+    backups = Backup.objects.filter(instance__in=instances_for(request.user)).select_related('instance__project')
+    selected_project = request.GET.get('project', '')
+    if selected_project:
+        backups = backups.filter(instance__project_id=selected_project)
+    backups = list(backups.order_by('-created_at')[:200])
+    for backup in backups:
+        backup.can_manage = can_manage(request.user, backup.instance)
+    return render(request, 'orchestrator/backup_list.html', {
+        'backups': backups,
+        'projects': projects_for(request.user),
+        'selected_project': selected_project,
+        'total_size': sum(b.file_size for b in backups),
     })

@@ -8,6 +8,32 @@ from .public import (
     blog_detail,
     about,
 )
+from .docker import (
+    docker_overview,
+    docker_container_action,
+    docker_container_logs,
+    docker_image_remove,
+    docker_image_pull,
+    docker_volume_remove,
+    docker_network_remove,
+    docker_prune,
+)
+from .clients import (
+    client_list,
+    client_create,
+    client_detail,
+    client_edit,
+    client_reset_password,
+    client_toggle_active,
+    client_delete,
+)
+from .projects import (
+    project_list,
+    project_create,
+    project_detail,
+    project_edit,
+    project_delete,
+)
 from .instances import (
     dashboard,
     InstanceListView,
@@ -28,6 +54,7 @@ from .instances import (
     instance_duplicate,
 )
 from .backups import (
+    backup_list,
     instance_backup,
     instance_restore,
     instance_backups_list,
@@ -38,6 +65,7 @@ from .backups import (
 )
 from .platform import (
     metrics_view,
+    metrics_data,
     settings_view,
     run_auto_backups_view,
     generate_ssl_certificate,
@@ -52,6 +80,26 @@ from .users import (
 )
 
 __all__ = [
+    'docker_overview',
+    'docker_container_action',
+    'docker_container_logs',
+    'docker_image_remove',
+    'docker_image_pull',
+    'docker_volume_remove',
+    'docker_network_remove',
+    'docker_prune',
+    'client_list',
+    'client_create',
+    'client_detail',
+    'client_edit',
+    'client_reset_password',
+    'client_toggle_active',
+    'client_delete',
+    'project_list',
+    'project_create',
+    'project_detail',
+    'project_edit',
+    'project_delete',
     'InstanceViewSet',
     'home',
     'blog_list',
@@ -74,6 +122,7 @@ __all__ = [
     'instance_install_module',
     'instance_delete',
     'instance_duplicate',
+    'backup_list',
     'instance_backup',
     'instance_restore',
     'instance_backups_list',
@@ -82,6 +131,7 @@ __all__ = [
     'backup_restore_action',
     'backup_create_instance',
     'metrics_view',
+    'metrics_data',
     'settings_view',
     'run_auto_backups_view',
     'generate_ssl_certificate',

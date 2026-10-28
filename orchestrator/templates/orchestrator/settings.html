@@ -16,7 +16,7 @@
             <button type="button" @click="activeTab = 'github'; window.location.hash = 'github'" 
                 :class="activeTab === 'github' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
-                <i data-lucide="github" class="inline-block h-4 w-4 mr-2"></i>
+                {% include "orchestrator/includes/github_icon.html" with cls="inline-block h-4 w-4 mr-2" %}
                 GitHub
             </button>
             {% if user.is_superuser %}
@@ -57,7 +57,7 @@
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
                 <div class="flex items-center gap-2">
-                    <i data-lucide="github" class="h-5 w-5"></i>
+                    {% include "orchestrator/includes/github_icon.html" with cls="h-5 w-5" %}
                     <h3 class="font-semibold leading-none tracking-tight">Integración con GitHub</h3>
                 </div>
                 <p class="text-sm text-muted-foreground">Conecta tu cuenta de GitHub para desplegar repositorios automáticamente</p>
@@ -547,7 +547,7 @@
                 <!-- GitHub Token Instructions -->
                 <div class="space-y-3">
                     <h4 class="font-medium text-sm flex items-center gap-2">
-                        <i data-lucide="github" class="h-4 w-4"></i>
+                        {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4" %}
                         Cómo obtener un GitHub Personal Access Token
                     </h4>
                     <ol class="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-6">

@@ -6,7 +6,7 @@ from .container_models import Container
 from .container_service import ContainerService
 from .template_services import get_template_loader
 from django.core.exceptions import ValidationError
-from .permissions import domain_in_use, validate_domain, validate_resource_name
+from .permissions import domain_in_use, management_required, validate_domain, validate_resource_name
 
 
 def _restricted_config_error(config, template_network):
@@ -26,6 +26,7 @@ def container_list(request):
     return render(request, 'orchestrator/container_list.html', {'containers': containers})
 
 @login_required
+@management_required
 def container_create(request):
     """Create a new container"""
     if request.method == 'POST':

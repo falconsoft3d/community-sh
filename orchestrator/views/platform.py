@@ -16,106 +16,17 @@ from ..permissions import (
 @login_required
 @superuser_required
 def metrics_view(request):
-    import psutil
-    import docker
-    from django.db.models import Count
-    
-    # System metrics
-    cpu_percent = round(psutil.cpu_percent(interval=1), 2)
-    cpu_count = psutil.cpu_count()
-    
-    memory = psutil.virtual_memory()
-    memory_percent = round(memory.percent, 2)
-    memory_used_gb = round(memory.used / (1024**3), 2)
-    memory_total_gb = round(memory.total / (1024**3), 2)
-    
-    disk = psutil.disk_usage('/')
-    disk_percent = round(disk.percent, 2)
-    disk_used_gb = round(disk.used / (1024**3), 2)
-    disk_total_gb = round(disk.total / (1024**3), 2)
-    
-    # Docker metrics
-    client = docker.from_env()
-    containers = client.containers.list(all=True)
-    containers_running = len([c for c in containers if c.status == 'running'])
-    containers_total = len(containers)
-    
-    docker_info = client.info()
-    docker_version = client.version()['Version']
-    docker_images = len(client.images.list())
-    docker_networks = len(client.networks.list())
-    
-    # Instance status counts
-    status_counts = Instance.objects.values('status').annotate(count=Count('id'))
-    instances_running = next((item['count'] for item in status_counts if item['status'] == 'running'), 0)
-    instances_deploying = next((item['count'] for item in status_counts if item['status'] == 'deploying'), 0)
-    instances_stopped = next((item['count'] for item in status_counts if item['status'] == 'stopped'), 0)
-    instances_error = next((item['count'] for item in status_counts if item['status'] == 'error'), 0)
-    
-    # Container resource usage stats
-    container_stats = []
-    running_containers = client.containers.list()
-    for container in running_containers:
-        try:
-            stats = container.stats(stream=False)
-            
-            # Calculate CPU percentage
-            cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - stats['precpu_stats']['cpu_usage']['total_usage']
-            system_delta = stats['cpu_stats']['system_cpu_usage'] - stats['precpu_stats']['system_cpu_usage']
-            cpu_percent = 0.0
-            if system_delta > 0 and cpu_delta > 0:
-                cpu_percent = (cpu_delta / system_delta) * len(stats['cpu_stats']['cpu_usage'].get('percpu_usage', [1])) * 100.0
-            
-            # Calculate memory usage
-            memory_usage = stats['memory_stats'].get('usage', 0)
-            memory_limit = stats['memory_stats'].get('limit', 1)
-            memory_percent = (memory_usage / memory_limit) * 100 if memory_limit > 0 else 0
-            
-            # Network I/O
-            network_rx = 0
-            network_tx = 0
-            if 'networks' in stats:
-                for interface, data in stats['networks'].items():
-                    network_rx += data.get('rx_bytes', 0)
-                    network_tx += data.get('tx_bytes', 0)
-            
-            container_stats.append({
-                'name': container.name,
-                'cpu_percent': round(cpu_percent, 2),
-                'memory_percent': round(memory_percent, 2),
-                'memory_usage': f"{round(memory_usage / (1024**2), 2)} MB",
-                'memory_limit': f"{round(memory_limit / (1024**2), 2)} MB",
-                'network_rx': f"{round(network_rx / (1024**2), 2)} MB",
-                'network_tx': f"{round(network_tx / (1024**2), 2)} MB",
-            })
-        except Exception as e:
-            print(f"Error getting stats for {container.name}: {e}")
-            continue
-    
-    context = {
-        'metrics': {
-            'cpu_percent': cpu_percent,
-            'cpu_count': cpu_count,
-            'memory_percent': memory_percent,
-            'memory_used_gb': memory_used_gb,
-            'memory_total_gb': memory_total_gb,
-            'disk_percent': disk_percent,
-            'disk_used_gb': disk_used_gb,
-            'disk_total_gb': disk_total_gb,
-            'containers_running': containers_running,
-            'containers_total': containers_total,
-            'docker_version': docker_version,
-            'docker_images': docker_images,
-            'docker_networks': docker_networks,
-            'instances_running': instances_running,
-            'instances_deploying': instances_deploying,
-            'instances_stopped': instances_stopped,
-            'instances_error': instances_error,
-        },
-        'container_stats': container_stats,
-    }
-    
-    return render(request, 'orchestrator/metrics.html', context)
+    from ..services.metrics import collect_metrics
+    return render(request, 'orchestrator/metrics.html', {'metrics': collect_metrics()})
+
+
+@login_required
+@superuser_required
+def metrics_data(request):
+    """Polled by the Metrics page; container stats only while that tab is open (they are slow)."""
+    from django.http import JsonResponse
+    from ..services.metrics import collect_metrics
+    return JsonResponse(collect_metrics(include_containers=request.GET.get('containers') == '1'))
 
 
 @login_required

@@ -1,0 +1,317 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6" x-data="dockerPage()">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Docker</h1>
+            <p class="text-muted-foreground mt-1">Contenedores, imágenes, volúmenes y redes del servidor{% if docker %} · Docker {{ docker.version }}{% endif %}</p>
+        </div>
+    </div>
+
+    {% if docker %}
+    <!-- Disk usage -->
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {% with card="rounded-xl border bg-card text-card-foreground shadow-sm p-5" %}
+        <div class="{{ card }}">
+            <p class="text-sm text-muted-foreground">Contenedores</p>
+            <p class="mt-1 text-2xl font-bold">{{ docker.containers|length }}</p>
+            <p class="text-xs text-muted-foreground">{{ docker.disk.containers|filesizeformat }} en disco</p>
+        </div>
+        <div class="{{ card }}">
+            <p class="text-sm text-muted-foreground">Imágenes</p>
+            <p class="mt-1 text-2xl font-bold">{{ docker.images|length }}</p>
+            <p class="text-xs text-muted-foreground">{{ docker.disk.images|filesizeformat }}</p>
+        </div>
+        <div class="{{ card }}">
+            <p class="text-sm text-muted-foreground">Volúmenes</p>
+            <p class="mt-1 text-2xl font-bold">{{ docker.volumes|length }}</p>
+            <p class="text-xs text-muted-foreground">{{ docker.disk.volumes|filesizeformat }}</p>
+        </div>
+        <div class="{{ card }}">
+            <p class="text-sm text-muted-foreground">Redes</p>
+            <p class="mt-1 text-2xl font-bold">{{ docker.networks|length }}</p>
+            <p class="text-xs text-muted-foreground">Caché de build: {{ docker.disk.build_cache|filesizeformat }}</p>
+        </div>
+        {% endwith %}
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b border-border">
+        <nav class="flex gap-6 overflow-x-auto" aria-label="Tabs">
+            <template x-for="t in tabs" :key="t.key">
+                <button type="button" @click="setTab(t.key)"
+                    :class="tab === t.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'"
+                    class="whitespace-nowrap border-b-2 py-3 px-1 text-sm font-medium transition-colors" x-text="t.label"></button>
+            </template>
+        </nav>
+    </div>
+
+    <!-- Containers -->
+    <section x-show="tab === 'containers'" class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+            <h2 class="font-semibold">Contenedores</h2>
+            <form method="post" action="{% url 'docker-prune' 'containers' %}" onsubmit="return confirm('¿Eliminar todos los contenedores detenidos?');">
+                {% csrf_token %}
+                <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                    <i data-lucide="eraser" class="mr-2 h-4 w-4"></i> Eliminar detenidos
+                </button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-muted-foreground">
+                        <th class="h-11 px-5 font-medium">Nombre</th>
+                        <th class="h-11 px-5 font-medium">Imagen</th>
+                        <th class="h-11 px-5 font-medium">Estado</th>
+                        <th class="h-11 px-5 font-medium">Puertos</th>
+                        <th class="h-11 px-5 font-medium text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in docker.containers %}
+                    <tr class="border-b last:border-0 hover:bg-muted/50">
+                        <td class="px-5 py-3">
+                            <div class="font-medium">{{ c.name }}</div>
+                            <div class="text-xs text-muted-foreground">
+                                {{ c.id }}
+                                {% if c.protected %} · <span class="text-blue-600">panel</span>{% endif %}
+                                {% if c.instance %} · instancia <a href="{% url 'instance-detail' c.instance.pk %}" class="text-primary hover:underline">{{ c.instance.name }}</a>{% endif %}
+                                {% if c.managed_container %} · contenedor del panel{% endif %}
+                            </div>
+                        </td>
+                        <td class="px-5 py-3 font-mono text-xs">{{ c.image }}</td>
+                        <td class="px-5 py-3">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold
+                                {% if c.status == 'running' %}bg-green-100 text-green-800{% elif c.status == 'exited' %}bg-muted text-muted-foreground{% else %}bg-yellow-100 text-yellow-800{% endif %}">{{ c.status }}</span>
+                        </td>
+                        <td class="px-5 py-3 text-xs">{{ c.ports|join:", "|default:"—" }}</td>
+                        <td class="px-5 py-3">
+                            <div class="flex items-center justify-end gap-1">
+                                <button type="button" @click="showLogs('{% url 'docker-container-logs' c.id %}')" title="Logs"
+                                    class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"><i data-lucide="scroll-text" class="h-4 w-4"></i></button>
+                                {% if not c.protected %}
+                                {% if c.status == 'running' %}
+                                <form method="post" action="{% url 'docker-container-action' c.id 'restart' %}">{% csrf_token %}
+                                    <button title="Reiniciar" class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"><i data-lucide="rotate-cw" class="h-4 w-4"></i></button></form>
+                                <form method="post" action="{% url 'docker-container-action' c.id 'stop' %}">{% csrf_token %}
+                                    <button title="Detener" class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"><i data-lucide="square" class="h-4 w-4"></i></button></form>
+                                {% else %}
+                                <form method="post" action="{% url 'docker-container-action' c.id 'start' %}">{% csrf_token %}
+                                    <button title="Iniciar" class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"><i data-lucide="play" class="h-4 w-4"></i></button></form>
+                                {% endif %}
+                                <form method="post" action="{% url 'docker-container-action' c.id 'remove' %}"
+                                    onsubmit="return confirm('¿Eliminar el contenedor {{ c.name|escapejs }}?{% if c.instance %} Pertenece a la instancia {{ c.instance.name|escapejs }}: mejor bórrala desde su página.{% endif %}');">{% csrf_token %}
+                                    <button title="Eliminar" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-accent"><i data-lucide="trash-2" class="h-4 w-4"></i></button></form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Images -->
+    <section x-show="tab === 'images'" class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+            <h2 class="font-semibold">Imágenes</h2>
+            <div class="flex flex-wrap items-center gap-2">
+                <form method="post" action="{% url 'docker-image-pull' %}" class="flex items-center gap-2">
+                    {% csrf_token %}
+                    <input name="image" required placeholder="odoo:18.0" aria-label="Imagen a descargar"
+                        class="h-9 w-48 rounded-md border border-input bg-background px-3 text-sm">
+                    <button class="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="download" class="mr-2 h-4 w-4"></i> Descargar
+                    </button>
+                </form>
+                <form method="post" action="{% url 'docker-prune' 'images' %}" onsubmit="return confirm('¿Eliminar las imágenes sin etiqueta (dangling)?');">
+                    {% csrf_token %}
+                    <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                        <i data-lucide="eraser" class="mr-2 h-4 w-4"></i> Limpiar sin etiqueta
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% if pulls %}
+        <ul class="border-b px-5 py-3 text-sm space-y-1">
+            {% for task in pulls %}
+            <li class="flex items-center gap-2">
+                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold
+                    {% if task.status == 'done' %}bg-green-100 text-green-800{% elif task.status == 'failed' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">{{ task.get_status_display }}</span>
+                <span class="font-mono text-xs">{{ task.params.image }}</span>
+                <span class="truncate text-xs text-muted-foreground">{{ task.result|truncatechars:120 }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-muted-foreground">
+                        <th class="h-11 px-5 font-medium">Etiquetas</th>
+                        <th class="h-11 px-5 font-medium">ID</th>
+                        <th class="h-11 px-5 font-medium">Tamaño</th>
+                        <th class="h-11 px-5 font-medium">Creada</th>
+                        <th class="h-11 px-5 font-medium text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for img in docker.images %}
+                    <tr class="border-b last:border-0 hover:bg-muted/50">
+                        <td class="px-5 py-3 font-mono text-xs">
+                            {% for tag in img.tags %}<div>{{ tag }}</div>{% endfor %}
+                            {% if img.in_use %}<span class="mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-sans font-semibold bg-green-100 text-green-800">en uso</span>{% endif %}
+                        </td>
+                        <td class="px-5 py-3 font-mono text-xs text-muted-foreground">{{ img.id }}</td>
+                        <td class="px-5 py-3">{{ img.size|filesizeformat }}</td>
+                        <td class="px-5 py-3 text-muted-foreground">{{ img.created }}</td>
+                        <td class="px-5 py-3 text-right">
+                            {% if not img.in_use %}
+                            <form method="post" action="{% url 'docker-image-remove' img.full_id %}" onsubmit="return confirm('¿Eliminar la imagen {{ img.tags.0|escapejs }}?');">{% csrf_token %}
+                                <button title="Eliminar" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-accent"><i data-lucide="trash-2" class="h-4 w-4"></i></button></form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Volumes -->
+    <section x-show="tab === 'volumes'" class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+            <div>
+                <h2 class="font-semibold">Volúmenes</h2>
+                <p class="text-xs text-muted-foreground">Un volumen sin uso puede guardar el filestore de una instancia borrada o de redeploys antiguos.</p>
+            </div>
+            <form method="post" action="{% url 'docker-prune' 'volumes' %}" class="flex items-center gap-2"
+                onsubmit="return confirm('Se eliminarán TODOS los volúmenes que no use ningún contenedor. No se puede deshacer.');">
+                {% csrf_token %}
+                <input name="confirm" placeholder="Escribe BORRAR" aria-label="Confirmación" class="h-9 w-36 rounded-md border border-input bg-background px-3 text-sm">
+                <button class="inline-flex h-9 items-center rounded-md border border-red-200 bg-red-50 px-3 text-sm text-red-700 hover:bg-red-100">
+                    <i data-lucide="eraser" class="mr-2 h-4 w-4"></i> Eliminar sin uso
+                </button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-muted-foreground">
+                        <th class="h-11 px-5 font-medium">Nombre</th>
+                        <th class="h-11 px-5 font-medium">Usado por</th>
+                        <th class="h-11 px-5 font-medium">Creado</th>
+                        <th class="h-11 px-5 font-medium text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in docker.volumes %}
+                    <tr class="border-b last:border-0 hover:bg-muted/50">
+                        <td class="px-5 py-3">
+                            <div class="font-mono text-xs break-all">{{ v.name }}</div>
+                            {% if v.instance %}<div class="text-xs text-muted-foreground">filestore de <a href="{% url 'instance-detail' v.instance.pk %}" class="text-primary hover:underline">{{ v.instance.name }}</a></div>{% endif %}
+                        </td>
+                        <td class="px-5 py-3 text-xs">{{ v.used_by|join:", "|default:"—" }}</td>
+                        <td class="px-5 py-3 text-muted-foreground">{{ v.created }}</td>
+                        <td class="px-5 py-3 text-right">
+                            {% if not v.used_by and not v.protected and not v.instance %}
+                            <form method="post" action="{% url 'docker-volume-remove' v.name %}" onsubmit="return confirm('¿Eliminar el volumen {{ v.name|escapejs }}? Sus datos se perderán.');">{% csrf_token %}
+                                <button title="Eliminar" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-accent"><i data-lucide="trash-2" class="h-4 w-4"></i></button></form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Networks -->
+    <section x-show="tab === 'networks'" class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+            <h2 class="font-semibold">Redes</h2>
+            <form method="post" action="{% url 'docker-prune' 'networks' %}" onsubmit="return confirm('¿Eliminar las redes sin contenedores?');">
+                {% csrf_token %}
+                <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                    <i data-lucide="eraser" class="mr-2 h-4 w-4"></i> Eliminar sin uso
+                </button>
+            </form>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-muted-foreground">
+                        <th class="h-11 px-5 font-medium">Nombre</th>
+                        <th class="h-11 px-5 font-medium">Driver</th>
+                        <th class="h-11 px-5 font-medium">Contenedores</th>
+                        <th class="h-11 px-5 font-medium text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in docker.networks %}
+                    <tr class="border-b last:border-0 hover:bg-muted/50">
+                        <td class="px-5 py-3">
+                            <div class="font-medium">{{ n.name }}</div>
+                            <div class="text-xs text-muted-foreground">{{ n.id }}{% if n.internal %} · interna{% endif %}{% if n.protected %} · sistema/panel{% endif %}</div>
+                        </td>
+                        <td class="px-5 py-3">{{ n.driver }}</td>
+                        <td class="px-5 py-3">{{ n.containers }}</td>
+                        <td class="px-5 py-3 text-right">
+                            {% if not n.protected and not n.containers %}
+                            <form method="post" action="{% url 'docker-network-remove' n.id %}" onsubmit="return confirm('¿Eliminar la red {{ n.name|escapejs }}?');">{% csrf_token %}
+                                <button title="Eliminar" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-accent"><i data-lucide="trash-2" class="h-4 w-4"></i></button></form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Logs modal -->
+    <div x-show="logs.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="logs.open = false" @keydown.escape.window="logs.open = false">
+        <div class="flex max-h-[85vh] w-full max-w-5xl flex-col rounded-xl border bg-card text-card-foreground shadow-xl">
+            <div class="flex items-center justify-between border-b px-5 py-3">
+                <h3 class="font-semibold" x-text="'Logs · ' + logs.name"></h3>
+                <button type="button" @click="logs.open = false" class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent" aria-label="Cerrar"><i data-lucide="x" class="h-4 w-4"></i></button>
+            </div>
+            <pre class="flex-1 overflow-auto bg-black p-4 text-xs leading-relaxed text-green-400" x-text="logs.text"></pre>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function dockerPage() {
+        const tabs = [
+            { key: 'containers', label: 'Contenedores' },
+            { key: 'images', label: 'Imágenes' },
+            { key: 'volumes', label: 'Volúmenes' },
+            { key: 'networks', label: 'Redes' },
+        ];
+        const fromHash = window.location.hash.slice(1);
+        return {
+            tabs,
+            tab: tabs.some(t => t.key === fromHash) ? fromHash : 'containers',
+            logs: { open: false, name: '', text: '' },
+            setTab(key) {
+                this.tab = key;
+                history.replaceState(null, '', '#' + key);
+            },
+            async showLogs(url) {
+                this.logs = { open: true, name: '…', text: 'Cargando…' };
+                try {
+                    const data = await (await fetch(url)).json();
+                    this.logs = { open: true, name: data.name || '', text: data.logs || data.error || '(sin logs)' };
+                } catch (e) {
+                    this.logs.text = 'No se pudieron cargar los logs';
+                }
+            },
+        };
+    }
+</script>
+{% endblock %}

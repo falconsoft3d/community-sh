@@ -14,6 +14,7 @@ class Task(models.Model):
         CREATE_FROM_BACKUP = 'create_from_backup', 'Crear desde respaldo'
         BACKUP_ALL = 'backup_all', 'Respaldar todas'
         INSTALL_MODULE = 'install_module', 'Instalar módulo'
+        PULL_IMAGE = 'pull_image', 'Descargar imagen'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'
