@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.29'
+VERSION = '1.0.30'
 
 CHANGELOG = [
+    {
+        'version': '1.0.30',
+        'date': '2026-10-28',
+        'notes': [
+            "GitHub: los tokens fine-grained (github_pat_) ya clonan repos privados; antes GitHub respondía 403 «Write access to repository not granted»",
+            "Tema: pantalla de inicio clara con bandas diagonales, iconos con sombra suave, búsqueda al empezar a escribir y la versión de Odoo abajo a la izquierda",
+        ],
+    },
     {
         'version': '1.0.29',
         'date': '2026-10-28',

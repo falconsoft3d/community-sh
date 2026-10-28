@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.29**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.30**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.30 — 2026-10-28
+
+- GitHub: los tokens fine-grained (github_pat_) ya clonan repos privados; antes GitHub respondía 403 «Write access to repository not granted»
+- Tema: pantalla de inicio clara con bandas diagonales, iconos con sombra suave, búsqueda al empezar a escribir y la versión de Odoo abajo a la izquierda
 
 ## 1.0.29 — 2026-10-28
 

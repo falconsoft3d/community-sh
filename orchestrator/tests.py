@@ -1011,7 +1011,7 @@ class RepositorySyncTests(DockerServiceTests):
             service = self._service()
             with mock.patch.object(service, '_github_token', return_value='ghp_secret'):
                 service.deploy_instance(self.instance)
-        self.assertEqual(clone.call_args.args[0], 'https://ghp_secret@github.com/OCA/web.git')
+        self.assertEqual(clone.call_args.args[0], 'https://x-access-token:ghp_secret@github.com/OCA/web.git')
         # Token used to clone, then removed from the remote
         fake_clone.repo.remotes.origin.set_url.assert_called_with('https://github.com/OCA/web.git')
         with open(f'{self.tmp}/instances/acme/conf/odoo.conf') as f:
@@ -1729,3 +1729,11 @@ class LandingProjectsTests(TestCase):
     @override_settings(TICKETPROO_API_TOKEN='')
     def test_hidden_without_token(self):
         self.assertNotContains(self.client.get('/'), 'id="proyectos"')
+
+
+class GitHubTokenURLTests(TestCase):
+    def test_token_goes_as_the_password(self):
+        from .services.github import authed_url
+        self.assertEqual(authed_url('https://github.com/acme/private', 'github_pat_X'),
+                         'https://x-access-token:github_pat_X@github.com/acme/private')
+        self.assertEqual(authed_url('https://github.com/acme/public', ''), 'https://github.com/acme/public')
