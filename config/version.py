@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.21'
+VERSION = '1.0.22'
 
 CHANGELOG = [
+    {
+        'version': '1.0.22',
+        'date': '2026-10-28',
+        'notes': [
+            "Landing: cabecera con una galaxia animada, cohetes que la cruzan y estrellas que deja el ratón (estática si el sistema pide reducir el movimiento)",
+            "Landing rediseñada: más aire entre secciones, titular con más peso, mockup con profundidad, funcionalidades agrupadas en 4 pilares, sección oscura flotante con bordes suaves y pasos de instalación en azul unidos por una línea",
+        ],
+    },
     {
         'version': '1.0.21',
         'date': '2026-10-28',

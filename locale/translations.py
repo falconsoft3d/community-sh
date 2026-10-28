@@ -7,6 +7,30 @@ fills the .po catalogs (run `manage.py makemessages -l es -l en` first, then
 
 # Strings written in Spanish in the code -> English
 ES_TO_EN = {
+    'Odoo %(first)s a %(last)s aislado, con su propio Postgres, red Docker y volumen de datos.':
+        'Isolated Odoo %(first)s to %(last)s, with its own Postgres, Docker network and data volume.',
+    'Uno o varios repositorios de GitHub por instancia': 'One or more GitHub repositories per instance',
+    'Duplica para staging con sus datos y adjuntos': 'Duplicate for staging with its data and attachments',
+    'Entra como admin sin escribir la contraseña': 'Log in as admin without typing the password',
+    'Tus datos, a salvo': 'Your data, safe',
+    'Restaura o crea una instancia desde cualquier backup': 'Restore or create an instance from any backup',
+    'Importa los backups nativos de Odoo': "Import Odoo's native backups",
+    'Cada usuario ve solo lo suyo; 2FA y bloqueo por intentos': 'Each user sees only their own; 2FA and lockout after failed attempts',
+    'Dominios y HTTPS automáticos': 'Automatic domains and HTTPS',
+    "Traefik enruta cada dominio y Let's Encrypt emite y renueva los certificados.":
+        "Traefik routes every domain and Let's Encrypt issues and renews the certificates.",
+    'Un subdominio por instancia: cliente-20-bd.tudominio.com': 'A subdomain per instance: client-20-db.yourdomain.com',
+    'Dominios propios para instancias y apps': 'Custom domains for instances and apps',
+    '%(count)s apps listas para lanzar junto a tu ERP': '%(count)s apps ready to launch next to your ERP',
+    'Automatiza con IA y API': 'Automate with AI and API',
+    'Pide cambios a la IA en el chat de cada instancia, conecta Claude por MCP o usa la API REST.':
+        "Ask the AI for changes in each instance's chat, connect Claude over MCP or use the REST API.",
+    'Módulos y cambios generados por IA, con deshacer': 'AI-generated modules and changes, with undo',
+    'Logs, consola y métricas de CPU y RAM': 'Logs, console and CPU and RAM metrics',
+    'Tareas en segundo plano con su progreso': 'Background tasks with their progress',
+    'Despliega en minutos': 'Deploy in minutes',
+    'Crea los registros A de tudominio.com y *.tudominio.com apuntando a la IP del servidor. El instalador te pedirá el dominio y un email, y Traefik genera los certificados HTTPS.':
+        "Create A records for yourdomain.com and *.yourdomain.com pointing to the server's IP. The installer asks for the domain and an email, and Traefik issues the HTTPS certificates.",
     'Nueva tarea': 'New task',
     'Hechas': 'Done',
     'Sin terminar': 'Unfinished',
@@ -250,7 +274,10 @@ EN_TO_ES = {
 
 
 def fill(po_path, translations):
-    """Set msgstr for the given msgids in a .po file (single-line entries as written by makemessages)."""
+    """
+    Set msgstr for the given msgids in a .po file. The dictionary wins over what the catalog
+    has, including entries makemessages guessed from an older string (fuzzy).
+    """
     import re
     text = open(po_path, encoding='utf-8').read()
 
@@ -260,16 +287,25 @@ def fill(po_path, translations):
     def escape(s):
         return s.replace('\\', '\\\\').replace('"', '\\"')
 
-    def replace(match):
-        msgid = unescape(''.join(re.findall(r'"((?:[^"\\]|\\.)*)"', match.group(1))))
-        if msgid in translations:
-            return f'msgid {match.group(1)}msgstr "{escape(translations[msgid])}"\n'
-        return match.group(0)
+    def strings(block):
+        return unescape(''.join(re.findall(r'"((?:[^"\\]|\\.)*)"', block)))
 
-    text = re.sub(r'msgid ((?:"(?:[^"\\]|\\.)*"\n)+)msgstr ""\n(?!")', replace, text)
-    # makemessages marks catalogs fuzzy until reviewed
-    text = text.replace('#, fuzzy\n', '', 1)
-    open(po_path, 'w', encoding='utf-8').write(text)
+    entries = text.split('\n\n')
+    for index, entry in enumerate(entries):
+        match = re.search(r'^msgid ((?:"(?:[^"\\]|\\.)*"\n)+)msgstr ((?:"(?:[^"\\]|\\.)*"\n?)+)$', entry, re.M)
+        if not match or entry.startswith('#~'):
+            continue
+        msgid = strings(match.group(1))
+        if not msgid or msgid not in translations:
+            continue
+        comments = [line for line in entry[:match.start()].splitlines()
+                    if not line.startswith('#|') and line != '#, fuzzy']
+        comments = [line.replace(', fuzzy', '') if line.startswith('#,') else line for line in comments]
+        entries[index] = '\n'.join(comments + [f'msgid {match.group(1)}msgstr "{escape(translations[msgid])}"'])
+    # makemessages marks the catalog header fuzzy until reviewed
+    entries[0] = entries[0].replace('#, fuzzy\n', '', 1)
+    text = '\n\n'.join(entries)
+    open(po_path, 'w', encoding='utf-8').write(text if text.endswith('\n') else text + '\n')
 
 
 if __name__ == '__main__':
