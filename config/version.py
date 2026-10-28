@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.9'
+VERSION = '1.0.10'
 
 CHANGELOG = [
+    {
+        'version': '1.0.10',
+        'date': '2026-10-28',
+        'notes': [
+            "Restaurar un backup ya funciona con Odoo en marcha: se detiene Odoo y se cierran sus conexiones antes de recrear la base (antes el borrado fallaba en silencio y la restauración no hacía nada)",
+            "La restauración informa del error si no puede borrar o crear la base; el filestore restaurado queda con los permisos correctos",
+        ],
+    },
     {
         'version': '1.0.9',
         'date': '2026-10-28',

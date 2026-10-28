@@ -1036,19 +1036,31 @@ class DockerService:
                 from ..permissions import validate_database_name
                 validate_database_name(odoo_db_name)
                 
+                # Odoo keeps connections open: stop it and close them, or DROP DATABASE fails
+                odoo_container = self._get_container(f"odoo_{instance.name}")
+                if odoo_container is not None and odoo_container.status == 'running':
+                    odoo_container.stop()
+                db_container.exec_run(
+                    ['psql', '-U', 'odoo', '-d', 'postgres', '-c',
+                     f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{odoo_db_name}' AND pid <> pg_backend_pid()"],
+                    environment={"PGPASSWORD": "odoo"}
+                )
+                
                 # Drop and recreate the database
                 print(f"Dropping and recreating database '{odoo_db_name}'...")
                 drop_result = db_container.exec_run(
-                    f'psql -U odoo -c "DROP DATABASE IF EXISTS \\"{odoo_db_name}\\""',
-                    environment={"PGPASSWORD": "odoo", "PGDATABASE": "postgres"}
+                    ['psql', '-U', 'odoo', '-d', 'postgres', '-c', f'DROP DATABASE IF EXISTS "{odoo_db_name}"'],
+                    environment={"PGPASSWORD": "odoo"}
                 )
-                print(f"Drop database result: {drop_result.exit_code} - {drop_result.output.decode()}")
+                if drop_result.exit_code != 0:
+                    raise Exception(f"No se pudo borrar la base de datos {odoo_db_name}: {drop_result.output.decode()}")
                 
                 create_result = db_container.exec_run(
-                    f'psql -U odoo -c "CREATE DATABASE \\"{odoo_db_name}\\""',
-                    environment={"PGPASSWORD": "odoo", "PGDATABASE": "postgres"}
+                    ['psql', '-U', 'odoo', '-d', 'postgres', '-c', f'CREATE DATABASE "{odoo_db_name}"'],
+                    environment={"PGPASSWORD": "odoo"}
                 )
-                print(f"Create database result: {create_result.exit_code} - {create_result.output.decode()}")
+                if create_result.exit_code != 0:
+                    raise Exception(f"No se pudo crear la base de datos {odoo_db_name}: {create_result.output.decode()}")
                 
                 # Restore dump to the database (without -c flag to avoid clean errors)
                 restore_result = db_container.exec_run(
@@ -1058,6 +1070,10 @@ class DockerService:
                 print(f"Database restore completed. Exit code: {restore_result.exit_code}")
                 if restore_result.output:
                     print(f"Restore output: {restore_result.output.decode()}")
+                
+                # Filestore steps exec into the Odoo container, so it must be running again
+                if odoo_container is not None:
+                    odoo_container.start()
                 
                 # 2. Restore filestore if exists
                 filestore_dir = os.path.join(temp_dir, 'filestore')
@@ -1121,7 +1137,7 @@ class DockerService:
                         # Create filestore directory in container
                         filestore_path = f"/var/lib/odoo/filestore/{odoo_db_name}"
                         print(f"Creating filestore directory in container: {filestore_path}")
-                        odoo_container.exec_run(f"mkdir -p {filestore_path}")
+                        odoo_container.exec_run(f"mkdir -p {filestore_path}", user='root')
                         
                         # Put filestore archive in container to the correct database folder
                         print(f"Uploading filestore to container...")
@@ -1133,7 +1149,7 @@ class DockerService:
                         
                         # Set correct ownership
                         print(f"Setting ownership...")
-                        odoo_container.exec_run(f"chown -R odoo:odoo {filestore_path}")
+                        odoo_container.exec_run(f"chown -R odoo:odoo {filestore_path}", user='root')
                         
                         print(f"Filestore restored successfully to container at {filestore_path}")
                     except Exception as e:

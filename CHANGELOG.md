@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.9**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.10**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.10 — 2026-10-28
+
+- Restaurar un backup ya funciona con Odoo en marcha: se detiene Odoo y se cierran sus conexiones antes de recrear la base (antes el borrado fallaba en silencio y la restauración no hacía nada)
+- La restauración informa del error si no puede borrar o crear la base; el filestore restaurado queda con los permisos correctos
 
 ## 1.0.9 — 2026-10-28
 
