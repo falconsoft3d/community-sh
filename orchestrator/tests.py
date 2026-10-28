@@ -22,9 +22,12 @@ class BaseTestCase(TestCase):
         self.alice_instance = Instance.objects.create(name='alice-odoo', owner=self.alice)
         self.bob_instance = Instance.objects.create(name='bob-odoo', owner=self.bob)
 
-        docker_patch = mock.patch('orchestrator.views.DockerService')
-        self.docker = docker_patch.start()
-        self.addCleanup(docker_patch.stop)
+        # One mock shared by every views module that talks to Docker
+        self.docker = mock.MagicMock()
+        for module in ('api', 'instances', 'backups'):
+            docker_patch = mock.patch(f'orchestrator.views.{module}.DockerService', self.docker)
+            docker_patch.start()
+            self.addCleanup(docker_patch.stop)
 
 
 class ApiPermissionTests(BaseTestCase):
@@ -243,7 +246,7 @@ class DockerServiceTests(TestCase):
         settings_patch = override_settings(BASE_DIR=self.tmp)
         settings_patch.enable()
         self.addCleanup(settings_patch.disable)
-        client_patch = mock.patch('orchestrator.services.docker.from_env')
+        client_patch = mock.patch('orchestrator.services.docker_service.docker.from_env')
         self.client = client_patch.start().return_value
         self.addCleanup(client_patch.stop)
 
