@@ -58,12 +58,15 @@ PUBLIC_IP=$(curl -4 -s ifconfig.me 2>/dev/null || curl -4 -s icanhazip.com 2>/de
 
 # Ask for main domain. The SSL certificates are issued for it, so its DNS must already point here.
 echo -e "\n${YELLOW}Domain Configuration:${NC}"
-echo -e "Before continuing, create a DNS A record for your domain pointing to this server: ${GREEN}${PUBLIC_IP}${NC}"
-echo -e "(and a wildcard *.yourdomain.com if instances will use subdomains). Let's Encrypt needs it to issue certificates."
+echo -e "Before continuing, create these DNS A records pointing to this server (${GREEN}${PUBLIC_IP}${NC}):"
+echo -e "  ${GREEN}yourdomain.com${NC}    -> the panel"
+echo -e "  ${GREEN}*.yourdomain.com${NC}  -> the instances, e.g. client-20-db.yourdomain.com"
+echo -e "Let's Encrypt checks them to issue the HTTPS certificates."
 echo -e "Enter your main domain (e.g., example.com) or press Enter to use IP only:"
 # Read from the terminal: with 'curl ... | sudo bash' stdin is the script itself
 read -p "Main Domain: " MAIN_DOMAIN < /dev/tty
 
+LETSENCRYPT_EMAIL=""
 # If no domain provided, use localhost as default
 if [ -z "$MAIN_DOMAIN" ]; then
     MAIN_DOMAIN="localhost"
@@ -80,6 +83,10 @@ else
         esac
     fi
     echo -e "${GREEN}✓ Domain configured: ${MAIN_DOMAIN}${NC}"
+    # Let's Encrypt sends expiry warnings here; Traefik renews the certificates on its own
+    while [ -z "$LETSENCRYPT_EMAIL" ]; do
+        read -p "Email for Let's Encrypt (certificate notices): " LETSENCRYPT_EMAIL < /dev/tty
+    done
 fi
 
 # Generate secrets
@@ -104,6 +111,9 @@ DATABASE_URL=postgres://postgres:${DB_PASSWORD}@db:5432/community_sh
 SERVER_IP=${PUBLIC_IP}
 MAIN_DOMAIN=${MAIN_DOMAIN}
 
+# HTTPS: Traefik requests the Let's Encrypt certificates (empty = HTTP only)
+LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+
 # Server IP: ${PUBLIC_IP}
 # Main Domain: ${MAIN_DOMAIN}
 # To restrict access, edit ALLOWED_HOSTS above
@@ -118,6 +128,10 @@ echo -e "\n${GREEN}[5/5] Starting services...${NC}"
 # Ensure instances directory exists and has correct permissions for Docker containers
 mkdir -p instances
 sudo chmod -R 777 instances
+# Traefik refuses a certificate store readable by others
+mkdir -p letsencrypt
+touch letsencrypt/acme.json
+chmod 600 letsencrypt/acme.json
 
 sudo docker compose down --remove-orphans 2>/dev/null || true
 sudo docker compose up -d --build
@@ -131,9 +145,9 @@ echo -e "${GREEN}   ✨ Installation Complete! ✨   ${NC}"
 echo -e "${BLUE}==================================================${NC}"
 echo -e "\n${GREEN}Access your application:${NC}"
 if [ "$MAIN_DOMAIN" != "localhost" ]; then
-    echo -e "  → http://${MAIN_DOMAIN}"
-    echo -e "  → http://www.${MAIN_DOMAIN}"
+    echo -e "  → https://${MAIN_DOMAIN}  (the certificate is issued on the first minute)"
     echo -e "  → http://${PUBLIC_IP}:8000"
+    echo -e "  Instances: https://<client>-<version>-<name>.${MAIN_DOMAIN}"
 else
     echo -e "  → http://${PUBLIC_IP}:8000"
 fi
@@ -156,5 +170,7 @@ echo -e "     ${GREEN}nano ${INSTALL_DIR}/.env${NC}"
 echo -e "     ${GREEN}cd ${INSTALL_DIR} && sudo docker compose restart${NC}"
 echo -e "\n${RED}Security:${NC}"
 echo -e "  ⚠  Consider setting specific ALLOWED_HOSTS in .env"
-echo -e "  ⚠  Configure SSL in admin panel for HTTPS"
+if [ "$MAIN_DOMAIN" = "localhost" ]; then
+    echo -e "  ⚠  No domain: HTTP only. Set MAIN_DOMAIN and LETSENCRYPT_EMAIL in .env for HTTPS"
+fi
 echo -e "${BLUE}==================================================${NC}"

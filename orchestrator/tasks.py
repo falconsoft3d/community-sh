@@ -131,10 +131,9 @@ def deploy(task):
     service = DockerService()
     service.deploy_instance(instance)
     notes += service.deploy_notes
-    if instance.custom_domain:
-        ok, message = TraefikService.generate_instance_config(instance)
-        if not ok:
-            notes.append(f'Traefik: {message}')
+    ok, message = TraefikService.generate_instance_config(instance)
+    if not ok:
+        notes.append(f'Traefik: {message}')
     if task.params.get('notify'):
         send_instance_notification('created', instance, task.created_by)
     return '\n'.join(notes + ['Instancia desplegada'])
@@ -162,8 +161,10 @@ def rename(task):
     old_name = instance.name
     instance.name = new_name
     DockerService().rename_instance(instance, old_name)
-    if instance.custom_domain:
-        TraefikService.generate_instance_config(instance)
+    from .services.domains import build_subdomain
+    instance.subdomain = build_subdomain(instance)
+    instance.save(update_fields=['subdomain'])
+    TraefikService.generate_instance_config(instance)
     return f'Nombre actualizado de "{old_name}" a "{new_name}"'
 
 

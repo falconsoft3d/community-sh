@@ -70,14 +70,13 @@ class DynamicAllowedHostsMiddleware(MiddlewareMixin):
         
         # Intentar obtener el dominio principal desde la configuración
         try:
-            from orchestrator.permissions import get_global_config
-            
-            config = get_global_config()
-            
-            if config and config.main_domain:
+            from orchestrator.services.domains import main_domain
+
+            domain = main_domain()
+            if domain:
                 # Agregar el dominio principal y su variante con www
-                allowed_hosts.append(config.main_domain)
-                allowed_hosts.append(f'www.{config.main_domain}')
+                allowed_hosts.append(domain)
+                allowed_hosts.append(f'www.{domain}')
         except Exception:
             # Si hay algún error (por ejemplo, la DB no está lista), continuar
             pass

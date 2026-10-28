@@ -123,21 +123,11 @@ def settings_view(request):
         # Also update if domain was removed (changed from something to empty)
         if section == 'domain' and (old_domain != config.main_domain or old_ssl_enabled != config.ssl_enabled):
             from ..traefik_service import TraefikService
-            # Generate dynamic Traefik configuration
-            success, msg = TraefikService.generate_dynamic_config(
-                domain=config.main_domain if config.main_domain else None,
-                ssl_enabled=config.ssl_enabled,
-                cert_path=config.ssl_certificate_path if config.ssl_enabled else None,
-                key_path=config.ssl_key_path if config.ssl_enabled else None
-            )
-            if success:
-                if config.main_domain:
-                    protocol = "HTTPS" if config.ssl_enabled and config.ssl_certificate_path else "HTTP"
-                    messages.info(request, f'✅ Dominio {config.main_domain} configurado con {protocol}. Traefik lo detectará automáticamente.')
-                else:
-                    messages.info(request, 'Dominio eliminado, volviendo a localhost.')
-            else:
-                messages.warning(request, f'Configuración guardada, pero hubo un problema con Traefik: {msg}')
+            # The instances' subdomains hang off the main domain: rewrite every route
+            result, *problems = TraefikService.configure_all()
+            messages.info(request, result)
+            for problem in problems:
+                messages.warning(request, f'Configuración guardada, pero hubo un problema con Traefik: {problem}')
         
         messages.success(request, 'Settings saved successfully')
         return redirect('settings')

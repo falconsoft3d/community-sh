@@ -1,6 +1,12 @@
 # Changelog
 
-Versión actual: **1.0.17**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.18**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.18 — 2026-10-28
+
+- El instalador deja HTTPS listo: pide el email de Let's Encrypt y Traefik emite y renueva los certificados del panel y de cada instancia
+- Cada instancia tiene su subdominio cliente-versión-nombre (p. ej. acme-20-produccion.tudominio.com), cubierto por un único registro DNS *.tudominio.com
+- Las rutas de Traefik se regeneran al arrancar y al cambiar el dominio en Settings; Odoo corre con proxy_mode detrás del proxy
 
 ## 1.0.17 — 2026-10-28
 

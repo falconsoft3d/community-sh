@@ -44,6 +44,14 @@ if not SECRET_KEY or SECRET_KEY.startswith('django-insecure') or SECRET_KEY.star
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+# Traefik terminates HTTPS and says so in X-Forwarded-Proto; without this Django sees
+# http:// requests and rejects the https:// Origin of every form (CSRF)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+MAIN_DOMAIN = os.environ.get('MAIN_DOMAIN', '').strip().lower()
+CSRF_TRUSTED_ORIGINS = [
+    f'{scheme}://{host}' for host in (MAIN_DOMAIN, f'www.{MAIN_DOMAIN}') for scheme in ('https', 'http')
+] if MAIN_DOMAIN and MAIN_DOMAIN != 'localhost' else []
+
 
 # Application definition
 

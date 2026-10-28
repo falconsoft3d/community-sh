@@ -1333,3 +1333,68 @@ class AdminLoginTests(BaseTestCase):
         self.assertEqual(response['Location'], reverse('instance-detail', args=[self.alice_instance.pk]))
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk])).status_code, 404)
+
+
+class DomainTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from .services.domains import clear_cache
+        clear_cache()
+        self.addCleanup(clear_cache)
+        self.base_dir = tempfile.mkdtemp()
+        base_dir = override_settings(BASE_DIR=self.base_dir)
+        base_dir.enable()
+        self.addCleanup(base_dir.disable)
+
+    def routes(self, instance):
+        import yaml
+        from .traefik_service import TraefikService
+        TraefikService.generate_instance_config(instance)
+        path = os.path.join(self.base_dir, 'traefik', f'instance-{instance.name}.yml')
+        return yaml.safe_load(open(path)) if os.path.exists(path) else None
+
+    def test_subdomain_is_client_version_name(self):
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        instance = Instance.objects.create(name='erp_prod', odoo_version='20.0', project=self.alice_project)
+        self.assertEqual(instance.subdomain, 'bob-20-erp-prod')
+        self.assertEqual(Instance.objects.create(name='solo', odoo_version='16.0').subdomain, '16-solo')
+        self.assertEqual(self.alice_instance.subdomain, 'acme-17-alice-odoo')  # no client: the project name
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': ''})
+    def test_http_routes_without_certificates(self):
+        self.assertEqual(self.alice_instance.url, 'http://acme-17-alice-odoo.hosting.example.com')
+        routers = self.routes(self.alice_instance)['http']['routers']
+        self.assertEqual([r['rule'] for r in routers.values()], ['Host(`acme-17-alice-odoo.hosting.example.com`)'])
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_lets_encrypt_per_host_and_redirect(self):
+        self.alice_instance.custom_domain = 'erp.acme.com'
+        self.alice_instance.save()
+        self.assertEqual(self.alice_instance.url, 'https://erp.acme.com')
+        config = self.routes(self.alice_instance)['http']
+        secure = {k: v for k, v in config['routers'].items() if k.endswith('-secure')}
+        self.assertEqual(sorted(r['rule'] for r in secure.values()), [
+            'Host(`acme-17-alice-odoo.hosting.example.com`)', 'Host(`erp.acme.com`)', 'Host(`www.erp.acme.com`)'])
+        self.assertTrue(all(r['tls'] == {'certResolver': 'letsencrypt'} for r in secure.values()))
+        self.assertTrue(all(r['middlewares'] == ['instance-alice-odoo-redirect-https']
+                            for k, r in config['routers'].items() if not k.endswith('-secure')))
+        self.assertEqual(config['services']['instance-alice-odoo-service']['loadBalancer']['servers'],
+                         [{'url': 'http://odoo_alice-odoo:8069'}])
+
+    def test_no_domain_keeps_ip_and_port(self):
+        self.alice_instance.port = 8123
+        self.assertEqual(self.alice_instance.url, 'http://127.0.0.1:8123')
+        self.assertIsNone(self.routes(self.alice_instance))
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_startup_command_writes_panel_and_instances(self):
+        import yaml
+        from io import StringIO
+        from django.core.management import call_command
+        call_command('configure_domain', stdout=StringIO())
+        traefik = os.path.join(self.base_dir, 'traefik')
+        panel = yaml.safe_load(open(os.path.join(traefik, 'dynamic.yml')))['http']['routers']
+        self.assertEqual(panel['app-domain-0-secure']['rule'], 'Host(`hosting.example.com`)')
+        self.assertTrue(os.path.exists(os.path.join(traefik, 'instance-bob-odoo.yml')))

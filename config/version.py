@@ -3,9 +3,18 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.17'
+VERSION = '1.0.18'
 
 CHANGELOG = [
+    {
+        'version': '1.0.18',
+        'date': '2026-10-28',
+        'notes': [
+            "El instalador deja HTTPS listo: pide el email de Let's Encrypt y Traefik emite y renueva los certificados del panel y de cada instancia",
+            "Cada instancia tiene su subdominio cliente-versión-nombre (p. ej. acme-20-produccion.tudominio.com), cubierto por un único registro DNS *.tudominio.com",
+            "Las rutas de Traefik se regeneran al arrancar y al cambiar el dominio en Settings; Odoo corre con proxy_mode detrás del proxy",
+        ],
+    },
     {
         'version': '1.0.17',
         'date': '2026-10-28',

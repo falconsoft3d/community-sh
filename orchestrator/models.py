@@ -54,6 +54,7 @@ class Instance(models.Model):
     ssl_certificate_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_key_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_email = models.EmailField(blank=True, null=True, help_text="Email for Let's Encrypt notifications")
+    subdomain = models.CharField(max_length=63, blank=True, default='', help_text="Subdomain under the platform domain (client-version-name)")
     
     # Database
     database_name = models.CharField(max_length=100, blank=True, null=True, validators=[validate_database_name], help_text="Nombre de la base de datos de Odoo (dejar vacío para auto-detección)")
@@ -64,13 +65,27 @@ class Instance(models.Model):
     def __str__(self):
         return f"{self.name} ({self.odoo_version})"
 
+    def save(self, *args, **kwargs):
+        from .services.domains import build_subdomain
+        if not self.subdomain:
+            self.subdomain = build_subdomain(self)
+            if kwargs.get('update_fields') is not None:
+                kwargs['update_fields'] = {*kwargs['update_fields'], 'subdomain'}
+        super().save(*args, **kwargs)
+
     @property
     def url(self):
         """Get the primary URL for accessing this instance"""
+        from .services.domains import acme_enabled, main_domain
         # Use custom domain if set
         if self.custom_domain:
-            protocol = "https" if self.ssl_enabled else "http"
+            protocol = "https" if self.ssl_enabled or acme_enabled() else "http"
             return f"{protocol}://{self.custom_domain}"
+
+        # Then its subdomain under the platform domain
+        domain = main_domain()
+        if domain and self.subdomain:
+            return f"{'https' if acme_enabled() else 'http'}://{self.subdomain}.{domain}"
         
         # Use SERVER_IP from .env if available, otherwise default to 127.0.0.1
         server_ip = os.environ.get('SERVER_IP', '127.0.0.1')

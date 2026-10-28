@@ -134,6 +134,8 @@ class DockerService:
             # Odoo 20 listens on 127.0.0.1 by default; Odoo 10 calls the option xmlrpc_interface
             "http_interface = 0.0.0.0\n"
             "xmlrpc_interface = 0.0.0.0\n"
+            # Behind Traefik: trust X-Forwarded-* so Odoo builds https:// URLs
+            "proxy_mode = True\n"
             + panel_login
         )
         config_path = os.path.join(config_dir, os.path.basename(odoo_config_target(instance.odoo_version)))
