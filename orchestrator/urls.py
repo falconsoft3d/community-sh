@@ -1,6 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
+    project_list,
+    project_create,
+    project_detail,
+    project_edit,
+    project_delete,
     InstanceViewSet, 
     InstanceListView, 
     InstanceCreateView, 
@@ -19,6 +24,7 @@ from .views import (
     instance_delete,
     instance_duplicate,
     metrics_view,
+    metrics_data,
     settings_view,
     run_auto_backups_view,
     about,
@@ -69,6 +75,11 @@ urlpatterns = [
     path('blog/<slug:slug>/', blog_detail, name='blog-detail'),
     
     # Dashboard routes (protected area)
+    path('projects/', project_list, name='project-list'),
+    path('project/new/', project_create, name='project-create'),
+    path('project/<int:pk>/', project_detail, name='project-detail'),
+    path('project/<int:pk>/edit/', project_edit, name='project-edit'),
+    path('project/<int:pk>/delete/', project_delete, name='project-delete'),
     path('instances/', InstanceListView.as_view(), name='instance-list'),
     path('instance/new/', InstanceCreateView.as_view(), name='instance-create'),
     path('instance/<int:pk>/', InstanceDetailView.as_view(), name='instance-detail'),
@@ -104,6 +115,7 @@ urlpatterns = [
     path('instance/<int:pk>/install-module/', instance_install_module, name='instance-install-module'),
     path('instance/<int:pk>/update-name/', instance_update_name, name='instance-update-name'),
     path('metrics/', metrics_view, name='metrics'),
+    path('metrics/data/', metrics_data, name='metrics-data'),
     path('settings/', settings_view, name='settings'),
     path('settings/generate-ssl/', generate_ssl_certificate, name='generate-ssl'),
     path('settings/run-auto-backups/', run_auto_backups_view, name='run-auto-backups'),

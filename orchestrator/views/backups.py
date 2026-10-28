@@ -157,6 +157,7 @@ def backup_create_instance(request, backup_id):
             status=Instance.Status.DEPLOYING,
             origin='backup',
             owner=backup.instance.owner or request.user,
+            project=backup.instance.project,
         )
         # The worker creates the GitHub branch, deploys and restores the backup
         enqueue(Task.Kind.CREATE_FROM_BACKUP, new_instance, request.user, backup_id=backup.pk)

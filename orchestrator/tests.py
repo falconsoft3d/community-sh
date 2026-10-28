@@ -19,8 +19,11 @@ class BaseTestCase(TestCase):
         self.alice = User.objects.create_user('alice', password='pass-12345')
         self.bob = User.objects.create_user('bob', password='pass-12345')
         self.config = GitHubConfig.objects.create(user=self.admin)
-        self.alice_instance = Instance.objects.create(name='alice-odoo', owner=self.alice)
-        self.bob_instance = Instance.objects.create(name='bob-odoo', owner=self.bob)
+        from .project_models import Project
+        self.alice_project = Project.objects.create(name='ACME', client='ACME S.L.', owner=self.alice)
+        self.bob_project = Project.objects.create(name='Globex', owner=self.bob)
+        self.alice_instance = Instance.objects.create(name='alice-odoo', owner=self.alice, project=self.alice_project)
+        self.bob_instance = Instance.objects.create(name='bob-odoo', owner=self.bob, project=self.bob_project)
 
         # One mock shared by every views module that talks to Docker
         self.docker = mock.MagicMock()
@@ -54,9 +57,14 @@ class ApiPermissionTests(BaseTestCase):
 
     def test_api_create_sets_owner(self):
         self.client.force_login(self.alice)
-        response = self.client.post('/api/instances/', {'name': 'alice-two', 'owner': self.bob.pk})
+        response = self.client.post('/api/instances/', {'name': 'alice-two', 'owner': self.bob.pk, 'project': self.alice_project.pk})
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Instance.objects.get(name='alice-two').owner, self.alice)
+
+    def test_api_requires_own_project(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.post('/api/instances/', {'name': 'no-project'}).status_code, 400)
+        self.assertEqual(self.client.post('/api/instances/', {'name': 'other', 'project': self.bob_project.pk}).status_code, 400)
 
 
 class InstanceOwnershipTests(BaseTestCase):
@@ -406,7 +414,7 @@ class TaskQueueTests(BaseTestCase):
         from .task_models import Task
         self.client.force_login(self.alice)
         with mock.patch('orchestrator.forms.requests'):
-            response = self.client.post(reverse('instance-create'), {'name': 'NewOne', 'odoo_version': '17.0'})
+            response = self.client.post(reverse('instance-create'), {'name': 'NewOne', 'odoo_version': '17.0', 'project': self.alice_project.pk})
         instance = Instance.objects.get(name='newone')
         self.assertRedirects(response, reverse('instance-detail', args=[instance.pk]), fetch_redirect_response=False)
         task = Task.objects.get(instance=instance)
@@ -530,3 +538,87 @@ class MediaServingTests(TestCase):
         match = resolve('/media/avatars/a.png')
         self.assertIs(match.func, serve)
         self.assertEqual(match.kwargs['path'], 'avatars/a.png')
+
+
+class PublishedPortTests(TestCase):
+    def test_waits_until_docker_publishes_the_port(self):
+        from .services import DockerService
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        container = mock.Mock()
+        states = iter([{}, {'8069/tcp': None}, {'8069/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '55004'}]}])
+        container.reload.side_effect = lambda: setattr(container, 'attrs', {'NetworkSettings': {'Ports': next(states)}})
+        with mock.patch('time.sleep'):
+            self.assertEqual(service._published_port(container, '8069/tcp'), 55004)
+
+
+
+class ProjectTests(BaseTestCase):
+    def test_projects_are_scoped_to_owner(self):
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('project-list'))
+        self.assertContains(response, 'ACME')
+        self.assertNotContains(response, 'Globex')
+        self.assertEqual(self.client.get(reverse('project-detail', args=[self.bob_project.pk])).status_code, 404)
+
+    def test_create_and_detail_show_project_instances(self):
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('project-create'), {'name': 'Initech', 'client': 'Initech Inc.'})
+        from .project_models import Project
+        project = Project.objects.get(name='Initech')
+        self.assertEqual(project.owner, self.alice)
+        self.assertRedirects(response, reverse('project-detail', args=[project.pk]), fetch_redirect_response=False)
+        detail = self.client.get(reverse('project-detail', args=[self.alice_project.pk]))
+        self.assertContains(detail, 'alice-odoo')
+
+    def test_duplicate_project_name_is_rejected(self):
+        self.client.force_login(self.alice)
+        self.client.post(reverse('project-create'), {'name': 'acme'})
+        from .project_models import Project
+        self.assertEqual(Project.objects.filter(owner=self.alice).count(), 1)
+
+    def test_instance_form_cannot_use_other_users_project(self):
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.forms.requests'):
+            self.client.post(reverse('instance-create'), {'name': 'sneaky', 'odoo_version': '17.0', 'project': self.bob_project.pk})
+            self.client.post(reverse('instance-create'), {'name': 'orphan', 'odoo_version': '17.0'})
+        self.assertFalse(Instance.objects.filter(name__in=['sneaky', 'orphan']).exists())
+
+    def test_project_with_instances_cannot_be_deleted(self):
+        self.client.force_login(self.alice)
+        self.client.post(reverse('project-delete', args=[self.alice_project.pk]))
+        from .project_models import Project
+        self.assertTrue(Project.objects.filter(pk=self.alice_project.pk).exists())
+
+    def test_instance_list_filters_by_project_and_shows_project_name(self):
+        from .project_models import Project
+        other = Project.objects.create(name='Other', owner=self.alice)
+        Instance.objects.create(name='alice-other', owner=self.alice, project=other)
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('instance-list') + f'?project={other.pk}')
+        self.assertContains(response, 'alice-other')
+        self.assertNotContains(response, 'alice-odoo')
+        self.assertContains(response, 'Other /')
+
+
+class EnsureImageTests(TestCase):
+    def setUp(self):
+        import docker
+        patcher = mock.patch('orchestrator.services.docker_service.docker.from_env')
+        self.client = patcher.start().return_value
+        self.addCleanup(patcher.stop)
+        self.client.images.get.side_effect = docker.errors.ImageNotFound('missing')
+        from .services import DockerService
+        self.service = DockerService()
+
+    def test_falls_back_to_amd64_when_no_native_build(self):
+        import docker
+        self.client.images.pull.side_effect = [docker.errors.APIError('no matching manifest for linux/arm64/v8'), None]
+        self.assertEqual(self.service._ensure_image('odoo:10.0'), 'linux/amd64')
+        self.client.images.pull.assert_called_with('odoo', tag='10.0', platform='linux/amd64')
+
+    def test_other_pull_errors_are_reported(self):
+        import docker
+        self.client.images.pull.side_effect = docker.errors.APIError('manifest unknown')
+        with self.assertRaisesMessage(Exception, 'No se pudo descargar la imagen odoo:99.0'):
+            self.service._ensure_image('odoo:99.0')

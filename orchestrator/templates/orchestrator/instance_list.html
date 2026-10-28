@@ -1,9 +1,18 @@
 {% extends "orchestrator/base.html" %}
 
 {% block content %}
-<div class="flex items-center justify-between">
+<div class="flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-lg font-semibold md:text-2xl">Instances</h1>
-    <a href="{% url 'instance-create' %}"
+    <form method="get" class="ml-auto">
+        <select name="project" onchange="this.form.submit()" aria-label="Filtrar por proyecto"
+            class="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">Todos los proyectos</option>
+            {% for project in projects %}
+            <option value="{{ project.pk }}" {% if selected_project == project.pk|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    <a href="{% url 'instance-create' %}{% if selected_project %}?project={{ selected_project }}{% endif %}"
         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
         <i data-lucide="plus" class="mr-2 h-4 w-4"></i> New Instance
     </a>
@@ -34,6 +43,11 @@
                     </td>
                     <td class="p-4 align-middle font-medium cursor-pointer"
                         onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
+                        {% if instance.project %}
+                        <a href="{% url 'project-detail' instance.project.pk %}" onclick="event.stopPropagation()"
+                            class="text-muted-foreground font-normal hover:text-foreground hover:underline">{{ instance.project.name }}</a>
+                        <span class="text-muted-foreground font-normal">/</span>
+                        {% endif %}
                         {{ instance.name }}
                         {% if instance.github_repo %}
                         <div class="text-xs text-muted-foreground mt-0.5">{{ instance.github_repo }}</div>

@@ -8,6 +8,13 @@ from .public import (
     blog_detail,
     about,
 )
+from .projects import (
+    project_list,
+    project_create,
+    project_detail,
+    project_edit,
+    project_delete,
+)
 from .instances import (
     dashboard,
     InstanceListView,
@@ -38,6 +45,7 @@ from .backups import (
 )
 from .platform import (
     metrics_view,
+    metrics_data,
     settings_view,
     run_auto_backups_view,
     generate_ssl_certificate,
@@ -52,6 +60,11 @@ from .users import (
 )
 
 __all__ = [
+    'project_list',
+    'project_create',
+    'project_detail',
+    'project_edit',
+    'project_delete',
     'InstanceViewSet',
     'home',
     'blog_list',
@@ -82,6 +95,7 @@ __all__ = [
     'backup_restore_action',
     'backup_create_instance',
     'metrics_view',
+    'metrics_data',
     'settings_view',
     'run_auto_backups_view',
     'generate_ssl_certificate',

@@ -17,6 +17,7 @@ from ..permissions import (
     domain_in_use,
     get_instance_for_user,
     instances_for,
+    projects_for,
     validate_domain,
     validate_resource_name,
 )
@@ -35,7 +36,16 @@ class InstanceListView(LoginRequiredMixin, ListView):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        return instances_for(self.request.user).order_by(*self.ordering)
+        queryset = instances_for(self.request.user).select_related('project').order_by(*self.ordering)
+        if self.request.GET.get('project'):
+            queryset = queryset.filter(project_id=self.request.GET['project'])
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['projects'] = projects_for(self.request.user)
+        context['selected_project'] = self.request.GET.get('project', '')
+        return context
 
 
 class InstanceCreateView(LoginRequiredMixin, CreateView):
@@ -47,6 +57,13 @@ class InstanceCreateView(LoginRequiredMixin, CreateView):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
         return kwargs
+    
+    def get_initial(self):
+        # "Nueva instancia" from a project page preselects that project
+        initial = super().get_initial()
+        if self.request.GET.get('project'):
+            initial['project'] = self.request.GET['project']
+        return initial
     
     def get_success_url(self):
         return reverse_lazy('instance-detail', args=[self.object.pk])

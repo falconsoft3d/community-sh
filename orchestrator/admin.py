@@ -4,11 +4,12 @@ from .config_models import GitHubConfig
 from .backup_models import Backup
 from .blog_models import BlogPost
 from .task_models import Task
+from .project_models import Project
 
 @admin.register(Instance)
 class InstanceAdmin(admin.ModelAdmin):
-    list_display = ['name', 'owner', 'odoo_version', 'status', 'created_at']
-    list_filter = ['status', 'odoo_version', 'owner']
+    list_display = ['name', 'project', 'owner', 'odoo_version', 'status', 'created_at']
+    list_filter = ['status', 'odoo_version', 'owner', 'project']
     search_fields = ['name']
 
 @admin.register(GitHubConfig)
@@ -48,3 +49,9 @@ class TaskAdmin(admin.ModelAdmin):
     list_display = ['id', 'kind', 'status', 'instance', 'created_by', 'created_at', 'finished_at']
     list_filter = ['status', 'kind']
     readonly_fields = ['created_at', 'started_at', 'finished_at']
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ['name', 'client', 'owner', 'created_at']
+    list_filter = ['owner']
+    search_fields = ['name', 'client']

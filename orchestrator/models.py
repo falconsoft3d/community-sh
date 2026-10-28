@@ -21,6 +21,7 @@ class Instance(models.Model):
 
     name = models.CharField(max_length=100, unique=True, validators=[validate_resource_name], help_text="Subdomain name")
     owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='instances')
+    project = models.ForeignKey('Project', on_delete=models.PROTECT, null=True, blank=True, related_name='instances')
     odoo_version = models.CharField(max_length=10, choices=[
         ('10.0', '10.0'),
         ('11.0', '11.0'),
@@ -32,6 +33,7 @@ class Instance(models.Model):
         ('17.0', '17.0'),
         ('18.0', '18.0'),
         ('19.0', '19.0'),
+        ('20.0', '20.0'),
     ], default='17.0')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DEPLOYING)
     origin = models.CharField(max_length=50, blank=True, null=True, help_text="Origin of instance creation (manual, backup, duplicate)")
@@ -111,6 +113,7 @@ from .config_models import GitHubConfig
 from .backup_models import Backup
 from .blog_models import BlogPost
 from .task_models import Task
+from .project_models import Project
 
 class UserProfile(models.Model):
     """Extended user profile with additional information"""

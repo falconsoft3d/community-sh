@@ -1,7 +1,8 @@
 from django import forms
 from .models import Instance
 from .config_models import GitHubConfig
-from .permissions import domain_in_use
+from .permissions import domain_in_use, projects_for
+from .project_models import Project
 import requests
 
 class InstanceForm(forms.ModelForm):
@@ -19,7 +20,7 @@ class InstanceForm(forms.ModelForm):
     
     class Meta:
         model = Instance
-        fields = ['name', 'odoo_version', 'github_repo', 'github_branch', 'database_name', 'custom_domain']
+        fields = ['project', 'name', 'odoo_version', 'github_repo', 'github_branch', 'database_name', 'custom_domain']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'mi-empresa'}),
             'github_branch': forms.TextInput(attrs={'placeholder': 'main'}),
@@ -27,6 +28,7 @@ class InstanceForm(forms.ModelForm):
             'custom_domain': forms.TextInput(attrs={'placeholder': 'ejemplo.midominio.com'}),
         }
         labels = {
+            'project': 'Proyecto',
             'custom_domain': 'Dominio Personalizado (opcional)',
         }
         help_texts = {
@@ -36,6 +38,13 @@ class InstanceForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
+        # Every instance lives in one of the user's projects
+        self.fields['project'].required = True
+        self.fields['project'].empty_label = '-- Selecciona un proyecto --'
+        self.fields['project'].help_text = 'Cliente o proyecto al que pertenece la instancia'
+        if user:
+            self.fields['project'].queryset = projects_for(user)
         
         # Get repositories from GitHub
         repos = [('', '-- Ninguno --')]
@@ -85,3 +94,32 @@ class InstanceForm(forms.ModelForm):
         if domain and domain_in_use(domain, exclude_instance=self.instance if self.instance.pk else None):
             raise forms.ValidationError('Este dominio ya está en uso.')
         return domain or None
+
+
+class ProjectForm(forms.ModelForm):
+    class Meta:
+        model = Project
+        fields = ['name', 'client', 'description']
+        labels = {'name': 'Nombre', 'client': 'Cliente', 'description': 'Descripción'}
+        widgets = {
+            'name': forms.TextInput(attrs={'placeholder': 'Implantación ACME'}),
+            'client': forms.TextInput(attrs={'placeholder': 'ACME S.L.'}),
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, owner=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.owner = owner or getattr(self.instance, 'owner', None)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = (
+                'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background '
+                'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring '
+                'focus-visible:ring-offset-2' + (' h-10' if not isinstance(field.widget, forms.Textarea) else '')
+            )
+
+    def clean_name(self):
+        name = self.cleaned_data['name'].strip()
+        duplicates = Project.objects.filter(owner=self.owner, name__iexact=name).exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise forms.ValidationError('Ya tienes un proyecto con ese nombre.')
+        return name

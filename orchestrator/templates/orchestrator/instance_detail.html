@@ -11,11 +11,17 @@
     <div class="flex items-center justify-between">
         <div>
             <nav class="text-sm text-muted-foreground mb-1">
-                <a href="{% url 'instance-list' %}" class="hover:text-foreground">Instances</a>
+                <a href="{% url 'project-list' %}" class="hover:text-foreground">Proyectos</a>
                 <span class="mx-1">/</span>
+                {% if object.project %}
+                <a href="{% url 'project-detail' object.project.pk %}" class="hover:text-foreground">{{ object.project.name }}</a>
+                <span class="mx-1">/</span>
+                {% endif %}
                 <span class="text-foreground font-medium">{{ object.name }}</span>
             </nav>
-            <h1 class="text-3xl font-bold tracking-tight">{{ object.name }}</h1>
+            <h1 class="text-3xl font-bold tracking-tight">
+                {% if object.project %}<a href="{% url 'project-detail' object.project.pk %}" class="text-muted-foreground font-semibold hover:text-foreground">{{ object.project.name }}</a> <span class="text-muted-foreground font-semibold">/</span> {% endif %}{{ object.name }}
+            </h1>
         </div>
         <div class="flex items-center gap-2">
             <form action="{% url 'instance-deploy' object.pk %}" method="post">
@@ -270,7 +276,7 @@
                     <div class="text-sm text-muted-foreground">
                         {% if object.github_repo %}
                         <div class="flex items-center gap-2">
-                            <i data-lucide="github" class="h-4 w-4"></i>
+                            {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4" %}
                             <span class="truncate">{{ object.github_repo }}</span>
                         </div>
                         <div class="flex items-center gap-2 mt-1 ml-6">

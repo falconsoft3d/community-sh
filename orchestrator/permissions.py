@@ -85,6 +85,17 @@ def instances_for(user):
     return Instance.objects.filter(owner=user)
 
 
+def projects_for(user):
+    from .project_models import Project
+    if user.is_superuser:
+        return Project.objects.all()
+    return Project.objects.filter(owner=user)
+
+
+def get_project_for_user(user, pk):
+    return get_object_or_404(projects_for(user), pk=pk)
+
+
 def get_instance_for_user(user, pk):
     return get_object_or_404(instances_for(user), pk=pk)
 

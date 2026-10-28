@@ -1,0 +1,105 @@
+{% extends "orchestrator/base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <nav class="text-sm text-muted-foreground mb-1">
+                <a href="{% url 'project-list' %}" class="hover:text-foreground">Proyectos</a>
+                <span class="mx-1">/</span>
+                <span class="text-foreground font-medium">{{ project.name }}</span>
+            </nav>
+            <h1 class="text-3xl font-bold tracking-tight">{{ project.name }}</h1>
+            <p class="mt-1 text-muted-foreground">
+                <i data-lucide="building-2" class="inline h-4 w-4 align-text-bottom"></i>
+                {{ project.client|default:"Sin cliente" }}
+            </p>
+            {% if project.description %}
+            <p class="mt-2 max-w-2xl text-sm text-muted-foreground">{{ project.description|linebreaksbr }}</p>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'project-edit' project.pk %}"
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                <i data-lucide="pencil" class="mr-2 h-4 w-4"></i> Editar
+            </a>
+            {% if not instances %}
+            <form method="post" action="{% url 'project-delete' project.pk %}"
+                onsubmit="return confirm('¿Eliminar el proyecto {{ project.name|escapejs }}?');">
+                {% csrf_token %}
+                <button type="submit"
+                    class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
+                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Eliminar
+                </button>
+            </form>
+            {% endif %}
+            <a href="{% url 'instance-create' %}?project={{ project.pk }}"
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Nueva instancia
+            </a>
+        </div>
+    </div>
+
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="border-b px-5 py-4">
+            <h2 class="font-semibold">Instancias</h2>
+        </div>
+        {% if instances %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-muted-foreground">
+                        <th class="h-11 px-5 font-medium">Instancia</th>
+                        <th class="h-11 px-5 font-medium">Versión</th>
+                        <th class="h-11 px-5 font-medium">Estado</th>
+                        <th class="h-11 px-5 font-medium">Acceso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instance in instances %}
+                    <tr class="border-b last:border-0 hover:bg-muted/50">
+                        <td class="px-5 py-3">
+                            <a href="{% url 'instance-detail' instance.pk %}" class="font-medium hover:underline">
+                                <span class="text-muted-foreground font-normal">{{ project.name }} /</span> {{ instance.name }}
+                            </a>
+                            {% if instance.custom_domain %}
+                            <div class="text-xs text-muted-foreground">{{ instance.custom_domain }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-3">{{ instance.odoo_version }}</td>
+                        <td class="px-5 py-3">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold
+                                {% if instance.status == 'running' %}bg-green-100 text-green-800
+                                {% elif instance.status == 'error' %}bg-red-100 text-red-800
+                                {% elif instance.status == 'deploying' %}bg-blue-100 text-blue-800
+                                {% else %}bg-muted text-muted-foreground{% endif %}">
+                                {{ instance.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3">
+                            {% if instance.status == 'running' and instance.port or instance.custom_domain %}
+                            <a href="{{ instance.url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline">
+                                Abrir <i data-lucide="external-link" class="h-3 w-3"></i>
+                            </a>
+                            {% else %}
+                            <span class="text-muted-foreground">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-10 text-center">
+            <i data-lucide="server" class="mx-auto h-8 w-8 text-muted-foreground"></i>
+            <p class="mt-2 text-sm text-muted-foreground">Este proyecto todavía no tiene instancias.</p>
+            <a href="{% url 'instance-create' %}?project={{ project.pk }}"
+                class="mt-4 inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Desplegar la primera instancia
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
