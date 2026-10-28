@@ -55,9 +55,25 @@ class DockerService:
                 "addons_path = /mnt/extra-addons\n"
                 f"data_dir = {ODOO_DATA_DIR}\n"
                 f"admin_passwd = {instance.master_password}\n"
+                # In the config (not only entrypoint args) so `odoo` run via exec can connect too
+                f"db_host = db_{instance.name}\n"
+                "db_port = 5432\n"
+                "db_user = odoo\n"
+                "db_password = odoo\n"
             )
         os.chmod(config_path, 0o644)
         return config_path
+
+    def _list_user_databases(self, db_container):
+        """Odoo databases in an instance's Postgres (everything except system DBs)."""
+        result = db_container.exec_run(
+            "psql -U odoo -d postgres -t -A -c \"SELECT datname FROM pg_database WHERE datistemplate = false;\"",
+            environment={"PGPASSWORD": "odoo"}
+        )
+        if result.exit_code != 0:
+            raise Exception(f"No se pudo listar las bases de datos: {result.output.decode('utf-8')}")
+        databases = [db.strip() for db in result.output.decode('utf-8').split('\n') if db.strip()]
+        return [db for db in databases if db not in ('postgres', 'template0', 'template1')]
 
     def _wait_for_postgres(self, db_container, timeout=60):
         import time
@@ -182,16 +198,16 @@ class DockerService:
             if is_redeploy:
                 print("Redeploy detected. Running module update...")
                 try:
-                    # Wait a bit for Odoo to start
-                    import time
-                    time.sleep(5)
+                    db_container = self.client.containers.get(db_container_name)
+                    self._wait_for_postgres(db_container)
+                    databases = [instance.database_name] if instance.database_name else self._list_user_databases(db_container)
                     
-                    # Run update all command
-                    result = odoo_container.exec_run(
-                        "odoo -u all -d postgres --stop-after-init",
-                        detach=False
-                    )
-                    print(f"Module update output: {result.output.decode('utf-8')}")
+                    for database in databases:
+                        result = odoo_container.exec_run(
+                            f"odoo -u all -d {database} --stop-after-init",
+                            detach=False
+                        )
+                        print(f"Module update for {database} (exit {result.exit_code}): {result.output.decode('utf-8')[-2000:]}")
                     
                     # Restart container to run normally
                     odoo_container.restart()
@@ -876,6 +892,10 @@ class DockerService:
                 else:
                     odoo_db_name = metadata.get('database_name', instance.name.replace('-', '_'))
                     print(f"Using metadata/default database name: {odoo_db_name}")
+                
+                # The name comes from an uploaded file and ends up in psql/pg_restore commands
+                from .permissions import validate_database_name
+                validate_database_name(odoo_db_name)
                 
                 # Drop and recreate the database
                 print(f"Dropping and recreating database '{odoo_db_name}'...")

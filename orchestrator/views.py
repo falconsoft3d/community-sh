@@ -1209,6 +1209,8 @@ def backup_create_instance(request, backup_id):
             if not original_db_name:
                 # Fallback: usar el nombre de la instancia si no hay metadata
                 original_db_name = new_name.replace('-', '_')
+            from .permissions import validate_database_name
+            validate_database_name(original_db_name)
             
             # Create new instance
             new_instance = Instance.objects.create(

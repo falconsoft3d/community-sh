@@ -15,6 +15,8 @@ from rest_framework import permissions
 # Nombre de recurso: se usa en nombres de contenedores, redes, rutas de disco
 # y labels de Traefik, así que solo admitimos minúsculas, números y guiones.
 RESOURCE_NAME_RE = re.compile(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')
+# Same rule Odoo's database manager enforces
+DATABASE_NAME_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$')
 DOMAIN_RE = re.compile(r'^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$')
 
 
@@ -23,6 +25,11 @@ def validate_resource_name(value):
         raise ValidationError(
             'Solo se permiten letras minúsculas, números y guiones (sin empezar ni terminar en guion, máx. 63).'
         )
+
+
+def validate_database_name(value):
+    if value and not DATABASE_NAME_RE.match(value):
+        raise ValidationError('Nombre de base de datos inválido (letras, números, "_", "." y "-").')
 
 
 def validate_domain(value):

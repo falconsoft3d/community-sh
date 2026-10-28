@@ -6,7 +6,7 @@ import secrets
 import socket
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .permissions import validate_resource_name, validate_domain
+from .permissions import validate_resource_name, validate_domain, validate_database_name
 
 
 def generate_master_password():
@@ -54,7 +54,7 @@ class Instance(models.Model):
     ssl_email = models.EmailField(blank=True, null=True, help_text="Email for Let's Encrypt notifications")
     
     # Database
-    database_name = models.CharField(max_length=100, blank=True, null=True, help_text="Nombre de la base de datos de Odoo (dejar vacío para auto-detección)")
+    database_name = models.CharField(max_length=100, blank=True, null=True, validators=[validate_database_name], help_text="Nombre de la base de datos de Odoo (dejar vacío para auto-detección)")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
