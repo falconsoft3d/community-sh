@@ -1,6 +1,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
+    mcp_endpoint,
+    mcp_token_create,
+    mcp_token_revoke,
     docker_overview,
     docker_container_action,
     docker_container_logs,
@@ -144,6 +147,9 @@ urlpatterns = [
     path('docker/prune/<str:kind>/', docker_prune, name='docker-prune'),
     path('metrics/data/', metrics_data, name='metrics-data'),
     path('settings/', settings_view, name='settings'),
+    path('settings/mcp/tokens/', mcp_token_create, name='mcp-token-create'),
+    path('settings/mcp/tokens/<int:token_id>/revoke/', mcp_token_revoke, name='mcp-token-revoke'),
+    path('mcp/', mcp_endpoint, name='mcp'),
     path('settings/ai/test/', settings_ai_test, name='settings-ai-test'),
     path('settings/generate-ssl/', generate_ssl_certificate, name='generate-ssl'),
     path('settings/run-auto-backups/', run_auto_backups_view, name='run-auto-backups'),

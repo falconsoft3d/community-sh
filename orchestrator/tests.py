@@ -913,3 +913,74 @@ class RepositorySyncTests(DockerServiceTests):
             self.assertIn('addons_path = /mnt/extra-addons,/mnt/repos/OCA-web', f.read())
         odoo_call = [c for c in self.client.containers.run.call_args_list if c.args[0].startswith('odoo:')][0]
         self.assertEqual(odoo_call.kwargs['volumes'][f'{self.tmp}/instances/acme/repos']['bind'], '/mnt/repos')
+
+
+class MCPServerTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.config.mcp_enabled = True
+        self.config.save()
+        from .mcp_models import MCPToken
+        self.token_record, self.token = MCPToken.issue(self.alice, 'test')
+
+    def rpc(self, method, params=None, token=None, request_id=1):
+        import json
+        body = {'jsonrpc': '2.0', 'method': method, 'params': params or {}}
+        if request_id is not None:
+            body['id'] = request_id
+        return self.client.post('/mcp/', json.dumps(body), content_type='application/json',
+                                HTTP_AUTHORIZATION=f'Bearer {token or self.token}')
+
+    def test_token_is_stored_hashed(self):
+        self.assertNotEqual(self.token_record.token_hash, self.token)
+        self.assertTrue(self.token.startswith('csh_'))
+
+    def test_auth_and_enable_switch(self):
+        self.assertEqual(self.rpc('ping', token='csh_wrong').status_code, 401)
+        self.assertEqual(self.client.get('/mcp/').status_code, 405)
+        self.config.mcp_enabled = False
+        self.config.save()
+        self.assertEqual(self.rpc('ping').status_code, 404)
+
+    def test_initialize_and_list_tools(self):
+        init = self.rpc('initialize', {'protocolVersion': '2025-06-18', 'capabilities': {}, 'clientInfo': {'name': 'claude'}}).json()
+        self.assertEqual(init['result']['protocolVersion'], '2025-06-18')
+        self.assertIn('tools', init['result']['capabilities'])
+        self.assertEqual(self.rpc('notifications/initialized', request_id=None).status_code, 202)
+        names = {t['name'] for t in self.rpc('tools/list').json()['result']['tools']}
+        self.assertTrue({'list_instances', 'deploy_instance', 'create_backup', 'get_task'} <= names)
+
+    def test_tools_respect_permissions(self):
+        import json
+        result = self.rpc('tools/call', {'name': 'list_instances', 'arguments': {}}).json()['result']
+        self.assertEqual([i['name'] for i in json.loads(result['content'][0]['text'])], ['alice-odoo'])
+        denied = self.rpc('tools/call', {'name': 'deploy_instance', 'arguments': {'instance': 'bob-odoo'}}).json()['result']
+        self.assertTrue(denied['isError'])
+
+    def test_deploy_queues_a_task_and_get_task_reports_it(self):
+        import json
+        out = json.loads(self.rpc('tools/call', {'name': 'deploy_instance', 'arguments': {'instance': 'alice-odoo'}}).json()['result']['content'][0]['text'])
+        task = json.loads(self.rpc('tools/call', {'name': 'get_task', 'arguments': {'task_id': out['task_id']}}).json()['result']['content'][0]['text'])
+        self.assertEqual((task['kind'], task['status'], task['instance']), ('deploy', 'pending', 'alice-odoo'))
+
+    def test_batch_and_unknown_method(self):
+        import json
+        response = self.client.post('/mcp/', json.dumps([
+            {'jsonrpc': '2.0', 'id': 1, 'method': 'ping'},
+            {'jsonrpc': '2.0', 'id': 2, 'method': 'nope'},
+        ]), content_type='application/json', HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        replies = {r['id']: r for r in response.json()}
+        self.assertEqual(replies[1]['result'], {})
+        self.assertEqual(replies[2]['error']['code'], -32601)
+
+    def test_settings_creates_and_revokes_tokens(self):
+        from .mcp_models import MCPToken
+        self.client.force_login(self.alice)
+        self.client.post(reverse('mcp-token-create'), {'name': 'portátil'})
+        created = MCPToken.objects.get(user=self.alice, name='portátil')
+        self.client.post(reverse('mcp-token-revoke', args=[created.pk]))
+        self.assertFalse(MCPToken.objects.filter(pk=created.pk).exists())
+        # Can't revoke someone else's token
+        self.client.force_login(self.bob)
+        self.client.post(reverse('mcp-token-revoke', args=[self.token_record.pk]))
+        self.assertTrue(MCPToken.objects.filter(pk=self.token_record.pk).exists())

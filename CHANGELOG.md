@@ -1,6 +1,12 @@
 # Changelog
 
-Versión actual: **1.0.3**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.4**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.4 — 2026-10-28
+
+- Servidor MCP para Claude (Claude Code, Claude Desktop) en /mcp/: listar proyectos e instancias, ver logs, desplegar, reiniciar, detener, crear y listar backups y seguir tareas
+- Settings → MCP (Claude): activación por el administrador, tokens personales (se guardan cifrados con hash, se muestran una sola vez) e instrucciones de conexión
+- Claude actúa con los permisos del usuario del token: un cliente solo ve y opera sus proyectos
 
 ## 1.0.3 — 2026-10-28
 

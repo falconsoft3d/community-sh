@@ -3,9 +3,18 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 
 CHANGELOG = [
+    {
+        'version': '1.0.4',
+        'date': '2026-10-28',
+        'notes': [
+            'Servidor MCP para Claude (Claude Code, Claude Desktop) en /mcp/: listar proyectos e instancias, ver logs, desplegar, reiniciar, detener, crear y listar backups y seguir tareas',
+            'Settings → MCP (Claude): activación por el administrador, tokens personales (se guardan cifrados con hash, se muestran una sola vez) e instrucciones de conexión',
+            'Claude actúa con los permisos del usuario del token: un cliente solo ve y opera sus proyectos',
+        ],
+    },
     {
         'version': '1.0.3',
         'date': '2026-10-28',

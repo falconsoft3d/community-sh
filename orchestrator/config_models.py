@@ -31,6 +31,9 @@ class GitHubConfig(models.Model):
     )
     auto_backup_frequency_value = models.IntegerField(default=5, help_text="How often to run backups (e.g., every 5 days)")
     auto_backup_retention = models.IntegerField(default=5, help_text="Number of backups to keep. Older backups will be deleted automatically")
+    # MCP server for Claude (Claude Code, Claude Desktop...)
+    mcp_enabled = models.BooleanField(default=False, help_text="Expose the MCP server at /mcp/")
+    
     # AI assistant (OpenAI / ChatGPT)
     ai_enabled = models.BooleanField(default=False, help_text="Enable the AI assistant in instances")
     openai_api_key = models.CharField(max_length=255, blank=True, help_text="OpenAI API key")

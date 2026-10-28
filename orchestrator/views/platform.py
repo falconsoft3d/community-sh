@@ -4,6 +4,7 @@ from ..task_models import Task
 from ..tasks import enqueue
 
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_POST
@@ -84,6 +85,9 @@ def settings_view(request):
         # Check which section is being saved
         section = request.POST.get('section', '')
         
+        if section == 'mcp':
+            config.mcp_enabled = 'mcp_enabled' in request.POST
+        
         if section == 'ia':
             config.ai_enabled = 'ai_enabled' in request.POST
             config.openai_model = request.POST.get('openai_model', '').strip()
@@ -138,7 +142,15 @@ def settings_view(request):
         messages.success(request, 'Settings saved successfully')
         return redirect('settings')
     
-    return render(request, 'orchestrator/settings.html', {'config': config})
+    from ..mcp_models import MCPToken
+    from ..permissions import get_global_config
+    global_config = get_global_config()
+    return render(request, 'orchestrator/settings.html', {
+        'config': config,
+        'mcp_enabled': bool(global_config and global_config.mcp_enabled),
+        'mcp_tokens': MCPToken.objects.filter(user=request.user),
+        'mcp_url': request.build_absolute_uri(reverse('mcp')),
+    })
 
 
 @login_required

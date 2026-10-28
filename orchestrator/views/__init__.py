@@ -8,6 +8,11 @@ from .public import (
     blog_detail,
     about,
 )
+from .mcp import (
+    mcp_endpoint,
+    mcp_token_create,
+    mcp_token_revoke,
+)
 from .docker import (
     docker_overview,
     docker_container_action,
@@ -76,6 +81,9 @@ from .users import (
 )
 
 __all__ = [
+    'mcp_endpoint',
+    'mcp_token_create',
+    'mcp_token_revoke',
     'docker_overview',
     'docker_container_action',
     'docker_container_logs',
