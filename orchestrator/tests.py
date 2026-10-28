@@ -984,3 +984,39 @@ class MCPServerTests(BaseTestCase):
         self.client.force_login(self.bob)
         self.client.post(reverse('mcp-token-revoke', args=[self.token_record.pk]))
         self.assertTrue(MCPToken.objects.filter(pk=self.token_record.pk).exists())
+
+
+class AIModuleTagTests(AIAssistantTests):
+    def make_module(self, root, name, title):
+        path = os.path.join(root, name)
+        os.makedirs(path)
+        with open(os.path.join(path, '__manifest__.py'), 'w') as f:
+            f.write(f"{{'name': '{title}', 'depends': ['base']}}")
+
+    def test_finds_modules_in_addons_and_repos_and_repos_are_read_only(self):
+        from .services.ai_assistant import addons_dir, find_custom_modules, repos_dir, run_tool
+        self.make_module(addons_dir(self.alice_instance), 'acme_sales', 'ACME Sales')
+        self.make_module(os.path.join(repos_dir(self.alice_instance), 'OCA-web'), 'web_responsive', 'Web Responsive')
+        os.makedirs(os.path.join(addons_dir(self.alice_instance), 'not_a_module'))
+        modules = {m['name']: m for m in find_custom_modules(self.alice_instance)}
+        self.assertEqual(set(modules), {'acme_sales', 'web_responsive'})
+        self.assertTrue(modules['acme_sales']['editable'])
+        self.assertEqual(modules['web_responsive']['path'], 'repos/OCA-web/web_responsive')
+        self.assertIn('Web Responsive', run_tool(self.alice_instance, self.alice, 'read_file', {'path': 'repos/OCA-web/web_responsive/__manifest__.py'}))
+        self.assertIn('solo lectura', run_tool(self.alice_instance, self.alice, 'write_file', {'path': 'repos/OCA-web/web_responsive/x.py', 'content': 'x'}))
+
+    def test_tagged_modules_are_sent_to_the_model_but_not_shown(self):
+        import json
+        from .services.ai_assistant import addons_dir
+        self.make_module(addons_dir(self.alice_instance), 'acme_sales', 'ACME Sales')
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.services.ai_assistant.chat', return_value={'content': 'ok'}) as chat:
+            response = self.client.post(reverse('instance-ai-chat', args=[self.alice_instance.pk]),
+                                        json.dumps({'message': 'añade un campo a @acme_sales', 'modules': ['acme_sales']}),
+                                        content_type='application/json')
+        sent = [m for m in chat.call_args.args[1] if m['role'] == 'user'][-1]['content']
+        self.assertIn('[Módulos etiquetados]', sent)
+        self.assertIn('@acme_sales — «ACME Sales»', sent)
+        self.assertEqual(response.json()['messages'][0]['content'], 'añade un campo a @acme_sales')
+        listed = self.client.get(reverse('instance-ai-modules', args=[self.alice_instance.pk])).json()['modules']
+        self.assertEqual([m['name'] for m in listed], ['acme_sales'])

@@ -483,7 +483,11 @@ def _ai_message_json(message):
         except ValueError:
             arguments = {}
         tools.append({'name': call['function']['name'], 'target': arguments.get('path') or arguments.get('module') or ''})
-    return {'id': message.id, 'role': message.role, 'content': message.content, 'tools': tools,
+    content = message.content
+    if message.role == 'user':
+        # The tagged-modules context is for the model, not for the chat bubble
+        content = content.split('\n\n[Módulos etiquetados]')[0]
+    return {'id': message.id, 'role': message.role, 'content': content, 'tools': tools,
             'created_at': message.created_at.isoformat()}
 
 
@@ -498,13 +502,15 @@ def instance_ai_chat(request, pk):
         return JsonResponse({'error': 'El asistente de IA no está configurado (Settings → IA)'}, status=400)
     if request.method == 'POST':
         try:
-            text = json.loads(request.body or '{}').get('message', '').strip()
+            payload = json.loads(request.body or '{}')
         except ValueError:
-            text = ''
+            payload = {}
+        text = str(payload.get('message', '')).strip()
+        modules = [str(m) for m in payload.get('modules') or []][:10]
         if not text:
             return JsonResponse({'error': 'Escribe un mensaje'}, status=400)
         try:
-            new_messages = ask(instance, request.user, text)
+            new_messages = ask(instance, request.user, text, modules)
         except AIError as e:
             return JsonResponse({'error': str(e)}, status=502)
         return JsonResponse({'messages': [_ai_message_json(m) for m in new_messages if m.role != 'tool']})
@@ -550,3 +556,12 @@ def instance_repo_remove(request, pk, repo_id):
         messages.success(request, f'Repositorio {repository.slug} quitado. Despliega la instancia para aplicarlo.')
     from django.urls import reverse
     return redirect(reverse('instance-detail', args=[pk]) + '#modules')
+
+
+
+@login_required
+def instance_ai_modules(request, pk):
+    """Custom modules of the instance, for @mentions in the AI chat."""
+    from ..services.ai_assistant import find_custom_modules
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    return JsonResponse({'modules': find_custom_modules(instance)})

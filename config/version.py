@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.5'
+VERSION = '1.0.6'
 
 CHANGELOG = [
+    {
+        'version': '1.0.6',
+        'date': '2026-10-28',
+        'notes': [
+            'Chat de IA: etiqueta módulos propios con @ (autocompletado) para que la IA trabaje sobre ellos',
+            'La IA lee los módulos de los repositorios extra (solo lectura) y los extiende con un módulo nuevo en addons',
+        ],
+    },
     {
         'version': '1.0.5',
         'date': '2026-10-28',

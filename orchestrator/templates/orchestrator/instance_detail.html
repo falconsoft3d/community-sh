@@ -708,9 +708,34 @@
                 </div>
             </div>
             <p x-show="error" x-text="error" class="px-5 pb-2 text-sm text-red-600"></p>
-            <form @submit.prevent="send()" class="flex gap-2 border-t p-3">
-                <textarea x-model="draft" rows="2" placeholder="Describe el módulo o el cambio que quieres…"
-                    @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); send(); }"
+            <div x-show="tagged().length" class="flex flex-wrap gap-1.5 border-t px-3 pt-2">
+                <template x-for="module in tagged()" :key="module.name">
+                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                        :class="module.editable ? 'bg-blue-100 text-blue-800' : 'bg-muted text-muted-foreground'"
+                        :title="module.editable ? 'Editable (addons)' : 'Solo lectura (repositorio): la IA lo extenderá con un módulo nuevo'"
+                        x-text="'@' + module.name + (module.editable ? '' : ' · ' + module.source)"></span>
+                </template>
+            </div>
+            <form @submit.prevent="send()" class="relative flex gap-2 border-t p-3">
+                <!-- @mention suggestions -->
+                <ul x-show="suggestions.length" x-cloak
+                    class="absolute bottom-full left-3 z-20 mb-1 max-h-56 w-80 overflow-y-auto rounded-md border bg-card text-sm shadow-lg">
+                    <template x-for="(module, index) in suggestions" :key="module.path">
+                        <li>
+                            <button type="button" @mousedown.prevent="pick(module)"
+                                class="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-accent" :class="index === active ? 'bg-accent' : ''">
+                                <span class="font-mono text-xs" x-text="'@' + module.name"></span>
+                                <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground" x-text="module.title + ' · ' + module.source"></span>
+                            </button>
+                        </li>
+                    </template>
+                </ul>
+                <textarea x-model="draft" x-ref="input" rows="2" placeholder="Describe el módulo o el cambio que quieres… Usa @ para etiquetar un módulo"
+                    @input="suggest()" @click="suggest()"
+                    @keydown.arrow-down="if (suggestions.length) { $event.preventDefault(); active = (active + 1) % suggestions.length; }"
+                    @keydown.arrow-up="if (suggestions.length) { $event.preventDefault(); active = (active - 1 + suggestions.length) % suggestions.length; }"
+                    @keydown.escape="suggestions = []"
+                    @keydown.enter="if (suggestions.length) { $event.preventDefault(); pick(suggestions[active]); } else if (!$event.shiftKey) { $event.preventDefault(); send(); }"
                     class="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm"></textarea>
                 <button type="submit" :disabled="sending || !draft.trim()" aria-label="Enviar"
                     class="inline-flex items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
@@ -725,20 +750,45 @@
             const csrf = () => document.querySelector('[name=csrfmiddlewaretoken]').value;
             return {
                 messages: [], draft: '', sending: false, loading: true, error: '',
+                modules: [], suggestions: [], active: 0,
+                tagged() {
+                    const names = new Set([...this.draft.matchAll(/@([A-Za-z0-9_]+)/g)].map(m => m[1]));
+                    return this.modules.filter(m => names.has(m.name));
+                },
+                suggest() {
+                    const before = this.draft.slice(0, this.$refs.input.selectionStart);
+                    const match = before.match(/@([A-Za-z0-9_]*)$/);
+                    if (!match) { this.suggestions = []; return; }
+                    const query = match[1].toLowerCase();
+                    this.suggestions = this.modules
+                        .filter(m => m.name.toLowerCase().includes(query) || m.title.toLowerCase().includes(query))
+                        .slice(0, 12);
+                    this.active = 0;
+                },
+                pick(module) {
+                    const input = this.$refs.input;
+                    const caret = input.selectionStart;
+                    const before = this.draft.slice(0, caret).replace(/@([A-Za-z0-9_]*)$/, '@' + module.name + ' ');
+                    this.draft = before + this.draft.slice(caret);
+                    this.suggestions = [];
+                    this.$nextTick(() => { input.focus(); input.setSelectionRange(before.length, before.length); });
+                },
                 scroll() { this.$nextTick(() => { this.$refs.log.scrollTop = this.$refs.log.scrollHeight; }); },
                 async load() {
+                    fetch("{% url 'instance-ai-modules' object.pk %}").then(r => r.json()).then(d => { this.modules = d.modules || []; });
                     const data = await (await fetch("{% url 'instance-ai-chat' object.pk %}")).json();
                     this.messages = data.messages || []; this.error = data.error || ''; this.loading = false; this.scroll();
                 },
                 async send() {
                     const text = this.draft.trim();
                     if (!text || this.sending) return;
+                    const modules = this.tagged().map(m => m.name);
                     this.messages.push({ id: 'local-' + Date.now(), role: 'user', content: text, tools: [] });
                     this.draft = ''; this.sending = true; this.error = ''; this.scroll();
                     try {
                         const response = await fetch("{% url 'instance-ai-chat' object.pk %}", {
                             method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
-                            body: JSON.stringify({ message: text }),
+                            body: JSON.stringify({ message: text, modules }),
                         });
                         const data = await response.json();
                         if (!response.ok) throw new Error(data.error || response.status);

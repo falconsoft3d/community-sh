@@ -16,7 +16,7 @@ SKIP_DIRS = {'.git', '__pycache__', 'node_modules'}
 TOOLS = [
     {'type': 'function', 'function': {
         'name': 'list_files',
-        'description': 'List files in the addons folder (or a subfolder of it). Paths are relative to the addons folder.',
+        'description': 'List files in the addons folder (or a subfolder of it). Paths are relative to the addons folder; use "repos" or "repos/<repo>/..." for the extra repositories (read-only).',
         'parameters': {'type': 'object', 'properties': {'path': {'type': 'string', 'description': 'Subfolder, e.g. "my_module". Empty for the root.'}}},
     }},
     {'type': 'function', 'function': {
@@ -49,12 +49,91 @@ def addons_dir(instance):
     return os.path.join(settings.BASE_DIR, 'instances', instance.name, 'addons')
 
 
-def _safe_path(instance, relative):
-    root = os.path.realpath(addons_dir(instance))
-    target = os.path.realpath(os.path.join(root, relative or ''))
+def repos_dir(instance):
+    return os.path.join(settings.BASE_DIR, 'instances', instance.name, 'repos')
+
+
+REPOS_PREFIX = 'repos/'
+
+
+def _safe_path(instance, relative, write=False):
+    """
+    Resolve a tool path. Plain paths live in the addons folder (read/write); paths starting with
+    'repos/<repo>/' point to the extra repositories, which are read-only (re-synced on deploy).
+    """
+    relative = relative or ''
+    if os.path.isabs(relative):
+        raise ValueError('La ruta debe estar dentro de la carpeta de addons (usa rutas relativas)')
+    if relative == 'repos' or relative.startswith(REPOS_PREFIX):
+        if write:
+            raise ValueError('Los repositorios son de solo lectura: crea un módulo en addons que los extienda')
+        root = os.path.realpath(repos_dir(instance))
+        relative = relative[len('repos'):].lstrip('/')
+    else:
+        root = os.path.realpath(addons_dir(instance))
+    target = os.path.realpath(os.path.join(root, relative))
     if target != root and not target.startswith(root + os.sep):
         raise ValueError('La ruta debe estar dentro de la carpeta de addons')
     return root, target
+
+
+def _read_manifest(module_dir):
+    import ast
+    for name in ('__manifest__.py', '__openerp__.py'):
+        path = os.path.join(module_dir, name)
+        if os.path.isfile(path):
+            try:
+                with open(path, encoding='utf-8', errors='replace') as f:
+                    return ast.literal_eval(f.read())
+            except (ValueError, SyntaxError):
+                return {}
+    return None
+
+
+def find_custom_modules(instance):
+    """Modules found in the instance's addons folder and extra repositories (taggable in the chat)."""
+    modules = []
+    sources = [('addons', addons_dir(instance), '')]
+    if os.path.isdir(repos_dir(instance)):
+        for repo in sorted(os.listdir(repos_dir(instance))):
+            sources.append((f'repos/{repo}', os.path.join(repos_dir(instance), repo), f'repos/{repo}/'))
+    for source, root, prefix in sources:
+        if not os.path.isdir(root):
+            continue
+        for entry in sorted(os.listdir(root)):
+            module_dir = os.path.join(root, entry)
+            if entry.startswith('.') or not os.path.isdir(module_dir):
+                continue
+            manifest = _read_manifest(module_dir)
+            if manifest is None:
+                continue
+            modules.append({
+                'name': entry, 'title': str(manifest.get('name') or entry), 'source': source,
+                'path': prefix + entry, 'editable': source == 'addons',
+                'depends': list(manifest.get('depends') or []),
+            })
+    return modules
+
+
+def tagged_modules_context(instance, names):
+    """Context block describing the modules the user tagged with @name."""
+    by_name = {m['name']: m for m in find_custom_modules(instance)}
+    blocks = []
+    for name in names:
+        module = by_name.get(name)
+        if not module:
+            continue
+        _, module_path = _safe_path(instance, module['path'])
+        files = []
+        for current, dirs, file_names in os.walk(module_path):
+            dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
+            files += [os.path.relpath(os.path.join(current, f), module_path) for f in sorted(file_names)]
+        mode = 'editable (addons)' if module['editable'] else 'solo lectura (repositorio): extiéndelo con un módulo nuevo en addons'
+        blocks.append(
+            f"@{name} — «{module['title']}», ruta para las herramientas: {module['path']} — {mode}. "
+            f"Depende de: {', '.join(module['depends']) or 'nada'}. Archivos: {', '.join(files[:80])}"
+        )
+    return blocks
 
 
 def run_tool(instance, user, name, arguments):
@@ -81,7 +160,7 @@ def run_tool(instance, user, name, arguments):
             with open(path, encoding='utf-8', errors='replace') as f:
                 return f.read()
         if name == 'write_file':
-            _, path = _safe_path(instance, arguments['path'])
+            _, path = _safe_path(instance, arguments['path'], write=True)
             content = arguments.get('content', '')
             if len(content.encode('utf-8')) > MAX_FILE_BYTES:
                 return 'Error: contenido demasiado grande'
@@ -90,7 +169,7 @@ def run_tool(instance, user, name, arguments):
                 f.write(content)
             return f'Escrito {arguments["path"]} ({len(content)} caracteres)'
         if name == 'delete_file':
-            _, path = _safe_path(instance, arguments['path'])
+            _, path = _safe_path(instance, arguments['path'], write=True)
             os.remove(path)
             return f'Eliminado {arguments["path"]}'
         if name == 'install_module':
@@ -110,7 +189,10 @@ def system_prompt(instance, config):
     prompt = (
         f"Eres un desarrollador experto de Odoo {instance.odoo_version}. Trabajas sobre la instancia "
         f"«{instance.name}»{' (base de datos ' + instance.database_name + ')' if instance.database_name else ''}. "
-        "Tus herramientas leen y escriben en su carpeta de addons, montada en Odoo en /mnt/extra-addons.\n"
+        "Tus herramientas leen y escriben en su carpeta de addons, montada en Odoo en /mnt/extra-addons. "
+        "Los repositorios extra están en las rutas repos/<repo>/... y son de solo lectura.\n"
+        "- Si el usuario etiqueta módulos con @nombre, céntrate en ellos: modifica directamente los de addons; "
+        "para añadir funciones a uno de un repositorio, crea un módulo nuevo en addons que dependa de él y herede sus modelos y vistas.\n"
         "- Para cambiar Odoo crea o modifica módulos; nunca edites el núcleo de Odoo.\n"
         f"- Módulos completos: __init__.py, __manifest__.py (version '{instance.odoo_version}.1.0.0', depends, data), "
         "models, views XML y security/ir.model.access.csv cuando crees modelos.\n"
@@ -126,7 +208,7 @@ def system_prompt(instance, config):
     return prompt
 
 
-def ask(instance, user, text):
+def ask(instance, user, text, modules=()):
     """Add the user's message, run the model with tools until it answers. Returns the new messages."""
     from ..ai_models import AIMessage
 
@@ -134,6 +216,10 @@ def ask(instance, user, text):
     if config is None:
         raise AIError('El asistente de IA no está configurado (Settings → IA)')
 
+    context = tagged_modules_context(instance, modules)
+    if context:
+        # Kept in the stored message so later turns still know what was tagged
+        text = f"{text}\n\n[Módulos etiquetados]\n" + '\n'.join(context)
     new_messages = [AIMessage.objects.create(instance=instance, user=user, role=AIMessage.Role.USER, content=text)]
     history = [{'role': 'system', 'content': system_prompt(instance, config)}]
     history += [m.as_openai() for m in instance.ai_messages.all()]

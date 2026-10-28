@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.5**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.6**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.6 — 2026-10-28
+
+- Chat de IA: etiqueta módulos propios con @ (autocompletado) para que la IA trabaje sobre ellos
+- La IA lee los módulos de los repositorios extra (solo lectura) y los extiende con un módulo nuevo en addons
 
 ## 1.0.5 — 2026-10-28
 
