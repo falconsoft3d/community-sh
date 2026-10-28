@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.31'
+VERSION = '1.0.32'
 
 CHANGELOG = [
+    {
+        'version': '1.0.32',
+        'date': '2026-10-28',
+        'notes': [
+            "Documentación: cómo crear el token de GitHub para repos privados (clásico y fine-grained) en el README y en Configuración → Ayuda, y qué significa el error 403",
+        ],
+    },
     {
         'version': '1.0.31',
         'date': '2026-10-28',

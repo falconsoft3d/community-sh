@@ -660,20 +660,24 @@
                         {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4" %}
                         Cómo obtener un GitHub Personal Access Token
                     </h4>
+                    <p class="text-sm text-muted-foreground ml-6">Se usa para clonar los repositorios privados de tus instancias (el principal y los de la pestaña <em>Modules</em>). Si al desplegar ves <code class="bg-muted px-1 py-0.5 rounded">Write access to repository not granted</code> o <code class="bg-muted px-1 py-0.5 rounded">403</code>, el token no tiene acceso a ese repo.</p>
+                    <p class="text-sm font-medium ml-6">Opción A: token clásico (la más sencilla)</p>
                     <ol class="list-decimal list-inside space-y-2 text-sm text-muted-foreground ml-6">
-                        <li>Ve a <a href="https://github.com/settings/tokens" target="_blank"
-                                class="text-primary hover:underline">GitHub Settings → Developer settings → Personal access tokens</a></li>
-                        <li>Haz clic en "Generate new token" (classic)</li>
-                        <li>Dale un nombre descriptivo (ej: "Community SH")</li>
-                        <li>Selecciona los siguientes permisos:
-                            <ul class="list-disc list-inside ml-6 mt-1 space-y-1">
-                                <li><code class="bg-muted px-1 py-0.5 rounded">repo</code> - Acceso completo a repositorios privados</li>
-                                <li><code class="bg-muted px-1 py-0.5 rounded">read:org</code> - Leer información de organizaciones (opcional)</li>
-                            </ul>
-                        </li>
-                        <li>Haz clic en "Generate token"</li>
-                        <li>Copia el token y pégalo en la pestaña GitHub (guárdalo en un lugar seguro, no podrás verlo de nuevo)</li>
+                        <li>Con la cuenta dueña del repo, ve a <a href="https://github.com/settings/tokens" target="_blank" rel="noopener"
+                                class="text-primary hover:underline">GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)</a></li>
+                        <li>Haz clic en "Generate new token (classic)" y dale un nombre (ej.: "Community SH") y una caducidad</li>
+                        <li>Marca el permiso <code class="bg-muted px-1 py-0.5 rounded">repo</code> (acceso a repositorios privados)</li>
+                        <li>Haz clic en "Generate token" y copia el token (empieza por <code class="bg-muted px-1 py-0.5 rounded">ghp_</code>; GitHub no vuelve a mostrarlo)</li>
+                        <li>Pégalo en la pestaña GitHub de esta página y guarda</li>
+                        <li>En la instancia pulsa "Upgrade / Deploy" y luego, en Odoo, Aplicaciones → "Actualizar lista de aplicaciones"</li>
                     </ol>
+                    <p class="text-sm font-medium ml-6">Opción B: token fine-grained (<code class="bg-muted px-1 py-0.5 rounded">github_pat_…</code>)</p>
+                    <ul class="list-disc list-inside space-y-2 text-sm text-muted-foreground ml-6">
+                        <li>En <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener" class="text-primary hover:underline">Fine-grained tokens</a>, el <strong>Resource owner</strong> debe ser la cuenta u organización dueña del repo</li>
+                        <li><strong>Repository access</strong>: el repo en "Only select repositories", o "All repositories"</li>
+                        <li><strong>Permissions → Contents</strong>: "Read-only" (o "Read and write" si el panel crea una rama por instancia)</li>
+                        <li>Si cambias los permisos de un token ya guardado, no hace falta volver a pegarlo: basta con redesplegar</li>
+                    </ul>
                 </div>
 
                 <div class="border-t pt-6"></div>

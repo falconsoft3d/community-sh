@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.31**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.32**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.32 — 2026-10-28
+
+- Documentación: cómo crear el token de GitHub para repos privados (clásico y fine-grained) en el README y en Configuración → Ayuda, y qué significa el error 403
 
 ## 1.0.31 — 2026-10-28
 
