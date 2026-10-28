@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.6'
+VERSION = '1.0.7'
 
 CHANGELOG = [
+    {
+        'version': '1.0.7',
+        'date': '2026-10-28',
+        'notes': [
+            "Chat de IA: botón «Deshacer estos cambios» en cada respuesta que modificó archivos; restaura los archivos (también los de peticiones posteriores) y actualiza los módulos afectados",
+            "La IA también puede volver atrás cuando se lo pides (herramienta undo_last_change)",
+        ],
+    },
     {
         'version': '1.0.6',
         'date': '2026-10-28',

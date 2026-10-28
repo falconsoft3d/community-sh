@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.6**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.7**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.7 — 2026-10-28
+
+- Chat de IA: botón «Deshacer estos cambios» en cada respuesta que modificó archivos; restaura los archivos (también los de peticiones posteriores) y actualiza los módulos afectados
+- La IA también puede volver atrás cuando se lo pides (herramienta undo_last_change)
 
 ## 1.0.6 — 2026-10-28
 

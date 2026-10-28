@@ -491,6 +491,40 @@ def _ai_message_json(message):
             'created_at': message.created_at.isoformat()}
 
 
+def _ai_messages_json(instance, messages_list):
+    """Serialize messages; the last assistant message of each turn carries its undo info."""
+    from django.db.models import Count, Q
+    from ..ai_models import AIFileChange
+    turns = {row['turn_id']: row for row in AIFileChange.objects.filter(turn__instance=instance)
+             .values('turn_id').annotate(files=Count('id'), pending=Count('id', filter=Q(reverted_at__isnull=True)))}
+    last_of_turn = {}
+    for message in messages_list:
+        if message.role == 'assistant' and message.turn_id:
+            last_of_turn[message.turn_id] = message.id
+    data = []
+    for message in messages_list:
+        item = _ai_message_json(message)
+        info = turns.get(message.turn_id)
+        if info and last_of_turn.get(message.turn_id) == message.id:
+            item['undo'] = {'turn': message.turn_id, 'files': info['files'], 'reverted': info['pending'] == 0}
+        data.append(item)
+    return data
+
+
+@login_required
+@require_POST
+def instance_ai_revert(request, pk, turn_id):
+    """Undo the file changes of a turn (and of every later turn)."""
+    from ..ai_models import AIMessage
+    from ..services.ai_assistant import revert_turns
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    turn = instance.ai_messages.filter(pk=turn_id, role=AIMessage.Role.USER).first()
+    if turn is None:
+        return JsonResponse({'error': 'Petición no encontrada'}, status=404)
+    summary = revert_turns(instance, request.user, turn)
+    return JsonResponse({'summary': summary, 'messages': _ai_messages_json(instance, list(instance.ai_messages.exclude(role='tool')))})
+
+
 @login_required
 def instance_ai_chat(request, pk):
     """GET: conversation. POST {message}: ask the assistant (runs its tools) and return the new messages."""
@@ -513,9 +547,8 @@ def instance_ai_chat(request, pk):
             new_messages = ask(instance, request.user, text, modules)
         except AIError as e:
             return JsonResponse({'error': str(e)}, status=502)
-        return JsonResponse({'messages': [_ai_message_json(m) for m in new_messages if m.role != 'tool']})
-    messages_qs = instance.ai_messages.exclude(role='tool')
-    return JsonResponse({'messages': [_ai_message_json(m) for m in messages_qs]})
+        return JsonResponse({'messages': _ai_messages_json(instance, [m for m in new_messages if m.role != 'tool'])})
+    return JsonResponse({'messages': _ai_messages_json(instance, list(instance.ai_messages.exclude(role='tool')))})
 
 
 @login_required

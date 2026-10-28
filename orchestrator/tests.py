@@ -1020,3 +1020,57 @@ class AIModuleTagTests(AIAssistantTests):
         self.assertEqual(response.json()['messages'][0]['content'], 'añade un campo a @acme_sales')
         listed = self.client.get(reverse('instance-ai-modules', args=[self.alice_instance.pk])).json()['modules']
         self.assertEqual([m['name'] for m in listed], ['acme_sales'])
+
+
+class AIUndoTests(AIAssistantTests):
+    def chat(self, text, replies):
+        import json
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.services.ai_assistant.chat', side_effect=replies):
+            return self.client.post(reverse('instance-ai-chat', args=[self.alice_instance.pk]),
+                                    json.dumps({'message': text}), content_type='application/json').json()
+
+    def write_call(self, call_id, path, content):
+        import json
+        return {'content': None, 'tool_calls': [{'id': call_id, 'type': 'function', 'function': {
+            'name': 'write_file', 'arguments': json.dumps({'path': path, 'content': content})}}]}
+
+    def read(self, path):
+        from .services.ai_assistant import addons_dir
+        full = os.path.join(addons_dir(self.alice_instance), path)
+        return open(full).read() if os.path.exists(full) else None
+
+    def test_undo_restores_files_and_later_turns(self):
+        from .task_models import Task
+        manifest = "{'name': 'Mod'}"
+        first = self.chat('crea mod', [self.write_call('a', 'mod/__manifest__.py', manifest),
+                                        self.write_call('b', 'mod/models.py', 'v1'), {'content': 'hecho'}])
+        self.chat('cambia', [self.write_call('c', 'mod/models.py', 'v2'), {'content': 'cambiado'}])
+        self.assertEqual(self.read('mod/models.py'), 'v2')
+        undo = first['messages'][-1]['undo']
+        self.assertEqual((undo['files'], undo['reverted']), (2, False))
+
+        # Undoing the second turn only brings back v1 and upgrades the module
+        second_turn = self.alice_instance.ai_messages.filter(role='user').last()
+        self.client.post(reverse('instance-ai-revert', args=[self.alice_instance.pk, second_turn.pk]))
+        self.assertEqual(self.read('mod/models.py'), 'v1')
+        self.assertTrue(Task.objects.filter(kind='ai_module', params__module='mod', params__upgrade=True).exists())
+
+        # Undoing the first turn removes the files it created
+        data = self.client.post(reverse('instance-ai-revert', args=[self.alice_instance.pk, undo['turn']])).json()
+        self.assertIsNone(self.read('mod/models.py'))
+        self.assertIsNone(self.read('mod/__manifest__.py'))
+        self.assertIn('ya no existe', data['summary'])
+        self.assertTrue(all(m['undo']['reverted'] for m in data['messages'] if 'undo' in m))
+
+    def test_ai_can_undo_the_previous_request(self):
+        import json
+        self.chat('crea', [self.write_call('a', 'mod/models.py', 'v1'), {'content': 'ok'}])
+        self.chat('cambia', [self.write_call('b', 'mod/models.py', 'v2'), {'content': 'ok'}])
+        undo_call = {'content': None, 'tool_calls': [{'id': 'u', 'type': 'function', 'function': {'name': 'undo_last_change', 'arguments': '{}'}}]}
+        self.chat('vuelve atrás', [undo_call, {'content': 'deshecho'}])
+        self.assertEqual(self.read('mod/models.py'), 'v1')
+
+    def test_revert_requires_manage_permission(self):
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(reverse('instance-ai-revert', args=[self.alice_instance.pk, 1])).status_code, 404)

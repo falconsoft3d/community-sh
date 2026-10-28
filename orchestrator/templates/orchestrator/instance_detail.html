@@ -700,6 +700,17 @@
                                     </template>
                                 </ul>
                             </template>
+                            <template x-if="message.undo">
+                                <div class="mt-2 border-t border-border/60 pt-2 text-xs">
+                                    <template x-if="!message.undo.reverted">
+                                        <button type="button" @click="revert(message.undo)" :disabled="sending"
+                                            class="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 hover:bg-accent disabled:opacity-50">
+                                            ↶ <span x-text="'Deshacer estos cambios (' + message.undo.files + (message.undo.files === 1 ? ' archivo)' : ' archivos)')"></span>
+                                        </button>
+                                    </template>
+                                    <template x-if="message.undo.reverted"><span class="text-muted-foreground">Cambios deshechos</span></template>
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </template>
@@ -793,6 +804,22 @@
                         const data = await response.json();
                         if (!response.ok) throw new Error(data.error || response.status);
                         this.messages = this.messages.filter(m => !String(m.id).startsWith('local-')).concat(data.messages);
+                    } catch (e) {
+                        this.error = String(e.message || e);
+                    }
+                    this.sending = false; this.scroll();
+                },
+                async revert(undo) {
+                    if (!confirm('Se restaurarán los archivos como estaban antes de esta petición (y se deshacen también las posteriores). ¿Continuar?')) return;
+                    this.sending = true; this.error = '';
+                    try {
+                        const response = await fetch("{% url 'instance-ai-revert' object.pk 0 %}".replace('/0/', '/' + undo.turn + '/'), {
+                            method: 'POST', headers: { 'X-CSRFToken': csrf() },
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || response.status);
+                        this.messages = data.messages;
+                        this.messages.push({ id: 'note-' + Date.now(), role: 'assistant', content: '↶ ' + data.summary, tools: [] });
                     } catch (e) {
                         this.error = String(e.message || e);
                     }

@@ -35,6 +35,11 @@ TOOLS = [
         'parameters': {'type': 'object', 'properties': {'path': {'type': 'string'}}, 'required': ['path']},
     }},
     {'type': 'function', 'function': {
+        'name': 'undo_last_change',
+        'description': 'Undo the file changes made in the previous request (restores the files as they were before it, then upgrades the affected modules). Use it when the user asks to go back.',
+        'parameters': {'type': 'object', 'properties': {}},
+    }},
+    {'type': 'function', 'function': {
         'name': 'install_module',
         'description': 'Queue the installation (or upgrade, if already installed) of a module in the Odoo database, then restart Odoo. Runs in the background; the result appears in the instance tasks.',
         'parameters': {'type': 'object', 'properties': {
@@ -136,8 +141,66 @@ def tagged_modules_context(instance, names):
     return blocks
 
 
-def run_tool(instance, user, name, arguments):
+def _snapshot(turn, relative, path):
+    """Remember the file as it was before the first change in this turn."""
+    from ..ai_models import AIFileChange
+    if turn is None or AIFileChange.objects.filter(turn=turn, path=relative).exists():
+        return
+    previous = None
+    if os.path.isfile(path):
+        with open(path, encoding='utf-8', errors='replace') as f:
+            previous = f.read()
+    AIFileChange.objects.create(turn=turn, path=relative, previous_content=previous)
+
+
+def revert_turns(instance, user, from_turn):
+    """
+    Undo the file changes of from_turn and of every later turn (newest first), then queue an
+    upgrade of the modules that still exist. Returns a summary.
+    """
+    from django.utils import timezone
+    from ..ai_models import AIFileChange
+    from ..task_models import Task
+    from ..tasks import enqueue
+
+    changes = AIFileChange.objects.filter(
+        turn__instance=instance, turn__id__gte=from_turn.id, reverted_at__isnull=True,
+    ).order_by('-turn_id', '-id')
+    restored, touched_modules = [], set()
+    for change in changes:
+        _, path = _safe_path(instance, change.path)
+        if change.previous_content is None:
+            if os.path.exists(path):
+                os.remove(path)
+        else:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(change.previous_content)
+        restored.append(change.path)
+        touched_modules.add(change.path.split('/')[0])
+        change.reverted_at = timezone.now()
+        change.save(update_fields=['reverted_at'])
+    if not restored:
+        return 'No había cambios que deshacer'
+    upgraded, gone = [], []
+    for module in sorted(touched_modules):
+        module_dir = os.path.join(addons_dir(instance), module)
+        if _read_manifest(module_dir) is not None:
+            enqueue(Task.Kind.AI_MODULE, instance, user, module=module, upgrade=True)
+            upgraded.append(module)
+        else:
+            gone.append(module)
+    summary = f"Restaurados {len(set(restored))} archivos"
+    if upgraded:
+        summary += f"; actualización en cola de: {', '.join(upgraded)}"
+    if gone:
+        summary += (f"; {', '.join(gone)} ya no existe en addons: si llegó a instalarse, desinstálalo desde Aplicaciones en Odoo")
+    return summary
+
+
+def run_tool(instance, user, name, arguments, turn=None):
     """Execute one tool call; returns a short text result for the model."""
+    from ..ai_models import AIFileChange
     from ..task_models import Task
     from ..tasks import enqueue
 
@@ -164,14 +227,24 @@ def run_tool(instance, user, name, arguments):
             content = arguments.get('content', '')
             if len(content.encode('utf-8')) > MAX_FILE_BYTES:
                 return 'Error: contenido demasiado grande'
+            _snapshot(turn, arguments['path'], path)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(content)
             return f'Escrito {arguments["path"]} ({len(content)} caracteres)'
         if name == 'delete_file':
             _, path = _safe_path(instance, arguments['path'], write=True)
+            if not os.path.isfile(path):
+                return 'Error: el archivo no existe'
+            _snapshot(turn, arguments['path'], path)
             os.remove(path)
             return f'Eliminado {arguments["path"]}'
+        if name == 'undo_last_change':
+            previous = (AIFileChange.objects.filter(turn__instance=instance, reverted_at__isnull=True)
+                        .exclude(turn=turn).order_by('-turn_id').first())
+            if previous is None:
+                return 'No hay cambios anteriores que deshacer'
+            return revert_turns(instance, user, previous.turn)
         if name == 'install_module':
             module = arguments['module'].strip()
             if not module.replace('_', '').isalnum():
@@ -199,6 +272,7 @@ def system_prompt(instance, config):
         f"- Sigue las convenciones de Odoo {instance.odoo_version} (sintaxis de vistas y campos de esa versión).\n"
         "- Antes de modificar algo existente, léelo con las herramientas.\n"
         "- Cuando termines de escribir, instala (o actualiza si ya existía) el módulo con install_module.\n"
+        "- Si el usuario pide volver atrás o deshacer, usa undo_last_change.\n"
         "- Responde en el idioma del usuario, de forma breve: qué hiciste y cómo probarlo."
     )
     if instance.github_repo:
@@ -220,7 +294,8 @@ def ask(instance, user, text, modules=()):
     if context:
         # Kept in the stored message so later turns still know what was tagged
         text = f"{text}\n\n[Módulos etiquetados]\n" + '\n'.join(context)
-    new_messages = [AIMessage.objects.create(instance=instance, user=user, role=AIMessage.Role.USER, content=text)]
+    user_message = AIMessage.objects.create(instance=instance, user=user, role=AIMessage.Role.USER, content=text)
+    new_messages = [user_message]
     history = [{'role': 'system', 'content': system_prompt(instance, config)}]
     history += [m.as_openai() for m in instance.ai_messages.all()]
 
@@ -229,7 +304,7 @@ def ask(instance, user, text, modules=()):
         tool_calls = reply.get('tool_calls') or []
         assistant = AIMessage.objects.create(
             instance=instance, user=user, role=AIMessage.Role.ASSISTANT,
-            content=reply.get('content') or '', tool_calls=tool_calls or None,
+            content=reply.get('content') or '', tool_calls=tool_calls or None, turn=user_message,
         )
         new_messages.append(assistant)
         history.append(assistant.as_openai())
@@ -240,15 +315,16 @@ def ask(instance, user, text, modules=()):
                 arguments = json.loads(call['function'].get('arguments') or '{}')
             except ValueError:
                 arguments = {}
-            result = run_tool(instance, user, call['function']['name'], arguments)
+            result = run_tool(instance, user, call['function']['name'], arguments, turn=user_message)
             tool_message = AIMessage.objects.create(
                 instance=instance, user=user, role=AIMessage.Role.TOOL, content=result[:20000], tool_call_id=call['id'],
+                turn=user_message,
             )
             new_messages.append(tool_message)
             history.append(tool_message.as_openai())
 
     new_messages.append(AIMessage.objects.create(
-        instance=instance, user=user, role=AIMessage.Role.ASSISTANT,
+        instance=instance, user=user, role=AIMessage.Role.ASSISTANT, turn=user_message,
         content='He alcanzado el límite de pasos para esta petición. Revisa lo hecho y pídeme que continúe.',
     ))
     return new_messages

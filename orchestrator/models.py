@@ -114,7 +114,7 @@ from .backup_models import Backup
 from .blog_models import BlogPost
 from .task_models import Task
 from .project_models import Project
-from .ai_models import AIMessage
+from .ai_models import AIFileChange, AIMessage
 from .repository_models import InstanceRepository
 from .mcp_models import MCPToken
 
