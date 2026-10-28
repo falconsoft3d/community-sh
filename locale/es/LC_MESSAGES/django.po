@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 21:53+0000\n"
+"POT-Creation-Date: 2026-10-28 22:13+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -623,27 +623,31 @@ msgstr ""
 msgid "Primary"
 msgstr "Principal"
 
-#: orchestrator/templates/orchestrator/instance_list.html:161
+#: orchestrator/templates/orchestrator/instance_list.html:126
+msgid "Entrar como admin"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_list.html:171
 msgid "Confirm Action"
 msgstr "Confirmar acción"
 
-#: orchestrator/templates/orchestrator/instance_list.html:163
+#: orchestrator/templates/orchestrator/instance_list.html:173
 msgid "Are you sure you want to"
 msgstr "¿Seguro que quieres"
 
-#: orchestrator/templates/orchestrator/instance_list.html:163
+#: orchestrator/templates/orchestrator/instance_list.html:173
 msgid "the instance"
 msgstr "la instancia"
 
-#: orchestrator/templates/orchestrator/instance_list.html:168
+#: orchestrator/templates/orchestrator/instance_list.html:178
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: orchestrator/templates/orchestrator/instance_list.html:173
+#: orchestrator/templates/orchestrator/instance_list.html:183
 msgid "Confirm"
 msgstr "Confirmar"
 
-#: orchestrator/templates/orchestrator/instance_list.html:182
+#: orchestrator/templates/orchestrator/instance_list.html:192
 msgid "Pagination"
 msgstr "Paginación"
 

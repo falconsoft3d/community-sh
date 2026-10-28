@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.28'
+VERSION = '1.0.29'
 
 CHANGELOG = [
+    {
+        'version': '1.0.29',
+        'date': '2026-10-28',
+        'notes': [
+            "Botón «Admin» (entrar como admin) también en la lista de instancias",
+        ],
+    },
     {
         'version': '1.0.28',
         'date': '2026-10-28',

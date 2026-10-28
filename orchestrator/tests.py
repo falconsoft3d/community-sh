@@ -1676,6 +1676,24 @@ class SidebarCountTests(BaseTestCase):
         self.assertEqual((counts['instances'], counts['users'], counts['docker']), (2, 3, 7))
 
 
+class InstanceListAdminLoginTests(BaseTestCase):
+    def test_admin_button_only_for_managers_of_running_instances(self):
+        self.alice_instance.status = 'running'
+        self.alice_instance.save()
+        url = reverse('instance-admin-login', args=[self.alice_instance.pk])
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get(reverse('instance-list')), f'action="{url}"')
+        # A project's client sees and operates the instance, but doesn't manage it
+        self.bob.profile.is_client = True
+        self.bob.profile.save()
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        page = self.client.get(reverse('instance-list'))
+        self.assertContains(page, 'alice-odoo')
+        self.assertNotContains(page, f'action="{url}"')
+
+
 class PaginationTests(BaseTestCase):
     def test_lists_show_twenty_rows_and_keep_filters(self):
         for number in range(25):

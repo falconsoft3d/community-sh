@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.28**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.29**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.29 — 2026-10-28
+
+- Botón «Admin» (entrar como admin) también en la lista de instancias
 
 ## 1.0.28 — 2026-10-28
 

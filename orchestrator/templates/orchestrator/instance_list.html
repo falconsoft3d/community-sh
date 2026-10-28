@@ -120,6 +120,16 @@
                                 <i data-lucide="link" class="h-3 w-3 mr-1"></i>
                                 Alt
                             </a>
+                            {% if instance.can_manage %}
+                            <form action="{% url 'instance-admin-login' instance.pk %}" method="post" target="_blank">
+                                {% csrf_token %}
+                                <button type="submit" title="{% translate 'Entrar como admin' %}"
+                                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium transition-colors border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
+                                    <i data-lucide="key-round" class="h-3 w-3 mr-1"></i>
+                                    Admin
+                                </button>
+                            </form>
+                            {% endif %}
                         </div>
                         {% else %}
                         <span class="text-muted-foreground">-</span>

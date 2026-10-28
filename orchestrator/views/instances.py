@@ -54,6 +54,8 @@ class InstanceListView(LoginRequiredMixin, ListView):
         if context.get('page_obj'):
             from ..pagination import with_links
             with_links(self.request, context['page_obj'])
+        for instance in context['object_list']:
+            instance.can_manage = can_manage(self.request.user, instance)
         return context
 
 
