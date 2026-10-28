@@ -31,6 +31,12 @@ class GitHubConfig(models.Model):
     )
     auto_backup_frequency_value = models.IntegerField(default=5, help_text="How often to run backups (e.g., every 5 days)")
     auto_backup_retention = models.IntegerField(default=5, help_text="Number of backups to keep. Older backups will be deleted automatically")
+    # AI assistant (OpenAI / ChatGPT)
+    ai_enabled = models.BooleanField(default=False, help_text="Enable the AI assistant in instances")
+    openai_api_key = models.CharField(max_length=255, blank=True, help_text="OpenAI API key")
+    openai_model = models.CharField(max_length=100, blank=True, help_text="OpenAI model used by the assistant")
+    ai_instructions = models.TextField(blank=True, help_text="Extra instructions added to the assistant's system prompt")
+    
     last_auto_backup_at = models.DateTimeField(null=True, blank=True, help_text="When the last automatic backup run started")
     
     created_at = models.DateTimeField(auto_now_add=True)

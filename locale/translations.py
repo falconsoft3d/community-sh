@@ -135,6 +135,10 @@ ES_TO_EN = {
     'Crea un proyecto por cliente y despliega dentro sus instancias de Odoo.': 'Create a project per client and deploy its Odoo instances inside it.',
     'Crear el primer proyecto': 'Create the first project',
     'Recordarme': 'Remember me',
+    'Novedades': "What's new",
+    'Qué hay de nuevo en cada versión': "What's new in each version",
+    'Historial completo': 'Full history',
+    'Actual': 'Current',
 }
 
 # Strings written in English in the code -> Spanish

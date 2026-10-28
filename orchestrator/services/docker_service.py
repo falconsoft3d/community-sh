@@ -22,13 +22,29 @@ def host_path(path):
 
 
 def odoo_config_target(odoo_version):
-    # Odoo 10 images still read the old OpenERP config file name
-    return '/etc/odoo/openerp-server.conf' if odoo_version == '10.0' else '/etc/odoo/odoo.conf'
+    # Every official image (10.0 included) reads ODOO_RC=/etc/odoo/odoo.conf
+    return '/etc/odoo/odoo.conf'
+
+
+def postgres_image(odoo_version):
+    """PostgreSQL release each Odoo version supports (Odoo 20 needs 16+, Odoo 10-11 predate 12)."""
+    major = int(float(odoo_version))
+    if major <= 11:
+        return 'postgres:10'
+    if major <= 13:
+        return 'postgres:12'
+    if major <= 15:
+        return 'postgres:13'
+    if major <= 17:
+        return 'postgres:15'
+    return 'postgres:16'
 
 
 class DockerService:
     def __init__(self):
         self.client = docker.from_env()
+        # Remarks from the last deploy, shown in the task result
+        self.deploy_notes = []
 
     def _get_container(self, name):
         try:
@@ -48,22 +64,113 @@ class DockerService:
                     return mount['Name']
         return instance.data_volume or f"odoo_data_{instance.name}"
 
-    def _write_odoo_config(self, instance, workspace_path):
-        config_path = os.path.join(workspace_path, 'odoo.conf')
+    def _write_odoo_config(self, instance, workspace_path, extra_repos=()):
+        """
+        Write the config into its own folder, mounted at /etc/odoo. Mounting a folder instead of
+        a single file avoids Docker Desktop creating a directory when the file isn't synced yet.
+        """
+        config_dir = os.path.join(workspace_path, 'conf')
+        os.makedirs(config_dir, exist_ok=True)
+        content = (
+            "[options]\n"
+            f"addons_path = {','.join(['/mnt/extra-addons'] + [f'/mnt/repos/{slug}' for slug in extra_repos])}\n"
+            f"data_dir = {ODOO_DATA_DIR}\n"
+            f"admin_passwd = {instance.master_password}\n"
+            # In the config (not only entrypoint args) so `odoo` run via exec can connect too
+            f"db_host = db_{instance.name}\n"
+            "db_port = 5432\n"
+            "db_user = odoo\n"
+            "db_password = odoo\n"
+            # Odoo 20 listens on 127.0.0.1 by default; Odoo 10 calls the option xmlrpc_interface
+            "http_interface = 0.0.0.0\n"
+            "xmlrpc_interface = 0.0.0.0\n"
+        )
+        config_path = os.path.join(config_dir, os.path.basename(odoo_config_target(instance.odoo_version)))
         with open(config_path, 'w') as f:
-            f.write(
-                "[options]\n"
-                "addons_path = /mnt/extra-addons\n"
-                f"data_dir = {ODOO_DATA_DIR}\n"
-                f"admin_passwd = {instance.master_password}\n"
-                # In the config (not only entrypoint args) so `odoo` run via exec can connect too
-                f"db_host = db_{instance.name}\n"
-                "db_port = 5432\n"
-                "db_user = odoo\n"
-                "db_password = odoo\n"
-            )
+            f.write(content)
         os.chmod(config_path, 0o644)
-        return config_path
+        # Earlier builds wrote openerp-server.conf for Odoo 10, which the image never reads
+        stale = os.path.join(config_dir, 'openerp-server.conf')
+        if os.path.exists(stale):
+            os.remove(stale)
+        # Older deployments mounted <workspace>/odoo.conf as a file
+        legacy = os.path.join(workspace_path, 'odoo.conf')
+        if os.path.isfile(legacy):
+            os.remove(legacy)
+        return config_dir
+
+    def _github_token(self, instance):
+        from ..config_models import GitHubConfig
+        config = GitHubConfig.objects.filter(user=instance.owner).first() if instance.owner_id else None
+        return config.personal_access_token if config and config.personal_access_token else ''
+
+    def _sync_extra_repos(self, instance, workspace_path):
+        """Clone or update the instance's extra repositories into <workspace>/repos/<slug>."""
+        import shutil
+        repos_root = os.path.join(workspace_path, 'repos')
+        os.makedirs(repos_root, exist_ok=True)
+        token = self._github_token(instance)
+        wanted = {}
+        for repository in instance.repositories.all():
+            wanted[repository.slug] = repository
+            target = os.path.join(repos_root, repository.slug)
+            authed_url = repository.url.replace('https://', f'https://{token}@', 1) if token else repository.url
+            try:
+                if os.path.isdir(os.path.join(target, '.git')):
+                    repo = git.Repo(target)
+                    repo.remotes.origin.set_url(authed_url)
+                    try:
+                        repo.remotes.origin.fetch(repository.branch, depth=1)
+                        repo.git.checkout('-B', repository.branch, f'origin/{repository.branch}')
+                        repo.git.reset('--hard', f'origin/{repository.branch}')
+                    finally:
+                        repo.remotes.origin.set_url(repository.url)
+                else:
+                    shutil.rmtree(target, ignore_errors=True)
+                    repo = git.Repo.clone_from(authed_url, target, branch=repository.branch, depth=1)
+                    # Don't leave the token in .git/config (the AI assistant can read files here)
+                    repo.remotes.origin.set_url(repository.url)
+            except git.exc.GitCommandError as e:
+                error = str(e).replace(token, '***') if token else str(e)
+                self.deploy_notes.append(f'No se pudo sincronizar {repository.url} ({repository.branch}): {error[-300:]}')
+                wanted.pop(repository.slug, None)
+        # Folders of repositories that were removed from the instance
+        for folder in os.listdir(repos_root):
+            if folder not in wanted:
+                shutil.rmtree(os.path.join(repos_root, folder), ignore_errors=True)
+        return [slug for slug in wanted if os.path.isdir(os.path.join(repos_root, slug))]
+
+    def _ensure_db_container(self, instance, network_name, notes):
+        """Start the instance's Postgres with a version its Odoo supports."""
+        name = f"db_{instance.name}"
+        image = postgres_image(instance.odoo_version)
+        existing = self._get_container(name)
+        if existing is not None:
+            current = existing.attrs['Config'].get('Image', '')
+            if current == image:
+                return existing
+            if existing.status != 'running':
+                existing.start()
+            self._wait_for_postgres(existing)
+            if self._list_user_databases(existing):
+                notes.append(f"Aviso: Odoo {instance.odoo_version} recomienda {image} y la base de datos usa {current}. "
+                             "No se cambia automáticamente porque ya tiene datos.")
+                return existing
+            # Nothing to lose yet: replace it with the right Postgres
+            existing.remove(force=True, v=True)
+            notes.append(f"Base de datos recreada con {image} (usaba {current})")
+        self._ensure_image(image)
+        return self.client.containers.run(
+            image,
+            name=name,
+            environment={
+                "POSTGRES_DB": "postgres",
+                "POSTGRES_PASSWORD": "odoo",
+                "POSTGRES_USER": "odoo",
+            },
+            network=network_name,
+            detach=True
+        )
 
     def _ensure_image(self, image):
         """
@@ -81,10 +188,15 @@ class DockerService:
             self.client.images.pull(repository, tag=tag)
             return None
         except docker.errors.APIError as e:
-            if 'no matching manifest' not in str(e):
-                raise Exception(f"No se pudo descargar la imagen {image}: {getattr(e, 'explanation', None) or e}")
-        print(f"{image} has no build for this architecture; using linux/amd64 (emulated, slower)")
-        self.client.images.pull(repository, tag=tag, platform='linux/amd64')
+            # docker-py swallows the stream error ("no matching manifest for linux/arm64") and then
+            # reports "no such image", so any failure here may just mean "no build for this arch"
+            native_error = getattr(e, 'explanation', None) or str(e)
+        print(f"{image}: native pull failed ({native_error}); trying linux/amd64 (emulated, slower)")
+        try:
+            self.client.images.pull(repository, tag=tag, platform='linux/amd64')
+            self.client.images.get(image)
+        except docker.errors.APIError as e:
+            raise Exception(f"No se pudo descargar la imagen {image}: {native_error}; amd64: {getattr(e, 'explanation', None) or e}")
         return 'linux/amd64'
 
     def _published_port(self, container, container_port, timeout=10):
@@ -127,6 +239,7 @@ class DockerService:
         """
         instance.status = Instance.Status.DEPLOYING
         instance.save()
+        self.deploy_notes = []
         
         try:
             # 1. Prepare workspace
@@ -145,20 +258,7 @@ class DockerService:
 
             # 4. Start Postgres
             db_container_name = f"db_{instance.name}"
-            try:
-                self.client.containers.get(db_container_name)
-            except docker.errors.NotFound:
-                self.client.containers.run(
-                    "postgres:13",
-                    name=db_container_name,
-                    environment={
-                        "POSTGRES_DB": "postgres",
-                        "POSTGRES_PASSWORD": "odoo",
-                        "POSTGRES_USER": "odoo",
-                    },
-                    network=network_name,
-                    detach=True
-                )
+            self._ensure_db_container(instance, network_name, self.deploy_notes)
 
             # 5. Start Odoo
             odoo_container_name = f"odoo_{instance.name}"
@@ -168,17 +268,16 @@ class DockerService:
             data_volume = self._resolve_data_volume(instance, existing_container)
             
             # Bind mounts are resolved by the Docker daemon, so they need host paths
+            # Addons: the GitHub checkout or an empty folder (the AI assistant writes modules there)
+            addons_path = os.path.join(workspace_path, 'addons')
+            os.makedirs(addons_path, exist_ok=True)
+            extra_repos = self._sync_extra_repos(instance, workspace_path)
             volumes = {
                 data_volume: {'bind': ODOO_DATA_DIR, 'mode': 'rw'},
-                host_path(self._write_odoo_config(instance, workspace_path)): {
-                    'bind': odoo_config_target(instance.odoo_version), 'mode': 'rw',
-                },
+                host_path(self._write_odoo_config(instance, workspace_path, extra_repos)): {'bind': '/etc/odoo', 'mode': 'rw'},
+                host_path(addons_path): {'bind': '/mnt/extra-addons', 'mode': 'rw'},
+                host_path(os.path.join(workspace_path, 'repos')): {'bind': '/mnt/repos', 'mode': 'ro'},
             }
-            # If we cloned addons, mount them
-            addons_path = os.path.join(workspace_path, 'addons')
-            if os.path.exists(addons_path):
-                # We mount it to /mnt/extra-addons which is standard in Odoo images
-                volumes[host_path(addons_path)] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
             
             is_redeploy = False
             try:
@@ -472,6 +571,8 @@ class DockerService:
             status=Instance.Status.DEPLOYING,
             origin='duplicate'
         )
+        for repository in instance.repositories.all():
+            new_instance.repositories.create(url=repository.url, branch=repository.branch)
         
         try:
             # 1. Copy the database
@@ -507,8 +608,10 @@ class DockerService:
                 
                 # Start new PostgreSQL container
                 print("Creating new database container...")
+                db_image = postgres_image(instance.odoo_version)
+                self._ensure_image(db_image)
                 new_db_container = self.client.containers.run(
-                    "postgres:13",
+                    db_image,
                     name=db_target,
                     environment={
                         "POSTGRES_DB": "postgres",

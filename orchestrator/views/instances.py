@@ -1,4 +1,6 @@
 """Odoo instance management."""
+import re
+
 from ..models import Instance
 from ..services import DockerService
 
@@ -101,6 +103,8 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         from ..backup_models import Backup
         context['backups'] = Backup.objects.filter(instance=self.object).order_by('-created_at')
         context['can_manage'] = can_manage(self.request.user, self.object)
+        from ..services.ai import get_ai_config
+        context['ai_enabled'] = context['can_manage'] and get_ai_config() is not None
         context['tasks'] = list(self.object.tasks.all()[:5])
         context['has_active_tasks'] = any(task.is_active for task in context['tasks'])
         
@@ -468,3 +472,81 @@ def instance_duplicate(request, pk):
     enqueue(Task.Kind.DUPLICATE, instance, request.user, new_name=new_name)
     messages.info(request, f'Duplicación como "{new_name}" en cola. La nueva instancia aparecerá en la lista al terminar.')
     return redirect('instance-detail', pk=pk)
+
+
+def _ai_message_json(message):
+    tools = []
+    for call in message.tool_calls or []:
+        try:
+            import json
+            arguments = json.loads(call['function'].get('arguments') or '{}')
+        except ValueError:
+            arguments = {}
+        tools.append({'name': call['function']['name'], 'target': arguments.get('path') or arguments.get('module') or ''})
+    return {'id': message.id, 'role': message.role, 'content': message.content, 'tools': tools,
+            'created_at': message.created_at.isoformat()}
+
+
+@login_required
+def instance_ai_chat(request, pk):
+    """GET: conversation. POST {message}: ask the assistant (runs its tools) and return the new messages."""
+    import json
+    from ..services.ai import AIError, get_ai_config
+    from ..services.ai_assistant import ask
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    if get_ai_config() is None:
+        return JsonResponse({'error': 'El asistente de IA no está configurado (Settings → IA)'}, status=400)
+    if request.method == 'POST':
+        try:
+            text = json.loads(request.body or '{}').get('message', '').strip()
+        except ValueError:
+            text = ''
+        if not text:
+            return JsonResponse({'error': 'Escribe un mensaje'}, status=400)
+        try:
+            new_messages = ask(instance, request.user, text)
+        except AIError as e:
+            return JsonResponse({'error': str(e)}, status=502)
+        return JsonResponse({'messages': [_ai_message_json(m) for m in new_messages if m.role != 'tool']})
+    messages_qs = instance.ai_messages.exclude(role='tool')
+    return JsonResponse({'messages': [_ai_message_json(m) for m in messages_qs]})
+
+
+@login_required
+@require_POST
+def instance_ai_reset(request, pk):
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    instance.ai_messages.all().delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def instance_repo_add(request, pk):
+    from ..repository_models import REPO_URL_RE
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    url = request.POST.get('url', '').strip()
+    branch = request.POST.get('branch', '').strip() or 'main'
+    if not REPO_URL_RE.match(url):
+        messages.error(request, 'URL inválida: usa la URL HTTPS de clonado (p. ej. https://github.com/OCA/web.git)')
+    elif not re.match(r'^[A-Za-z0-9._/-]+$', branch):
+        messages.error(request, 'Rama inválida')
+    elif instance.repositories.filter(url=url).exists() or url == instance.github_repo:
+        messages.error(request, 'Ese repositorio ya está en la instancia')
+    else:
+        repository = instance.repositories.create(url=url, branch=branch)
+        messages.success(request, f'Repositorio {repository.slug} añadido. Despliega la instancia para aplicarlo.')
+    from django.urls import reverse
+    return redirect(reverse('instance-detail', args=[pk]) + '#modules')
+
+
+@login_required
+@require_POST
+def instance_repo_remove(request, pk, repo_id):
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    repository = instance.repositories.filter(pk=repo_id).first()
+    if repository:
+        repository.delete()
+        messages.success(request, f'Repositorio {repository.slug} quitado. Despliega la instancia para aplicarlo.')
+    from django.urls import reverse
+    return redirect(reverse('instance-detail', args=[pk]) + '#modules')

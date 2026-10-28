@@ -114,7 +114,9 @@ def deploy(task):
     notes = []
     if task.params.get('create_branch') and instance.github_repo and instance.github_branch:
         notes.append(_create_instance_branch(instance, task.created_by, instance.github_branch))
-    DockerService().deploy_instance(instance)
+    service = DockerService()
+    service.deploy_instance(instance)
+    notes += service.deploy_notes
     if instance.custom_domain:
         ok, message = TraefikService.generate_instance_config(instance)
         if not ok:
@@ -209,6 +211,35 @@ def install_module(task):
 def pull_image(task):
     from .services import docker_admin
     return f"Imagen descargada: {docker_admin.pull_image(task.params['image'])}"
+
+
+@handler(Task.Kind.AI_MODULE)
+def ai_module(task):
+    """Install (-i) or upgrade (-u) a module written by the AI assistant, then restart Odoo."""
+    instance = task.instance
+    module = task.params['module']
+    service = DockerService()
+    container = service._get_container(f'odoo_{instance.name}')
+    mounts = {m['Destination'] for m in container.attrs.get('Mounts', [])} if container else set()
+    notes = []
+    if container is None or '/mnt/extra-addons' not in mounts:
+        # Older deployments didn't mount the addons folder
+        service.deploy_instance(instance)
+        container = service._get_container(f'odoo_{instance.name}')
+        notes.append('Instancia redesplegada para montar la carpeta de addons')
+    db_container = service._get_container(f'db_{instance.name}')
+    databases = [instance.database_name] if instance.database_name else service._list_user_databases(db_container)
+    if not databases:
+        raise Exception('La instancia todavía no tiene base de datos: créala desde Odoo y vuelve a intentarlo')
+    flag = '-u' if task.params.get('upgrade') else '-i'
+    for database in databases:
+        result = container.exec_run(f'odoo {flag} {module} -d {database} --stop-after-init', detach=False)
+        output = result.output.decode('utf-8', errors='replace')
+        if result.exit_code != 0 or 'Traceback' in output:
+            raise Exception(f'Error instalando {module} en {database}:\n{output[-3000:]}')
+        notes.append(f'{module} {"actualizado" if flag == "-u" else "instalado"} en {database}')
+    container.restart()
+    return '\n'.join(notes)
 
 
 @handler(Task.Kind.BACKUP_ALL)

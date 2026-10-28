@@ -15,6 +15,7 @@ class Task(models.Model):
         BACKUP_ALL = 'backup_all', 'Respaldar todas'
         INSTALL_MODULE = 'install_module', 'Instalar módulo'
         PULL_IMAGE = 'pull_image', 'Descargar imagen'
+        AI_MODULE = 'ai_module', 'Instalar módulo (IA)'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

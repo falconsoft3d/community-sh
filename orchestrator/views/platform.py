@@ -84,6 +84,17 @@ def settings_view(request):
         # Check which section is being saved
         section = request.POST.get('section', '')
         
+        if section == 'ia':
+            config.ai_enabled = 'ai_enabled' in request.POST
+            config.openai_model = request.POST.get('openai_model', '').strip()
+            config.ai_instructions = request.POST.get('ai_instructions', '').strip()
+            # Empty field keeps the stored key; the checkbox removes it
+            new_key = request.POST.get('openai_api_key', '').strip()
+            if new_key:
+                config.openai_api_key = new_key
+            elif 'remove_openai_api_key' in request.POST:
+                config.openai_api_key = ''
+        
         if section == 'domain':
             # Update domain and SSL when saving Domain & SSL section
             config.main_domain = request.POST.get('main_domain', '').strip().lower()
@@ -203,3 +214,23 @@ def generate_ssl_certificate(request):
             messages.error(request, message)
     
     return redirect('settings')
+
+
+@login_required
+@superuser_required
+@require_POST
+def settings_ai_test(request):
+    """Check the OpenAI key (typed or stored) and return the chat models it can use."""
+    from django.http import JsonResponse
+    from ..config_models import GitHubConfig
+    from ..services.ai import AIError, list_chat_models
+
+    config = GitHubConfig.objects.filter(user=request.user).first()
+    api_key = request.POST.get('openai_api_key', '').strip() or (config.openai_api_key if config else '')
+    if not api_key:
+        return JsonResponse({'ok': False, 'error': 'Introduce una API key de OpenAI'}, status=400)
+    try:
+        models = list_chat_models(api_key)
+    except AIError as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+    return JsonResponse({'ok': True, 'models': models})

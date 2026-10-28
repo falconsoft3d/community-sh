@@ -1,3 +1,4 @@
+import os
 from unittest import mock
 
 from django.contrib.auth.models import User
@@ -292,10 +293,15 @@ class DockerServiceTests(TestCase):
         odoo_call = [c for c in self.client.containers.run.call_args_list if c.args[0].startswith('odoo:')][0]
         volumes = odoo_call.kwargs['volumes']
         self.assertEqual(volumes['odoo_data_acme'], {'bind': '/var/lib/odoo', 'mode': 'rw'})
-        self.assertEqual(volumes['/srv/csh/instances/acme/odoo.conf']['bind'], '/etc/odoo/odoo.conf')
+        self.assertEqual(volumes['/srv/csh/instances/acme/conf']['bind'], '/etc/odoo')
+        self.assertEqual(volumes['/srv/csh/instances/acme/addons']['bind'], '/mnt/extra-addons')
 
-        with open(f'{self.tmp}/instances/acme/odoo.conf') as f:
-            self.assertIn(f'admin_passwd = {self.instance.master_password}', f.read())
+        with open(f'{self.tmp}/instances/acme/conf/odoo.conf') as f:
+            conf = f.read()
+        self.assertIn(f'admin_passwd = {self.instance.master_password}', conf)
+        self.assertIn('http_interface = 0.0.0.0', conf)
+        db_call = [c for c in self.client.containers.run.call_args_list if c.args[0].startswith('postgres:')][0]
+        self.assertEqual(db_call.args[0], 'postgres:15')  # default instance version is 17.0
         self.instance.refresh_from_db()
         self.assertEqual(self.instance.data_volume, 'odoo_data_acme')
         self.assertEqual(self.instance.port, 32768)
@@ -614,8 +620,16 @@ class EnsureImageTests(TestCase):
     def test_falls_back_to_amd64_when_no_native_build(self):
         import docker
         self.client.images.pull.side_effect = [docker.errors.APIError('no matching manifest for linux/arm64/v8'), None]
+        self.client.images.get.side_effect = [docker.errors.ImageNotFound('missing'), mock.Mock()]
         self.assertEqual(self.service._ensure_image('odoo:10.0'), 'linux/amd64')
         self.client.images.pull.assert_called_with('odoo', tag='10.0', platform='linux/amd64')
+
+    def test_falls_back_when_docker_py_reports_no_such_image(self):
+        import docker
+        # What docker-py actually raises on arm64 for amd64-only images
+        self.client.images.pull.side_effect = [docker.errors.ImageNotFound('no such image: odoo:10.0'), None]
+        self.client.images.get.side_effect = [docker.errors.ImageNotFound('missing'), mock.Mock()]
+        self.assertEqual(self.service._ensure_image('odoo:10.0'), 'linux/amd64')
 
     def test_other_pull_errors_are_reported(self):
         import docker
@@ -742,3 +756,160 @@ class LanguageTests(TestCase):
     def test_language_switch_is_remembered(self):
         self.client.post('/i18n/setlang/', {'language': 'en', 'next': '/'})
         self.assertContains(self.client.get('/'), 'Features')
+
+
+
+class PostgresVersionTests(TestCase):
+    def test_each_odoo_version_gets_a_supported_postgres(self):
+        from .services.docker_service import postgres_image
+        expected = {'10.0': 'postgres:10', '11.0': 'postgres:10', '12.0': 'postgres:12', '13.0': 'postgres:12',
+                    '14.0': 'postgres:13', '15.0': 'postgres:13', '16.0': 'postgres:15', '17.0': 'postgres:15',
+                    '18.0': 'postgres:16', '19.0': 'postgres:16', '20.0': 'postgres:16'}
+        choices = [v for v, _ in Instance._meta.get_field('odoo_version').choices]
+        self.assertEqual(sorted(expected), sorted(choices))
+        for version, image in expected.items():
+            self.assertEqual(postgres_image(version), image, version)
+
+    def test_empty_db_with_wrong_postgres_is_recreated_but_data_is_kept(self):
+        with mock.patch('orchestrator.services.docker_service.docker.from_env') as from_env:
+            from .services import DockerService
+            service = DockerService()
+            client = from_env.return_value
+        instance = Instance(name='twenty', odoo_version='20.0')
+        old_db = mock.Mock(status='running', attrs={'Config': {'Image': 'postgres:13'}})
+        client.containers.get.return_value = old_db
+        with mock.patch.object(service, '_wait_for_postgres'), mock.patch.object(service, '_ensure_image'):
+            with mock.patch.object(service, '_list_user_databases', return_value=[]):
+                notes = []
+                service._ensure_db_container(instance, 'net_twenty', notes)
+            old_db.remove.assert_called_once_with(force=True, v=True)
+            self.assertEqual(client.containers.run.call_args.args[0], 'postgres:16')
+
+            old_db.reset_mock(); client.containers.run.reset_mock()
+            with mock.patch.object(service, '_list_user_databases', return_value=['prod']):
+                notes = []
+                service._ensure_db_container(instance, 'net_twenty', notes)
+            old_db.remove.assert_not_called()
+            client.containers.run.assert_not_called()
+            self.assertIn('ya tiene datos', notes[0])
+
+
+class VersionTests(TestCase):
+    def test_current_version_is_documented(self):
+        from django.conf import settings
+        from config.version import CHANGELOG, VERSION
+        self.assertEqual(CHANGELOG[0]['version'], VERSION)
+        with open(settings.BASE_DIR / 'CHANGELOG.md', encoding='utf-8') as f:
+            self.assertIn(f'## {VERSION} ', f.read())
+
+
+class AIAssistantTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        import tempfile, shutil
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        settings_patch = override_settings(BASE_DIR=self.tmp)
+        settings_patch.enable()
+        self.addCleanup(settings_patch.disable)
+        self.config.ai_enabled = True
+        self.config.openai_api_key = 'sk-test'
+        self.config.openai_model = 'gpt-test'
+        self.config.save()
+
+    def test_tools_stay_inside_the_addons_folder(self):
+        from .services.ai_assistant import run_tool
+        result = run_tool(self.alice_instance, self.alice, 'write_file', {'path': 'my_mod/__init__.py', 'content': 'x = 1\n'})
+        self.assertIn('Escrito', result)
+        self.assertEqual(run_tool(self.alice_instance, self.alice, 'read_file', {'path': 'my_mod/__init__.py'}), 'x = 1\n')
+        self.assertIn('my_mod/__init__.py', run_tool(self.alice_instance, self.alice, 'list_files', {}))
+        for evil in ('../../etc/passwd', '/etc/passwd', 'my_mod/../../../x'):
+            self.assertIn('dentro de la carpeta de addons', run_tool(self.alice_instance, self.alice, 'write_file', {'path': evil, 'content': 'x'}))
+
+    def test_install_tool_queues_a_task(self):
+        from .services.ai_assistant import run_tool
+        from .task_models import Task
+        run_tool(self.alice_instance, self.alice, 'install_module', {'module': 'my_mod', 'upgrade': True})
+        task = Task.objects.get(kind='ai_module')
+        self.assertEqual(task.params, {'module': 'my_mod', 'upgrade': True})
+        self.assertIn('inválido', run_tool(self.alice_instance, self.alice, 'install_module', {'module': 'x; rm -rf /'}))
+
+    def test_chat_runs_tools_until_the_model_answers(self):
+        import json
+        replies = [
+            {'content': None, 'tool_calls': [{'id': 'c1', 'type': 'function', 'function': {
+                'name': 'write_file', 'arguments': json.dumps({'path': 'hello/__manifest__.py', 'content': "{'name': 'Hello'}"})}}]},
+            {'content': 'Listo: módulo hello creado.'},
+        ]
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.services.ai_assistant.chat', side_effect=replies) as chat:
+            response = self.client.post(reverse('instance-ai-chat', args=[self.alice_instance.pk]),
+                                        json.dumps({'message': 'crea hello'}), content_type='application/json')
+        data = response.json()
+        self.assertEqual([m['role'] for m in data['messages']], ['user', 'assistant', 'assistant'])
+        self.assertEqual(data['messages'][1]['tools'], [{'name': 'write_file', 'target': 'hello/__manifest__.py'}])
+        self.assertEqual(data['messages'][2]['content'], 'Listo: módulo hello creado.')
+        # The second call included the tool result
+        history = chat.call_args_list[1].args[1]
+        self.assertTrue(any(m['role'] == 'tool' and m['tool_call_id'] == 'c1' for m in history))
+        self.assertTrue(os.path.exists(os.path.join(self.tmp, 'instances', 'alice-odoo', 'addons', 'hello', '__manifest__.py')))
+
+    def test_chat_needs_manage_permission_and_configuration(self):
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.get(reverse('instance-ai-chat', args=[self.alice_instance.pk])).status_code, 404)
+        self.config.ai_enabled = False
+        self.config.save()
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('instance-ai-chat', args=[self.alice_instance.pk])).status_code, 400)
+
+    def test_settings_saves_ai_config_and_keeps_key_when_blank(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse('settings'), {'section': 'ia', 'ai_enabled': 'on', 'openai_api_key': '', 'openai_model': 'gpt-x'})
+        self.config.refresh_from_db()
+        self.assertEqual((self.config.openai_api_key, self.config.openai_model, self.config.ai_enabled), ('sk-test', 'gpt-x', True))
+
+
+class RepositoryTests(BaseTestCase):
+    def test_slug_and_url_validation(self):
+        from .repository_models import InstanceRepository
+        self.assertEqual(InstanceRepository(url='https://github.com/OCA/web.git').slug, 'OCA-web')
+        self.client.force_login(self.alice)
+        add = reverse('instance-repo-add', args=[self.alice_instance.pk])
+        self.client.post(add, {'url': 'https://github.com/OCA/web.git', 'branch': '17.0'})
+        self.client.post(add, {'url': 'git@github.com:OCA/web.git', 'branch': '17.0'})
+        self.client.post(add, {'url': 'https://github.com/OCA/web.git', 'branch': '17.0'})
+        self.client.post(add, {'url': 'https://github.com/OCA/server-tools', 'branch': '17.0; rm -rf /'})
+        self.assertEqual(list(self.alice_instance.repositories.values_list('url', 'branch')), [('https://github.com/OCA/web.git', '17.0')])
+
+    def test_only_managers_edit_repositories(self):
+        self.client.force_login(self.bob)
+        response = self.client.post(reverse('instance-repo-add', args=[self.alice_instance.pk]), {'url': 'https://github.com/OCA/web.git'})
+        self.assertEqual(response.status_code, 404)
+
+
+class RepositorySyncTests(DockerServiceTests):
+    def test_deploy_clones_extra_repos_into_addons_path(self):
+        import os
+        self.instance.repositories.create(url='https://github.com/OCA/web.git', branch='17.0')
+        self.client.containers.get.side_effect = self.not_found
+        odoo = self.client.containers.run.return_value
+        odoo.id = 'abc'
+        odoo.attrs = {'NetworkSettings': {'Ports': {'8069/tcp': [{'HostPort': '1'}]}}}
+
+        def fake_clone(url, target, **kwargs):
+            os.makedirs(os.path.join(target, '.git'))
+            repo = mock.Mock()
+            fake_clone.repo = repo
+            return repo
+        with mock.patch('orchestrator.services.docker_service.git.Repo.clone_from', side_effect=fake_clone) as clone, \
+                mock.patch.dict('os.environ', {'HOST_WORKDIR': ''}):
+            service = self._service()
+            with mock.patch.object(service, '_github_token', return_value='ghp_secret'):
+                service.deploy_instance(self.instance)
+        self.assertEqual(clone.call_args.args[0], 'https://ghp_secret@github.com/OCA/web.git')
+        # Token used to clone, then removed from the remote
+        fake_clone.repo.remotes.origin.set_url.assert_called_with('https://github.com/OCA/web.git')
+        with open(f'{self.tmp}/instances/acme/conf/odoo.conf') as f:
+            self.assertIn('addons_path = /mnt/extra-addons,/mnt/repos/OCA-web', f.read())
+        odoo_call = [c for c in self.client.containers.run.call_args_list if c.args[0].startswith('odoo:')][0]
+        self.assertEqual(odoo_call.kwargs['volumes'][f'{self.tmp}/instances/acme/repos']['bind'], '/mnt/repos')

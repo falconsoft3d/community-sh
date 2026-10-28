@@ -37,7 +37,9 @@ def home(request):
         if template['name'] != 'custom'
     ]
     odoo_versions = [value for value, _label in Instance._meta.get_field('odoo_version').choices]
+    from config.version import CHANGELOG
     return render(request, 'orchestrator/home.html', {
+        'changelog': CHANGELOG[:3],
         'featured_posts': featured_posts,
         'apps': apps,
         'odoo_versions': odoo_versions,
@@ -61,7 +63,7 @@ def blog_list(request):
     
     from ..blog_models import BlogPost
     posts = BlogPost.objects.filter(published=True)
-    return render(request, 'orchestrator/blog_list.html', {'posts': posts})
+    return render(request, 'orchestrator/blog_list.html', {'posts': posts, 'public_page': True})
 
 
 def blog_detail(request, slug):
@@ -93,7 +95,7 @@ def blog_detail(request, slug):
     ])
     post.html_content = md.convert(post.content)
     
-    return render(request, 'orchestrator/blog_detail.html', {'post': post})
+    return render(request, 'orchestrator/blog_detail.html', {'post': post, 'public_page': True})
 
 
 @login_required

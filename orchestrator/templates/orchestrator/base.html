@@ -175,9 +175,9 @@
 <body class="bg-background text-foreground antialiased min-h-screen">
 
     <div class="flex min-h-screen w-full">
-        {% if user.is_authenticated %}
+        {% if user.is_authenticated and not public_page %}
         <!-- Sidebar -->
-        <aside class="hidden border-r bg-muted/40 w-64 lg:block">
+        <aside class="sticky top-0 hidden h-screen shrink-0 overflow-y-auto border-r bg-muted/40 w-64 lg:block">
             <div class="flex h-full max-h-screen flex-col gap-2">
                 <div class="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
                     <a href="/" class="flex items-center gap-2 font-semibold">
@@ -251,8 +251,8 @@
 
         <!-- Main Content -->
         <div class="flex flex-col w-full">
-            {% if user.is_authenticated %}
-            <header class="flex h-14 items-center gap-4 bg-card shadow-sm px-4 lg:h-[60px] lg:px-6 mx-4 mt-4 mb-2 rounded-lg border">
+            {% if user.is_authenticated and not public_page %}
+            <header class="sticky top-4 z-40 flex h-14 items-center gap-4 bg-card shadow-sm px-4 lg:h-[60px] lg:px-6 mx-4 mt-4 mb-2 rounded-lg border">
                 <!-- Mobile Trigger could go here -->
                 <div class="w-full flex-1">
                     <!-- Breadcrumb or Title -->
@@ -295,7 +295,7 @@
             {% endif %}
 
             <main class="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 w-full max-w-7xl mx-auto">
-                {% if user.is_authenticated %}
+                {% if user.is_authenticated and not public_page %}
                 {% block content %}
                 {% endblock %}
                 {% else %}
@@ -306,7 +306,7 @@
         </div>
     </div>
 
-    {% if not user.is_authenticated %}
+    {% if not user.is_authenticated or public_page %}
     <div class="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border bg-card p-1 pl-2 shadow-lg">
         {% include "orchestrator/includes/language_switcher.html" %}
         {% include "orchestrator/includes/theme_toggle.html" %}

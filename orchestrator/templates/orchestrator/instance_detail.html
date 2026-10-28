@@ -149,6 +149,14 @@
                 <i data-lucide="archive" class="inline-block h-4 w-4 mr-2"></i>
                 Backups
             </button>
+            {% if ai_enabled %}
+            <button @click="activeTab = 'ai'"
+                :class="activeTab === 'ai' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="sparkles" class="inline-block h-4 w-4 mr-2"></i>
+                IA
+            </button>
+            {% endif %}
         </nav>
     </div>
 
@@ -397,6 +405,55 @@
 
     <!-- Modules Tab -->
     <div x-show="activeTab === 'modules'" class="space-y-6">
+        <!-- Addons repositories -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 pb-2">
+                <h3 class="font-semibold leading-none tracking-tight">Repositorios de addons</h3>
+                <p class="text-sm text-muted-foreground">Cada repositorio se clona y se añade al addons_path de Odoo. Los cambios se aplican al desplegar.</p>
+            </div>
+            <div class="p-6 pt-4 space-y-4">
+                <ul class="divide-y rounded-lg border text-sm">
+                    {% if object.github_repo %}
+                    <li class="flex items-center gap-3 px-4 py-3">
+                        {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4 shrink-0" %}
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate font-medium">{{ object.github_repo }}</div>
+                            <div class="text-xs text-muted-foreground">rama {{ object.github_branch }} · principal (/mnt/extra-addons)</div>
+                        </div>
+                    </li>
+                    {% endif %}
+                    {% for repository in object.repositories.all %}
+                    <li class="flex items-center gap-3 px-4 py-3">
+                        {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4 shrink-0" %}
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate font-medium">{{ repository.url }}</div>
+                            <div class="text-xs text-muted-foreground">rama {{ repository.branch }} · /mnt/repos/{{ repository.slug }}</div>
+                        </div>
+                        <form method="post" action="{% url 'instance-repo-remove' object.pk repository.pk %}" onsubmit="return confirm('¿Quitar este repositorio?');">
+                            {% csrf_token %}
+                            <button type="submit" title="Quitar" aria-label="Quitar" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-accent">
+                                <i data-lucide="trash-2" class="h-4 w-4"></i>
+                            </button>
+                        </form>
+                    </li>
+                    {% empty %}
+                    {% if not object.github_repo %}<li class="px-4 py-3 text-muted-foreground">Sin repositorios</li>{% endif %}
+                    {% endfor %}
+                </ul>
+                <form method="post" action="{% url 'instance-repo-add' object.pk %}" class="flex flex-wrap gap-2">
+                    {% csrf_token %}
+                    <input name="url" required placeholder="https://github.com/OCA/web.git" aria-label="URL del repositorio"
+                        class="h-10 min-w-[16rem] flex-1 rounded-md border border-input bg-background px-3 text-sm">
+                    <input name="branch" placeholder="{{ object.odoo_version }}" value="{{ object.odoo_version }}" aria-label="Rama"
+                        class="h-10 w-32 rounded-md border border-input bg-background px-3 text-sm">
+                    <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Añadir
+                    </button>
+                </form>
+                <p class="text-xs text-muted-foreground">Los repos privados usan el token de GitHub del dueño de la instancia (Settings → GitHub).</p>
+            </div>
+        </div>
+
         <!-- Install Module from ZIP Card -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 pb-2">
@@ -612,6 +669,95 @@
 
 {% endif %}
     <!-- Domains Tab -->
+    {% if ai_enabled %}
+    <!-- AI assistant Tab -->
+    <div x-show="activeTab === 'ai'" x-data="aiChat()" x-init="load()" class="space-y-4">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col" style="height: 70vh">
+            <div class="flex items-center justify-between border-b px-5 py-3">
+                <div>
+                    <h3 class="font-semibold">Asistente de IA</h3>
+                    <p class="text-xs text-muted-foreground">Crea y modifica módulos de Odoo {{ object.odoo_version }} en la carpeta de addons de esta instancia y los instala.</p>
+                </div>
+                <button type="button" @click="reset()" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent">
+                    <i data-lucide="rotate-ccw" class="mr-1.5 h-3.5 w-3.5"></i> Nueva conversación
+                </button>
+            </div>
+            <div x-ref="log" class="flex-1 space-y-3 overflow-y-auto p-5">
+                <template x-if="messages.length === 0 && !loading">
+                    <div class="mx-auto max-w-lg py-10 text-center text-sm text-muted-foreground">
+                        <p>Pídele, por ejemplo: «Crea un módulo que añada un campo "Código interno" a los contactos y lo muestre en el formulario».</p>
+                    </div>
+                </template>
+                <template x-for="message in messages" :key="message.id">
+                    <div :class="message.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                        <div class="max-w-[85%] rounded-lg px-4 py-2.5 text-sm"
+                            :class="message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'">
+                            <template x-if="message.content"><div class="whitespace-pre-wrap break-words" x-text="message.content"></div></template>
+                            <template x-if="message.tools.length">
+                                <ul class="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                                    <template x-for="tool in message.tools">
+                                        <li class="font-mono" x-text="'⚙ ' + tool.name + (tool.target ? ' · ' + tool.target : '')"></li>
+                                    </template>
+                                </ul>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="sending" class="flex justify-start">
+                    <div class="rounded-lg bg-muted px-4 py-2.5 text-sm text-muted-foreground">Pensando y trabajando en los archivos…</div>
+                </div>
+            </div>
+            <p x-show="error" x-text="error" class="px-5 pb-2 text-sm text-red-600"></p>
+            <form @submit.prevent="send()" class="flex gap-2 border-t p-3">
+                <textarea x-model="draft" rows="2" placeholder="Describe el módulo o el cambio que quieres…"
+                    @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); send(); }"
+                    class="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm"></textarea>
+                <button type="submit" :disabled="sending || !draft.trim()" aria-label="Enviar"
+                    class="inline-flex items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                    <i data-lucide="send" class="h-4 w-4"></i>
+                </button>
+            </form>
+        </div>
+        <p class="text-xs text-muted-foreground">La instalación de módulos se hace en segundo plano: sigue su estado en «Tareas recientes». Haz un backup antes de cambios grandes.</p>
+    </div>
+    <script>
+        function aiChat() {
+            const csrf = () => document.querySelector('[name=csrfmiddlewaretoken]').value;
+            return {
+                messages: [], draft: '', sending: false, loading: true, error: '',
+                scroll() { this.$nextTick(() => { this.$refs.log.scrollTop = this.$refs.log.scrollHeight; }); },
+                async load() {
+                    const data = await (await fetch("{% url 'instance-ai-chat' object.pk %}")).json();
+                    this.messages = data.messages || []; this.error = data.error || ''; this.loading = false; this.scroll();
+                },
+                async send() {
+                    const text = this.draft.trim();
+                    if (!text || this.sending) return;
+                    this.messages.push({ id: 'local-' + Date.now(), role: 'user', content: text, tools: [] });
+                    this.draft = ''; this.sending = true; this.error = ''; this.scroll();
+                    try {
+                        const response = await fetch("{% url 'instance-ai-chat' object.pk %}", {
+                            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                            body: JSON.stringify({ message: text }),
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || response.status);
+                        this.messages = this.messages.filter(m => !String(m.id).startsWith('local-')).concat(data.messages);
+                    } catch (e) {
+                        this.error = String(e.message || e);
+                    }
+                    this.sending = false; this.scroll();
+                },
+                async reset() {
+                    if (!confirm('¿Borrar la conversación?')) return;
+                    await fetch("{% url 'instance-ai-reset' object.pk %}", { method: 'POST', headers: { 'X-CSRFToken': csrf() } });
+                    this.messages = [];
+                },
+            };
+        }
+    </script>
+    {% endif %}
+
     <div x-show="deleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
         style="display: none;">
         <!-- Backdrop -->

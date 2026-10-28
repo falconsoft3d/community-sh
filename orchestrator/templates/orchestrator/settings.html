@@ -38,6 +38,12 @@
                 <i data-lucide="database" class="inline-block h-4 w-4 mr-2"></i>
                 Respaldos
             </button>
+            <button type="button" @click="activeTab = 'ia'; window.location.hash = 'ia'"
+                :class="activeTab === 'ia' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="sparkles" class="inline-block h-4 w-4 mr-2"></i>
+                IA
+            </button>
             {% endif %}
             <button @click="activeTab = 'help'; window.location.hash = 'help'" 
                 :class="activeTab === 'help' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
@@ -532,6 +538,98 @@
             </div>
         </div>
     </div>
+
+    <!-- AI Tab -->
+    {% if user.is_superuser %}
+    <div x-show="activeTab === 'ia'" class="space-y-6" x-data="aiSettings()">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="sparkles" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Asistente de IA (ChatGPT)</h3>
+                </div>
+                <p class="text-sm text-muted-foreground">Activa un chat en cada instancia que puede crear y modificar módulos de Odoo usando la API de OpenAI.</p>
+            </div>
+            <div class="p-6 space-y-5">
+                <label class="flex items-start gap-3">
+                    <input type="checkbox" name="ai_enabled" {% if config.ai_enabled %}checked{% endif %} class="mt-1 h-4 w-4 rounded border-input">
+                    <span>
+                        <span class="text-sm font-medium">Activar el asistente</span>
+                        <span class="block text-sm text-muted-foreground">Aparece como pestaña "IA" en las instancias para quien puede gestionarlas.</span>
+                    </span>
+                </label>
+
+                <div class="space-y-2">
+                    <label for="openai_api_key" class="text-sm font-medium">API key de OpenAI</label>
+                    <div class="flex gap-2">
+                        <input type="password" id="openai_api_key" name="openai_api_key" x-ref="key" autocomplete="off"
+                            placeholder="{% if config.openai_api_key %}Guardada (…{{ config.openai_api_key|slice:'-4:' }}). Déjala vacía para mantenerla{% else %}sk-...{% endif %}"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <button type="button" @click="test()" :disabled="testing"
+                            class="inline-flex shrink-0 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent disabled:opacity-50">
+                            <i data-lucide="plug-zap" class="mr-2 h-4 w-4"></i>
+                            <span x-text="testing ? 'Probando…' : 'Probar conexión'"></span>
+                        </button>
+                    </div>
+                    <p class="text-sm" :class="error ? 'text-red-600' : 'text-green-600'" x-show="message" x-text="message"></p>
+                    <p class="text-sm text-muted-foreground">Créala en platform.openai.com → API keys. Se guarda en la base de datos del panel.</p>
+                    {% if config.openai_api_key %}
+                    <label class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <input type="checkbox" name="remove_openai_api_key" class="h-4 w-4 rounded border-input"> Borrar la clave guardada
+                    </label>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-2">
+                    <label for="openai_model" class="text-sm font-medium">Modelo</label>
+                    <input type="text" id="openai_model" name="openai_model" list="openai-models" value="{{ config.openai_model }}"
+                        placeholder="Pulsa «Probar conexión» para ver los modelos disponibles"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <datalist id="openai-models">
+                        <template x-for="model in models" :key="model"><option :value="model"></option></template>
+                    </datalist>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="ai_instructions" class="text-sm font-medium">Instrucciones adicionales (opcional)</label>
+                    <textarea id="ai_instructions" name="ai_instructions" rows="4"
+                        placeholder="Ej.: escribe el código y los comentarios en español; usa el prefijo x_ para campos nuevos"
+                        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ config.ai_instructions }}</textarea>
+                </div>
+
+                <div class="flex justify-end pt-4 border-t">
+                    <button type="submit" name="section" value="ia"
+                        class="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="save" class="h-4 w-4 mr-2"></i>
+                        Guardar IA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function aiSettings() {
+            return {
+                models: [], testing: false, message: '', error: false,
+                async test() {
+                    this.testing = true; this.message = '';
+                    const body = new FormData();
+                    body.append('openai_api_key', this.$refs.key.value);
+                    body.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+                    try {
+                        const data = await (await fetch("{% url 'settings-ai-test' %}", { method: 'POST', body })).json();
+                        this.error = !data.ok;
+                        this.models = data.models || [];
+                        this.message = data.ok ? `Conexión correcta: ${this.models.length} modelos disponibles` : data.error;
+                    } catch (e) {
+                        this.error = true; this.message = 'No se pudo comprobar la conexión';
+                    }
+                    this.testing = false;
+                },
+            };
+        }
+    </script>
+    {% endif %}
 
     <!-- Help Tab -->
     <div x-show="activeTab === 'help'" class="space-y-6">
