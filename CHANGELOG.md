@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.24**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.25**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.25 — 2026-10-28
+
+- README con capturas de la app y la lista de funcionalidades al día
 
 ## 1.0.24 — 2026-10-28
 

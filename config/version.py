@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.24'
+VERSION = '1.0.25'
 
 CHANGELOG = [
+    {
+        'version': '1.0.25',
+        'date': '2026-10-28',
+        'notes': [
+            "README con capturas de la app y la lista de funcionalidades al día",
+        ],
+    },
     {
         'version': '1.0.24',
         'date': '2026-10-28',

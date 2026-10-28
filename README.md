@@ -3,17 +3,39 @@
 🐳 Django-based orchestration platform for deploying and managing Odoo instances using Docker.
 
 ## ✨ Features
-- 🚀 Deploy Odoo instances (v14-v17) using Docker
-- 🌐 Automatic subdomain assignment with Traefik
-- 🔗 GitHub integration for custom addons
-- 🎛️ Start/Stop/Restart instance controls
-- 💾 Automated backups and restore
-- 🔐 SSL/HTTPS with Let's Encrypt auto-generation
-- 📊 Metrics and monitoring dashboard
-- 💻 Interactive container console
-- 👥 User management system
-- 📦 Requirements.txt installer
-- 🔄 Instance duplication
+- 🚀 Deploy **Odoo 8 to 20** in Docker — every version tested end to end (deploy, database, login, backups, chat); each gets a matching PostgreSQL
+- 🔒 **Automatic HTTPS**: the installer asks for your domain and an email, and Traefik issues and renews Let's Encrypt certificates for the panel and every instance
+- 🌐 Each instance gets its own subdomain, `client-version-name.yourdomain.com`, covered by a single `*.yourdomain.com` DNS record; custom domains too
+- 🔑 **Open Odoo as admin** from the panel without typing the password (signed, one-time link)
+- 🗂️ **Projects** group a client's instances (shown as `project / instance`); a project's **client** is a user who can see and operate them
+- 💾 Backups with database + filestore: manual or scheduled with retention, download, restore, import Odoo's own backups, create an instance from any backup, duplicate instances
+- 🤖 **AI assistant** (ChatGPT) per instance: writes, validates and installs modules, fixes its own install errors, `@`-tags your modules, undo its changes
+  - attach **PDFs, images or text files**; long requests become a live step-by-step plan, run in the background and can be stopped
+  - also from Odoo: write **`/ia …`** in any record's chatter (Odoo 9-20) and the answer arrives there
+- 🔄 **Migrate from another Odoo** (8 or later) over XML-RPC into Odoo 14+: contacts, categories, products and variants, sales, purchases, invoices and payments — re-runnable without duplicates
+- 🎨 **Community SH Theme** for Odoo 15-20: light top bar, form sheets as cards and an app-grid home screen (original design)
+- 🔌 **MCP server for Claude** (Claude Code / Claude Desktop) and a full **REST API** with personal tokens
+- ⚙️ Long operations run in background **workers** (one for Docker jobs, one for AI and migrations), with live task status
+- 🔗 GitHub integration: main repo with a branch per instance, plus **extra addons repositories**
+- 📊 Live metrics and CPU/RAM history (24 h, 7 d, 30 d, 12 months); Docker management (containers, images, volumes, networks)
+- ✅ **Todo** list for the team (Claude can complete items over MCP)
+- 🔐 2FA (optional or mandatory), per-user permissions, login lockout, per-instance Odoo master password
+- 🌓 Light/dark theme, 🇪🇸/🇬🇧 Spanish and English
+
+## 📸 Screenshots
+
+| | |
+|---|---|
+| ![Landing](docs/screenshots/landing.png) | ![Landing (dark)](docs/screenshots/landing-dark.png) |
+| **Landing** | **Landing — dark mode** |
+| ![Projects](docs/screenshots/projects.png) | ![Instances](docs/screenshots/instances.png) |
+| **Projects** | **Instances** |
+| ![Instance](docs/screenshots/instance-detail.png) | ![Metrics](docs/screenshots/metrics.png) |
+| **Instance detail** | **Metrics and CPU/RAM history** |
+| ![Docker](docs/screenshots/docker.png) | ![Backups](docs/screenshots/backups.png) |
+| **Docker management** | **Backups** |
+| ![Todo](docs/screenshots/todo.png) | ![MCP](docs/screenshots/settings-mcp.png) |
+| **Todo** | **Settings — MCP for Claude** |
 
 ## 🚀 Quick Start
 
