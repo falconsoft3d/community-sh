@@ -31,6 +31,7 @@ class GitHubConfig(models.Model):
     )
     auto_backup_frequency_value = models.IntegerField(default=5, help_text="How often to run backups (e.g., every 5 days)")
     auto_backup_retention = models.IntegerField(default=5, help_text="Number of backups to keep. Older backups will be deleted automatically")
+    last_auto_backup_at = models.DateTimeField(null=True, blank=True, help_text="When the last automatic backup run started")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

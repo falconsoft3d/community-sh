@@ -90,6 +90,31 @@ def get_backup_for_user(user, backup_id):
     return get_object_or_404(backups, pk=backup_id)
 
 
+# Brute-force protection for login and 2FA. Keyed by account, not IP: behind
+# Traefik every request comes from the proxy address.
+MAX_ATTEMPTS = 5
+LOCKOUT_SECONDS = 15 * 60
+
+
+def is_locked_out(key):
+    from django.core.cache import cache
+    return cache.get(key, 0) >= MAX_ATTEMPTS
+
+
+def register_failure(key):
+    from django.core.cache import cache
+    cache.add(key, 0, LOCKOUT_SECONDS)
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, LOCKOUT_SECONDS)
+
+
+def clear_failures(key):
+    from django.core.cache import cache
+    cache.delete(key)
+
+
 def superuser_required(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):

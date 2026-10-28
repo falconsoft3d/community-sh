@@ -220,3 +220,174 @@ class ValidationTests(TestCase):
         self.assertTrue(domain_in_use('panel.example.com'))
         self.assertTrue(domain_in_use('WWW.panel.example.com'))
         self.assertFalse(domain_in_use('erp.example.com'))
+
+
+class HostPathTests(TestCase):
+    def test_translates_project_paths_to_host(self):
+        from django.conf import settings
+        from .services import host_path
+        base = str(settings.BASE_DIR)
+        with mock.patch.dict('os.environ', {'HOST_WORKDIR': '/opt/community-sh'}):
+            self.assertEqual(host_path(f'{base}/instances/x/addons'), '/opt/community-sh/instances/x/addons')
+            self.assertEqual(host_path('/var/run/docker.sock'), '/var/run/docker.sock')
+            self.assertEqual(host_path(f'{base}-other/x'), f'{base}-other/x')
+        with mock.patch.dict('os.environ', {'HOST_WORKDIR': ''}):
+            self.assertEqual(host_path(f'{base}/instances/x'), f'{base}/instances/x')
+
+
+class DockerServiceTests(TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(__import__('shutil').rmtree, self.tmp, True)
+        settings_patch = override_settings(BASE_DIR=self.tmp)
+        settings_patch.enable()
+        self.addCleanup(settings_patch.disable)
+        client_patch = mock.patch('orchestrator.services.docker.from_env')
+        self.client = client_patch.start().return_value
+        self.addCleanup(client_patch.stop)
+
+        import docker
+        self.not_found = docker.errors.NotFound('missing')
+        self.instance = Instance.objects.create(name='acme')
+
+    def _service(self):
+        from .services import DockerService
+        return DockerService()
+
+    def test_master_passwords_are_unique(self):
+        other = Instance.objects.create(name='other')
+        self.assertTrue(self.instance.master_password)
+        self.assertNotEqual(self.instance.master_password, other.master_password)
+
+    def test_reuses_existing_anonymous_data_volume(self):
+        container = mock.Mock(attrs={'Mounts': [
+            {'Destination': '/mnt/extra-addons', 'Name': None},
+            {'Destination': '/var/lib/odoo', 'Name': 'a1b2c3'},
+        ]})
+        service = self._service()
+        self.assertEqual(service._resolve_data_volume(self.instance, container), 'a1b2c3')
+        self.assertEqual(service._resolve_data_volume(self.instance, None), 'odoo_data_acme')
+
+    def test_deploy_mounts_data_volume_and_config(self):
+        self.client.containers.get.side_effect = self.not_found
+        odoo = self.client.containers.run.return_value
+        odoo.id = 'abc123'
+        odoo.attrs = {'NetworkSettings': {'Ports': {'8069/tcp': [{'HostPort': '32768'}]}}}
+
+        with mock.patch.dict('os.environ', {'HOST_WORKDIR': '/srv/csh'}):
+            self._service().deploy_instance(self.instance)
+
+        odoo_call = [c for c in self.client.containers.run.call_args_list if c.args[0].startswith('odoo:')][0]
+        volumes = odoo_call.kwargs['volumes']
+        self.assertEqual(volumes['odoo_data_acme'], {'bind': '/var/lib/odoo', 'mode': 'rw'})
+        self.assertEqual(volumes['/srv/csh/instances/acme/odoo.conf']['bind'], '/etc/odoo/odoo.conf')
+
+        with open(f'{self.tmp}/instances/acme/odoo.conf') as f:
+            self.assertIn(f'admin_passwd = {self.instance.master_password}', f.read())
+        self.instance.refresh_from_db()
+        self.assertEqual(self.instance.data_volume, 'odoo_data_acme')
+        self.assertEqual(self.instance.port, 32768)
+
+    def test_rename_moves_resources_and_keeps_data(self):
+        import os
+        os.makedirs(f'{self.tmp}/instances/acme')
+        old_odoo = mock.Mock(attrs={'Mounts': [{'Destination': '/var/lib/odoo', 'Name': 'vol123'}]})
+        db = mock.Mock()
+        containers = {'odoo_acme': old_odoo, 'db_acme': db}
+
+        def get_container(name):
+            if name in containers:
+                return containers[name]
+            raise self.not_found
+        self.client.containers.get.side_effect = get_container
+        new_network = mock.Mock()
+        old_network = mock.Mock()
+        self.client.networks.get.side_effect = lambda n: {'net_acme': old_network}.get(n) or (_ for _ in ()).throw(self.not_found)
+        self.client.networks.create.return_value = new_network
+
+        service = self._service()
+        self.instance.name = 'acme-new'
+        with mock.patch.object(service, 'deploy_instance') as deploy:
+            service.rename_instance(self.instance, 'acme')
+
+        old_odoo.remove.assert_called_once_with(force=True)
+        db.rename.assert_called_once_with('db_acme-new')
+        new_network.connect.assert_called_once_with(db)
+        old_network.disconnect.assert_called_once_with(db)
+        old_network.remove.assert_called_once()
+        self.assertTrue(os.path.isdir(f'{self.tmp}/instances/acme-new'))
+        deploy.assert_called_once_with(self.instance)
+        self.instance.refresh_from_db()
+        self.assertEqual((self.instance.name, self.instance.data_volume), ('acme-new', 'vol123'))
+
+
+class AutoBackupScheduleTests(TestCase):
+    def setUp(self):
+        admin = User.objects.create_superuser('admin', 'a@example.com', 'pass-12345')
+        self.config = GitHubConfig.objects.create(
+            user=admin, auto_backup_enabled=True,
+            auto_backup_frequency_unit='hour', auto_backup_frequency_value=6,
+        )
+        patcher = mock.patch('orchestrator.management.commands.run_auto_backups.DockerService')
+        self.service = patcher.start()
+        self.addCleanup(patcher.stop)
+        Instance.objects.create(name='acme')
+
+    def run_command(self):
+        from io import StringIO
+        from django.core.management import call_command
+        call_command('run_auto_backups', stdout=StringIO())
+
+    def test_runs_once_per_interval(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        self.run_command()
+        self.run_command()
+        self.assertEqual(self.service.return_value.backup_instance.call_count, 1)
+
+        self.config.refresh_from_db()
+        self.config.last_auto_backup_at = timezone.now() - timedelta(hours=6, minutes=1)
+        self.config.save()
+        self.run_command()
+        self.assertEqual(self.service.return_value.backup_instance.call_count, 2)
+
+    def test_disabled_does_nothing(self):
+        self.config.auto_backup_enabled = False
+        self.config.save()
+        self.run_command()
+        self.service.return_value.backup_instance.assert_not_called()
+
+
+class PostOnlyActionTests(BaseTestCase):
+    def test_backup_and_container_actions_reject_get(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('instance-backup', args=[self.alice_instance.pk])).status_code, 405)
+        container = Container.objects.create(name='c1', image='x', port=1, container_port=1, created_by=self.alice)
+        for name in ('container-start', 'container-stop', 'container-restart'):
+            self.assertEqual(self.client.get(reverse(name, args=[container.pk])).status_code, 405, name)
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
+class LockoutTests(TestCase):
+    def setUp(self):
+        User.objects.create_user('dave', password='right-pass-123')
+
+    def test_login_locks_after_repeated_failures(self):
+        for _ in range(5):
+            self.client.post(reverse('login'), {'username': 'dave', 'password': 'wrong'})
+        self.client.post(reverse('login'), {'username': 'dave', 'password': 'right-pass-123'})
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_2fa_locks_after_repeated_failures(self):
+        user = User.objects.get(username='dave')
+        user.profile.two_factor_enabled = True
+        user.profile.two_factor_secret = 'JBSWY3DPEHPK3PXP'
+        user.profile.save()
+        self.client.post(reverse('login'), {'username': 'dave', 'password': 'right-pass-123'})
+        for _ in range(5):
+            self.client.post(reverse('two-factor-verify'), {'code': '000000'})
+
+        import pyotp
+        self.client.post(reverse('two-factor-verify'), {'code': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
+        self.assertNotIn('_auth_user_id', self.client.session)

@@ -2,10 +2,15 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import User
 import os
+import secrets
 import socket
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .permissions import validate_resource_name, validate_domain
+
+
+def generate_master_password():
+    return secrets.token_urlsafe(18)
 
 class Instance(models.Model):
     class Status(models.TextChoices):
@@ -37,6 +42,8 @@ class Instance(models.Model):
     
     # Docker info
     container_id = models.CharField(max_length=100, blank=True, null=True)
+    data_volume = models.CharField(max_length=255, blank=True, default='', help_text="Docker volume holding /var/lib/odoo (filestore)")
+    master_password = models.CharField(max_length=64, default=generate_master_password, help_text="Odoo master password (database manager)")
     port = models.IntegerField(unique=True, null=True, blank=True)
     
     # Custom Domain & SSL
@@ -128,11 +135,12 @@ class UserProfile(models.Model):
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     """Create UserProfile when User is created"""
-    if created:
+    # raw=True while loading fixtures: the profile comes from the fixture itself
+    if created and not kwargs.get('raw'):
         UserProfile.objects.create(user=instance)
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     """Save UserProfile when User is saved"""
-    if hasattr(instance, 'profile'):
+    if not kwargs.get('raw') and hasattr(instance, 'profile'):
         instance.profile.save()

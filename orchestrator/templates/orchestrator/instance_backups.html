@@ -17,14 +17,18 @@
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
         <h3 class="font-semibold leading-none tracking-tight mb-4">Create New Backup</h3>
         <div class="flex gap-3">
-            <a href="{% url 'instance-backup' instance.pk %}?filestore=true"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+            <form method="post" action="{% url 'instance-backup' instance.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="filestore" value="true"><input type="hidden" name="next" value="backups">
+                <button type="submit"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                 <i data-lucide="download" class="mr-2 h-4 w-4"></i> Full Backup (with filestore)
-            </a>
-            <a href="{% url 'instance-backup' instance.pk %}?filestore=false"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+            </button>
+            </form>
+            <form method="post" action="{% url 'instance-backup' instance.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="filestore" value="false"><input type="hidden" name="next" value="backups">
+                <button type="submit"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                 <i data-lucide="database" class="mr-2 h-4 w-4"></i> Database Only
-            </a>
+            </button>
+            </form>
         </div>
     </div>
 

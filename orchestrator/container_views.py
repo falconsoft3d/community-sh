@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .container_models import Container
 from .container_service import ContainerService
@@ -173,6 +174,7 @@ def container_detail(request, pk):
     })
 
 @login_required
+@require_POST
 def container_start(request, pk):
     """Start a container"""
     container = get_object_or_404(Container, pk=pk, created_by=request.user)
@@ -187,6 +189,7 @@ def container_start(request, pk):
     return redirect('container-detail', pk=pk)
 
 @login_required
+@require_POST
 def container_stop(request, pk):
     """Stop a container"""
     container = get_object_or_404(Container, pk=pk, created_by=request.user)
@@ -201,6 +204,7 @@ def container_stop(request, pk):
     return redirect('container-detail', pk=pk)
 
 @login_required
+@require_POST
 def container_restart(request, pk):
     """Restart a container"""
     container = get_object_or_404(Container, pk=pk, created_by=request.user)

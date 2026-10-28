@@ -10,9 +10,10 @@ def assign_existing_instances(apps, schema_editor):
     """Las instancias previas no tenían dueño: se asignan al primer superusuario."""
     User = apps.get_model('auth', 'User')
     Instance = apps.get_model('orchestrator', 'Instance')
-    admin = User.objects.filter(is_superuser=True).order_by('id').first()
+    db = schema_editor.connection.alias
+    admin = User.objects.using(db).filter(is_superuser=True).order_by('id').first()
     if admin:
-        Instance.objects.filter(owner__isnull=True).update(owner=admin)
+        Instance.objects.using(db).filter(owner__isnull=True).update(owner=admin)
 
 
 class Migration(migrations.Migration):

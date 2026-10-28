@@ -523,10 +523,21 @@ def instance_update_name(request, pk):
             return redirect('instance-detail', pk=pk)
         
         old_name = instance.name
+        if new_name == old_name:
+            return redirect('instance-detail', pk=pk)
         instance.name = new_name
-        instance.save()
         
-        messages.success(request, f'Nombre actualizado de "{old_name}" a "{new_name}". Considera redesplegar la instancia para aplicar los cambios.')
+        try:
+            DockerService().rename_instance(instance, old_name)
+        except Exception as e:
+            messages.error(request, f'Error al renombrar la instancia: {str(e)}')
+            return redirect('instance-detail', pk=pk)
+        
+        if instance.custom_domain:
+            from .traefik_service import TraefikService
+            TraefikService.generate_instance_config(instance)
+        
+        messages.success(request, f'Nombre actualizado de "{old_name}" a "{new_name}"')
         return redirect('instance-detail', pk=pk)
     
     return redirect('instance-detail', pk=pk)
@@ -1029,16 +1040,10 @@ def generate_ssl_certificate(request):
     return redirect('settings')
 
 @login_required
+@require_POST
 def instance_backup(request, pk):
     instance = get_instance_for_user(request.user, pk)
-    
-    # Handle both GET and POST
-    if request.method == 'POST':
-        include_filestore = request.POST.get('filestore', 'true') == 'true'
-        redirect_url = 'instance-detail'
-    else:
-        include_filestore = request.GET.get('filestore', 'true') == 'true'
-        redirect_url = 'instance-backups'
+    include_filestore = request.POST.get('filestore', 'true') == 'true'
     
     try:
         service = DockerService()
@@ -1050,12 +1055,12 @@ def instance_backup(request, pk):
         from django.contrib import messages
         messages.error(request, f'Error creating backup: {str(e)}')
     
-    # If coming from instance detail (POST), redirect to the backups tab
-    if request.method == 'POST':
-        from django.urls import reverse
-        return redirect(reverse('instance-detail', kwargs={'pk': pk}) + '#backups')
+    if request.POST.get('next') == 'backups':
+        return redirect('instance-backups', pk=pk)
     
-    return redirect(redirect_url, pk=pk)
+    # Coming from instance detail: go back to the backups tab
+    from django.urls import reverse
+    return redirect(reverse('instance-detail', kwargs={'pk': pk}) + '#backups')
 
 @login_required
 def instance_restore(request, pk):

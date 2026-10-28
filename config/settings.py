@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 import environ
+import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
 # Initialize environ
@@ -94,10 +95,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
+SQLITE_PATH = BASE_DIR / 'db.sqlite3'
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+
+if DATABASE_URL and not DATABASE_URL.startswith('sqlite'):
+    DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
+    # Older installs kept their data in db.sqlite3 even when DATABASE_URL pointed to
+    # Postgres; `manage.py migrate_from_sqlite` copies it over once.
+    if SQLITE_PATH.exists():
+        DATABASES['legacy_sqlite'] = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': SQLITE_PATH}
+else:
+    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': SQLITE_PATH}}
+    if DATABASE_URL.startswith('sqlite:///') and DATABASE_URL != 'sqlite:///db.sqlite3':
+        sqlite_name = Path(DATABASE_URL[len('sqlite:///'):])
+        DATABASES['default']['NAME'] = sqlite_name if sqlite_name.is_absolute() else BASE_DIR / sqlite_name
+
+
+# Shared across gunicorn workers (login/2FA attempt counters); created by `createcachetable`
+CACHES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache',
     }
 }
 

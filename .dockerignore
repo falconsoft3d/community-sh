@@ -21,3 +21,4 @@ coverage.xml
 db.sqlite3
 media/
 backups/
+db.sqlite3.*.bak

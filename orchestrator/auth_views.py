@@ -2,13 +2,21 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib import messages
-from .permissions import is_registration_enabled
+from .permissions import clear_failures, is_locked_out, is_registration_enabled, register_failure
 
 def custom_login(request):
     """Custom login view with 2FA support"""
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
+        lockout_key = f"login-fail:{request.POST.get('username', '').strip().lower()}"
+        if is_locked_out(lockout_key):
+            messages.error(request, 'Demasiados intentos fallidos. Inténtalo de nuevo en 15 minutos.')
+            return render(request, 'registration/login.html', {
+                'form': AuthenticationForm(),
+                'registration_enabled': is_registration_enabled()
+            })
         if form.is_valid():
+            clear_failures(lockout_key)
             user = form.get_user()
             
             # Helper to get or create profile safely
@@ -41,6 +49,7 @@ def custom_login(request):
                 messages.success(request, f'¡Bienvenido {user.username}!')
                 return redirect('instance-list')
         else:
+            register_failure(lockout_key)
             messages.error(request, 'Usuario o contraseña incorrectos')
     else:
         form = AuthenticationForm()

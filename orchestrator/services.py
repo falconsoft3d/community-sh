@@ -4,9 +4,69 @@ import git
 from django.conf import settings
 from .models import Instance
 
+ODOO_DATA_DIR = '/var/lib/odoo'
+
+
+def host_path(path):
+    """
+    Translate a path inside this app's container into the path the Docker daemon sees.
+    The project is mounted at BASE_DIR; HOST_WORKDIR is where it lives on the host.
+    """
+    path = str(path)
+    base = str(settings.BASE_DIR)
+    host_workdir = os.environ.get('HOST_WORKDIR', '').rstrip('/')
+    if host_workdir and (path == base or path.startswith(base + os.sep)):
+        return host_workdir + path[len(base):]
+    return path
+
+
+def odoo_config_target(odoo_version):
+    # Odoo 10 images still read the old OpenERP config file name
+    return '/etc/odoo/openerp-server.conf' if odoo_version == '10.0' else '/etc/odoo/odoo.conf'
+
+
 class DockerService:
     def __init__(self):
         self.client = docker.from_env()
+
+    def _get_container(self, name):
+        try:
+            return self.client.containers.get(name)
+        except docker.errors.NotFound:
+            return None
+
+    def _resolve_data_volume(self, instance, container=None):
+        """
+        Volume holding /var/lib/odoo (filestore, sessions). Reuse the one the current
+        container already uses (older deployments got an anonymous volume) so that
+        redeploying never starts with an empty filestore.
+        """
+        if container is not None:
+            for mount in container.attrs.get('Mounts', []):
+                if mount.get('Destination') == ODOO_DATA_DIR and mount.get('Name'):
+                    return mount['Name']
+        return instance.data_volume or f"odoo_data_{instance.name}"
+
+    def _write_odoo_config(self, instance, workspace_path):
+        config_path = os.path.join(workspace_path, 'odoo.conf')
+        with open(config_path, 'w') as f:
+            f.write(
+                "[options]\n"
+                "addons_path = /mnt/extra-addons\n"
+                f"data_dir = {ODOO_DATA_DIR}\n"
+                f"admin_passwd = {instance.master_password}\n"
+            )
+        os.chmod(config_path, 0o644)
+        return config_path
+
+    def _wait_for_postgres(self, db_container, timeout=60):
+        import time
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if db_container.exec_run("pg_isready -U odoo").exit_code == 0:
+                return
+            time.sleep(1)
+        raise Exception(f"Database container {db_container.name} not ready after {timeout}s")
 
     def deploy_instance(self, instance):
         """
@@ -50,15 +110,23 @@ class DockerService:
             # 5. Start Odoo
             odoo_container_name = f"odoo_{instance.name}"
             
-            volumes = {}
+            # Check if container already exists (redeploy scenario)
+            existing_container = self._get_container(odoo_container_name)
+            data_volume = self._resolve_data_volume(instance, existing_container)
+            
+            # Bind mounts are resolved by the Docker daemon, so they need host paths
+            volumes = {
+                data_volume: {'bind': ODOO_DATA_DIR, 'mode': 'rw'},
+                host_path(self._write_odoo_config(instance, workspace_path)): {
+                    'bind': odoo_config_target(instance.odoo_version), 'mode': 'rw',
+                },
+            }
             # If we cloned addons, mount them
             addons_path = os.path.join(workspace_path, 'addons')
             if os.path.exists(addons_path):
                 # We mount it to /mnt/extra-addons which is standard in Odoo images
-                volumes[addons_path] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
+                volumes[host_path(addons_path)] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
             
-            
-            # Check if container already exists (redeploy scenario)
             is_redeploy = False
             try:
                 odoo_container = self.client.containers.get(odoo_container_name)
@@ -148,6 +216,7 @@ class DockerService:
                 instance.port = int(host_port)
             
             instance.container_id = odoo_container.id
+            instance.data_volume = data_volume
             instance.status = Instance.Status.RUNNING
             instance.save()
             
@@ -256,18 +325,27 @@ class DockerService:
             try:
                 container = self.client.containers.get(instance.container_id)
                 container.stop()
-                container.remove()
+                container.remove(v=True)
             except docker.errors.NotFound:
                 pass
             except Exception as e:
                 print(f"Error removing Odoo container: {e}")
+        
+        # Named filestore volume (not removed by remove(v=True))
+        data_volume = instance.data_volume or f"odoo_data_{instance.name}"
+        try:
+            self.client.volumes.get(data_volume).remove()
+        except docker.errors.NotFound:
+            pass
+        except Exception as e:
+            print(f"Error removing data volume {data_volume}: {e}")
 
         # 2. Stop and Remove DB Container
         db_container_name = f"db_{instance.name}"
         try:
             container = self.client.containers.get(db_container_name)
             container.stop()
-            container.remove()
+            container.remove(v=True)
         except docker.errors.NotFound:
             pass
         except Exception as e:
@@ -338,6 +416,7 @@ class DockerService:
             odoo_version=instance.odoo_version,
             github_repo=instance.github_repo,
             github_branch=new_name,  # Use new name as branch name
+            database_name=instance.database_name,
             status=Instance.Status.DEPLOYING,
             origin='duplicate'
         )
@@ -352,10 +431,10 @@ class DockerService:
             try:
                 source_db_container = self.client.containers.get(db_source)
                 
-                # Create dump file inside the container
+                # Dump the whole cluster: Odoo databases are not the 'postgres' maintenance DB
                 print("Creating database dump...")
                 dump_result = source_db_container.exec_run(
-                    "pg_dump -U odoo -Fc postgres -f /tmp/db_dump.sql",
+                    "pg_dumpall -U odoo -f /tmp/db_dump.sql",
                     environment={"PGPASSWORD": "odoo"}
                 )
                 
@@ -388,10 +467,8 @@ class DockerService:
                     detach=True
                 )
                 
-                # Wait for database to be ready
-                import time
                 print("Waiting for new database to be ready...")
-                time.sleep(5)
+                self._wait_for_postgres(new_db_container)
                 
                 # Put the dump file into the new container
                 new_db_container.put_archive('/tmp', dump_data)
@@ -399,11 +476,11 @@ class DockerService:
                 # Restore database
                 print("Restoring database...")
                 restore_result = new_db_container.exec_run(
-                    "pg_restore -U odoo -d postgres -c /tmp/db_dump.sql",
+                    "psql -U odoo -d postgres -q -f /tmp/db_dump.sql",
                     environment={"PGPASSWORD": "odoo"}
                 )
                 
-                # Note: pg_restore may have warnings but still work
+                # Note: psql reports harmless errors (e.g. role "odoo" already exists)
                 print(f"Database restore completed. Exit code: {restore_result.exit_code}")
                 if restore_result.output:
                     print(f"Restore output: {restore_result.output.decode('utf-8')[:500]}")
@@ -412,15 +489,16 @@ class DockerService:
                 print(f"Source database container {db_source} not found")
                 raise
             
-            # 2. Copy the filestore
-            print("Step 2: Copying filestore...")
+            # 2. Copy the workspace (addons checkout)
+            print("Step 2: Copying workspace...")
             source_workspace = os.path.join(settings.BASE_DIR, 'instances', instance.name)
             target_workspace = os.path.join(settings.BASE_DIR, 'instances', new_name)
             
             if os.path.exists(source_workspace):
                 import shutil
-                shutil.copytree(source_workspace, target_workspace)
-                print(f"Filestore copied from {source_workspace} to {target_workspace}")
+                # odoo.conf is regenerated with the new instance's master password
+                shutil.copytree(source_workspace, target_workspace, ignore=shutil.ignore_patterns('odoo.conf'))
+                print(f"Workspace copied from {source_workspace} to {target_workspace}")
             
             # 3. Create new Git branch if repo exists
             if instance.github_repo:
@@ -451,6 +529,10 @@ class DockerService:
             print("Step 4: Deploying new instance...")
             self.deploy_instance(new_instance)
             
+            # 5. Copy the filestore (attachments) between the Odoo containers
+            print("Step 5: Copying filestore...")
+            self._copy_filestore(f"odoo_{instance.name}", f"odoo_{new_name}")
+            
             print(f"Successfully copied instance {instance.name} to {new_name}")
             return new_instance
             
@@ -459,6 +541,63 @@ class DockerService:
             new_instance.status = Instance.Status.ERROR
             new_instance.save()
             raise e
+
+    def rename_instance(self, instance, old_name):
+        """
+        Move an instance's Docker resources and workspace from old_name to
+        instance.name. The database container (and its data) is kept; the Odoo
+        container is recreated on the same filestore volume.
+        """
+        new_name = instance.name
+        old_odoo = self._get_container(f"odoo_{old_name}")
+        if old_odoo is not None:
+            instance.data_volume = self._resolve_data_volume(instance, old_odoo)
+            old_odoo.remove(force=True)  # keeps volumes
+        elif not instance.data_volume:
+            instance.data_volume = f"odoo_data_{old_name}"
+
+        db_container = self._get_container(f"db_{old_name}")
+        if db_container is not None:
+            db_container.rename(f"db_{new_name}")
+            try:
+                new_network = self.client.networks.get(f"net_{new_name}")
+            except docker.errors.NotFound:
+                new_network = self.client.networks.create(f"net_{new_name}", driver="bridge")
+            # Connecting after the rename registers the new DNS name
+            new_network.connect(db_container)
+            try:
+                old_network = self.client.networks.get(f"net_{old_name}")
+                old_network.disconnect(db_container)
+                old_network.remove()
+            except docker.errors.NotFound:
+                pass
+
+        instances_dir = os.path.join(settings.BASE_DIR, 'instances')
+        old_workspace = os.path.join(instances_dir, old_name)
+        new_workspace = os.path.join(instances_dir, new_name)
+        if os.path.exists(old_workspace) and not os.path.exists(new_workspace):
+            os.rename(old_workspace, new_workspace)
+
+        old_traefik_config = os.path.join(settings.BASE_DIR, 'traefik', f'instance-{old_name}.yml')
+        if os.path.exists(old_traefik_config):
+            os.remove(old_traefik_config)
+
+        instance.save()
+        if old_odoo is not None or db_container is not None:
+            self.deploy_instance(instance)
+
+    def _copy_filestore(self, source_name, target_name):
+        source = self._get_container(source_name)
+        target = self._get_container(target_name)
+        if source is None or target is None:
+            print(f"Warning: cannot copy filestore ({source_name} -> {target_name}): container missing")
+            return
+        try:
+            stream, _ = source.get_archive(f"{ODOO_DATA_DIR}/filestore")
+            target.put_archive(ODOO_DATA_DIR, b''.join(stream))
+            print(f"Filestore copied from {source_name} to {target_name}")
+        except docker.errors.NotFound:
+            print(f"No filestore found in {source_name}")
 
     def get_logs(self, instance, lines=100):
         if not instance.container_id:

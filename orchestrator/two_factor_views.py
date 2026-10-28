@@ -90,6 +90,14 @@ def two_factor_verify(request):
             messages.error(request, 'Sesión expirada. Inicia sesión nuevamente.')
             return redirect('login')
         
+        from .permissions import clear_failures, is_locked_out, register_failure
+        lockout_key = f"2fa-fail:{user_id}"
+        if is_locked_out(lockout_key):
+            request.session.pop('2fa_user_id', None)
+            request.session.pop('2fa_required', None)
+            messages.error(request, 'Demasiados códigos inválidos. Inténtalo de nuevo en 15 minutos.')
+            return redirect('login')
+        
         from django.contrib.auth.models import User
         try:
             user = User.objects.get(id=user_id)
@@ -98,6 +106,7 @@ def two_factor_verify(request):
             if profile.two_factor_enabled and profile.two_factor_secret:
                 totp = pyotp.TOTP(profile.two_factor_secret)
                 if totp.verify(code, valid_window=1):
+                    clear_failures(lockout_key)
                     # Code is valid, complete login
                     from django.contrib.auth import login
                     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
@@ -109,6 +118,7 @@ def two_factor_verify(request):
                     messages.success(request, f'¡Bienvenido {user.username}!')
                     return redirect('instance-list')
                 else:
+                    register_failure(lockout_key)
                     messages.error(request, 'Código inválido. Inténtalo de nuevo.')
             else:
                 messages.error(request, '2FA no está configurado correctamente.')

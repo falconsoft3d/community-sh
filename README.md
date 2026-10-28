@@ -42,8 +42,15 @@ sudo ./easy-install.sh
 ```bash
 git pull
 docker-compose up -d --build
-docker-compose exec app python manage.py migrate
 ```
+Migrations run automatically when the `app` container starts.
+
+> **Upgrading from versions that stored data in `db.sqlite3`:** if `.env` has a Postgres
+> `DATABASE_URL` (the default from `easy-install.sh`), the first start copies `db.sqlite3`
+> into Postgres automatically (`manage.py migrate_from_sqlite`) and keeps a
+> `db.sqlite3.pre-migration-*.bak` copy. `.env` must define `DB_PASSWORD` and
+> `DJANGO_SECRET_KEY`. Each Odoo instance now has its own master password (shown on the
+> instance page); it is applied on the next redeploy.
 
 **Docker Compose Commands Local**
 ```bash

@@ -200,6 +200,25 @@
                     <div class="text-sm text-muted-foreground">{{ object.odoo_version }}</div>
                 </div>
 
+                <div class="space-y-1" x-data="{ show: false }">
+                    <label class="text-sm font-medium leading-none">Master Password</label>
+                    <div class="flex items-center gap-2">
+                        <code class="text-sm text-muted-foreground flex-1 truncate"
+                            x-text="show ? '{{ object.master_password|escapejs }}' : '••••••••••••'">••••••••••••</code>
+                        <button type="button" @click="show = !show"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                            title="Mostrar/ocultar">
+                            <i data-lucide="eye" class="h-3 w-3"></i>
+                        </button>
+                        <button type="button" onclick="navigator.clipboard.writeText('{{ object.master_password|escapejs }}')"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                            title="Copiar contraseña">
+                            <i data-lucide="copy" class="h-3 w-3"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs text-muted-foreground mt-1">Para el gestor de bases de datos de Odoo (/web/database/manager). Se aplica al redesplegar.</p>
+                </div>
+
                 <div class="space-y-1">
                     <label class="text-sm font-medium leading-none">Source</label>
                     <div class="text-sm text-muted-foreground">
@@ -364,14 +383,18 @@
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
             <h3 class="font-semibold leading-none tracking-tight mb-4">Create New Backup</h3>
             <div class="flex gap-3">
-                <a href="{% url 'instance-backup' object.pk %}?filestore=true"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                <form method="post" action="{% url 'instance-backup' object.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="filestore" value="true">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                     <i data-lucide="download" class="mr-2 h-4 w-4"></i> Full Backup (with filestore)
-                </a>
-                <a href="{% url 'instance-backup' object.pk %}?filestore=false"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                </button>
+                </form>
+                <form method="post" action="{% url 'instance-backup' object.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="filestore" value="false">
+                    <button type="submit"
+                        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                     <i data-lucide="database" class="mr-2 h-4 w-4"></i> Database Only
-                </a>
+                </button>
+                </form>
             </div>
         </div>
 

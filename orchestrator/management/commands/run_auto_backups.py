@@ -5,58 +5,39 @@ from orchestrator.permissions import get_global_config
 from orchestrator.services import DockerService
 from orchestrator.backup_models import Backup
 import os
+from datetime import timedelta
+
+UNIT_SECONDS = {'minute': 60, 'hour': 3600, 'day': 86400, 'week': 604800}
+
 
 class Command(BaseCommand):
     help = 'Runs automatic backups based on system configuration'
 
     def handle(self, *args, **options):
-        # 1. Backups are configured platform-wide by the admin
+        # Backups are configured platform-wide by the admin
         config = get_global_config()
-        configs = [config] if config and config.auto_backup_enabled else []
-        
-        if not configs:
-            self.stdout.write(self.style.SUCCESS('No active backup configurations found.'))
+        if not config or not config.auto_backup_enabled:
+            self.stdout.write(self.style.SUCCESS('No active backup configuration found.'))
             return
 
+        unit = config.auto_backup_frequency_unit
+        value = max(config.auto_backup_frequency_value or 1, 1)
+        interval = timedelta(seconds=UNIT_SECONDS.get(unit, UNIT_SECONDS['day']) * value)
         now = timezone.now()
-        
-        for config in configs:
-            unit = config.auto_backup_frequency_unit
-            value = config.auto_backup_frequency_value
-            retention = config.auto_backup_retention
-            
-            should_run = False
-            
-            # Logic assuming this command is run every 5 minutes
-            if unit == 'minute':
-                # Run every time (every 5 minutes or whatever the loop is)
-                should_run = True
-            elif unit == 'hour':
-                # Run if we are close to the top of the hour
-                if now.minute < 5:
-                    should_run = True
-                    # Optional: check value (e.g. every 2 hours)
-                    # if now.hour % value != 0: should_run = False
-            elif unit == 'day':
-                # Run at midnight (approx)
-                if now.hour == 0 and now.minute < 5:
-                    should_run = True
-            elif unit == 'week':
-                # Run on Monday midnight
-                if now.weekday() == 0 and now.hour == 0 and now.minute < 5:
-                    should_run = True
-            
-            if should_run:
-                self.stdout.write(f"Running {unit} backup task (every {value} {unit}s) for config {config}...")
-                self.perform_backups(retention)
-            else:
-                 self.stdout.write(f"Skipping {unit} backup task (not time yet).")
+
+        if config.last_auto_backup_at and now - config.last_auto_backup_at < interval:
+            next_run = config.last_auto_backup_at + interval
+            self.stdout.write(f"Skipping backup (every {value} {unit}s, next run at {next_run:%Y-%m-%d %H:%M} UTC).")
+            return
+
+        # Record the run before starting so a slow or failing run isn't retried every loop
+        config.last_auto_backup_at = now
+        config.save(update_fields=['last_auto_backup_at'])
+        self.stdout.write(f"Running backup task (every {value} {unit}s)...")
+        self.perform_backups(config.auto_backup_retention)
 
     def perform_backups(self, retention):
         service = DockerService()
-        instances = Instance.objects.filter(status='running') # Only backup running instances? or all? Usually active ones.
-        # Maybe backup all valid instances regardless of status, but 'running' is safer for db consistency if we stop/start.
-        # Actually backup_instance handles logic.
         instances = Instance.objects.all()
 
         for instance in instances:
