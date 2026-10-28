@@ -2,7 +2,7 @@
 # Rendered on the server, so it works the same whatever the web client of the version.
 from markupsafe import escape
 
-from odoo import http
+from odoo import http, release
 from odoo.http import request
 
 PAGE = """<!DOCTYPE html>
@@ -67,6 +67,27 @@ def _icon(menu):
     return '<div class="placeholder">%s</div>' % escape((menu.name or '?')[:1].upper())
 
 
+def _app_action(menu):
+    """The action Odoo opens for an app: its own, or that of its first submenu that has one."""
+    if menu.action:
+        return menu.action
+    for child in menu.child_id:  # ordered by sequence, as in the web client
+        action = _app_action(child)
+        if action:
+            return action
+    return None
+
+
+def _app_url(menu):
+    # Without an action the web client opens the home screen (this grid) again
+    action = _app_action(menu)
+    if not action:
+        return '/web#menu_id=%d' % menu.id
+    if release.version_info[0] >= 18:
+        return '/odoo/action-%d' % action.id
+    return '/web#menu_id=%d&action=%d' % (menu.id, action.id)
+
+
 class CommunityShHome(http.Controller):
 
     @http.route('/community_sh/home', type='http', auth='user')
@@ -76,8 +97,8 @@ class CommunityShHome(http.Controller):
         # ir.ui.menu only returns the menus the user may see
         menus = env['ir.ui.menu'].search([('parent_id', '=', False)]).filtered(lambda m: m != own)
         apps = ''.join(
-            '<a class="app" href="/web#menu_id=%d" data-name="%s">%s<span>%s</span></a>'
-            % (menu.id, escape(menu.name.lower()), _icon(menu), escape(menu.name)) for menu in menus)
+            '<a class="app" href="%s" data-name="%s">%s<span>%s</span></a>'
+            % (escape(_app_url(menu)), escape(menu.name.lower()), _icon(menu), escape(menu.name)) for menu in menus)
         user = env.user
         html = PAGE % {'lang': escape((user.lang or 'en')[:2]), 'company': escape(user.company_id.name),
                        'uid': user.id, 'user': escape(user.name), 'apps': apps}

@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.26'
+VERSION = '1.0.27'
 
 CHANGELOG = [
+    {
+        'version': '1.0.27',
+        'date': '2026-10-28',
+        'notes': [
+            "Tema: al entrar en una app desde la pantalla de inicio ya no te devuelve a la cuadrícula (Odoo 18-20 abría la pantalla de inicio otra vez)",
+        ],
+    },
     {
         'version': '1.0.26',
         'date': '2026-10-28',
