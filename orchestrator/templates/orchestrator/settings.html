@@ -1,7 +1,7 @@
 {% extends "orchestrator/base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-6" x-data="{ activeTab: {% if user.is_superuser %}window.location.hash ? window.location.hash.slice(1) : {% else %}window.location.hash === '#mcp' ? 'mcp' : {% endif %}'github' }">
+<div class="flex flex-col gap-6" x-data="{ activeTab: {% if user.is_superuser %}window.location.hash ? window.location.hash.slice(1) : {% else %}['#mcp', '#api'].includes(window.location.hash) ? window.location.hash.slice(1) : {% endif %}'github' }">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
@@ -50,6 +50,12 @@
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="plug" class="inline-block h-4 w-4 mr-2"></i>
                 MCP (Claude)
+            </button>
+            <button type="button" @click="activeTab = 'api'; window.location.hash = 'api'"
+                :class="activeTab === 'api' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="braces" class="inline-block h-4 w-4 mr-2"></i>
+                API
             </button>
             <button @click="activeTab = 'help'; window.location.hash = 'help'" 
                 :class="activeTab === 'help' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
@@ -711,6 +717,63 @@
     </div>
 
     </form> <!-- End Main Settings Form -->
+
+
+    <!-- API Tab -->
+    <div x-show="activeTab === 'api'" class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="braces" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">API REST</h3>
+                </div>
+                <p class="text-sm text-muted-foreground">Administra proyectos, instancias, backups, tareas y Todo desde tus scripts o integraciones. Cada llamada usa los permisos del usuario del token.</p>
+            </div>
+            <div class="p-6 space-y-5 text-sm">
+                <div class="space-y-1">
+                    <p class="font-medium">URL base</p>
+                    <code class="block rounded bg-muted px-3 py-2 font-mono text-xs">{{ api_url }}</code>
+                </div>
+                <div class="space-y-1">
+                    <p class="font-medium">Autenticación</p>
+                    <p class="text-muted-foreground">Cabecera <code class="font-mono">Authorization: Bearer TU_TOKEN</code> con un token personal. Son los mismos tokens que el servidor MCP: créalos o revócalos en la pestaña <button type="button" class="text-primary hover:underline" @click="activeTab = 'mcp'; window.location.hash = 'mcp'">MCP (Claude)</button>.</p>
+                </div>
+                <div class="space-y-1">
+                    <p class="font-medium">Ejemplo</p>
+                    <pre class="overflow-x-auto rounded-lg bg-black p-3 text-xs text-green-400">curl -H "Authorization: Bearer TU_TOKEN" {{ api_url }}instances/
+
+curl -X POST -H "Authorization: Bearer TU_TOKEN" {{ api_url }}instances/12/backup/
+# → {"task_id": 345, "status": "pending"}
+
+curl -H "Authorization: Bearer TU_TOKEN" {{ api_url }}tasks/345/</pre>
+                </div>
+                <div class="overflow-x-auto rounded-lg border">
+                    <table class="w-full">
+                        <thead><tr class="border-b text-left text-muted-foreground"><th class="px-3 py-2 font-medium">Método</th><th class="px-3 py-2 font-medium">Ruta</th><th class="px-3 py-2 font-medium">Qué hace</th></tr></thead>
+                        <tbody>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/projects/</td><td class="px-3 py-2 text-muted-foreground">Proyectos que puedes ver</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/projects/</td><td class="px-3 py-2 text-muted-foreground">Crear proyecto (name, description)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/instances/</td><td class="px-3 py-2 text-muted-foreground">Instancias (estado, versión, proyecto, URL)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/</td><td class="px-3 py-2 text-muted-foreground">Crear instancia (name, odoo_version, project); despliega con /deploy/</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/deploy/</td><td class="px-3 py-2 text-muted-foreground">Desplegar (devuelve task_id)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/restart/</td><td class="px-3 py-2 text-muted-foreground">Reiniciar</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/stop/</td><td class="px-3 py-2 text-muted-foreground">Detener</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/backup/</td><td class="px-3 py-2 text-muted-foreground">Crear backup (include_filestore)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/duplicate/</td><td class="px-3 py-2 text-muted-foreground">Duplicar (new_name)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">DELETE</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/</td><td class="px-3 py-2 text-muted-foreground">Eliminar instancia</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/backups/?instance=nombre</td><td class="px-3 py-2 text-muted-foreground">Backups</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/backups/{id}/download/</td><td class="px-3 py-2 text-muted-foreground">Descargar ZIP</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/backups/{id}/restore/</td><td class="px-3 py-2 text-muted-foreground">Restaurar en su instancia</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/tasks/{id}/</td><td class="px-3 py-2 text-muted-foreground">Estado de una tarea en segundo plano</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET/POST</td><td class="px-3 py-2 font-mono text-xs">/api/todos/</td><td class="px-3 py-2 text-muted-foreground">Tareas del menú Todo</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">PATCH</td><td class="px-3 py-2 font-mono text-xs">/api/todos/{id}/</td><td class="px-3 py-2 text-muted-foreground">Cambiar estado (status, completion_note)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted-foreground">Las operaciones largas (desplegar, backup, restaurar, duplicar) devuelven <code class="font-mono">task_id</code>: consulta <code class="font-mono">/api/tasks/{id}/</code> hasta que <code class="font-mono">status</code> sea <code class="font-mono">done</code> o <code class="font-mono">failed</code>. Abre <a href="{{ api_url }}" target="_blank" class="text-primary hover:underline">{{ api_url }}</a> con sesión iniciada para la API navegable.</p>
+            </div>
+        </div>
+    </div>
 
     <!-- MCP Tab (outside the main form: it has its own forms) -->
     <div x-show="activeTab === 'mcp'" class="space-y-6">

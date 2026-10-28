@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.12**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.13**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.13 — 2026-10-28
+
+- API REST completa con tokens personales (Bearer): proyectos, instancias (desplegar, reiniciar, detener, backup, duplicar), backups (descargar, restaurar), tareas y Todo
+- Settings → API: URL base, autenticación, ejemplos con curl y tabla de endpoints
 
 ## 1.0.12 — 2026-10-28
 

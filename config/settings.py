@@ -184,9 +184,10 @@ DEFAULT_FROM_EMAIL = 'noreply@community-sh.local'
 # EMAIL_HOST_USER = 'your-email@gmail.com'
 # EMAIL_HOST_PASSWORD = 'your-app-password'
 
-# REST API: authenticated users only (session auth so 2FA enforcement applies)
+# REST API: authenticated users only; session (2FA applies) or personal Bearer token
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'orchestrator.api_auth.PersonalTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [

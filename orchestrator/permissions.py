@@ -183,7 +183,7 @@ def superuser_required(view_func):
 
 class IsOwnerOrSuperuser(permissions.BasePermission):
     """Clients may read and run the operate actions; everything else needs the owner."""
-    CLIENT_ACTIONS = ('deploy', 'stop')
+    CLIENT_ACTIONS = ('deploy', 'stop', 'restart', 'backup')
 
     def has_permission(self, request, view):
         if getattr(view, 'action', None) == 'create':

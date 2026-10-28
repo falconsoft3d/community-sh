@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views.api import BackupViewSet, InstanceAPIViewSet, ProjectViewSet, TaskViewSet, TodoViewSet
 from .views import (
     todo_list,
     todo_create,
@@ -86,7 +87,11 @@ from .container_views import (
 )
 
 router = DefaultRouter()
-router.register(r'api/instances', InstanceViewSet, basename='api-instance')
+router.register(r'api/instances', InstanceAPIViewSet, basename='api-instance')
+router.register(r'api/projects', ProjectViewSet, basename='api-project')
+router.register(r'api/backups', BackupViewSet, basename='api-backup')
+router.register(r'api/tasks', TaskViewSet, basename='api-task')
+router.register(r'api/todos', TodoViewSet, basename='api-todo')
 
 urlpatterns = [
     path('accounts/register/', register, name='register'),

@@ -150,6 +150,7 @@ def settings_view(request):
         'mcp_enabled': bool(global_config and global_config.mcp_enabled),
         'mcp_tokens': MCPToken.objects.filter(user=request.user),
         'mcp_url': request.build_absolute_uri(reverse('mcp')),
+        'api_url': request.build_absolute_uri('/api/'),
     })
 
 

@@ -36,11 +36,12 @@ class BaseTestCase(TestCase):
 
 class ApiPermissionTests(BaseTestCase):
     def test_anonymous_cannot_use_api(self):
+        # 401 + WWW-Authenticate: Bearer (token auth is available)
         response = self.client.get('/api/instances/')
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
 
         response = self.client.post('/api/instances/', {'name': 'evil'})
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 401)
         self.assertFalse(Instance.objects.filter(name='evil').exists())
 
     def test_user_only_sees_own_instances(self):
@@ -1186,3 +1187,40 @@ class MetricsHistoryTests(BaseTestCase):
         self.assertEqual(self.client.get(reverse('metrics-history')).status_code, 403)
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get(reverse('metrics-history') + '?range=bogus').json()['range'], '24h')
+
+
+class RestAPITests(MCPServerTests):
+    def api(self, method, path, data=None, token=None):
+        import json
+        kwargs = {'HTTP_AUTHORIZATION': f'Bearer {token or self.token}'}
+        if data is not None:
+            kwargs.update(data=json.dumps(data), content_type='application/json')
+        return getattr(self.client, method)(path, **kwargs)
+
+    def test_bearer_token_and_scoping(self):
+        self.assertEqual(self.api('get', '/api/projects/', token='csh_bad').status_code, 401)
+        self.assertEqual([p['name'] for p in self.api('get', '/api/projects/').json()], ['ACME'])
+        self.assertEqual([i['name'] for i in self.api('get', '/api/instances/').json()], ['alice-odoo'])
+
+    def test_instance_actions_return_tasks(self):
+        pk = self.alice_instance.pk
+        backup = self.api('post', f'/api/instances/{pk}/backup/', {'include_filestore': False}).json()
+        task = self.api('get', f"/api/tasks/{backup['task_id']}/").json()
+        self.assertEqual((task['kind'], task['params']), ('backup', {'include_filestore': False}))
+        self.assertEqual(self.api('post', f'/api/instances/{pk}/duplicate/', {'new_name': 'Bad Name!'}).status_code, 400)
+        self.assertEqual(self.api('post', f'/api/instances/{pk}/duplicate/', {'new_name': 'alice-copy'}).status_code, 202)
+
+    def test_project_crud_and_guarded_delete(self):
+        created = self.api('post', '/api/projects/', {'name': 'Nuevo', 'client': self.bob.pk}).json()
+        self.assertIsNone(created['client'])  # only admins assign clients
+        self.assertEqual(self.api('delete', f'/api/projects/{self.alice_project.pk}/').status_code, 409)
+        self.assertEqual(self.api('delete', f"/api/projects/{created['id']}/").status_code, 204)
+
+    def test_backups_and_todos(self):
+        backup = Backup.objects.create(instance=self.alice_instance, filename='a.zip', file_path='/nonexistent/a.zip', file_size=1)
+        Backup.objects.create(instance=self.bob_instance, filename='b.zip', file_path='/x/b.zip', file_size=1)
+        self.assertEqual([b['filename'] for b in self.api('get', '/api/backups/').json()], ['a.zip'])
+        self.assertEqual(self.api('post', f'/api/backups/{backup.pk}/restore/').status_code, 202)
+        todo = self.api('post', '/api/todos/', {'title': 'Desde la API'}).json()
+        done = self.api('patch', f"/api/todos/{todo['id']}/", {'status': 'done', 'completion_note': 'ok'}).json()
+        self.assertEqual((done['status'], done['completion_note']), ('done', 'ok'))
