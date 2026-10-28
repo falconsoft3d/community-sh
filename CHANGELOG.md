@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.25**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.26**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.26 — 2026-10-28
+
+- Landing: sección «Mis proyectos» antes del pie, leída de TicketPro en el servidor (token en .env, caché de 15 minutos)
+- Instalación: los workers ya no intentan descargar la imagen del panel de Docker Hub
 
 ## 1.0.25 — 2026-10-28
 

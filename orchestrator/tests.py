@@ -1688,3 +1688,26 @@ class PaginationTests(BaseTestCase):
         self.assertEqual(len(second.context['object_list']), 6)  # 25 + alice-odoo
         detail = self.client.get(reverse('project-detail', args=[self.alice_project.pk]))
         self.assertEqual((len(detail.context['instances']), detail.context['all_instances'].count()), (20, 26))
+
+
+class LandingProjectsTests(TestCase):
+    @override_settings(TICKETPROO_API_TOKEN='token', ALLOWED_HOSTS=['*'])
+    def test_projects_section_reads_the_api_once_and_skips_this_site(self):
+        from django.core.cache import cache
+        from .services import showcase
+        cache.delete(showcase.CACHE_KEY)
+        rows = [{'id': 2, 'nombre': 'falconteams.xyz', 'web': 'falconteams.xyz', 'descripcion': 'Control horario'},
+                {'id': 1, 'nombre': 'communitysh.xyz', 'web': 'communitysh.xyz', 'descripcion': 'Este sitio'}]
+        response = mock.Mock(json=lambda: {'success': True, 'total': 2, 'data': rows}, raise_for_status=lambda: None)
+        with mock.patch('orchestrator.services.showcase.requests.get', return_value=response) as get:
+            page = self.client.get('/', HTTP_HOST='communitysh.xyz')
+            self.client.get('/', HTTP_HOST='communitysh.xyz')
+        self.assertEqual(get.call_count, 1)  # cached
+        self.assertEqual(get.call_args.kwargs['headers'], {'X-API-Token': 'token'})
+        self.assertContains(page, 'href="https://falconteams.xyz"')
+        self.assertNotContains(page, 'Este sitio')
+        cache.delete(showcase.CACHE_KEY)
+
+    @override_settings(TICKETPROO_API_TOKEN='')
+    def test_hidden_without_token(self):
+        self.assertNotContains(self.client.get('/'), 'id="proyectos"')

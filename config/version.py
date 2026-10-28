@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.25'
+VERSION = '1.0.26'
 
 CHANGELOG = [
+    {
+        'version': '1.0.26',
+        'date': '2026-10-28',
+        'notes': [
+            "Landing: sección «Mis proyectos» antes del pie, leída de TicketPro en el servidor (token en .env, caché de 15 minutos)",
+            "Instalación: los workers ya no intentan descargar la imagen del panel de Docker Hub",
+        ],
+    },
     {
         'version': '1.0.25',
         'date': '2026-10-28',

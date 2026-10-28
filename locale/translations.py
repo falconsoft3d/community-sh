@@ -7,6 +7,9 @@ fills the .po catalogs (run `manage.py makemessages -l es -l en` first, then
 
 # Strings written in Spanish in the code -> English
 ES_TO_EN = {
+    'Mis proyectos': 'My projects',
+    'Más proyectos de Marlon Falcón': 'More projects by Marlon Falcón',
+    'Otras herramientas y webs en las que trabajo.': 'Other tools and websites I work on.',
     'Paginación': 'Pagination',
     '%(start)s–%(end)s de %(total)s': '%(start)s–%(end)s of %(total)s',
     'Primera página': 'First page',

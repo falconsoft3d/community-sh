@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 20:32+0000\n"
+"POT-Creation-Date: 2026-10-28 21:53+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -457,7 +457,7 @@ msgid "Instalación rápida"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:387
-#: orchestrator/templates/orchestrator/home.html:520
+#: orchestrator/templates/orchestrator/home.html:548
 msgid "Copiar"
 msgstr ""
 
@@ -525,15 +525,27 @@ msgstr ""
 msgid "Reportar un problema"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:503
+#: orchestrator/templates/orchestrator/home.html:504
+msgid "Mis proyectos"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:505
+msgid "Más proyectos de Marlon Falcón"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:506
+msgid "Otras herramientas y webs en las que trabajo."
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:531
 msgid "Hecho por Marlon Falcón Hernández · Licencia MIT ·"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:507
+#: orchestrator/templates/orchestrator/home.html:535
 msgid "Documentación"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:519
+#: orchestrator/templates/orchestrator/home.html:547
 msgid "Copiado"
 msgstr ""
 

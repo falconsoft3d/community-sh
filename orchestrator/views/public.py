@@ -40,7 +40,9 @@ def home(request):
     from django.core.paginator import Paginator
     from config.version import CHANGELOG
     releases = Paginator(CHANGELOG, 3).get_page(request.GET.get('novedades'))
+    from ..services.showcase import my_projects
     return render(request, 'orchestrator/home.html', {
+        'my_projects': my_projects(exclude_host=request.get_host().split(':')[0]),
         'changelog': releases,
         'featured_posts': featured_posts,
         'apps': apps,

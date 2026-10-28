@@ -48,6 +48,10 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 # http:// requests and rejects the https:// Origin of every form (CSRF)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 MAIN_DOMAIN = os.environ.get('MAIN_DOMAIN', '').strip().lower()
+
+# The author's other projects on the landing page (TicketPro dynamic table); hidden without a token
+TICKETPROO_API_URL = os.environ.get('TICKETPROO_API_URL', 'https://ticketproo.com/api/dynamic-tables/mis_webs/')
+TICKETPROO_API_TOKEN = os.environ.get('TICKETPROO_API_TOKEN', '')
 CSRF_TRUSTED_ORIGINS = [
     f'{scheme}://{host}' for host in (MAIN_DOMAIN, f'www.{MAIN_DOMAIN}') for scheme in ('https', 'http')
 ] if MAIN_DOMAIN and MAIN_DOMAIN != 'localhost' else []
