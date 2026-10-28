@@ -1,0 +1,9 @@
+{% load i18n %}{% get_current_language as LANGUAGE_CODE %}{% get_available_languages as LANGUAGES %}
+<form action="{% url 'set_language' %}" method="post" class="inline-flex items-center rounded-md border border-input text-xs font-semibold overflow-hidden" aria-label="{% translate 'Idioma' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    {% for code, label in LANGUAGES %}
+    <button type="submit" name="language" value="{{ code }}" title="{{ label }}"
+        class="px-2 py-1.5 transition-colors {% if code == LANGUAGE_CODE %}bg-primary text-primary-foreground{% else %}text-muted-foreground hover:bg-accent hover:text-accent-foreground{% endif %}">{{ code|upper }}</button>
+    {% endfor %}
+</form>

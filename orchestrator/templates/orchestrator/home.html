@@ -1,11 +1,12 @@
-<!DOCTYPE html>
+{% load i18n %}<!DOCTYPE html>
 {% load static %}
-<html lang="es">
+{% get_current_language as LANGUAGE_CODE %}<html lang="{{ LANGUAGE_CODE }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Community SH · Hosting de Odoo open source</title>
+    <title>{% translate "Community SH · Hosting de Odoo open source" %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
     <!-- Light/dark theme (before any styles, so there is no flash) -->
     <script src="{% static 'js/theme.js' %}"></script>
     <meta name="description" content="Plataforma open source para desplegar y administrar instancias de Odoo y aplicaciones en Docker desde un único panel.">
@@ -56,14 +57,24 @@
         </a>
 
         <nav class="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex dark:text-slate-400">
-            <a href="#funcionalidades" class="hover:text-brand-600">Funcionalidades</a>
-            <a href="#arquitectura" class="hover:text-brand-600">Cómo funciona</a>
-            <a href="#instalacion" class="hover:text-brand-600">Instalación</a>
+            <a href="#funcionalidades" class="hover:text-brand-600">{% translate "Funcionalidades" %}</a>
+            <a href="#arquitectura" class="hover:text-brand-600">{% translate "Cómo funciona" %}</a>
+            <a href="#instalacion" class="hover:text-brand-600">{% translate "Instalación" %}</a>
+            <a href="#novedades" class="hover:text-brand-600">{% translate "Novedades" %}</a>
             <a href="{% url 'blog-list' %}" class="hover:text-brand-600">Blog</a>
         </nav>
 
         <div class="flex items-center gap-3">
-            <button type="button" onclick="toggleTheme()" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema claro/oscuro"
+            {% get_current_language as LANGUAGE_CODE %}{% get_available_languages as LANGUAGES %}
+            <form action="{% url 'set_language' %}" method="post" class="hidden overflow-hidden rounded-md border border-slate-200 text-xs font-semibold dark:border-slate-700 sm:inline-flex" aria-label="{% translate 'Idioma' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                {% for code, label in LANGUAGES %}
+                <button type="submit" name="language" value="{{ code }}" title="{{ label }}"
+                    class="px-2 py-1.5 {% if code == LANGUAGE_CODE %}bg-brand-600 text-white{% else %}text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800{% endif %}">{{ code|upper }}</button>
+                {% endfor %}
+            </form>
+            <button type="button" onclick="toggleTheme()" title="{% translate "Cambiar tema claro/oscuro" %}" aria-label="{% translate "Cambiar tema claro/oscuro" %}"
                 class="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                 <i data-lucide="moon" class="h-5 w-5 dark:hidden"></i>
                 <i data-lucide="sun" class="hidden h-5 w-5 dark:block"></i>
@@ -76,16 +87,23 @@
             {% if user.is_authenticated %}
             <form method="post" action="{% url 'logout' %}" class="hidden sm:block">
                 {% csrf_token %}
-                <button type="submit" class="text-sm font-medium text-slate-600 hover:text-brand-600 dark:text-slate-400">Cerrar sesión</button>
+                <button type="submit" class="text-sm font-medium text-slate-600 hover:text-brand-600 dark:text-slate-400">{% translate "Cerrar sesión" %}</button>
             </form>
-            <a href="{% url 'instance-list' %}"
-                class="inline-flex h-9 items-center rounded-md bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
-                Ir al panel
+            <a href="{% url 'instance-list' %}" title="{{ user.get_full_name|default:user.username }}"
+                class="inline-flex h-9 items-center gap-2 rounded-md bg-brand-600 pl-1 pr-4 text-sm font-semibold text-white shadow-sm shadow-brand-600/30 hover:bg-brand-700">
+                <span class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-white/20 ring-2 ring-white/40">
+                    {% if user.profile.avatar %}
+                    <img src="{{ user.profile.avatar.url }}" alt="" class="h-full w-full object-cover">
+                    {% else %}
+                    <span class="text-xs font-bold">{{ user.username|slice:":1"|upper }}</span>
+                    {% endif %}
+                </span>
+                {% translate "Ir al panel" %}
             </a>
             {% else %}
             <a href="{% url 'login' %}"
                 class="inline-flex h-9 items-center rounded-md bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
-                Iniciar sesión
+                {% translate "Iniciar sesión" %}
             </a>
             {% endif %}
         </div>
@@ -93,101 +111,97 @@
 </header>
 
 <main>
-    <!-- Hero -->
-    <section class="relative overflow-hidden">
-        <div class="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-gradient-to-b from-brand-50 to-white dark:from-slate-900 dark:to-slate-950"></div>
-        <div class="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-20 pt-16 sm:px-6 lg:grid-cols-2 lg:pt-24">
+    <!-- Hero: a galaxy with passing rockets; the pointer leaves a trail of stars -->
+    <section id="hero" class="relative isolate overflow-hidden bg-[#050816] text-white">
+        <div class="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(ellipse_at_top_right,rgba(37,99,235,0.28),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(124,58,237,0.22),transparent_50%)]"></div>
+        <canvas id="galaxy" class="absolute inset-0 -z-10 h-full w-full" aria-hidden="true"></canvas>
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-b from-transparent to-white dark:to-slate-950"></div>
+
+        <div class="mx-auto grid max-w-6xl items-center gap-16 px-4 pb-36 pt-24 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:pb-44 lg:pt-32">
             <div>
-                <span class="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white px-3 py-1 text-xs font-semibold text-brand-700 dark:border-brand-600/30 dark:bg-slate-900 dark:text-blue-300">
+                <span class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-blue-200 backdrop-blur">
                     <i data-lucide="code-2" class="h-3.5 w-3.5"></i>
-                    Open source · Licencia MIT · v{{ app_version }}
+                    {% blocktranslate with version=app_version %}Open source · Licencia MIT · v{{ version }}{% endblocktranslate %}
                 </span>
-                <h1 class="mt-5 text-4xl font-extrabold leading-tight tracking-tight text-ink sm:text-5xl dark:text-white">
-                    Tu propio hosting de Odoo, <span class="text-brand-600">en tu servidor</span>
+                <h1 class="mt-6 text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
+                    {% translate "Tu propio hosting de Odoo," %}
+                    <span class="bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-300 bg-clip-text text-transparent">{% translate "en tu servidor" %}</span>
                 </h1>
-                <p class="mt-5 max-w-xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
-                    Community SH es un panel para desplegar y administrar instancias de Odoo y otras aplicaciones
-                    sobre Docker. Cada instancia tiene su propia base de datos, dominio, SSL y backups, y todo se
-                    gestiona desde el navegador.
+                <p class="mt-6 max-w-lg text-base leading-relaxed text-slate-300 sm:text-lg">
+                    {% translate "Community SH es un panel para desplegar y administrar instancias de Odoo y otras aplicaciones sobre Docker. Cada instancia tiene su propia base de datos, dominio, SSL y backups, y todo se gestiona desde el navegador." %}
                 </p>
 
-                <div class="mt-8 flex flex-wrap gap-3">
+                <div class="mt-10 flex flex-wrap gap-3">
+                    {% with primary="inline-flex h-12 items-center rounded-lg bg-brand-600 px-6 text-sm font-semibold text-white shadow-lg shadow-brand-600/40 transition hover:bg-brand-500 hover:shadow-brand-500/60" %}
                     {% if user.is_authenticated %}
-                    <a href="{% url 'instance-list' %}"
-                        class="inline-flex h-11 items-center rounded-md bg-brand-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
-                        <i data-lucide="layout-dashboard" class="mr-2 h-4 w-4"></i> Ir al panel
-                    </a>
+                    <a href="{% url 'instance-list' %}" class="{{ primary }}"><i data-lucide="layout-dashboard" class="mr-2 h-4 w-4"></i> {% translate "Ir al panel" %}</a>
                     {% elif registration_enabled %}
-                    <a href="{% url 'register' %}"
-                        class="inline-flex h-11 items-center rounded-md bg-brand-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
-                        <i data-lucide="user-plus" class="mr-2 h-4 w-4"></i> Crear cuenta
-                    </a>
+                    <a href="{% url 'register' %}" class="{{ primary }}"><i data-lucide="user-plus" class="mr-2 h-4 w-4"></i> {% translate "Crear cuenta" %}</a>
                     {% else %}
-                    <a href="{% url 'login' %}"
-                        class="inline-flex h-11 items-center rounded-md bg-brand-600 px-6 text-sm font-semibold text-white shadow-sm hover:bg-brand-700">
-                        <i data-lucide="log-in" class="mr-2 h-4 w-4"></i> Iniciar sesión
-                    </a>
+                    <a href="{% url 'login' %}" class="{{ primary }}"><i data-lucide="log-in" class="mr-2 h-4 w-4"></i> {% translate "Iniciar sesión" %}</a>
                     {% endif %}
+                    {% endwith %}
                     <a href="https://github.com/falconsoft3d/community-sh" target="_blank" rel="noopener"
-                        class="inline-flex h-11 items-center rounded-md border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                        class="inline-flex h-12 items-center rounded-lg border border-white/20 bg-white/5 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10">
                         {% include "orchestrator/includes/github_icon.html" with cls="mr-2 h-4 w-4" %} Ver en GitHub
                     </a>
                 </div>
 
-                <dl class="mt-10 grid max-w-md grid-cols-3 gap-6 text-sm">
+                <dl class="mt-12 grid max-w-md grid-cols-3 gap-6 border-t border-white/10 pt-6 text-sm">
                     <div>
-                        <dt class="text-slate-500 dark:text-slate-400">Odoo</dt>
-                        <dd class="mt-1 text-lg font-bold text-ink dark:text-white">{{ odoo_versions|first|floatformat:0 }} → {{ odoo_versions|last|floatformat:0 }}</dd>
+                        <dt class="text-slate-400">Odoo</dt>
+                        <dd class="mt-1 text-xl font-bold">{{ odoo_versions|first|floatformat:0 }} → {{ odoo_versions|last|floatformat:0 }}</dd>
                     </div>
                     <div>
-                        <dt class="text-slate-500 dark:text-slate-400">Apps listas</dt>
-                        <dd class="mt-1 text-lg font-bold text-ink dark:text-white">{{ apps|length }}</dd>
+                        <dt class="text-slate-400">{% translate "Apps listas" %}</dt>
+                        <dd class="mt-1 text-xl font-bold">{{ apps|length }}</dd>
                     </div>
                     <div>
-                        <dt class="text-slate-500 dark:text-slate-400">Licencia</dt>
-                        <dd class="mt-1 text-lg font-bold text-ink dark:text-white">MIT</dd>
+                        <dt class="text-slate-400">{% translate "Licencia" %}</dt>
+                        <dd class="mt-1 text-xl font-bold">MIT</dd>
                     </div>
                 </dl>
             </div>
 
-            <!-- Panel preview (illustrative) -->
-            <div class="relative" aria-hidden="true">
-                <div class="rounded-2xl border border-slate-200 bg-white shadow-xl shadow-brand-600/10 dark:border-slate-800 dark:bg-slate-900">
+            <!-- Panel preview (illustrative), with depth -->
+            <div class="relative [perspective:1600px]" aria-hidden="true">
+                <div class="absolute -inset-8 -z-10 rounded-[2rem] bg-gradient-to-tr from-brand-600/40 via-indigo-500/20 to-transparent blur-3xl"></div>
+                <div class="rounded-2xl border border-white/10 bg-white text-slate-900 shadow-[0_40px_100px_-20px_rgba(37,99,235,0.55),0_20px_40px_-25px_rgba(0,0,0,0.6)] transition duration-500 lg:[transform:rotateY(-10deg)_rotateX(4deg)] lg:hover:[transform:rotateY(-4deg)_rotateX(2deg)] dark:bg-slate-900 dark:text-slate-100">
                     <div class="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-                        <span class="h-2.5 w-2.5 rounded-full bg-slate-200 dark:bg-slate-700"></span>
-                        <span class="h-2.5 w-2.5 rounded-full bg-slate-200 dark:bg-slate-700"></span>
-                        <span class="h-2.5 w-2.5 rounded-full bg-slate-200 dark:bg-slate-700"></span>
-                        <span class="ml-3 text-xs text-slate-400">Instancias</span>
+                        <span class="h-2.5 w-2.5 rounded-full bg-red-400/80"></span>
+                        <span class="h-2.5 w-2.5 rounded-full bg-amber-400/80"></span>
+                        <span class="h-2.5 w-2.5 rounded-full bg-green-400/80"></span>
+                        <span class="ml-3 text-xs text-slate-500 dark:text-slate-400">{% translate "Instancias" %}</span>
                     </div>
                     <ul class="divide-y divide-slate-100 text-sm dark:divide-slate-800">
-                        <li class="flex items-center gap-3 px-4 py-3">
+                        <li class="flex items-center gap-3 px-5 py-4">
                             <i data-lucide="box" class="h-4 w-4 text-brand-600"></i>
                             <div class="flex-1">
                                 <p class="font-semibold">mi-empresa</p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">Odoo 18 · erp.mi-empresa.com</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Odoo 18 · acme-18-mi-empresa.tudominio.com</p>
                             </div>
-                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/15 dark:text-green-300">Running</span>
+                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/15 dark:text-green-300">{% translate "Running" %}</span>
                         </li>
-                        <li class="flex items-center gap-3 px-4 py-3">
+                        <li class="flex items-center gap-3 px-5 py-4">
                             <i data-lucide="box" class="h-4 w-4 text-brand-600"></i>
                             <div class="flex-1">
                                 <p class="font-semibold">mi-empresa-staging</p>
                                 <p class="text-xs text-slate-500 dark:text-slate-400">Odoo 18 · duplicada de mi-empresa</p>
                             </div>
-                            <span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-500/15 dark:text-blue-300">Deploying</span>
+                            <span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-500/15 dark:text-blue-300">{% translate "Deploying" %}</span>
                         </li>
-                        <li class="flex items-center gap-3 px-4 py-3">
+                        <li class="flex items-center gap-3 px-5 py-4">
                             <i data-lucide="workflow" class="h-4 w-4 text-brand-600"></i>
                             <div class="flex-1">
                                 <p class="font-semibold">automatizaciones</p>
                                 <p class="text-xs text-slate-500 dark:text-slate-400">n8n · contenedor</p>
                             </div>
-                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/15 dark:text-green-300">Running</span>
+                            <span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/15 dark:text-green-300">{% translate "Running" %}</span>
                         </li>
                     </ul>
-                    <div class="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
-                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Tareas recientes</p>
-                        <p class="mt-1 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                    <div class="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">{% translate "Tareas recientes" %}</p>
+                        <p class="mt-1 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                             <i data-lucide="check-circle-2" class="h-3.5 w-3.5 text-green-600"></i>
                             Respaldo creado: mi-empresa_backup.zip
                         </p>
@@ -197,109 +211,81 @@
         </div>
     </section>
 
-    <!-- Features -->
-    <section id="funcionalidades" class="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-800 dark:bg-slate-900/60">
+    <!-- Features: four pillars -->
+    <section id="funcionalidades" class="py-28 lg:py-32">
         <div class="mx-auto max-w-6xl px-4 sm:px-6">
-            <div class="max-w-2xl">
-                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">Funcionalidades</p>
-                <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">Todo lo que necesitas para operar Odoo</h2>
-                <p class="mt-3 text-slate-600 dark:text-slate-400">Del primer despliegue a los backups diarios, sin entrar al servidor.</p>
+            <div class="mx-auto max-w-2xl text-center">
+                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">{% translate "Funcionalidades" %}</p>
+                <h2 class="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl dark:text-white">{% translate "Todo lo que necesitas para operar Odoo" %}</h2>
+                <p class="mt-4 text-lg text-slate-600 dark:text-slate-300">{% translate "Del primer despliegue a los backups diarios, sin entrar al servidor." %}</p>
             </div>
 
-            <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {% with card="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900" icon="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-600/15" %}
+            {% with card="group rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-600/5 dark:border-slate-800 dark:bg-slate-900" icon="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100 dark:bg-brand-600/15 dark:text-blue-300 dark:ring-brand-600/30" item="flex gap-3" check="mt-0.5 h-4 w-4 shrink-0 text-brand-600" %}
+            <div class="mt-16 grid gap-6 md:grid-cols-2">
                 <div class="{{ card }}">
-                    <div class="{{ icon }}"><i data-lucide="layers" class="h-5 w-5"></i></div>
-                    <h3 class="mt-4 font-semibold">Instancias aisladas</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        Cada Odoo corre con su propio Postgres, red Docker y volumen de datos. Versiones
-                        {{ odoo_versions|first|floatformat:0 }} a {{ odoo_versions|last|floatformat:0 }}, y una contraseña maestra distinta por instancia.
+                    <div class="{{ icon }}"><i data-lucide="rocket" class="h-6 w-6" stroke-width="1.5"></i></div>
+                    <h3 class="mt-6 text-xl font-semibold">{% translate "Despliega en minutos" %}</h3>
+                    <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-300">
+                        {% blocktranslate trimmed with first=odoo_versions|first|floatformat:0 last=odoo_versions|last|floatformat:0 %}
+                        Odoo {{ first }} a {{ last }} aislado, con su propio Postgres, red Docker y volumen de datos.
+                        {% endblocktranslate %}
                     </p>
+                    <ul class="mt-6 space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Uno o varios repositorios de GitHub por instancia" %}</li>
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Duplica para staging con sus datos y adjuntos" %}</li>
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Entra como admin sin escribir la contraseña" %}</li>
+                    </ul>
                 </div>
                 <div class="{{ card }}">
-                    <div class="{{ icon }}">{% include "orchestrator/includes/github_icon.html" with cls="h-5 w-5" %}</div>
-                    <h3 class="mt-4 font-semibold">GitHub y módulos</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        Conecta un repositorio con tus addons: cada instancia tiene su rama. Sube un módulo en ZIP y se
-                        añade al repo y se redespliega.
-                    </p>
+                    <div class="{{ icon }}"><i data-lucide="archive-restore" class="h-6 w-6" stroke-width="1.5"></i></div>
+                    <h3 class="mt-6 text-xl font-semibold">{% translate "Tus datos, a salvo" %}</h3>
+                    <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-300">{% translate "Respaldos con base de datos y filestore, manuales o programados con retención." %}</p>
+                    <ul class="mt-6 space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Restaura o crea una instancia desde cualquier backup" %}</li>
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Importa los backups nativos de Odoo" %}</li>
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Cada usuario ve solo lo suyo; 2FA y bloqueo por intentos" %}</li>
+                    </ul>
                 </div>
                 <div class="{{ card }}">
-                    <div class="{{ icon }}"><i data-lucide="archive-restore" class="h-5 w-5"></i></div>
-                    <h3 class="mt-4 font-semibold">Backups y restauración</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        Respaldos con base de datos y filestore, manuales o programados con retención. Restaura o crea
-                        una instancia nueva a partir de cualquier backup.
-                    </p>
+                    <div class="{{ icon }}"><i data-lucide="globe-lock" class="h-6 w-6" stroke-width="1.5"></i></div>
+                    <h3 class="mt-6 text-xl font-semibold">{% translate "Dominios y HTTPS automáticos" %}</h3>
+                    <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-300">{% translate "Traefik enruta cada dominio y Let's Encrypt emite y renueva los certificados." %}</p>
+                    <ul class="mt-6 space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Un subdominio por instancia: cliente-20-bd.tudominio.com" %}</li>
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Dominios propios para instancias y apps" %}</li>
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% blocktranslate with count=apps|length %}{{ count }} apps listas para lanzar junto a tu ERP{% endblocktranslate %}</li>
+                    </ul>
                 </div>
                 <div class="{{ card }}">
-                    <div class="{{ icon }}"><i data-lucide="copy" class="h-5 w-5"></i></div>
-                    <h3 class="mt-4 font-semibold">Duplicar para pruebas</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        Clona una instancia con sus datos y adjuntos para tener staging o probar una actualización sin
-                        tocar producción.
-                    </p>
+                    <div class="{{ icon }}"><i data-lucide="sparkles" class="h-6 w-6" stroke-width="1.5"></i></div>
+                    <h3 class="mt-6 text-xl font-semibold">{% translate "Automatiza con IA y API" %}</h3>
+                    <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-300">{% translate "Pide cambios a la IA en el chat de cada instancia, conecta Claude por MCP o usa la API REST." %}</p>
+                    <ul class="mt-6 space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Módulos y cambios generados por IA, con deshacer" %}</li>
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Tareas en segundo plano con su progreso" %}</li>
+                        <li class="{{ item }}"><i data-lucide="check" class="{{ check }}"></i>{% translate "Logs, consola y métricas de CPU y RAM" %}</li>
+                    </ul>
                 </div>
-                <div class="{{ card }}">
-                    <div class="{{ icon }}"><i data-lucide="globe-lock" class="h-5 w-5"></i></div>
-                    <h3 class="mt-4 font-semibold">Dominios y SSL</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        Asigna un dominio propio a cada instancia o app. Traefik enruta el tráfico y Let's Encrypt
-                        genera los certificados HTTPS.
-                    </p>
-                </div>
-                <div class="{{ card }}">
-                    <div class="{{ icon }}"><i data-lucide="boxes" class="h-5 w-5"></i></div>
-                    <h3 class="mt-4 font-semibold">Más que Odoo</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        {{ apps|length }} plantillas de apps listas para lanzar junto a tu ERP, o cualquier imagen de Docker como
-                        contenedor personalizado.
-                    </p>
-                </div>
-                <div class="{{ card }}">
-                    <div class="{{ icon }}"><i data-lucide="shield-check" class="h-5 w-5"></i></div>
-                    <h3 class="mt-4 font-semibold">Seguro por defecto</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        Cada usuario ve solo sus instancias. 2FA opcional u obligatorio, bloqueo por intentos fallidos y
-                        registro cerrado salvo que el administrador lo abra.
-                    </p>
-                </div>
-                <div class="{{ card }}">
-                    <div class="{{ icon }}"><i data-lucide="list-checks" class="h-5 w-5"></i></div>
-                    <h3 class="mt-4 font-semibold">Tareas en segundo plano</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        Despliegues, backups y restauraciones corren en un worker. El panel responde al instante y te
-                        muestra el progreso y el resultado.
-                    </p>
-                </div>
-                <div class="{{ card }}">
-                    <div class="{{ icon }}"><i data-lucide="activity" class="h-5 w-5"></i></div>
-                    <h3 class="mt-4 font-semibold">Consola, logs y métricas</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                        Logs en vivo y consola de cada contenedor, instalación de requirements y métricas de CPU, RAM,
-                        disco y Docker del servidor.
-                    </p>
-                </div>
-                {% endwith %}
             </div>
+            {% endwith %}
         </div>
     </section>
 
     <!-- Apps catalog -->
     {% if apps %}
-    <section class="py-20">
+    <section class="pb-28 lg:pb-32">
         <div class="mx-auto max-w-6xl px-4 sm:px-6">
-            <div class="grid gap-10 lg:grid-cols-3">
+            <div class="grid gap-10 rounded-2xl border border-slate-200 bg-slate-50 p-8 dark:border-slate-800 dark:bg-slate-900/60 lg:grid-cols-3 lg:p-10">
                 <div>
-                    <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">Catálogo</p>
-                    <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">Apps a un clic</h2>
-                    <p class="mt-3 text-slate-600 dark:text-slate-400">
-                        Plantillas YAML que puedes ajustar o ampliar en <code class="rounded bg-slate-100 px-1.5 py-0.5 text-sm dark:bg-slate-800">container_templates/</code>.
+                    <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">{% translate "Catálogo" %}</p>
+                    <h2 class="mt-3 text-3xl font-bold tracking-tight text-ink dark:text-white">{% translate "Apps a un clic" %}</h2>
+                    <p class="mt-3 text-slate-600 dark:text-slate-300">
+                        {% translate "Plantillas YAML que puedes ajustar o ampliar en" %} <code class="rounded bg-white px-1.5 py-0.5 text-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">container_templates/</code>.
                     </p>
                 </div>
                 <ul class="flex flex-wrap content-start gap-2 lg:col-span-2">
                     {% for app in apps %}
-                    <li class="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">{{ app }}</li>
+                    <li class="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ app }}</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -307,125 +293,181 @@
     </section>
     {% endif %}
 
-    <!-- Architecture -->
-    <section id="arquitectura" class="bg-ink py-20 text-slate-200 dark:border-y dark:border-slate-800">
-        <div class="mx-auto max-w-6xl px-4 sm:px-6">
-            <div class="max-w-2xl">
-                <p class="text-sm font-semibold uppercase tracking-wider text-brand-500">Cómo funciona</p>
-                <h2 class="mt-2 text-3xl font-bold tracking-tight text-white">Un servidor, todo en Docker</h2>
-                <p class="mt-3 text-slate-400">
-                    El panel habla con Docker en tu servidor. No hay servicios externos ni agentes que instalar.
-                </p>
+    <!-- Architecture: a floating dark panel instead of a full-width band -->
+    <section id="arquitectura" class="px-4 pb-28 sm:px-6 lg:pb-32">
+        <div class="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-ink px-6 py-16 text-slate-200 shadow-2xl shadow-slate-900/20 ring-1 ring-slate-800 sm:px-12">
+            <div class="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full bg-brand-600/20 blur-3xl"></div>
+            <div class="relative max-w-2xl">
+                <p class="text-sm font-semibold uppercase tracking-wider text-blue-400">{% translate "Cómo funciona" %}</p>
+                <h2 class="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">{% translate "Un servidor, todo en Docker" %}</h2>
+                <p class="mt-4 text-slate-300">{% translate "El panel habla con Docker en tu servidor. No hay servicios externos ni agentes que instalar." %}</p>
             </div>
 
-            <div class="mt-12 grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1.4fr] lg:items-center">
-                <div class="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
-                    <div class="flex items-center gap-2 font-semibold text-white">
-                        <i data-lucide="globe" class="h-4 w-4 text-brand-500"></i> Traefik
-                    </div>
-                    <p class="mt-2 text-sm text-slate-400">Recibe el tráfico en los puertos 80/443, aplica el SSL y lo dirige por dominio.</p>
+            {% with box="rounded-2xl border border-slate-800 bg-slate-900/70 p-5" %}
+            <div class="relative mt-12 grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1.4fr] lg:items-center">
+                <div class="{{ box }}">
+                    <div class="flex items-center gap-2 font-semibold text-white"><i data-lucide="globe" class="h-4 w-4 text-blue-400"></i> Traefik</div>
+                    <p class="mt-2 text-sm text-slate-300">{% translate "Recibe el tráfico en los puertos 80/443, aplica el SSL y lo dirige por dominio." %}</p>
                 </div>
-                <i data-lucide="arrow-right" class="mx-auto hidden h-5 w-5 text-slate-500 lg:block dark:text-slate-400"></i>
+                <i data-lucide="arrow-right" class="mx-auto hidden h-5 w-5 text-slate-500 lg:block"></i>
                 <div class="space-y-3">
-                    <div class="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
-                        <div class="flex items-center gap-2 font-semibold text-white">
-                            <i data-lucide="layout-dashboard" class="h-4 w-4 text-brand-500"></i> Panel (Django)
-                        </div>
-                        <p class="mt-2 text-sm text-slate-400">Interfaz web y API. Encola las operaciones largas.</p>
+                    <div class="{{ box }}">
+                        <div class="flex items-center gap-2 font-semibold text-white"><i data-lucide="layout-dashboard" class="h-4 w-4 text-blue-400"></i> Panel (Django)</div>
+                        <p class="mt-2 text-sm text-slate-300">{% translate "Interfaz web y API. Encola las operaciones largas." %}</p>
                     </div>
-                    <div class="rounded-xl border border-slate-700 bg-slate-800/60 p-5">
-                        <div class="flex items-center gap-2 font-semibold text-white">
-                            <i data-lucide="cpu" class="h-4 w-4 text-brand-500"></i> Worker
-                        </div>
-                        <p class="mt-2 text-sm text-slate-400">Despliega, respalda y restaura. Lanza los backups programados.</p>
+                    <div class="{{ box }}">
+                        <div class="flex items-center gap-2 font-semibold text-white"><i data-lucide="cpu" class="h-4 w-4 text-blue-400"></i> Worker</div>
+                        <p class="mt-2 text-sm text-slate-300">{% translate "Despliega, respalda y restaura. Lanza los backups programados." %}</p>
                     </div>
                 </div>
-                <i data-lucide="arrow-right" class="mx-auto hidden h-5 w-5 text-slate-500 lg:block dark:text-slate-400"></i>
-                <div class="rounded-xl border border-brand-600/40 bg-brand-600/10 p-5">
-                    <div class="flex items-center gap-2 font-semibold text-white">
-                        <i data-lucide="container" class="h-4 w-4 text-brand-500"></i> Docker
-                    </div>
+                <i data-lucide="arrow-right" class="mx-auto hidden h-5 w-5 text-slate-500 lg:block"></i>
+                <div class="rounded-2xl border border-brand-600/40 bg-brand-600/10 p-5">
+                    <div class="flex items-center gap-2 font-semibold text-white"><i data-lucide="container" class="h-4 w-4 text-blue-400"></i> Docker</div>
                     <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div class="rounded-lg border border-slate-700 bg-ink p-3 text-sm">
-                            <p class="font-medium text-white">Instancia «mi-empresa»</p>
-                            <p class="mt-1 text-slate-400">Odoo + Postgres en su propia red, filestore en un volumen.</p>
+                        <div class="rounded-xl border border-slate-800 bg-ink/80 p-3 text-sm">
+                            <p class="font-medium text-white">{% translate "Instancia «mi-empresa»" %}</p>
+                            <p class="mt-1 text-slate-300">{% translate "Odoo + Postgres en su propia red, filestore en un volumen." %}</p>
                         </div>
-                        <div class="rounded-lg border border-slate-700 bg-ink p-3 text-sm">
+                        <div class="rounded-xl border border-slate-800 bg-ink/80 p-3 text-sm">
                             <p class="font-medium text-white">Apps</p>
-                            <p class="mt-1 text-slate-400">n8n, WordPress, Metabase… con su dominio.</p>
+                            <p class="mt-1 text-slate-300">n8n, WordPress, Metabase… con su dominio.</p>
                         </div>
                     </div>
-                    <p class="mt-3 text-xs text-slate-400">La base de datos del panel vive en una red interna a la que las instancias no tienen acceso.</p>
+                    <p class="mt-3 text-xs text-slate-400">{% translate "La base de datos del panel vive en una red interna a la que las instancias no tienen acceso." %}</p>
                 </div>
             </div>
+            {% endwith %}
         </div>
     </section>
 
-    <!-- Install -->
-    <section id="instalacion" class="py-20">
+    <!-- Install: steps joined by a connector line -->
+    <section id="instalacion" class="pb-28 lg:pb-32">
         <div class="mx-auto max-w-6xl px-4 sm:px-6">
-            <div class="max-w-2xl">
-                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">Instalación</p>
-                <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">En marcha en minutos</h2>
+            <div class="mx-auto max-w-2xl text-center">
+                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">{% translate "Instalación" %}</p>
+                <h2 class="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl dark:text-white">{% translate "En marcha en minutos" %}</h2>
             </div>
 
-            <ol class="mt-10 grid gap-5 md:grid-cols-3">
-                <li class="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">1</span>
-                    <h3 class="mt-4 font-semibold">Un servidor Linux</h3>
-                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Con acceso root y los puertos 80 y 443 libres. El instalador se encarga de Docker.</p>
+            {% with step="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900" number="relative z-10 flex h-10 w-10 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white shadow-lg shadow-brand-600/30 ring-4 ring-white dark:ring-slate-950" %}
+            <ol class="relative mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <div class="pointer-events-none absolute left-[12%] right-[12%] top-11 hidden h-px bg-gradient-to-r from-brand-600/10 via-brand-600/50 to-brand-600/10 lg:block" aria-hidden="true"></div>
+                <li class="{{ step }}">
+                    <span class="{{ number }}">1</span>
+                    <h3 class="mt-5 font-semibold">{% translate "Un servidor Linux" %}</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{% translate "Con acceso root y los puertos 80 y 443 libres. El instalador se encarga de Docker." %}</p>
                 </li>
-                <li class="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">2</span>
-                    <h3 class="mt-4 font-semibold">Ejecuta el instalador</h3>
-                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Genera las claves, configura tu dominio y levanta todos los servicios.</p>
+                <li class="{{ step }} border-brand-200 ring-2 ring-brand-600/20 dark:border-brand-600/40">
+                    <span class="{{ number }}">2</span>
+                    <h3 class="mt-5 flex items-center gap-2 font-semibold"><i data-lucide="globe" class="h-4 w-4 text-brand-600"></i>{% translate "Configura el DNS antes" %}</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{% translate "Crea los registros A de tudominio.com y *.tudominio.com apuntando a la IP del servidor. El instalador te pedirá el dominio y un email, y Traefik genera los certificados HTTPS." %}</p>
                 </li>
-                <li class="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">3</span>
-                    <h3 class="mt-4 font-semibold">Crea tu primera instancia</h3>
-                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">La primera cuenta que se registra es la de administrador. Elige versión de Odoo y despliega.</p>
+                <li class="{{ step }}">
+                    <span class="{{ number }}">3</span>
+                    <h3 class="mt-5 font-semibold">{% translate "Ejecuta el instalador" %}</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{% translate "Genera las claves, configura tu dominio y levanta todos los servicios." %}</p>
+                </li>
+                <li class="{{ step }}">
+                    <span class="{{ number }}">4</span>
+                    <h3 class="mt-5 font-semibold">{% translate "Crea tu primera instancia" %}</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{% translate "La primera cuenta que se registra es la de administrador. Elige versión de Odoo y despliega." %}</p>
                 </li>
             </ol>
+            {% endwith %}
 
-            <div class="mt-8 rounded-xl bg-ink p-4 dark:ring-1 dark:ring-slate-800 sm:p-5">
+            <p class="mt-10 flex items-start gap-2 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-slate-700 dark:border-brand-600/30 dark:bg-brand-600/10 dark:text-slate-200">
+                <i data-lucide="info" class="mt-0.5 h-4 w-4 shrink-0 text-brand-600"></i>
+                <span>{% translate "Antes de ejecutarlo, comprueba que tu dominio ya apunta al servidor (por ejemplo con «dig +short tudominio.com»). El instalador lo verifica y te avisa si no es así." %}</span>
+            </p>
+
+            <div class="mt-4 rounded-2xl bg-ink p-4 ring-1 ring-slate-800 sm:p-5">
                 <div class="flex items-center justify-between gap-3">
-                    <p class="text-xs font-medium text-slate-400">Instalación rápida</p>
+                    <p class="text-xs font-medium text-slate-400">{% translate "Instalación rápida" %}</p>
                     <button type="button" id="copy-install"
                         class="inline-flex items-center gap-1.5 rounded-md border border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-slate-800">
-                        <i data-lucide="copy" class="h-3.5 w-3.5"></i> <span>Copiar</span>
+                        <i data-lucide="copy" class="h-3.5 w-3.5"></i> <span>{% translate "Copiar" %}</span>
                     </button>
                 </div>
                 <pre class="mt-3 overflow-x-auto text-sm text-green-300"><code id="install-command">curl -sL https://raw.githubusercontent.com/falconsoft3d/community-sh/main/easy-install.sh | sudo bash</code></pre>
             </div>
-            <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                ¿Prefieres revisarlo antes? Descarga
+            <p class="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                {% translate "¿Prefieres revisarlo antes? Descarga" %}
                 <a href="https://github.com/falconsoft3d/community-sh/blob/main/easy-install.sh" target="_blank" rel="noopener" class="font-medium text-brand-600 hover:underline">easy-install.sh</a>
-                y lee el <a href="https://github.com/falconsoft3d/community-sh#readme" target="_blank" rel="noopener" class="font-medium text-brand-600 hover:underline">README</a>.
+                {% translate "y lee el" %} <a href="https://github.com/falconsoft3d/community-sh#readme" target="_blank" rel="noopener" class="font-medium text-brand-600 hover:underline">README</a>.
             </p>
         </div>
     </section>
 
+    <!-- Release notes -->
+    {% if changelog %}
+    <section id="novedades" class="border-t border-slate-100 py-28 lg:py-32 dark:border-slate-800">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+            <div class="flex items-end justify-between gap-4">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">{% translate "Novedades" %}</p>
+                    <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">{% translate "Qué hay de nuevo en cada versión" %}</h2>
+                </div>
+                <a href="https://github.com/falconsoft3d/community-sh/blob/main/CHANGELOG.md" target="_blank" rel="noopener"
+                    class="hidden items-center text-sm font-semibold text-brand-600 hover:underline sm:inline-flex">
+                    {% translate "Historial completo" %} <i data-lucide="arrow-right" class="ml-1 h-4 w-4"></i>
+                </a>
+            </div>
+            <ol class="mt-10 space-y-6 border-l border-slate-200 pl-6 dark:border-slate-800">
+                {% for release in changelog %}
+                <li class="relative">
+                    <span class="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full {% if forloop.first and changelog.number == 1 %}bg-brand-600 ring-4 ring-brand-100 dark:ring-brand-600/30{% else %}bg-slate-300 dark:bg-slate-700{% endif %}"></span>
+                    <div class="flex flex-wrap items-baseline gap-x-3">
+                        <h3 class="text-lg font-bold text-ink dark:text-white">v{{ release.version }}</h3>
+                        <span class="text-sm text-slate-500 dark:text-slate-400">{{ release.date }}</span>
+                        {% if forloop.first and changelog.number == 1 %}<span class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-600/15 dark:text-blue-300">{% translate "Actual" %}</span>{% endif %}
+                    </div>
+                    <ul class="mt-3 grid gap-2 text-sm text-slate-600 dark:text-slate-300 md:grid-cols-2">
+                        {% for note in release.notes %}
+                        <li class="flex gap-2"><i data-lucide="check" class="mt-0.5 h-4 w-4 shrink-0 text-brand-600"></i><span>{{ note }}</span></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endfor %}
+            </ol>
+            {% if changelog.has_other_pages %}
+            <nav class="mt-8 flex items-center justify-between gap-4 text-sm" aria-label="{% translate 'Páginas de novedades' %}">
+                {% if changelog.has_previous %}
+                <a href="?novedades={{ changelog.previous_page_number }}#novedades" class="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                    <i data-lucide="arrow-left" class="mr-1 h-4 w-4"></i> {% translate "Más recientes" %}
+                </a>
+                {% else %}<span></span>{% endif %}
+                <span class="text-slate-500 dark:text-slate-400">{% blocktranslate with page=changelog.number pages=changelog.paginator.num_pages %}Página {{ page }} de {{ pages }}{% endblocktranslate %}</span>
+                {% if changelog.has_next %}
+                <a href="?novedades={{ changelog.next_page_number }}#novedades" class="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                    {% translate "Anteriores" %} <i data-lucide="arrow-right" class="ml-1 h-4 w-4"></i>
+                </a>
+                {% else %}<span></span>{% endif %}
+            </nav>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
     <!-- Featured Blog Posts -->
     {% if featured_posts %}
-    <section class="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-800 dark:bg-slate-900/60">
+    <section class="border-t border-slate-100 bg-slate-50 py-28 lg:py-32 dark:border-slate-800 dark:bg-slate-900/60">
         <div class="mx-auto max-w-6xl px-4 sm:px-6">
             <div class="flex items-end justify-between gap-4">
                 <div>
                     <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">Blog</p>
-                    <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">Guías y novedades</h2>
+                    <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">{% translate "Guías y novedades" %}</h2>
                 </div>
                 <a href="{% url 'blog-list' %}" class="hidden items-center text-sm font-semibold text-brand-600 hover:underline sm:inline-flex">
-                    Ver todo <i data-lucide="arrow-right" class="ml-1 h-4 w-4"></i>
+                    {% translate "Ver todo" %} <i data-lucide="arrow-right" class="ml-1 h-4 w-4"></i>
                 </a>
             </div>
             <div class="mt-8 grid gap-5 md:grid-cols-3">
                 {% for post in featured_posts %}
-                <a href="{% url 'blog-detail' post.slug %}" class="group rounded-xl border border-slate-200 bg-white p-6 hover:border-brand-500 dark:border-slate-800 dark:bg-slate-900">
+                <a href="{% url 'blog-detail' post.slug %}" class="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-500 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900">
                     <h3 class="font-semibold group-hover:text-brand-600">{{ post.title }}</h3>
                     {% if post.excerpt %}
                     <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{{ post.excerpt }}</p>
                     {% endif %}
-                    <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">{{ post.created_at|date:"d M Y" }} · {{ post.reading_time }} min de lectura</p>
+                    <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">{{ post.created_at|date:"d M Y" }} · {% blocktranslate with minutes=post.reading_time %}{{ minutes }} min de lectura{% endblocktranslate %}</p>
                 </a>
                 {% endfor %}
             </div>
@@ -434,48 +476,76 @@
     {% endif %}
 
     <!-- Call to Action -->
-    <section class="py-20">
+    <section class="py-28 lg:py-32">
         <div class="mx-auto max-w-6xl px-4 sm:px-6">
-            <div class="rounded-2xl bg-brand-600 px-6 py-12 text-center text-white sm:px-12">
-                <h2 class="text-3xl font-bold tracking-tight">Libre, abierto y tuyo</h2>
+            <div class="rounded-3xl bg-gradient-to-br from-brand-600 to-indigo-700 px-6 py-16 text-center text-white shadow-2xl shadow-brand-600/30 sm:px-12">
+                <h2 class="text-3xl font-bold tracking-tight">{% translate "Libre, abierto y tuyo" %}</h2>
                 <p class="mx-auto mt-3 max-w-2xl text-brand-100">
-                    Community SH es gratuito y de código abierto. Instálalo en tu servidor, adáptalo a tu equipo o
-                    contribuye al proyecto.
+                    {% translate "Community SH es gratuito y de código abierto. Instálalo en tu servidor, adáptalo a tu equipo o contribuye al proyecto." %}
                 </p>
                 <div class="mt-8 flex flex-wrap justify-center gap-3">
                     <a href="https://github.com/falconsoft3d/community-sh" target="_blank" rel="noopener"
-                        class="inline-flex h-11 items-center rounded-md bg-white px-6 text-sm font-semibold text-brand-700 hover:bg-brand-50">
+                        class="inline-flex h-12 items-center rounded-lg bg-white px-6 text-sm font-semibold text-brand-700 shadow-lg shadow-black/10 transition hover:bg-brand-50">
                         {% include "orchestrator/includes/github_icon.html" with cls="mr-2 h-4 w-4" %} Ver en GitHub
                     </a>
                     <a href="https://github.com/falconsoft3d/community-sh/issues" target="_blank" rel="noopener"
-                        class="inline-flex h-11 items-center rounded-md border border-white/40 px-6 text-sm font-semibold text-white hover:bg-white/10">
-                        <i data-lucide="message-circle" class="mr-2 h-4 w-4"></i> Reportar un problema
+                        class="inline-flex h-12 items-center rounded-lg border border-white/40 px-6 text-sm font-semibold text-white transition hover:bg-white/10">
+                        <i data-lucide="message-circle" class="mr-2 h-4 w-4"></i> {% translate "Reportar un problema" %}
                     </a>
                 </div>
             </div>
         </div>
     </section>
+    <!-- The author's other projects -->
+    {% if my_projects %}
+    <section id="proyectos" class="border-t border-slate-100 py-28 lg:py-32 dark:border-slate-800">
+        <div class="mx-auto max-w-6xl px-4 sm:px-6">
+            <div class="mx-auto max-w-2xl text-center">
+                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">{% translate "Mis proyectos" %}</p>
+                <h2 class="mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl dark:text-white">{% translate "Más proyectos de Marlon Falcón" %}</h2>
+                <p class="mt-4 text-lg text-slate-600 dark:text-slate-300">{% translate "Otras herramientas y webs en las que trabajo." %}</p>
+            </div>
+            <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {% for project in my_projects %}
+                <a href="{{ project.url }}" target="_blank" rel="noopener"
+                    class="group flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-500 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg font-bold text-brand-600 ring-1 ring-brand-100 dark:bg-brand-600/15 dark:text-blue-300 dark:ring-brand-600/30">{{ project.name|slice:":1"|upper }}</span>
+                    <span class="min-w-0">
+                        <span class="flex items-center gap-1 font-semibold text-ink group-hover:text-brand-600 dark:text-white">
+                            <span class="truncate">{{ project.name }}</span>
+                            <i data-lucide="arrow-up-right" class="h-4 w-4 shrink-0 opacity-50 group-hover:opacity-100"></i>
+                        </span>
+                        {% if project.description %}<span class="mt-1 block text-sm leading-relaxed text-slate-600 dark:text-slate-300">{{ project.description }}</span>{% endif %}
+                        <span class="mt-2 block truncate text-xs text-slate-500 dark:text-slate-400">{{ project.host }}</span>
+                    </span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
 </main>
 
 <footer class="border-t border-slate-200 py-8 dark:border-slate-800">
     <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 text-sm text-slate-500 sm:flex-row sm:px-6 dark:text-slate-400">
-        <p>Hecho por Marlon Falcón Hernández · Licencia MIT · <a href="https://github.com/falconsoft3d/community-sh/releases" target="_blank" rel="noopener" class="hover:text-brand-600">v{{ app_version }}</a></p>
+        <p>{% translate "Hecho por Marlon Falcón Hernández · Licencia MIT ·" %} <a href="https://github.com/falconsoft3d/community-sh/releases" target="_blank" rel="noopener" class="hover:text-brand-600">v{{ app_version }}</a></p>
         <div class="flex gap-5">
             <a href="{% url 'blog-list' %}" class="hover:text-brand-600">Blog</a>
             <a href="https://github.com/falconsoft3d/community-sh" target="_blank" rel="noopener" class="hover:text-brand-600">GitHub</a>
-            <a href="https://github.com/falconsoft3d/community-sh#readme" target="_blank" rel="noopener" class="hover:text-brand-600">Documentación</a>
+            <a href="https://github.com/falconsoft3d/community-sh#readme" target="_blank" rel="noopener" class="hover:text-brand-600">{% translate "Documentación" %}</a>
         </div>
     </div>
 </footer>
 
+<script src="{% static 'js/galaxy.js' %}"></script>
 <script>
     lucide.createIcons();
 
     document.getElementById('copy-install').addEventListener('click', function () {
         const label = this.querySelector('span');
         navigator.clipboard.writeText(document.getElementById('install-command').textContent).then(() => {
-            label.textContent = 'Copiado';
-            setTimeout(() => { label.textContent = 'Copiar'; }, 2000);
+            label.textContent = '{% translate "Copiado" %}';
+            setTimeout(() => { label.textContent = '{% translate "Copiar" %}'; }, 2000);
         });
     });
 </script>

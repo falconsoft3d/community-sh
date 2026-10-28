@@ -1,6 +1,16 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views.odoo_ai import instance_migrate, odoo_ai_request
+from .views.api import BackupViewSet, InstanceAPIViewSet, ProjectViewSet, TaskViewSet, TodoViewSet
 from .views import (
+    todo_list,
+    todo_create,
+    todo_status,
+    todo_delete,
+    todo_edit,
+    mcp_endpoint,
+    mcp_token_create,
+    mcp_token_revoke,
     docker_overview,
     docker_container_action,
     docker_container_logs,
@@ -9,13 +19,6 @@ from .views import (
     docker_volume_remove,
     docker_network_remove,
     docker_prune,
-    client_list,
-    client_create,
-    client_detail,
-    client_edit,
-    client_reset_password,
-    client_toggle_active,
-    client_delete,
     project_list,
     project_create,
     project_detail,
@@ -30,6 +33,14 @@ from .views import (
     instance_restart,
     instance_logs_api,
     instance_tasks_api,
+    instance_repo_add,
+    instance_repo_remove,
+    instance_ai_chat,
+    instance_ai_reset,
+    instance_ai_stop,
+    instance_ai_modules,
+    instance_ai_revert,
+    instance_admin_login,
     instance_console_exec,
     instance_install_requirements,
     instance_configure_domain,
@@ -40,11 +51,14 @@ from .views import (
     instance_duplicate,
     metrics_view,
     metrics_data,
+    metrics_history_data,
     settings_view,
+    settings_ai_test,
     run_auto_backups_view,
     about,
     generate_ssl_certificate,
     backup_list,
+    backup_import,
     instance_backup,
     instance_restore,
     instance_backups_list,
@@ -78,7 +92,11 @@ from .container_views import (
 )
 
 router = DefaultRouter()
-router.register(r'api/instances', InstanceViewSet, basename='api-instance')
+router.register(r'api/instances', InstanceAPIViewSet, basename='api-instance')
+router.register(r'api/projects', ProjectViewSet, basename='api-project')
+router.register(r'api/backups', BackupViewSet, basename='api-backup')
+router.register(r'api/tasks', TaskViewSet, basename='api-task')
+router.register(r'api/todos', TodoViewSet, basename='api-todo')
 
 urlpatterns = [
     path('accounts/register/', register, name='register'),
@@ -91,13 +109,11 @@ urlpatterns = [
     path('blog/<slug:slug>/', blog_detail, name='blog-detail'),
     
     # Dashboard routes (protected area)
-    path('clients/', client_list, name='client-list'),
-    path('client/new/', client_create, name='client-create'),
-    path('client/<int:pk>/', client_detail, name='client-detail'),
-    path('client/<int:pk>/edit/', client_edit, name='client-edit'),
-    path('client/<int:pk>/reset-password/', client_reset_password, name='client-reset-password'),
-    path('client/<int:pk>/toggle-active/', client_toggle_active, name='client-toggle-active'),
-    path('client/<int:pk>/delete/', client_delete, name='client-delete'),
+    path('todo/', todo_list, name='todo-list'),
+    path('todo/new/', todo_create, name='todo-create'),
+    path('todo/<int:pk>/status/', todo_status, name='todo-status'),
+    path('todo/<int:pk>/delete/', todo_delete, name='todo-delete'),
+    path('todo/<int:pk>/edit/', todo_edit, name='todo-edit'),
     path('projects/', project_list, name='project-list'),
     path('project/new/', project_create, name='project-create'),
     path('project/<int:pk>/', project_detail, name='project-detail'),
@@ -126,12 +142,23 @@ urlpatterns = [
     path('instance/<int:pk>/backups/', instance_backups_list, name='instance-backups'),
     path('instance/<int:pk>/restore/', instance_restore, name='instance-restore'),
     path('backups/', backup_list, name='backup-list'),
+    path('backups/import/', backup_import, name='backup-import'),
     path('backup/<int:backup_id>/download/', backup_download, name='backup-download'),
     path('backup/<int:backup_id>/delete/', backup_delete, name='backup-delete'),
     path('backup/<int:backup_id>/restore/', backup_restore_action, name='backup-restore-action'),
     path('backup/<int:backup_id>/create-instance/', backup_create_instance, name='backup-create-instance'),
     path('instance/<int:pk>/logs/', instance_logs_api, name='instance-logs-api'),
     path('instance/<int:pk>/tasks/', instance_tasks_api, name='instance-tasks-api'),
+    path('instance/<int:pk>/repos/add/', instance_repo_add, name='instance-repo-add'),
+    path('instance/<int:pk>/repos/<int:repo_id>/remove/', instance_repo_remove, name='instance-repo-remove'),
+    path('instance/<int:pk>/ai/', instance_ai_chat, name='instance-ai-chat'),
+    path('instance/<int:pk>/ai/reset/', instance_ai_reset, name='instance-ai-reset'),
+    path('instance/<int:pk>/ai/stop/', instance_ai_stop, name='instance-ai-stop'),
+    path('odoo-ai/<str:name>/', odoo_ai_request, name='odoo-ai-request'),
+    path('instance/<int:pk>/migrate/', instance_migrate, name='instance-migrate'),
+    path('instance/<int:pk>/ai/modules/', instance_ai_modules, name='instance-ai-modules'),
+    path('instance/<int:pk>/ai/revert/<int:turn_id>/', instance_ai_revert, name='instance-ai-revert'),
+    path('instance/<int:pk>/admin-login/', instance_admin_login, name='instance-admin-login'),
     path('instance/<int:pk>/console/', instance_console_exec, name='instance-console-exec'),
     path('instance/<int:pk>/install-requirements/', instance_install_requirements, name='instance-install-requirements'),
     path('instance/<int:pk>/configure-domain/', instance_configure_domain, name='instance-configure-domain'),
@@ -148,7 +175,12 @@ urlpatterns = [
     path('docker/networks/<str:network_id>/remove/', docker_network_remove, name='docker-network-remove'),
     path('docker/prune/<str:kind>/', docker_prune, name='docker-prune'),
     path('metrics/data/', metrics_data, name='metrics-data'),
+    path('metrics/history/', metrics_history_data, name='metrics-history'),
     path('settings/', settings_view, name='settings'),
+    path('settings/mcp/tokens/', mcp_token_create, name='mcp-token-create'),
+    path('settings/mcp/tokens/<int:token_id>/revoke/', mcp_token_revoke, name='mcp-token-revoke'),
+    path('mcp/', mcp_endpoint, name='mcp'),
+    path('settings/ai/test/', settings_ai_test, name='settings-ai-test'),
     path('settings/generate-ssl/', generate_ssl_certificate, name='generate-ssl'),
     path('settings/run-auto-backups/', run_auto_backups_view, name='run-auto-backups'),
     path('about/', about, name='about'),

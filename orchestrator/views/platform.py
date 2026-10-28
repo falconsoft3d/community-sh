@@ -4,6 +4,7 @@ from ..task_models import Task
 from ..tasks import enqueue
 
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_POST
@@ -84,6 +85,20 @@ def settings_view(request):
         # Check which section is being saved
         section = request.POST.get('section', '')
         
+        if section == 'mcp':
+            config.mcp_enabled = 'mcp_enabled' in request.POST
+        
+        if section == 'ia':
+            config.ai_enabled = 'ai_enabled' in request.POST
+            config.openai_model = request.POST.get('openai_model', '').strip()
+            config.ai_instructions = request.POST.get('ai_instructions', '').strip()
+            # Empty field keeps the stored key; the checkbox removes it
+            new_key = request.POST.get('openai_api_key', '').strip()
+            if new_key:
+                config.openai_api_key = new_key
+            elif 'remove_openai_api_key' in request.POST:
+                config.openai_api_key = ''
+        
         if section == 'domain':
             # Update domain and SSL when saving Domain & SSL section
             config.main_domain = request.POST.get('main_domain', '').strip().lower()
@@ -108,26 +123,28 @@ def settings_view(request):
         # Also update if domain was removed (changed from something to empty)
         if section == 'domain' and (old_domain != config.main_domain or old_ssl_enabled != config.ssl_enabled):
             from ..traefik_service import TraefikService
-            # Generate dynamic Traefik configuration
-            success, msg = TraefikService.generate_dynamic_config(
-                domain=config.main_domain if config.main_domain else None,
-                ssl_enabled=config.ssl_enabled,
-                cert_path=config.ssl_certificate_path if config.ssl_enabled else None,
-                key_path=config.ssl_key_path if config.ssl_enabled else None
-            )
-            if success:
-                if config.main_domain:
-                    protocol = "HTTPS" if config.ssl_enabled and config.ssl_certificate_path else "HTTP"
-                    messages.info(request, f'✅ Dominio {config.main_domain} configurado con {protocol}. Traefik lo detectará automáticamente.')
-                else:
-                    messages.info(request, 'Dominio eliminado, volviendo a localhost.')
-            else:
-                messages.warning(request, f'Configuración guardada, pero hubo un problema con Traefik: {msg}')
+            # The instances' subdomains hang off the main domain: rewrite every route
+            result, *problems = TraefikService.configure_all()
+            messages.info(request, result)
+            for problem in problems:
+                messages.warning(request, f'Configuración guardada, pero hubo un problema con Traefik: {problem}')
         
         messages.success(request, 'Settings saved successfully')
         return redirect('settings')
     
-    return render(request, 'orchestrator/settings.html', {'config': config})
+    from ..mcp_models import MCPToken
+    from ..permissions import get_global_config
+    global_config = get_global_config()
+    new_token = request.session.pop('new_personal_token', None)
+    return render(request, 'orchestrator/settings.html', {
+        'new_token': new_token,
+        'example_token': new_token['token'] if new_token else 'TU_TOKEN',
+        'config': config,
+        'mcp_enabled': bool(global_config and global_config.mcp_enabled),
+        'mcp_tokens': MCPToken.objects.filter(user=request.user),
+        'mcp_url': request.build_absolute_uri(reverse('mcp')),
+        'api_url': request.build_absolute_uri('/api/'),
+    })
 
 
 @login_required
@@ -203,3 +220,34 @@ def generate_ssl_certificate(request):
             messages.error(request, message)
     
     return redirect('settings')
+
+
+@login_required
+@superuser_required
+@require_POST
+def settings_ai_test(request):
+    """Check the OpenAI key (typed or stored) and return the chat models it can use."""
+    from django.http import JsonResponse
+    from ..config_models import GitHubConfig
+    from ..services.ai import AIError, list_chat_models
+
+    config = GitHubConfig.objects.filter(user=request.user).first()
+    api_key = request.POST.get('openai_api_key', '').strip() or (config.openai_api_key if config else '')
+    if not api_key:
+        return JsonResponse({'ok': False, 'error': 'Introduce una API key de OpenAI'}, status=400)
+    try:
+        models = list_chat_models(api_key)
+    except AIError as e:
+        return JsonResponse({'ok': False, 'error': str(e)}, status=400)
+    return JsonResponse({'ok': True, 'models': models})
+
+
+@login_required
+@superuser_required
+def metrics_history_data(request):
+    from django.http import JsonResponse
+    from ..services.metrics import RANGES, metrics_history
+    range_key = request.GET.get('range', '24h')
+    if range_key not in RANGES:
+        range_key = '24h'
+    return JsonResponse({'range': range_key, 'points': metrics_history(range_key)})

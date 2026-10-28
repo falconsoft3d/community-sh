@@ -11,256 +11,121 @@ class TraefikService:
     """Service for managing Traefik dynamic configuration"""
     
     @staticmethod
+    def _routes(prefix, hosts, backend, certificate=None):
+        """
+        One router per host, so a host whose DNS isn't ready yet doesn't hold back the
+        certificates of the others. HTTPS uses the given certbot files, else Let's Encrypt
+        through Traefik when the installer configured it; plain HTTP otherwise.
+        """
+        from .services.domains import ACME_RESOLVER, acme_enabled
+        service = f'{prefix}-service'
+        config = {'http': {'routers': {}, 'services': {service: {'loadBalancer': {'servers': [{'url': backend}]}}}}}
+        https = bool(certificate) or acme_enabled()
+        redirect = f'{prefix}-redirect-https'
+        for index, host in enumerate(hosts):
+            router = f'{prefix}-{index}'
+            config['http']['routers'][router] = {
+                'rule': f'Host(`{host}`)', 'entryPoints': ['web'], 'service': service, 'priority': 100,
+            }
+            if https:
+                config['http']['routers'][router]['middlewares'] = [redirect]
+                config['http']['routers'][f'{router}-secure'] = {
+                    'rule': f'Host(`{host}`)', 'entryPoints': ['websecure'], 'service': service, 'priority': 100,
+                    'tls': {} if certificate else {'certResolver': ACME_RESOLVER},
+                }
+        if https:
+            config['http']['middlewares'] = {redirect: {'redirectScheme': {'scheme': 'https', 'permanent': True}}}
+        if certificate:
+            config['tls'] = {'certificates': [{'certFile': certificate[0], 'keyFile': certificate[1]}]}
+        return config
+
+    @staticmethod
+    def _certbot_certificate(cert_path, key_path):
+        """(cert, key) as Traefik sees them when certbot files exist, else None."""
+        if not (cert_path and key_path and os.path.exists(cert_path) and os.path.exists(key_path)):
+            return None
+        base_dir = str(settings.BASE_DIR)
+        paths = []
+        for path in (cert_path, key_path):
+            path = path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
+            paths.append(path.replace(f'{base_dir}/letsencrypt', '/letsencrypt'))
+        return tuple(paths)
+
+    @staticmethod
+    def _write(name, config):
+        traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
+        os.makedirs(traefik_dir, exist_ok=True)
+        config_file = os.path.join(traefik_dir, name)
+        if config is None:
+            if os.path.exists(config_file):
+                os.remove(config_file)
+            return
+        with open(config_file, 'w') as f:
+            yaml.dump(config, f, default_flow_style=False)
+
+    @staticmethod
     def generate_dynamic_config(domain=None, ssl_enabled=False, cert_path=None, key_path=None):
         """
-        Generate Traefik dynamic configuration file based on GitHubConfig
-        
-        Args:
-            domain: Main domain from GitHubConfig.main_domain
-            ssl_enabled: Whether SSL is enabled from GitHubConfig.ssl_enabled
-            cert_path: Path to SSL certificate file
-            key_path: Path to SSL key file
-        
-        Returns:
-            tuple: (success, message)
+        Route the panel's main domain (and www) to the app. Returns (success, message).
         """
         try:
-            # Create traefik directory if it doesn't exist
-            traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
-            os.makedirs(traefik_dir, exist_ok=True)
-            
-            config_file = os.path.join(traefik_dir, 'dynamic.yml')
-            
-            if domain:
-                # Create routing configuration for the main domain
-                config = {
-                    'http': {
-                        'routers': {
-                            'app-domain': {
-                                'rule': f'Host(`{domain}`) || Host(`www.{domain}`)',
-                                'entryPoints': ['web'],
-                                'service': 'app-domain-service',
-                                'priority': 50  # Higher priority than Docker labels
-                            }
-                        },
-                        'services': {
-                            'app-domain-service': {
-                                'loadBalancer': {
-                                    'servers': [
-                                        {'url': 'http://app:8000'}
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                # Add HTTPS router if SSL is enabled and certificates exist
-                if ssl_enabled and cert_path and key_path and os.path.exists(cert_path) and os.path.exists(key_path):
-                    # Convert host paths to Traefik container paths
-                    # Host: /opt/community-sh/letsencrypt/live/... -> Traefik: /letsencrypt/live/...
-                    traefik_cert_path = cert_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
-                    traefik_key_path = key_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
-                    
-                    # Also handle local development paths
-                    if settings.BASE_DIR in traefik_cert_path:
-                        base_dir_str = str(settings.BASE_DIR)
-                        traefik_cert_path = traefik_cert_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
-                        traefik_key_path = traefik_key_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
-                    
-                    print(f"Traefik cert paths: {traefik_cert_path}, {traefik_key_path}", flush=True)
-                    
-                    # Add HTTPS router
-                    config['http']['routers']['app-domain-secure'] = {
-                        'rule': f'Host(`{domain}`) || Host(`www.{domain}`)',
-                        'entryPoints': ['websecure'],
-                        'service': 'app-domain-service',
-                        'priority': 50,
-                        'tls': {}
-                    }
-                    
-                    # Add HTTP to HTTPS redirect
-                    config['http']['routers']['app-domain']['middlewares'] = ['redirect-to-https']
-                    config['http']['middlewares'] = {
-                        'redirect-to-https': {
-                            'redirectScheme': {
-                                'scheme': 'https',
-                                'permanent': True
-                            }
-                        }
-                    }
-                    
-                    # Configure TLS certificates
-                    config['tls'] = {
-                        'certificates': [
-                            {
-                                'certFile': traefik_cert_path,
-                                'keyFile': traefik_key_path
-                            }
-                        ]
-                    }
-                
-                # Write configuration to file
-                with open(config_file, 'w') as f:
-                    yaml.dump(config, f, default_flow_style=False)
-                
-                ssl_status = " con HTTPS" if ssl_enabled and cert_path else " (HTTP)"
-                return True, f"Configuración de Traefik generada para {domain}{ssl_status}"
-            else:
-                # Remove configuration file if no domain is set
-                if os.path.exists(config_file):
-                    os.remove(config_file)
+            if not domain:
+                TraefikService._write('dynamic.yml', None)
                 return True, "Configuración de dominio eliminada"
-                
+            certificate = TraefikService._certbot_certificate(cert_path, key_path) if ssl_enabled else None
+            config = TraefikService._routes('app-domain', [domain, f'www.{domain}'], 'http://app:8000', certificate)
+            TraefikService._write('dynamic.yml', config)
+            from .services.domains import acme_enabled
+            ssl_status = " con HTTPS" if certificate or acme_enabled() else " (HTTP)"
+            return True, f"Configuración de Traefik generada para {domain}{ssl_status}"
         except Exception as e:
             return False, f"Error al generar configuración: {str(e)}"
-    
+
     @staticmethod
     def generate_instance_config(instance):
         """
-        Generate Traefik dynamic configuration file for an instance with custom domain
-        
-        Args:
-            instance: Instance object with custom_domain
-        
-        Returns:
-            tuple: (success, message)
+        Route the instance's custom domain and its subdomain under the platform domain to
+        its Odoo container (Traefik shares the community-sh_web network with it).
+        Returns (success, message).
         """
+        from .services.domains import instance_hosts
         try:
-            if not instance.custom_domain:
-                # Remove config file if instance no longer has custom domain
-                traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
-                config_file = os.path.join(traefik_dir, f'instance-{instance.name}.yml')
-                if os.path.exists(config_file):
-                    os.remove(config_file)
+            name = f'instance-{instance.name}.yml'
+            hosts = instance_hosts(instance)
+            if not hosts:
+                TraefikService._write(name, None)
                 return True, "Configuración de instancia eliminada"
-            
-            # Create traefik directory if it doesn't exist
-            traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
-            os.makedirs(traefik_dir, exist_ok=True)
-            
-            config_file = os.path.join(traefik_dir, f'instance-{instance.name}.yml')
-            
-            # Get instance port
-            port = instance.port
-            
-            # Get backend URL based on platform
-            # In Linux, host.docker.internal doesn't work, use gateway IP
-            import platform
-            import subprocess
-            
-            if platform.system() == 'Linux':
-                # Get Docker gateway IP
-                try:
-                    result = subprocess.run(
-                        ['/usr/bin/docker', 'network', 'inspect', 'community-sh_web', '-f', '{{range .IPAM.Config}}{{.Gateway}}{{end}}'],
-                        capture_output=True, text=True, timeout=5
-                    )
-                    gateway_ip = result.stdout.strip()
-                    if gateway_ip:
-                        backend_url = f'http://{gateway_ip}:{port}'
-                    else:
-                        backend_url = f'http://172.18.0.1:{port}'
-                except Exception as e:
-                    # Fallback to common gateway IP
-                    print(f"Could not get gateway IP: {e}, using fallback", flush=True)
-                    backend_url = f'http://172.18.0.1:{port}'
-            else:
-                # macOS/Windows - use host.docker.internal
-                backend_url = f'http://host.docker.internal:{port}'
-            
-            print(f"Instance {instance.name} backend URL: {backend_url}", flush=True)
-            
-            # Create routing configuration for the instance domain
-            # Include both www and non-www versions
-            domain_rule = f'Host(`{instance.custom_domain}`) || Host(`www.{instance.custom_domain}`)'
-            
-            config = {
-                'http': {
-                    'routers': {
-                        f'instance-{instance.name}': {
-                            'rule': domain_rule,
-                            'entryPoints': ['web'],
-                            'service': f'instance-{instance.name}-service',
-                            'priority': 100  # Higher priority than app
-                        }
-                    },
-                    'services': {
-                        f'instance-{instance.name}-service': {
-                            'loadBalancer': {
-                                'servers': [
-                                    {'url': backend_url}
-                                ]
-                            }
-                        }
-                    }
-                }
-            }
-            
-            # Add HTTPS router if SSL is enabled for this instance
-            if instance.ssl_enabled and instance.ssl_certificate_path and instance.ssl_key_path:
-                print(f"Instance {instance.name} has SSL enabled", flush=True)
-                print(f"Cert path: {instance.ssl_certificate_path}", flush=True)
-                print(f"Key path: {instance.ssl_key_path}", flush=True)
-                cert_exists = os.path.exists(instance.ssl_certificate_path)
-                key_exists = os.path.exists(instance.ssl_key_path)
-                print(f"Cert exists: {cert_exists}", flush=True)
-                print(f"Key exists: {key_exists}", flush=True)
-                
-                if cert_exists and key_exists:
-                    # Convert host paths to Traefik container paths
-                    traefik_cert_path = instance.ssl_certificate_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
-                    traefik_key_path = instance.ssl_key_path.replace('/opt/community-sh/letsencrypt', '/letsencrypt')
-                    
-                    # Also handle local development paths
-                    if str(settings.BASE_DIR) in traefik_cert_path:
-                        base_dir_str = str(settings.BASE_DIR)
-                        traefik_cert_path = traefik_cert_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
-                        traefik_key_path = traefik_key_path.replace(f'{base_dir_str}/letsencrypt', '/letsencrypt')
-                    
-                    print(f"Adding HTTPS config with certs: {traefik_cert_path}", flush=True)
-                    
-                    # Add HTTPS router (include both www and non-www)
-                    config['http']['routers'][f'instance-{instance.name}-secure'] = {
-                        'rule': domain_rule,
-                        'entryPoints': ['websecure'],
-                        'service': f'instance-{instance.name}-service',
-                        'priority': 100,
-                        'tls': {}
-                    }
-                    
-                    # Add HTTP to HTTPS redirect
-                    config['http']['routers'][f'instance-{instance.name}']['middlewares'] = ['redirect-to-https']
-                    config['http']['middlewares'] = {
-                        'redirect-to-https': {
-                            'redirectScheme': {
-                                'scheme': 'https',
-                                'permanent': True
-                            }
-                        }
-                    }
-                    
-                    # Add TLS certificates
-                    config['tls'] = {
-                        'certificates': [
-                            {
-                                'certFile': traefik_cert_path,
-                                'keyFile': traefik_key_path
-                            }
-                        ]
-                    }
-                else:
-                    print(f"Certificates not found on filesystem", flush=True)
-            
-            # Write configuration to file
-            with open(config_file, 'w') as f:
-                yaml.dump(config, f, default_flow_style=False)
-            
+            certificate = None
+            if instance.ssl_enabled:
+                certificate = TraefikService._certbot_certificate(instance.ssl_certificate_path, instance.ssl_key_path)
+            config = TraefikService._routes(f'instance-{instance.name}', hosts,
+                                            f'http://odoo_{instance.name}:8069', certificate)
+            TraefikService._write(name, config)
             return True, f"Configuración de Traefik generada para instancia {instance.name}"
-                
         except Exception as e:
             return False, f"Error al generar configuración de instancia: {str(e)}"
-    
+
+    @staticmethod
+    def configure_all():
+        """Rewrite the routes of the panel and every instance (at startup and when the domain changes)."""
+        from .models import Instance
+        from .permissions import get_global_config
+        from .services.domains import clear_cache, main_domain
+        clear_cache()
+        config = get_global_config()
+        domain = main_domain()
+        messages = [TraefikService.generate_dynamic_config(
+            domain=domain or None,
+            ssl_enabled=bool(config and config.ssl_enabled and config.main_domain == domain),
+            cert_path=config.ssl_certificate_path if config else None,
+            key_path=config.ssl_key_path if config else None,
+        )[1]]
+        for instance in Instance.objects.all():
+            ok, message = TraefikService.generate_instance_config(instance)
+            if not ok:
+                messages.append(message)
+        return messages
+
     @staticmethod
     def update_app_routing(domain=None, ssl_enabled=False, cert_path=None, key_path=None):
         """

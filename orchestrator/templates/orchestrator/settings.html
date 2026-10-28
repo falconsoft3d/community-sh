@@ -1,7 +1,7 @@
 {% extends "orchestrator/base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-6" x-data="{ activeTab: {% if user.is_superuser %}window.location.hash ? window.location.hash.slice(1) : {% endif %}'github' }">
+<div class="flex flex-col gap-6" x-data="{ activeTab: {% if user.is_superuser %}window.location.hash ? window.location.hash.slice(1) : {% else %}['#mcp', '#api'].includes(window.location.hash) ? window.location.hash.slice(1) : {% endif %}'github' }">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
@@ -38,7 +38,25 @@
                 <i data-lucide="database" class="inline-block h-4 w-4 mr-2"></i>
                 Respaldos
             </button>
+            <button type="button" @click="activeTab = 'ia'; window.location.hash = 'ia'"
+                :class="activeTab === 'ia' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="sparkles" class="inline-block h-4 w-4 mr-2"></i>
+                IA
+            </button>
             {% endif %}
+            <button type="button" @click="activeTab = 'mcp'; window.location.hash = 'mcp'"
+                :class="activeTab === 'mcp' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="plug" class="inline-block h-4 w-4 mr-2"></i>
+                MCP (Claude)
+            </button>
+            <button type="button" @click="activeTab = 'api'; window.location.hash = 'api'"
+                :class="activeTab === 'api' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="braces" class="inline-block h-4 w-4 mr-2"></i>
+                API
+            </button>
             <button @click="activeTab = 'help'; window.location.hash = 'help'" 
                 :class="activeTab === 'help' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
@@ -533,6 +551,98 @@
         </div>
     </div>
 
+    <!-- AI Tab -->
+    {% if user.is_superuser %}
+    <div x-show="activeTab === 'ia'" class="space-y-6" x-data="aiSettings()">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="sparkles" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Asistente de IA (ChatGPT)</h3>
+                </div>
+                <p class="text-sm text-muted-foreground">Activa un chat en cada instancia que puede crear y modificar módulos de Odoo usando la API de OpenAI.</p>
+            </div>
+            <div class="p-6 space-y-5">
+                <label class="flex items-start gap-3">
+                    <input type="checkbox" name="ai_enabled" {% if config.ai_enabled %}checked{% endif %} class="mt-1 h-4 w-4 rounded border-input">
+                    <span>
+                        <span class="text-sm font-medium">Activar el asistente</span>
+                        <span class="block text-sm text-muted-foreground">Aparece como pestaña "IA" en las instancias para quien puede gestionarlas.</span>
+                    </span>
+                </label>
+
+                <div class="space-y-2">
+                    <label for="openai_api_key" class="text-sm font-medium">API key de OpenAI</label>
+                    <div class="flex gap-2">
+                        <input type="password" id="openai_api_key" name="openai_api_key" x-ref="key" autocomplete="off"
+                            placeholder="{% if config.openai_api_key %}Guardada (…{{ config.openai_api_key|slice:'-4:' }}). Déjala vacía para mantenerla{% else %}sk-...{% endif %}"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <button type="button" @click="test()" :disabled="testing"
+                            class="inline-flex shrink-0 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent disabled:opacity-50">
+                            <i data-lucide="plug-zap" class="mr-2 h-4 w-4"></i>
+                            <span x-text="testing ? 'Probando…' : 'Probar conexión'"></span>
+                        </button>
+                    </div>
+                    <p class="text-sm" :class="error ? 'text-red-600' : 'text-green-600'" x-show="message" x-text="message"></p>
+                    <p class="text-sm text-muted-foreground">Créala en platform.openai.com → API keys. Se guarda en la base de datos del panel.</p>
+                    {% if config.openai_api_key %}
+                    <label class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <input type="checkbox" name="remove_openai_api_key" class="h-4 w-4 rounded border-input"> Borrar la clave guardada
+                    </label>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-2">
+                    <label for="openai_model" class="text-sm font-medium">Modelo</label>
+                    <input type="text" id="openai_model" name="openai_model" list="openai-models" value="{{ config.openai_model }}"
+                        placeholder="Pulsa «Probar conexión» para ver los modelos disponibles"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <datalist id="openai-models">
+                        <template x-for="model in models" :key="model"><option :value="model"></option></template>
+                    </datalist>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="ai_instructions" class="text-sm font-medium">Instrucciones adicionales (opcional)</label>
+                    <textarea id="ai_instructions" name="ai_instructions" rows="4"
+                        placeholder="Ej.: escribe el código y los comentarios en español; usa el prefijo x_ para campos nuevos"
+                        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ config.ai_instructions }}</textarea>
+                </div>
+
+                <div class="flex justify-end pt-4 border-t">
+                    <button type="submit" name="section" value="ia"
+                        class="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="save" class="h-4 w-4 mr-2"></i>
+                        Guardar IA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function aiSettings() {
+            return {
+                models: [], testing: false, message: '', error: false,
+                async test() {
+                    this.testing = true; this.message = '';
+                    const body = new FormData();
+                    body.append('openai_api_key', this.$refs.key.value);
+                    body.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+                    try {
+                        const data = await (await fetch("{% url 'settings-ai-test' %}", { method: 'POST', body })).json();
+                        this.error = !data.ok;
+                        this.models = data.models || [];
+                        this.message = data.ok ? `Conexión correcta: ${this.models.length} modelos disponibles` : data.error;
+                    } catch (e) {
+                        this.error = true; this.message = 'No se pudo comprobar la conexión';
+                    }
+                    this.testing = false;
+                },
+            };
+        }
+    </script>
+    {% endif %}
+
     <!-- Help Tab -->
     <div x-show="activeTab === 'help'" class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -607,5 +717,113 @@
     </div>
 
     </form> <!-- End Main Settings Form -->
+
+
+    <!-- API Tab -->
+    <div x-show="activeTab === 'api'" class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="braces" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">API REST</h3>
+                </div>
+                <p class="text-sm text-muted-foreground">Administra proyectos, instancias, backups, tareas y Todo desde tus scripts o integraciones. Cada llamada usa los permisos del usuario del token.</p>
+            </div>
+            <div class="p-6 space-y-5 text-sm">
+                <div class="space-y-1">
+                    <p class="font-medium">URL base</p>
+                    <code class="block rounded bg-muted px-3 py-2 font-mono text-xs">{{ api_url }}</code>
+                </div>
+                <div class="space-y-1">
+                    <p class="font-medium">Autenticación</p>
+                    <p class="text-muted-foreground">Cabecera <code class="font-mono">Authorization: Bearer TU_TOKEN</code> con un token personal. Genera uno aquí; sirve también para el servidor MCP.</p>
+                </div>
+                {% include 'orchestrator/_personal_tokens.html' with tab='api' %}
+                <div class="space-y-1">
+                    <p class="font-medium">Ejemplo</p>
+                    <pre class="overflow-x-auto rounded-lg bg-black p-3 text-xs text-green-400">curl -H "Authorization: Bearer {{ example_token }}" {{ api_url }}instances/
+
+curl -X POST -H "Authorization: Bearer {{ example_token }}" {{ api_url }}instances/12/backup/
+# → {"task_id": 345, "status": "pending"}
+
+curl -H "Authorization: Bearer {{ example_token }}" {{ api_url }}tasks/345/</pre>
+                </div>
+                <div class="overflow-x-auto rounded-lg border">
+                    <table class="w-full">
+                        <thead><tr class="border-b text-left text-muted-foreground"><th class="px-3 py-2 font-medium">Método</th><th class="px-3 py-2 font-medium">Ruta</th><th class="px-3 py-2 font-medium">Qué hace</th></tr></thead>
+                        <tbody>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/projects/</td><td class="px-3 py-2 text-muted-foreground">Proyectos que puedes ver</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/projects/</td><td class="px-3 py-2 text-muted-foreground">Crear proyecto (name, description)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/instances/</td><td class="px-3 py-2 text-muted-foreground">Instancias (estado, versión, proyecto, URL)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/</td><td class="px-3 py-2 text-muted-foreground">Crear instancia (name, odoo_version, project); despliega con /deploy/</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/deploy/</td><td class="px-3 py-2 text-muted-foreground">Desplegar (devuelve task_id)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/restart/</td><td class="px-3 py-2 text-muted-foreground">Reiniciar</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/stop/</td><td class="px-3 py-2 text-muted-foreground">Detener</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/backup/</td><td class="px-3 py-2 text-muted-foreground">Crear backup (include_filestore)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/duplicate/</td><td class="px-3 py-2 text-muted-foreground">Duplicar (new_name)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">DELETE</td><td class="px-3 py-2 font-mono text-xs">/api/instances/{id}/</td><td class="px-3 py-2 text-muted-foreground">Eliminar instancia</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/backups/?instance=nombre</td><td class="px-3 py-2 text-muted-foreground">Backups</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/backups/{id}/download/</td><td class="px-3 py-2 text-muted-foreground">Descargar ZIP</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/backups/{id}/restore/</td><td class="px-3 py-2 text-muted-foreground">Restaurar en su instancia</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/tasks/{id}/</td><td class="px-3 py-2 text-muted-foreground">Estado de una tarea en segundo plano</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET/POST</td><td class="px-3 py-2 font-mono text-xs">/api/todos/</td><td class="px-3 py-2 text-muted-foreground">Tareas del menú Todo</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">PATCH</td><td class="px-3 py-2 font-mono text-xs">/api/todos/{id}/</td><td class="px-3 py-2 text-muted-foreground">Cambiar estado (status, completion_note)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted-foreground">Las operaciones largas (desplegar, backup, restaurar, duplicar) devuelven <code class="font-mono">task_id</code>: consulta <code class="font-mono">/api/tasks/{id}/</code> hasta que <code class="font-mono">status</code> sea <code class="font-mono">done</code> o <code class="font-mono">failed</code>. Abre <a href="{{ api_url }}" target="_blank" class="text-primary hover:underline">{{ api_url }}</a> con sesión iniciada para la API navegable.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MCP Tab (outside the main form: it has its own forms) -->
+    <div x-show="activeTab === 'mcp'" class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="plug" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Servidor MCP para Claude</h3>
+                </div>
+                <p class="text-sm text-muted-foreground">Conecta Claude (Claude Code, Claude Desktop) a Community SH para que liste tus proyectos e instancias, lea logs, despliegue, reinicie y cree backups. Claude actúa con los permisos del usuario dueño del token.</p>
+            </div>
+            <div class="p-6 space-y-6">
+                {% if user.is_superuser %}
+                <form method="post" action="{% url 'settings' %}" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+                    {% csrf_token %}
+                    <label class="flex items-start gap-3">
+                        <input type="checkbox" name="mcp_enabled" {% if config.mcp_enabled %}checked{% endif %} class="mt-1 h-4 w-4 rounded border-input">
+                        <span>
+                            <span class="text-sm font-medium">Activar el servidor MCP</span>
+                            <span class="block text-sm text-muted-foreground">Expone <code class="font-mono">{{ mcp_url }}</code> para toda la plataforma.</span>
+                        </span>
+                    </label>
+                    <button type="submit" name="section" value="mcp" class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">Guardar</button>
+                </form>
+                {% endif %}
+
+                {% if not mcp_enabled %}
+                <p class="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">El servidor MCP está desactivado{% if not user.is_superuser %}: pídele a un administrador que lo active{% endif %}.</p>
+                {% endif %}
+
+                {% include 'orchestrator/_personal_tokens.html' with tab='mcp' %}
+
+                <div class="space-y-3">
+                    <h4 class="text-sm font-semibold">Conectar Claude</h4>
+                    <p class="text-sm text-muted-foreground"><strong>Claude Code</strong> (sustituye TU_TOKEN por el token creado):</p>
+                    <pre class="overflow-x-auto rounded-lg bg-black p-3 text-xs text-green-400">claude mcp add --transport http community-sh {{ mcp_url }} --header "Authorization: Bearer {{ example_token }}"</pre>
+                    <p class="text-sm text-muted-foreground"><strong>Claude Desktop</strong>: añade esto a <code class="font-mono">claude_desktop_config.json</code> (usa el puente <code class="font-mono">mcp-remote</code>, requiere Node.js) y reinicia Claude:</p>
+                    <pre class="overflow-x-auto rounded-lg bg-black p-3 text-xs text-green-400">{
+  "mcpServers": {
+    "community-sh": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "{{ mcp_url }}", "--header", "Authorization: Bearer {{ example_token }}"]
+    }
+  }
+}</pre>
+                    <p class="text-xs text-muted-foreground">El panel debe ser accesible desde donde corre Claude; usa HTTPS si es por Internet, porque el token viaja en cada petición.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

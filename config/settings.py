@@ -44,6 +44,18 @@ if not SECRET_KEY or SECRET_KEY.startswith('django-insecure') or SECRET_KEY.star
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
+# Traefik terminates HTTPS and says so in X-Forwarded-Proto; without this Django sees
+# http:// requests and rejects the https:// Origin of every form (CSRF)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+MAIN_DOMAIN = os.environ.get('MAIN_DOMAIN', '').strip().lower()
+
+# The author's other projects on the landing page (TicketPro dynamic table); hidden without a token
+TICKETPROO_API_URL = os.environ.get('TICKETPROO_API_URL', 'https://ticketproo.com/api/dynamic-tables/mis_webs/')
+TICKETPROO_API_TOKEN = os.environ.get('TICKETPROO_API_TOKEN', '')
+CSRF_TRUSTED_ORIGINS = [
+    f'{scheme}://{host}' for host in (MAIN_DOMAIN, f'www.{MAIN_DOMAIN}') for scheme in ('https', 'http')
+] if MAIN_DOMAIN and MAIN_DOMAIN != 'localhost' else []
+
 
 # Application definition
 
@@ -64,6 +76,7 @@ MIDDLEWARE = [
     'orchestrator.middleware.ConditionalSSLRedirectMiddleware',  # Custom SSL redirect middleware
     'orchestrator.middleware.DynamicAllowedHostsMiddleware',  # Dynamic ALLOWED_HOSTS validation
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -143,7 +156,14 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es'
+
+LANGUAGES = [
+    ('es', 'Español'),
+    ('en', 'English'),
+]
+
+LOCALE_PATHS = [BASE_DIR / 'locale']
 
 TIME_ZONE = 'UTC'
 
@@ -176,9 +196,10 @@ DEFAULT_FROM_EMAIL = 'noreply@community-sh.local'
 # EMAIL_HOST_USER = 'your-email@gmail.com'
 # EMAIL_HOST_PASSWORD = 'your-app-password'
 
-# REST API: authenticated users only (session auth so 2FA enforcement applies)
+# REST API: authenticated users only; session (2FA applies) or personal Bearer token
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'orchestrator.api_auth.PersonalTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [

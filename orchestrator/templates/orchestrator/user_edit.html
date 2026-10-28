@@ -80,6 +80,25 @@
                             </p>
                         </div>
                     </div>
+                    <div class="space-y-2">
+                        <label for="company" class="text-sm font-medium leading-none">Empresa</label>
+                        <input type="text" id="company" name="company" value="{{ user_to_edit.profile.company }}" placeholder="ACME S.L."
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="is_client" name="is_client" {% if user_to_edit.profile.is_client %}checked{% endif %}
+                            class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary mt-1">
+                        <div class="flex-1">
+                            <label for="is_client" class="text-sm font-medium leading-none cursor-pointer">
+                                Cliente
+                            </label>
+                            <p class="text-sm text-muted-foreground mt-1">
+                                Solo ve y opera los proyectos donde está asignado como cliente; no puede crear ni borrar
+                            </p>
+                        </div>
+                    </div>
+
 
                     <div class="flex items-start space-x-2">
                         <input type="checkbox" id="is_staff" name="is_staff" {% if user_to_edit.is_staff %}checked{% endif %}

@@ -1,0 +1,45 @@
+{# Personal tokens (REST API and MCP). tab: settings tab to come back to after creating or revoking. #}
+<div class="space-y-3">
+    <h4 class="text-sm font-semibold">Tus tokens</h4>
+    {% if new_token %}
+    <div class="space-y-2 rounded-lg border border-green-300 bg-green-50 p-4 text-sm text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-100"
+        x-data="{ copied: false }">
+        <p class="font-medium">Token «{{ new_token.name }}» creado. Cópialo ahora: no se volverá a mostrar.</p>
+        <div class="flex gap-2">
+            <input type="text" readonly value="{{ new_token.token }}" x-ref="token" @focus="$el.select()" aria-label="Token"
+                class="h-9 flex-1 rounded-md border border-input bg-background px-3 font-mono text-xs text-foreground">
+            <button type="button" @click="navigator.clipboard.writeText($refs.token.value).then(() => { copied = true; setTimeout(() => copied = false, 2000) })"
+                class="inline-flex h-9 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                <i data-lucide="copy" class="mr-1.5 h-3.5 w-3.5"></i><span x-text="copied ? '¡Copiado!' : 'Copiar'">Copiar</span>
+            </button>
+        </div>
+        <p class="text-xs">Los ejemplos de esta página ya lo incluyen.</p>
+    </div>
+    {% endif %}
+    <ul class="divide-y rounded-lg border text-sm">
+        {% for token in mcp_tokens %}
+        <li class="flex items-center gap-3 px-4 py-3">
+            <i data-lucide="key-round" class="h-4 w-4 text-muted-foreground"></i>
+            <div class="flex-1">
+                <div class="font-medium">{{ token.name }} <span class="font-mono text-xs text-muted-foreground">…{{ token.hint }}</span></div>
+                <div class="text-xs text-muted-foreground">Creado {{ token.created_at|date:"d M Y H:i" }} · último uso {{ token.last_used_at|date:"d M Y H:i"|default:"nunca" }}</div>
+            </div>
+            <form method="post" action="{% url 'mcp-token-revoke' token.pk %}" onsubmit="return confirm('¿Revocar este token? Dejará de funcionar en la API y en MCP.');">
+                {% csrf_token %}
+                <input type="hidden" name="tab" value="{{ tab }}">
+                <button type="submit" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent">Revocar</button>
+            </form>
+        </li>
+        {% empty %}
+        <li class="px-4 py-3 text-muted-foreground">Aún no tienes tokens.</li>
+        {% endfor %}
+    </ul>
+    <form method="post" action="{% url 'mcp-token-create' %}" class="flex flex-wrap gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <input name="name" placeholder="{% if tab == 'api' %}Ej.: Script de backups{% else %}Ej.: Claude Code en mi portátil{% endif %}" aria-label="Nombre del token" class="h-10 min-w-[16rem] flex-1 rounded-md border border-input bg-background px-3 text-sm">
+        <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <i data-lucide="key-round" class="mr-2 h-4 w-4"></i> Generar token
+        </button>
+    </form>
+</div>

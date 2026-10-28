@@ -1,4 +1,6 @@
 """Odoo instance management."""
+import re
+
 from ..models import Instance
 from ..services import DockerService
 
@@ -11,6 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.views.decorators.http import require_POST
+from ..ai_models import AIAttachment
 from ..task_models import Task
 from ..tasks import enqueue
 from ..permissions import (
@@ -36,6 +39,7 @@ def dashboard(request):
 class InstanceListView(LoginRequiredMixin, ListView):
     model = Instance
     ordering = ['-created_at']
+    paginate_by = 20
 
     def get_queryset(self):
         queryset = instances_for(self.request.user).select_related('project').order_by(*self.ordering)
@@ -47,6 +51,11 @@ class InstanceListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['projects'] = projects_for(self.request.user)
         context['selected_project'] = self.request.GET.get('project', '')
+        if context.get('page_obj'):
+            from ..pagination import with_links
+            with_links(self.request, context['page_obj'])
+        for instance in context['object_list']:
+            instance.can_manage = can_manage(self.request.user, instance)
         return context
 
 
@@ -101,7 +110,14 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         from ..backup_models import Backup
         context['backups'] = Backup.objects.filter(instance=self.object).order_by('-created_at')
         context['can_manage'] = can_manage(self.request.user, self.object)
+        from ..services.ai import get_ai_config
+        context['ai_enabled'] = context['can_manage'] and get_ai_config() is not None
         context['tasks'] = list(self.object.tasks.all()[:5])
+        from ..services.odoo_migration import MIN_TARGET_VERSION, STEP_LABELS, STEPS
+        context['migration_steps'] = [(step, STEP_LABELS[step]) for step in STEPS]
+        context['migration_supported'] = int(float(self.object.odoo_version)) >= MIN_TARGET_VERSION
+        context['migration_min_version'] = MIN_TARGET_VERSION
+        context['last_migration'] = self.object.tasks.filter(kind=Task.Kind.ODOO_MIGRATION).first()
         context['has_active_tasks'] = any(task.is_active for task in context['tasks'])
         
         return context
@@ -421,23 +437,8 @@ def instance_install_module(request, pk):
 def instance_delete(request, pk):
     instance = get_instance_for_user(request.user, pk, manage=True)
     if request.method == 'POST':
-        # Send email notification before deleting
-        from ..email_notifications import send_instance_notification
-        send_instance_notification('deleted', instance, request.user)
-        
-        # Remove Traefik configuration file if exists
-        if instance.custom_domain:
-            import os
-            from django.conf import settings
-            traefik_dir = os.path.join(settings.BASE_DIR, 'traefik')
-            config_file = os.path.join(traefik_dir, f'instance-{instance.name}.yml')
-            if os.path.exists(config_file):
-                os.remove(config_file)
-                print(f"Removed Traefik config for {instance.name}", flush=True)
-        
-        service = DockerService()
-        service.delete_instance(instance)
-        instance.delete()
+        from ..tasks import destroy_instance
+        destroy_instance(instance, request.user)
         return redirect('instance-list')
     return redirect('instance-detail', pk=pk)
 
@@ -468,3 +469,221 @@ def instance_duplicate(request, pk):
     enqueue(Task.Kind.DUPLICATE, instance, request.user, new_name=new_name)
     messages.info(request, f'Duplicación como "{new_name}" en cola. La nueva instancia aparecerá en la lista al terminar.')
     return redirect('instance-detail', pk=pk)
+
+
+def _ai_message_json(message):
+    tools = []
+    for call in message.tool_calls or []:
+        try:
+            import json
+            arguments = json.loads(call['function'].get('arguments') or '{}')
+        except ValueError:
+            arguments = {}
+        if call['function']['name'] == 'update_plan':
+            continue  # shown as the plan card of the turn
+        tools.append({'name': call['function']['name'], 'target': arguments.get('path') or arguments.get('module') or ''})
+    content = message.content
+    if message.role == 'user':
+        # The tagged-modules context is for the model, not for the chat bubble
+        content = content.split('\n\n[Módulos etiquetados]')[0]
+    data = {'id': message.id, 'role': message.role, 'content': content, 'tools': tools,
+            'created_at': message.created_at.isoformat()}
+    if message.role == 'user':
+        data['attachments'] = [{'name': a.name, 'size': a.size, 'type': a.content_type} for a in message.attachments.all()]
+        data['plan'] = message.plan or []
+    return data
+
+
+def _ai_messages_json(instance, messages_list):
+    """Serialize messages; the last assistant message of each turn carries its undo info."""
+    from django.db.models import Count, Q
+    from ..ai_models import AIFileChange
+    turns = {row['turn_id']: row for row in AIFileChange.objects.filter(turn__instance=instance)
+             .values('turn_id').annotate(files=Count('id'), pending=Count('id', filter=Q(reverted_at__isnull=True)))}
+    last_of_turn = {}
+    for message in messages_list:
+        if message.role == 'assistant' and message.turn_id:
+            last_of_turn[message.turn_id] = message.id
+    data = []
+    for message in messages_list:
+        item = _ai_message_json(message)
+        info = turns.get(message.turn_id)
+        if info and last_of_turn.get(message.turn_id) == message.id:
+            item['undo'] = {'turn': message.turn_id, 'files': info['files'], 'reverted': info['pending'] == 0}
+        if message.role == 'assistant' and not (item['content'] or item['tools'] or item.get('undo')):
+            continue  # only updated the plan
+        data.append(item)
+    return data
+
+
+@login_required
+@require_POST
+def instance_ai_revert(request, pk, turn_id):
+    """Undo the file changes of a turn (and of every later turn)."""
+    from ..ai_models import AIMessage
+    from ..services.ai_assistant import revert_turns
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    turn = instance.ai_messages.filter(pk=turn_id, role=AIMessage.Role.USER).first()
+    if turn is None:
+        return JsonResponse({'error': 'Petición no encontrada'}, status=404)
+    summary = revert_turns(instance, request.user, turn)
+    return JsonResponse({'summary': summary, 'messages': _ai_messages_json(instance, list(instance.ai_messages.exclude(role='tool')))})
+
+
+AI_MAX_FILES = 5
+AI_MAX_FILE_BYTES = 20 * 1024 * 1024
+
+
+def _ai_running_task(instance):
+    return instance.tasks.filter(kind=Task.Kind.AI_CHAT, status__in=[Task.Status.PENDING, Task.Status.RUNNING]).first()
+
+
+def _ai_conversation(instance):
+    task = _ai_running_task(instance)
+    messages_list = list(instance.ai_messages.exclude(role='tool').prefetch_related('attachments'))
+    return {'messages': _ai_messages_json(instance, messages_list), 'running': task is not None,
+            'turn': task.params.get('turn') if task else None}
+
+
+@login_required
+def instance_ai_chat(request, pk):
+    """
+    GET: the conversation and whether a request is still running. POST (JSON or multipart with
+    files): store the message and queue it for the AI worker, which runs the tools step by step.
+    """
+    import json
+    from ..services.ai import get_ai_config
+    from ..services.ai_assistant import attachment_type, start_turn
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    if get_ai_config() is None:
+        return JsonResponse({'error': 'El asistente de IA no está configurado (Settings → IA)'}, status=400)
+    if request.method == 'POST':
+        if request.content_type == 'application/json':
+            try:
+                payload = json.loads(request.body or '{}')
+            except ValueError:
+                payload = {}
+            modules = payload.get('modules') or []
+        else:
+            payload = request.POST
+            try:
+                modules = json.loads(payload.get('modules') or '[]')
+            except ValueError:
+                modules = []
+        text = str(payload.get('message', '')).strip()
+        modules = [str(m) for m in modules][:10]
+        files = request.FILES.getlist('files')
+        if not text and not files:
+            return JsonResponse({'error': 'Escribe un mensaje'}, status=400)
+        if len(files) > AI_MAX_FILES:
+            return JsonResponse({'error': f'Adjunta como máximo {AI_MAX_FILES} archivos'}, status=400)
+        for upload in files:
+            if attachment_type(upload.name) is None:
+                return JsonResponse({'error': f'Tipo de archivo no admitido: {upload.name} (PDF, imágenes o texto)'}, status=400)
+            if upload.size > AI_MAX_FILE_BYTES:
+                return JsonResponse({'error': f'{upload.name} supera los 20 MB'}, status=400)
+        if _ai_running_task(instance):
+            return JsonResponse({'error': 'La IA todavía está trabajando en la petición anterior'}, status=409)
+        turn = start_turn(instance, request.user, text or 'Revisa los archivos adjuntos.', modules, files)
+        enqueue(Task.Kind.AI_CHAT, instance, request.user, turn=turn.pk)
+        return JsonResponse(_ai_conversation(instance))
+    return JsonResponse(_ai_conversation(instance))
+
+
+@login_required
+@require_POST
+def instance_ai_stop(request, pk):
+    """Ask the running request to stop after its current step."""
+    from django.core.cache import cache
+    from ..services.ai_assistant import stop_key
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    task = _ai_running_task(instance)
+    if task is None:
+        return JsonResponse({'error': 'No hay ninguna petición en curso'}, status=400)
+    if task.status == Task.Status.PENDING:
+        task.status, task.result = Task.Status.FAILED, 'Cancelada antes de empezar'
+        task.save(update_fields=['status', 'result'])
+    else:
+        cache.set(stop_key(task.params['turn']), True, 3600)
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def instance_ai_reset(request, pk):
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    if _ai_running_task(instance):
+        return JsonResponse({'error': 'Espera a que la IA termine o detenla antes de borrar la conversación'}, status=409)
+    for attachment in AIAttachment.objects.filter(message__instance=instance):
+        attachment.file.delete(save=False)
+    instance.ai_messages.all().delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def instance_repo_add(request, pk):
+    from ..repository_models import REPO_URL_RE
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    url = request.POST.get('url', '').strip()
+    branch = request.POST.get('branch', '').strip() or 'main'
+    if not REPO_URL_RE.match(url):
+        messages.error(request, 'URL inválida: usa la URL HTTPS de clonado (p. ej. https://github.com/OCA/web.git)')
+    elif not re.match(r'^[A-Za-z0-9._/-]+$', branch):
+        messages.error(request, 'Rama inválida')
+    elif instance.repositories.filter(url=url).exists() or url == instance.github_repo:
+        messages.error(request, 'Ese repositorio ya está en la instancia')
+    else:
+        repository = instance.repositories.create(url=url, branch=branch)
+        messages.success(request, f'Repositorio {repository.slug} añadido. Despliega la instancia para aplicarlo.')
+    from django.urls import reverse
+    return redirect(reverse('instance-detail', args=[pk]) + '#modules')
+
+
+@login_required
+@require_POST
+def instance_repo_remove(request, pk, repo_id):
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    repository = instance.repositories.filter(pk=repo_id).first()
+    if repository:
+        repository.delete()
+        messages.success(request, f'Repositorio {repository.slug} quitado. Despliega la instancia para aplicarlo.')
+    from django.urls import reverse
+    return redirect(reverse('instance-detail', args=[pk]) + '#modules')
+
+
+
+@login_required
+def instance_ai_modules(request, pk):
+    """Custom modules of the instance, for @mentions in the AI chat."""
+    from ..services.ai_assistant import find_custom_modules
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    return JsonResponse({'modules': find_custom_modules(instance)})
+
+
+@login_required
+@require_POST
+def instance_admin_login(request, pk):
+    """Open Odoo as its administrator through a signed, one-time, 60-second link."""
+    import hashlib
+    import hmac
+    import secrets
+    import time
+    from urllib.parse import urlencode
+    from ..services.docker_service import admin_login_secret
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    database = instance.database_name
+    if not database:
+        try:
+            service = DockerService()
+            databases = service._list_user_databases(service.client.containers.get(f'db_{instance.name}'))
+        except Exception:
+            databases = []
+        if not databases:
+            messages.error(request, 'La instancia todavía no tiene base de datos: créala primero desde Odoo')
+            return redirect('instance-detail', pk=pk)
+        database = databases[0]
+    expires, nonce = str(int(time.time()) + 60), secrets.token_urlsafe(16)
+    signature = hmac.new(admin_login_secret(instance).encode(), f'{database}:{expires}:{nonce}'.encode(), hashlib.sha256).hexdigest()
+    query = urlencode({'db': database, 'exp': expires, 'nonce': nonce, 'sig': signature})
+    return HttpResponseRedirect(f'{instance.url.rstrip("/")}/community_sh/login?{query}')

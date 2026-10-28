@@ -7,13 +7,11 @@ services:
       - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      # Let's Encrypt configuration
+      # Let's Encrypt: every route the panel writes to ./traefik gets its certificate
+      # (the HTTP -> HTTPS redirect is per route, so localhost and the IP keep working)
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=admin@example.com"
+      - "--certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL:-admin@example.com}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      # HTTP to HTTPS redirect (commented out for .local domains)
-      # - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      # - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
     ports:
       - "80:80"
       - "443:443"
@@ -59,6 +57,9 @@ services:
       # IMPORTANT: This must match the absolute path on the HOST machine
       - HOST_WORKDIR=${HOST_WORKDIR}
       - SERVER_IP=${SERVER_IP}
+      - MAIN_DOMAIN=${MAIN_DOMAIN:-}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-}
+      - TICKETPROO_API_TOKEN=${TICKETPROO_API_TOKEN:-}
     volumes:
       - ./:/app
       - ./media:/app/media
@@ -82,14 +83,18 @@ services:
   # Keep a single worker: it marks tasks left running by a previous worker as failed.
   worker:
     image: community-sh-app
+    # Built by the app service: never look for it on Docker Hub
+    pull_policy: never
     restart: always
-    command: python manage.py run_worker
+    command: python manage.py run_worker --exclude ai_chat --exclude odoo_migration
     environment:
       - DATABASE_URL=${DATABASE_URL:-}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
       - DEBUG=${DEBUG:-False}
       - HOST_WORKDIR=${HOST_WORKDIR}
       - SERVER_IP=${SERVER_IP}
+      - MAIN_DOMAIN=${MAIN_DOMAIN:-}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-}
       - RUN_MIGRATIONS=false
     # Same code and data as the app (db.sqlite3 is not baked into the image)
     volumes:
@@ -106,7 +111,28 @@ services:
       - web
       - backend
 
-networks:
+  # Runs the long jobs that don't touch Docker (AI assistant requests, migrations from another
+  # Odoo) without holding up deploys and backups. Edits the instances' addons folders.
+  ai-worker:
+    image: community-sh-app
+    # Built by the app service: never look for it on Docker Hub
+    pull_policy: never
+    restart: always
+    command: python manage.py run_worker --only ai_chat --only odoo_migration
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      - DEBUG=${DEBUG:-False}
+      - HOST_WORKDIR=${HOST_WORKDIR}
+      - RUN_MIGRATIONS=false
+    volumes:
+      - ./:/app
+      - ./instances:/app/instances
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - web
       - backend
 
 networks:

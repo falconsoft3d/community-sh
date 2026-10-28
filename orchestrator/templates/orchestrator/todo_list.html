@@ -1,0 +1,133 @@
+{% extends "orchestrator/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-6" x-data="{ adding: false, showDone: window.location.hash === '#hechas' }">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h1 class="text-lg font-semibold md:text-2xl">Todo</h1>
+            <p class="text-sm text-muted-foreground">{% translate "Tareas del equipo. Claude puede leerlas y completarlas desde el servidor MCP." %}</p>
+        </div>
+        <button type="button" x-show="!adding" @click="adding = true; $nextTick(() => $refs.title.focus())"
+            class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <i data-lucide="plus" class="mr-2 h-4 w-4"></i> {% translate "Nueva tarea" %}
+        </button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <button type="button" @click="showDone = !showDone; if (showDone) $nextTick(() => $refs.done && $refs.done.scrollIntoView({ behavior: 'smooth' }))"
+            :aria-pressed="showDone.toString()" title="{% translate 'Mostrar u ocultar las tareas completadas' %}"
+            class="rounded-xl border bg-card p-4 text-left shadow-sm transition hover:border-primary/50" :class="showDone ? 'ring-2 ring-primary/40' : ''">
+            <p class="flex items-center justify-between text-sm text-muted-foreground">{% translate "Hechas" %}
+                <span class="text-xs" x-text="showDone ? '{% translate "Ocultar" %}' : '{% translate "Ver" %}'"></span></p>
+            <p class="mt-1 text-2xl font-semibold">{{ kpis.done }}</p>
+        </button>
+        <div class="rounded-xl border bg-card p-4 shadow-sm">
+            <p class="text-sm text-muted-foreground">{% translate "Sin terminar" %}</p>
+            <p class="mt-1 text-2xl font-semibold">{{ kpis.open }}</p>
+        </div>
+        <div class="rounded-xl border bg-card p-4 shadow-sm">
+            <p class="text-sm text-muted-foreground">{% translate "En curso" %}</p>
+            <p class="mt-1 text-2xl font-semibold">{{ kpis.in_progress }}</p>
+        </div>
+        <div class="rounded-xl border bg-card p-4 shadow-sm">
+            <p class="text-sm text-muted-foreground">{% translate "Completado" %}</p>
+            <p class="mt-1 text-2xl font-semibold">{{ kpis.percent }}%</p>
+            <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div class="h-full rounded-full bg-primary" style="width: {{ kpis.percent }}%"></div></div>
+        </div>
+    </div>
+
+    <form method="post" action="{% url 'todo-create' %}" x-show="adding" x-cloak @keydown.escape="adding = false"
+        class="space-y-3 rounded-xl border bg-card text-card-foreground shadow-sm p-5">
+        {% csrf_token %}
+        <input name="title" x-ref="title" required maxlength="200" placeholder="{% translate 'Nueva tarea…' %}" aria-label="{% translate 'Título' %}"
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+        <textarea name="description" rows="6" placeholder="{% translate 'Detalles (opcional)' %}" aria-label="{% translate 'Detalles' %}"
+            class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"></textarea>
+        <div class="flex justify-end gap-2">
+            <button type="button" @click="adding = false" class="inline-flex h-9 items-center rounded-md border border-input bg-background px-4 text-sm hover:bg-accent">{% translate "Cancelar" %}</button>
+            <button type="submit" class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                <i data-lucide="plus" class="mr-2 h-4 w-4"></i> {% translate "Añadir" %}
+            </button>
+        </div>
+    </form>
+
+    <section class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="border-b px-5 py-3"><h2 class="font-semibold">{% translate "Por hacer" %} <span class="text-sm font-normal text-muted-foreground">({{ pending.paginator.count }})</span></h2></div>
+        <ul class="divide-y">
+            {% for todo in pending %}
+            <li class="flex items-start gap-3 px-5 py-3" x-data="{ editing: false }">
+                <form method="post" action="{% url 'todo-status' todo.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="done">
+                    <button type="submit" title="{% translate 'Marcar como completada' %}" aria-label="{% translate 'Marcar como completada' %}"
+                        class="mt-0.5 flex h-5 w-5 items-center justify-center rounded border border-input hover:bg-accent"></button>
+                </form>
+                <div class="min-w-0 flex-1" x-show="!editing">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="font-medium">{{ todo.title }}</span>
+                        {% if todo.status == 'in_progress' %}<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">{% translate "En curso" %}</span>{% endif %}
+                    </div>
+                    {% if todo.description %}<p class="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground">{{ todo.description|urlize }}</p>{% endif %}
+                    <p class="mt-1 text-xs text-muted-foreground">#{{ todo.pk }} · {{ todo.created_by.username|default:"—" }} · {{ todo.created_at|date:"d M Y H:i" }}</p>
+                </div>
+                <form method="post" action="{% url 'todo-edit' todo.pk %}" x-show="editing" x-cloak @keydown.escape="editing = false" class="min-w-0 flex-1 space-y-2">
+                    {% csrf_token %}
+                    <input name="title" required maxlength="200" value="{{ todo.title }}" aria-label="{% translate 'Título' %}"
+                        class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <textarea name="description" rows="8" aria-label="{% translate 'Detalles' %}"
+                        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ todo.description }}</textarea>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" @click="editing = false" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent">{% translate "Cancelar" %}</button>
+                        <button type="submit" class="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">{% translate "Guardar" %}</button>
+                    </div>
+                </form>
+                <div class="flex items-center gap-1" x-show="!editing">
+                    <button type="button" @click="editing = true" title="{% translate 'Editar' %}" aria-label="{% translate 'Editar' %}"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent"><i data-lucide="pencil" class="h-4 w-4"></i></button>
+                    {% if todo.status == 'pending' %}
+                    <form method="post" action="{% url 'todo-status' todo.pk %}">{% csrf_token %}<input type="hidden" name="status" value="in_progress">
+                        <button type="submit" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-2 text-xs hover:bg-accent">{% translate "Empezar" %}</button></form>
+                    {% endif %}
+                    <form method="post" action="{% url 'todo-delete' todo.pk %}" onsubmit="return confirm('{% translate "¿Eliminar esta tarea?" %}');">{% csrf_token %}
+                        <button type="submit" title="{% translate 'Eliminar' %}" aria-label="{% translate 'Eliminar' %}" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-accent"><i data-lucide="trash-2" class="h-4 w-4"></i></button></form>
+                </div>
+            </li>
+            {% empty %}
+            <li class="px-5 py-6 text-center text-sm text-muted-foreground">{% translate "No hay tareas pendientes." %}</li>
+            {% endfor %}
+        </ul>
+        {% include "orchestrator/includes/pagination.html" with page=pending %}
+    </section>
+
+    {% if done %}
+    <section x-show="showDone" x-cloak x-ref="done" class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="border-b px-5 py-3"><h2 class="font-semibold">{% translate "Completadas" %}</h2></div>
+        <ul class="divide-y">
+            {% for todo in done %}
+            <li class="flex items-start gap-3 px-5 py-3">
+                <form method="post" action="{% url 'todo-status' todo.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="pending">
+                    <button type="submit" title="{% translate 'Reabrir' %}" aria-label="{% translate 'Reabrir' %}"
+                        class="mt-0.5 flex h-5 w-5 items-center justify-center rounded border border-green-600 bg-green-600 text-white"><i data-lucide="check" class="h-3.5 w-3.5"></i></button>
+                </form>
+                <div class="min-w-0 flex-1">
+                    <span class="font-medium text-muted-foreground line-through">{{ todo.title }}</span>
+                    {% if todo.description %}
+                    <details class="mt-1 text-sm text-muted-foreground">
+                        <summary class="cursor-pointer text-xs">{% translate "Ver descripción" %}</summary>
+                        <p class="mt-1 whitespace-pre-wrap break-words">{{ todo.description|urlize }}</p>
+                    </details>
+                    {% endif %}
+                    {% if todo.completion_note %}<p class="mt-1 whitespace-pre-wrap text-sm">{{ todo.completion_note }}</p>{% endif %}
+                    <p class="mt-1 text-xs text-muted-foreground">#{{ todo.pk }} · {% translate "completada por" %} {{ todo.completed_by|default:"—" }} · {{ todo.completed_at|date:"d M Y H:i" }}{% if todo.completed_in_version %} · v{{ todo.completed_in_version }}{% endif %}</p>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% include "orchestrator/includes/pagination.html" with page=done anchor="#hechas" %}
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

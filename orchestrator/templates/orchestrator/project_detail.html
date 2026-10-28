@@ -1,11 +1,12 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="flex flex-col gap-6">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <nav class="text-sm text-muted-foreground mb-1">
-                <a href="{% url 'project-list' %}" class="hover:text-foreground">Proyectos</a>
+                <a href="{% url 'project-list' %}" class="hover:text-foreground">{% translate "Proyectos" %}</a>
                 <span class="mx-1">/</span>
                 <span class="text-foreground font-medium">{{ project.name }}</span>
             </nav>
@@ -14,8 +15,8 @@
                 <i data-lucide="building-2" class="inline h-4 w-4 align-text-bottom"></i>
                 {% if project.client %}
                 {{ project.client_display }}
-                {% if user.is_superuser %}<a href="{% url 'client-detail' project.client.pk %}" class="ml-1 text-sm text-primary hover:underline">ver cliente</a>{% endif %}
-                {% else %}Sin cliente{% endif %}
+                
+                {% else %}{% translate "Sin cliente" %}{% endif %}
             </p>
             {% if project.description %}
             <p class="mt-2 max-w-2xl text-sm text-muted-foreground">{{ project.description|linebreaksbr }}</p>
@@ -25,21 +26,49 @@
         <div class="flex items-center gap-2">
             <a href="{% url 'project-edit' project.pk %}"
                 class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                <i data-lucide="pencil" class="mr-2 h-4 w-4"></i> Editar
+                <i data-lucide="pencil" class="mr-2 h-4 w-4"></i> {% translate "Editar" %}
             </a>
-            {% if not instances %}
+            {% if not all_instances %}
             <form method="post" action="{% url 'project-delete' project.pk %}"
                 onsubmit="return confirm('¿Eliminar el proyecto {{ project.name|escapejs }}?');">
                 {% csrf_token %}
                 <button type="submit"
                     class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
-                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Eliminar
+                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> {% translate "Eliminar" %}
                 </button>
             </form>
+            {% else %}
+            <div x-data="{ open: false, typed: '' }">
+                <button type="button" @click="open = true"
+                    class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
+                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> {% translate "Eliminar todo" %}
+                </button>
+                <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="open = false" @keydown.escape.window="open = false">
+                    <form method="post" action="{% url 'project-delete' project.pk %}" class="w-full max-w-lg space-y-4 rounded-xl border bg-card p-6 text-card-foreground shadow-xl">
+                        {% csrf_token %}
+                        <h3 class="text-lg font-semibold">{% translate "Eliminar el proyecto y todas sus instancias" %}</h3>
+                        <p class="text-sm text-muted-foreground">{% translate "Se borrarán de forma permanente los contenedores, bases de datos, filestores, workspaces y backups de:" %}</p>
+                        <ul class="max-h-40 overflow-y-auto rounded-md border bg-muted/40 px-4 py-2 text-sm">
+                            {% for instance in all_instances %}<li class="font-mono">{{ project.name }} / {{ instance.name }}</li>{% endfor %}
+                        </ul>
+                        <label class="block space-y-2 text-sm">
+                            <span>{% blocktranslate with name=project.name %}Escribe <strong>{{ name }}</strong> para confirmar{% endblocktranslate %}</span>
+                            <input name="confirm" x-model="typed" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        </label>
+                        <div class="flex justify-end gap-2">
+                            <button type="button" @click="open = false" class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm hover:bg-accent">{% translate "Cancelar" %}</button>
+                            <button type="submit" :disabled="typed !== '{{ project.name|escapejs }}'"
+                                class="inline-flex h-10 items-center rounded-md bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">
+                                {% translate "Eliminar todo" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             {% endif %}
             <a href="{% url 'instance-create' %}?project={{ project.pk }}"
                 class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Nueva instancia
+                <i data-lucide="plus" class="mr-2 h-4 w-4"></i> {% translate "Nueva instancia" %}
             </a>
         </div>
         {% endif %}
@@ -47,17 +76,17 @@
 
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
         <div class="border-b px-5 py-4">
-            <h2 class="font-semibold">Instancias</h2>
+            <h2 class="font-semibold">{% translate "Instancias" %}</h2>
         </div>
         {% if instances %}
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b text-left text-muted-foreground">
-                        <th class="h-11 px-5 font-medium">Instancia</th>
-                        <th class="h-11 px-5 font-medium">Versión</th>
-                        <th class="h-11 px-5 font-medium">Estado</th>
-                        <th class="h-11 px-5 font-medium">Acceso</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Instancia" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Versión" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Estado" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Acceso" %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -84,8 +113,16 @@
                         <td class="px-5 py-3">
                             {% if instance.status == 'running' and instance.port or instance.custom_domain %}
                             <a href="{{ instance.url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline">
-                                Abrir <i data-lucide="external-link" class="h-3 w-3"></i>
+                                {% translate "Abrir" %} <i data-lucide="external-link" class="h-3 w-3"></i>
                             </a>
+                            {% if can_manage and instance.status == 'running' %}
+                            <form action="{% url 'instance-admin-login' instance.pk %}" method="post" target="_blank" class="ml-3 inline">
+                                {% csrf_token %}
+                                <button type="submit" class="inline-flex items-center gap-1 text-primary hover:underline" title="Abre Odoo como administrador">
+                                    <i data-lucide="key-round" class="h-3 w-3"></i> Admin
+                                </button>
+                            </form>
+                            {% endif %}
                             {% else %}
                             <span class="text-muted-foreground">—</span>
                             {% endif %}
@@ -95,14 +132,15 @@
                 </tbody>
             </table>
         </div>
+        {% include "orchestrator/includes/pagination.html" with page=instances %}
         {% else %}
         <div class="p-10 text-center">
             <i data-lucide="server" class="mx-auto h-8 w-8 text-muted-foreground"></i>
-            <p class="mt-2 text-sm text-muted-foreground">Este proyecto todavía no tiene instancias.</p>
+            <p class="mt-2 text-sm text-muted-foreground">{% translate "Este proyecto todavía no tiene instancias." %}</p>
             {% if can_manage %}
             <a href="{% url 'instance-create' %}?project={{ project.pk }}"
                 class="mt-4 inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Desplegar la primera instancia
+                <i data-lucide="plus" class="mr-2 h-4 w-4"></i> {% translate "Desplegar la primera instancia" %}
             </a>
             {% endif %}
         </div>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_home_screen" model="ir.actions.act_url">
+        <field name="name">Inicio</field>
+        <field name="url">/community_sh/home</field>
+        <field name="target">self</field>
+    </record>
+    <menuitem id="menu_home_screen" name="Inicio" action="action_home_screen" sequence="-100"
+              web_icon="community_sh_theme,static/description/icon.png"/>
+</odoo>

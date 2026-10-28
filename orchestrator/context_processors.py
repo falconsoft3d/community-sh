@@ -6,8 +6,47 @@ from .permissions import is_client
 SECTIONS = {
     'project': 'projects', 'instance': 'instances', 'container': 'containers', 'metrics': 'metrics',
     'backup': 'backups', 'client': 'clients', 'user': 'users', 'change': 'users', 'settings': 'settings',
-    'generate': 'settings', 'run': 'settings', 'about': 'about', 'docker': 'docker',
+    'generate': 'settings', 'run': 'settings', 'about': 'about', 'docker': 'docker', 'todo': 'todo',
 }
+
+
+DOCKER_COUNT_SECONDS = 30
+
+
+def _docker_running():
+    """Running containers on the host (cached: it's a Docker API call)."""
+    from django.core.cache import cache
+    count = cache.get('nav-docker-running')
+    if count is None:
+        try:
+            import docker
+            count = len(docker.from_env().containers.list())
+        except Exception:
+            count = ''
+        cache.set('nav-docker-running', count, DOCKER_COUNT_SECONDS)
+    return count
+
+
+def nav_counts(user):
+    """Sidebar badges, with the same visibility rules as each list."""
+    from django.contrib.auth.models import User
+    from .backup_models import Backup
+    from .container_models import Container
+    from .permissions import instances_for, projects_for
+    from .todo_models import Todo
+    from .views.todo import todos_for
+    instances = instances_for(user)
+    counts = {
+        'projects': projects_for(user).count(),
+        'instances': instances.count(),
+        'backups': Backup.objects.filter(instance__in=instances).count(),
+        'containers': Container.objects.filter(created_by=user).count(),
+        'todo': todos_for(user).exclude(status=Todo.Status.DONE).count(),
+    }
+    if user.is_superuser:
+        counts['users'] = User.objects.count()
+        counts['docker'] = _docker_running()
+    return counts
 
 
 def navigation(request):
@@ -16,8 +55,12 @@ def navigation(request):
     section = SECTIONS.get(url_name.split('-')[0], '')
     if url_name == 'instance-backups':
         section = 'backups'
+    user = getattr(request, 'user', None)
+    signed_in = bool(user and user.is_authenticated)
     return {
         'app_version': VERSION,
         'nav_section': section,
-        'user_is_client': is_client(request.user) if hasattr(request, 'user') else False,
+        'user_is_client': is_client(user) if user is not None else False,
+        # Only the panel's own pages draw the sidebar
+        'nav_counts': nav_counts(user) if signed_in and match and match.app_name != 'admin' else {},
     }

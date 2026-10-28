@@ -15,6 +15,10 @@ class Task(models.Model):
         BACKUP_ALL = 'backup_all', 'Respaldar todas'
         INSTALL_MODULE = 'install_module', 'Instalar módulo'
         PULL_IMAGE = 'pull_image', 'Descargar imagen'
+        AI_MODULE = 'ai_module', 'Instalar módulo (IA)'
+        DELETE_PROJECT = 'delete_project', 'Eliminar proyecto'
+        AI_CHAT = 'ai_chat', 'Asistente de IA'
+        ODOO_MIGRATION = 'odoo_migration', 'Migrar desde otro Odoo'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

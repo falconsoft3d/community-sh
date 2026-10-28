@@ -27,6 +27,20 @@
         }
     });
 
+    // Sidebar collapsed to icons only, remembered per browser
+    try {
+        if (localStorage.getItem('sidebar') === 'collapsed') {
+            document.documentElement.classList.add('sidebar-collapsed');
+        }
+    } catch (e) {}
+
+    window.toggleSidebar = function () {
+        var collapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+        try {
+            localStorage.setItem('sidebar', collapsed ? 'collapsed' : 'expanded');
+        } catch (e) {}
+    };
+
     window.toggleTheme = function () {
         var next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
         try {

@@ -47,6 +47,15 @@
             </form>
             <div class="h-6 w-px bg-border mx-2"></div>
 {% if can_manage %}
+            {% if can_manage and object.status == 'running' %}
+            <form action="{% url 'instance-admin-login' object.pk %}" method="post" target="_blank">
+                {% csrf_token %}
+                <button type="submit" title="Abre Odoo con la sesión del administrador (enlace de un solo uso)"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    <i data-lucide="key-round" class="mr-2 h-4 w-4"></i> Entrar como admin
+                </button>
+            </form>
+            {% endif %}
             <a href="{% url 'instance-duplicate' object.pk %}"
                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                 <i data-lucide="copy" class="mr-2 h-4 w-4"></i> Duplicate
@@ -149,6 +158,22 @@
                 <i data-lucide="archive" class="inline-block h-4 w-4 mr-2"></i>
                 Backups
             </button>
+            {% if can_manage %}
+            <button @click="activeTab = 'migrate'"
+                :class="activeTab === 'migrate' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="arrow-right-left" class="inline-block h-4 w-4 mr-2"></i>
+                Migrar
+            </button>
+            {% endif %}
+            {% if ai_enabled %}
+            <button @click="activeTab = 'ai'"
+                :class="activeTab === 'ai' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="sparkles" class="inline-block h-4 w-4 mr-2"></i>
+                IA
+            </button>
+            {% endif %}
         </nav>
     </div>
 
@@ -397,6 +422,55 @@
 
     <!-- Modules Tab -->
     <div x-show="activeTab === 'modules'" class="space-y-6">
+        <!-- Addons repositories -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 pb-2">
+                <h3 class="font-semibold leading-none tracking-tight">Repositorios de addons</h3>
+                <p class="text-sm text-muted-foreground">Cada repositorio se clona y se añade al addons_path de Odoo. Los cambios se aplican al desplegar.</p>
+            </div>
+            <div class="p-6 pt-4 space-y-4">
+                <ul class="divide-y rounded-lg border text-sm">
+                    {% if object.github_repo %}
+                    <li class="flex items-center gap-3 px-4 py-3">
+                        {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4 shrink-0" %}
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate font-medium">{{ object.github_repo }}</div>
+                            <div class="text-xs text-muted-foreground">rama {{ object.github_branch }} · principal (/mnt/extra-addons)</div>
+                        </div>
+                    </li>
+                    {% endif %}
+                    {% for repository in object.repositories.all %}
+                    <li class="flex items-center gap-3 px-4 py-3">
+                        {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4 shrink-0" %}
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate font-medium">{{ repository.url }}</div>
+                            <div class="text-xs text-muted-foreground">rama {{ repository.branch }} · /mnt/repos/{{ repository.slug }}</div>
+                        </div>
+                        <form method="post" action="{% url 'instance-repo-remove' object.pk repository.pk %}" onsubmit="return confirm('¿Quitar este repositorio?');">
+                            {% csrf_token %}
+                            <button type="submit" title="Quitar" aria-label="Quitar" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-accent">
+                                <i data-lucide="trash-2" class="h-4 w-4"></i>
+                            </button>
+                        </form>
+                    </li>
+                    {% empty %}
+                    {% if not object.github_repo %}<li class="px-4 py-3 text-muted-foreground">Sin repositorios</li>{% endif %}
+                    {% endfor %}
+                </ul>
+                <form method="post" action="{% url 'instance-repo-add' object.pk %}" class="flex flex-wrap gap-2">
+                    {% csrf_token %}
+                    <input name="url" required placeholder="https://github.com/OCA/web.git" aria-label="URL del repositorio"
+                        class="h-10 min-w-[16rem] flex-1 rounded-md border border-input bg-background px-3 text-sm">
+                    <input name="branch" placeholder="{{ object.odoo_version }}" value="{{ object.odoo_version }}" aria-label="Rama"
+                        class="h-10 w-32 rounded-md border border-input bg-background px-3 text-sm">
+                    <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Añadir
+                    </button>
+                </form>
+                <p class="text-xs text-muted-foreground">Los repos privados usan el token de GitHub del dueño de la instancia (Settings → GitHub).</p>
+            </div>
+        </div>
+
         <!-- Install Module from ZIP Card -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 pb-2">
@@ -457,6 +531,20 @@
                 </form>
             </div>
         </div>
+        {% if can_manage %}
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
+            <h3 class="font-semibold leading-none tracking-tight mb-1">Restaurar desde un archivo</h3>
+            <p class="mb-4 text-sm text-muted-foreground">Sustituye la base de datos y el filestore de esta instancia. Acepta backups del panel, del gestor de bases de datos de Odoo (.zip) o un volcado .dump.</p>
+            <form method="post" action="{% url 'instance-restore' object.pk %}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3"
+                onsubmit="return confirm('Se sobrescribirán la base de datos y el filestore actuales. ¿Continuar?');">
+                {% csrf_token %}
+                <input type="file" name="backup_file" required accept=".zip,.dump" class="text-sm">
+                <button type="submit" class="inline-flex h-10 items-center rounded-md bg-yellow-600 px-4 text-sm font-medium text-white hover:bg-yellow-700">
+                    <i data-lucide="upload" class="mr-2 h-4 w-4"></i> Restaurar
+                </button>
+            </form>
+        </div>
+        {% endif %}
 
         <!-- Backups List -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -532,6 +620,66 @@
     </div>
 
     <!-- Logs Tab -->
+    {% if can_manage %}
+    <!-- Migrate from another Odoo -->
+    <div x-show="activeTab === 'migrate'" x-cloak class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="border-b p-6">
+                <h3 class="font-semibold">Migrar desde otro Odoo</h3>
+                <p class="mt-1 text-sm text-muted-foreground">Copia por XML-RPC los datos de cualquier Odoo (versión 8 o posterior, en tu servidor o en Internet) a esta instancia. Se puede repetir: lo ya copiado no se duplica y continúa donde se quedó.</p>
+            </div>
+            {% if migration_supported %}
+            <form method="post" action="{% url 'instance-migrate' object.pk %}" class="grid gap-6 p-6 lg:grid-cols-2">
+                {% csrf_token %}
+                <fieldset class="space-y-3">
+                    <legend class="text-sm font-semibold">Origen</legend>
+                    <input name="source_url" required placeholder="https://erp.miempresa.com" aria-label="URL del Odoo de origen" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <input name="source_db" required placeholder="Base de datos" aria-label="Base de datos de origen" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input name="source_login" required value="admin" aria-label="Usuario de origen" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        <input name="source_password" type="password" required placeholder="Contraseña o clave API" aria-label="Contraseña de origen" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    </div>
+                </fieldset>
+                <fieldset class="space-y-3">
+                    <legend class="text-sm font-semibold">Destino: {{ object.name }} (Odoo {{ object.odoo_version }})</legend>
+                    <input name="target_db" required value="{{ object.database_name|default:'' }}" placeholder="Base de datos" aria-label="Base de datos de destino" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input name="target_login" required value="admin" aria-label="Usuario de destino" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        <input name="target_password" type="password" required placeholder="Contraseña del administrador" aria-label="Contraseña de destino" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    </div>
+                    <p class="text-xs text-muted-foreground">Instala antes en el destino Ventas, Compras y Facturación si vas a migrar esos datos. Las contraseñas no se guardan: solo se usan durante la migración.</p>
+                </fieldset>
+                <fieldset class="lg:col-span-2">
+                    <legend class="text-sm font-semibold">Qué migrar</legend>
+                    <div class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {% for step, label in migration_steps %}
+                        <label class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"><input type="checkbox" name="steps" value="{{ step }}" checked class="h-4 w-4 rounded border-input"> {{ label }}</label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+                <div class="flex items-center justify-between gap-3 lg:col-span-2">
+                    <p class="text-xs text-muted-foreground">Haz un backup de esta instancia antes de migrar. Los impuestos, monedas, países y unidades se buscan por nombre o código en el destino.</p>
+                    <button type="submit" class="inline-flex h-10 shrink-0 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="arrow-right-left" class="mr-2 h-4 w-4"></i> Migrar
+                    </button>
+                </div>
+            </form>
+            {% else %}
+            <p class="p-6 text-sm text-muted-foreground">La migración escribe en esta instancia con el modelo de facturación de Odoo {{ migration_min_version }}+: crea una instancia de Odoo {{ migration_min_version }} o posterior para migrar a ella (el origen puede ser cualquier versión desde la 8).</p>
+            {% endif %}
+        </div>
+        {% if last_migration %}
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex items-center justify-between border-b px-6 py-3">
+                <h3 class="text-sm font-semibold">Última migración · {{ last_migration.params.source }}</h3>
+                <span class="text-xs text-muted-foreground">{{ last_migration.get_status_display }} · {{ last_migration.created_at|date:"d M Y H:i" }}</span>
+            </div>
+            <pre class="max-h-96 overflow-auto whitespace-pre-wrap p-6 text-xs">{{ last_migration.result|default:"En cola…" }}</pre>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <div x-show="activeTab === 'logs'" class="space-y-6">
         <!-- Live Logs Card -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col h-[500px]">
@@ -612,6 +760,266 @@
 
 {% endif %}
     <!-- Domains Tab -->
+    {% if ai_enabled %}
+    <!-- AI assistant Tab -->
+    <div x-show="activeTab === 'ai'" x-data="aiChat()" x-init="load()" class="space-y-4">
+        <div class="relative rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col" style="height: 70vh"
+            @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="dragging = false; addFiles($event.dataTransfer.files)">
+            <div x-show="dragging" x-cloak class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-background/80 text-sm font-medium">
+                Suelta aquí los PDF, imágenes o archivos de texto
+            </div>
+            <div class="flex items-center justify-between border-b px-5 py-3">
+                <div>
+                    <h3 class="font-semibold">Asistente de IA</h3>
+                    <p class="text-xs text-muted-foreground">Crea y modifica módulos de Odoo {{ object.odoo_version }} en la carpeta de addons de esta instancia y los instala.</p>
+                </div>
+                <button type="button" @click="reset()" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent">
+                    <i data-lucide="rotate-ccw" class="mr-1.5 h-3.5 w-3.5"></i> Nueva conversación
+                </button>
+            </div>
+            <div x-ref="log" class="flex-1 space-y-3 overflow-y-auto p-5">
+                <template x-if="messages.length === 0 && !loading">
+                    <div class="mx-auto max-w-lg py-10 text-center text-sm text-muted-foreground">
+                        <p>Pídele, por ejemplo: «Crea un módulo que añada un campo "Código interno" a los contactos y lo muestre en el formulario».</p>
+                    </div>
+                </template>
+                <template x-for="message in messages" :key="message.id">
+                    <div :class="message.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                        <div class="max-w-[85%] rounded-lg px-4 py-2.5 text-sm"
+                            :class="message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'">
+                            <template x-if="message.content"><div class="whitespace-pre-wrap break-words" x-text="message.content"></div></template>
+                            <template x-if="message.attachments && message.attachments.length">
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    <template x-for="file in message.attachments">
+                                        <span class="inline-flex items-center gap-1 rounded-md bg-primary-foreground/15 px-2 py-0.5 text-xs"
+                                            x-text="(file.type === 'application/pdf' ? '📄 ' : file.type.startsWith('image/') ? '🖼 ' : '📝 ') + file.name"></span>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="message.tools.length">
+                                <ul class="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                                    <template x-for="tool in message.tools">
+                                        <li class="font-mono" x-text="'⚙ ' + tool.name + (tool.target ? ' · ' + tool.target : '')"></li>
+                                    </template>
+                                </ul>
+                            </template>
+                            <template x-if="message.plan && message.plan.length">
+                                <div class="mt-3 rounded-md bg-background p-3 text-xs text-foreground">
+                                    <p class="mb-2 font-semibold" x-text="'Plan · ' + message.plan.filter(s => s.status === 'done').length + '/' + message.plan.length + ' hechos'"></p>
+                                    <ul class="space-y-1">
+                                        <template x-for="(step, index) in message.plan" :key="index">
+                                            <li class="flex items-start gap-2">
+                                                <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px]"
+                                                    :class="step.status === 'done' ? 'bg-green-600 text-white' : step.status === 'in_progress' ? 'bg-primary text-primary-foreground animate-pulse' : 'border border-input'"
+                                                    x-text="step.status === 'done' ? '✓' : ''"></span>
+                                                <span :class="step.status === 'done' ? 'text-muted-foreground line-through' : step.status === 'in_progress' ? 'font-medium' : ''" x-text="step.step"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </template>
+                            <template x-if="message.undo">
+                                <div class="mt-2 border-t border-border/60 pt-2 text-xs">
+                                    <template x-if="!message.undo.reverted">
+                                        <button type="button" @click="revert(message.undo)" :disabled="sending"
+                                            class="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 hover:bg-accent disabled:opacity-50">
+                                            ↶ <span x-text="'Deshacer estos cambios (' + message.undo.files + (message.undo.files === 1 ? ' archivo)' : ' archivos)')"></span>
+                                        </button>
+                                    </template>
+                                    <template x-if="message.undo.reverted"><span class="text-muted-foreground">Cambios deshechos</span></template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="sending || running" class="flex justify-start">
+                    <div class="flex items-center gap-3 rounded-lg bg-muted px-4 py-2.5 text-sm text-muted-foreground">
+                        <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-primary"></span>
+                        <span x-text="progress()"></span>
+                        <button type="button" x-show="running" @click="stop()" class="rounded-md border border-input bg-background px-2 py-0.5 text-xs text-foreground hover:bg-accent">Detener</button>
+                    </div>
+                </div>
+            </div>
+            <p x-show="error" x-text="error" class="px-5 pb-2 text-sm text-red-600"></p>
+            <div x-show="tagged().length" class="flex flex-wrap gap-1.5 border-t px-3 pt-2">
+                <template x-for="module in tagged()" :key="module.name">
+                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                        :class="module.editable ? 'bg-blue-100 text-blue-800' : 'bg-muted text-muted-foreground'"
+                        :title="module.editable ? 'Editable (addons)' : 'Solo lectura (repositorio): la IA lo extenderá con un módulo nuevo'"
+                        x-text="'@' + module.name + (module.editable ? '' : ' · ' + module.source)"></span>
+                </template>
+            </div>
+            <div x-show="files.length" x-cloak class="flex flex-wrap gap-1.5 border-t px-3 pt-2">
+                <template x-for="(file, index) in files" :key="index">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                        <span x-text="file.name"></span>
+                        <button type="button" @click="files.splice(index, 1)" class="text-muted-foreground hover:text-foreground" aria-label="Quitar">×</button>
+                    </span>
+                </template>
+            </div>
+            <form @submit.prevent="send()" class="relative flex gap-2 border-t p-3">
+                <input type="file" x-ref="picker" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md,.csv,.xml,.py,.json,.js,.html,.css,.po,.log"
+                    @change="addFiles($event.target.files); $event.target.value = ''">
+                <button type="button" @click="$refs.picker.click()" title="Adjuntar PDF, imágenes o archivos de texto" aria-label="Adjuntar archivos"
+                    class="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 hover:bg-accent">
+                    <i data-lucide="paperclip" class="h-4 w-4"></i>
+                </button>
+                <!-- @mention suggestions -->
+                <ul x-show="suggestions.length" x-cloak
+                    class="absolute bottom-full left-3 z-20 mb-1 max-h-56 w-80 overflow-y-auto rounded-md border bg-card text-sm shadow-lg">
+                    <template x-for="(module, index) in suggestions" :key="module.path">
+                        <li>
+                            <button type="button" @mousedown.prevent="pick(module)"
+                                class="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-accent" :class="index === active ? 'bg-accent' : ''">
+                                <span class="font-mono text-xs" x-text="'@' + module.name"></span>
+                                <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground" x-text="module.title + ' · ' + module.source"></span>
+                            </button>
+                        </li>
+                    </template>
+                </ul>
+                <textarea x-model="draft" x-ref="input" rows="2" placeholder="Describe el módulo o el cambio que quieres… Usa @ para etiquetar un módulo"
+                    @input="suggest()" @click="suggest()"
+                    @keydown.arrow-down="if (suggestions.length) { $event.preventDefault(); active = (active + 1) % suggestions.length; }"
+                    @keydown.arrow-up="if (suggestions.length) { $event.preventDefault(); active = (active - 1 + suggestions.length) % suggestions.length; }"
+                    @keydown.escape="suggestions = []"
+                    @keydown.enter="if (suggestions.length) { $event.preventDefault(); pick(suggestions[active]); } else if (!$event.shiftKey) { $event.preventDefault(); send(); }"
+                    class="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm"></textarea>
+                <button type="submit" :disabled="sending || running || (!draft.trim() && !files.length)" aria-label="Enviar"
+                    class="inline-flex items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                    <i data-lucide="send" class="h-4 w-4"></i>
+                </button>
+            </form>
+        </div>
+        {% if object.odoo_version != '8.0' %}
+        <p class="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <i data-lucide="message-square-text" class="mt-0.5 h-3.5 w-3.5 shrink-0"></i>
+            <span>También desde Odoo: un administrador escribe <code class="font-mono">/ia …</code> en el chatter de cualquier registro (p. ej. «/ia añade una columna Obra a esta lista») y la respuesta llega a ese mismo chatter. El módulo <code class="font-mono">community_sh_ai</code> se instala solo al desplegar.</span>
+        </p>
+        {% endif %}
+        <p class="text-xs text-muted-foreground">Puedes adjuntar PDF con capturas o especificaciones: en peticiones largas la IA arma un plan y lo va completando paso a paso (puedes cerrar la página, sigue trabajando). La instalación de módulos aparece en «Tareas recientes». Haz un backup antes de cambios grandes.</p>
+    </div>
+    <script>
+        function aiChat() {
+            const csrf = () => document.querySelector('[name=csrfmiddlewaretoken]').value;
+            return {
+                messages: [], draft: '', sending: false, running: false, loading: true, error: '',
+                modules: [], suggestions: [], active: 0, files: [], dragging: false, timer: null,
+                addFiles(list) {
+                    for (const file of list) {
+                        if (this.files.length >= 5) { this.error = 'Adjunta como máximo 5 archivos'; break; }
+                        if (file.size > 20 * 1024 * 1024) { this.error = file.name + ' supera los 20 MB'; continue; }
+                        this.files.push(file);
+                    }
+                },
+                progress() {
+                    if (this.sending) return 'Enviando…';
+                    const turn = [...this.messages].reverse().find(m => m.role === 'user');
+                    const plan = (turn && turn.plan) || [];
+                    if (!plan.length) return 'Pensando y trabajando en los archivos…';
+                    const current = plan.find(s => s.status === 'in_progress');
+                    const done = plan.filter(s => s.status === 'done').length;
+                    return 'Paso ' + Math.min(done + 1, plan.length) + ' de ' + plan.length + (current ? ': ' + current.step : '');
+                },
+                apply(data) {
+                    const before = this.messages.length;
+                    this.messages = data.messages || [];
+                    this.running = !!data.running;
+                    if (this.messages.length !== before) this.scroll();
+                    clearTimeout(this.timer);
+                    if (this.running) this.timer = setTimeout(() => this.poll(), 2000);
+                },
+                async poll() {
+                    try {
+                        this.apply(await (await fetch("{% url 'instance-ai-chat' object.pk %}")).json());
+                    } catch (e) {
+                        this.timer = setTimeout(() => this.poll(), 5000);
+                    }
+                },
+                async stop() {
+                    await fetch("{% url 'instance-ai-stop' object.pk %}", { method: 'POST', headers: { 'X-CSRFToken': csrf() } });
+                },
+                tagged() {
+                    const names = new Set([...this.draft.matchAll(/@([A-Za-z0-9_]+)/g)].map(m => m[1]));
+                    return this.modules.filter(m => names.has(m.name));
+                },
+                suggest() {
+                    const before = this.draft.slice(0, this.$refs.input.selectionStart);
+                    const match = before.match(/@([A-Za-z0-9_]*)$/);
+                    if (!match) { this.suggestions = []; return; }
+                    const query = match[1].toLowerCase();
+                    this.suggestions = this.modules
+                        .filter(m => m.name.toLowerCase().includes(query) || m.title.toLowerCase().includes(query))
+                        .slice(0, 12);
+                    this.active = 0;
+                },
+                pick(module) {
+                    const input = this.$refs.input;
+                    const caret = input.selectionStart;
+                    const before = this.draft.slice(0, caret).replace(/@([A-Za-z0-9_]*)$/, '@' + module.name + ' ');
+                    this.draft = before + this.draft.slice(caret);
+                    this.suggestions = [];
+                    this.$nextTick(() => { input.focus(); input.setSelectionRange(before.length, before.length); });
+                },
+                scroll() { this.$nextTick(() => { this.$refs.log.scrollTop = this.$refs.log.scrollHeight; }); },
+                async load() {
+                    fetch("{% url 'instance-ai-modules' object.pk %}").then(r => r.json()).then(d => { this.modules = d.modules || []; });
+                    const data = await (await fetch("{% url 'instance-ai-chat' object.pk %}")).json();
+                    this.error = data.error || ''; this.loading = false; this.apply(data); this.scroll();
+                },
+                async send() {
+                    const text = this.draft.trim();
+                    if ((!text && !this.files.length) || this.sending || this.running) return;
+                    const body = new FormData();
+                    body.append('message', text);
+                    body.append('modules', JSON.stringify(this.tagged().map(m => m.name)));
+                    this.files.forEach(file => body.append('files', file));
+                    this.messages.push({ id: 'local-' + Date.now(), role: 'user', content: text, tools: [],
+                        attachments: this.files.map(f => ({ name: f.name, type: f.type || '' })) });
+                    const draft = this.draft, files = this.files;
+                    this.draft = ''; this.files = []; this.sending = true; this.error = ''; this.scroll();
+                    try {
+                        const response = await fetch("{% url 'instance-ai-chat' object.pk %}", {
+                            method: 'POST', headers: { 'X-CSRFToken': csrf() }, body,
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || response.status);
+                        this.sending = false;
+                        this.apply(data);
+                    } catch (e) {
+                        this.error = String(e.message || e);
+                        this.messages = this.messages.filter(m => !String(m.id).startsWith('local-'));
+                        this.draft = draft; this.files = files; this.sending = false;
+                    }
+                    this.scroll();
+                },
+                async revert(undo) {
+                    if (!confirm('Se restaurarán los archivos como estaban antes de esta petición (y se deshacen también las posteriores). ¿Continuar?')) return;
+                    this.sending = true; this.error = '';
+                    try {
+                        const response = await fetch("{% url 'instance-ai-revert' object.pk 0 %}".replace('/0/', '/' + undo.turn + '/'), {
+                            method: 'POST', headers: { 'X-CSRFToken': csrf() },
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || response.status);
+                        this.messages = data.messages;
+                        this.messages.push({ id: 'note-' + Date.now(), role: 'assistant', content: '↶ ' + data.summary, tools: [] });
+                    } catch (e) {
+                        this.error = String(e.message || e);
+                    }
+                    this.sending = false; this.scroll();
+                },
+                async reset() {
+                    if (!confirm('¿Borrar la conversación?')) return;
+                    const response = await fetch("{% url 'instance-ai-reset' object.pk %}", { method: 'POST', headers: { 'X-CSRFToken': csrf() } });
+                    const data = await response.json();
+                    if (!response.ok) { this.error = data.error || response.status; return; }
+                    this.messages = [];
+                },
+            };
+        }
+    </script>
+    {% endif %}
+
     <div x-show="deleteModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
         style="display: none;">
         <!-- Backdrop -->

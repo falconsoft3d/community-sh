@@ -8,6 +8,18 @@ from .public import (
     blog_detail,
     about,
 )
+from .todo import (
+    todo_list,
+    todo_create,
+    todo_status,
+    todo_delete,
+    todo_edit,
+)
+from .mcp import (
+    mcp_endpoint,
+    mcp_token_create,
+    mcp_token_revoke,
+)
 from .docker import (
     docker_overview,
     docker_container_action,
@@ -17,15 +29,6 @@ from .docker import (
     docker_volume_remove,
     docker_network_remove,
     docker_prune,
-)
-from .clients import (
-    client_list,
-    client_create,
-    client_detail,
-    client_edit,
-    client_reset_password,
-    client_toggle_active,
-    client_delete,
 )
 from .projects import (
     project_list,
@@ -44,6 +47,14 @@ from .instances import (
     instance_restart,
     instance_logs_api,
     instance_tasks_api,
+    instance_repo_add,
+    instance_repo_remove,
+    instance_ai_chat,
+    instance_ai_reset,
+    instance_ai_stop,
+    instance_ai_modules,
+    instance_ai_revert,
+    instance_admin_login,
     instance_console_exec,
     instance_install_requirements,
     instance_configure_domain,
@@ -55,6 +66,7 @@ from .instances import (
 )
 from .backups import (
     backup_list,
+    backup_import,
     instance_backup,
     instance_restore,
     instance_backups_list,
@@ -66,7 +78,9 @@ from .backups import (
 from .platform import (
     metrics_view,
     metrics_data,
+    metrics_history_data,
     settings_view,
+    settings_ai_test,
     run_auto_backups_view,
     generate_ssl_certificate,
 )
@@ -80,6 +94,14 @@ from .users import (
 )
 
 __all__ = [
+    'todo_list',
+    'todo_create',
+    'todo_status',
+    'todo_delete',
+    'todo_edit',
+    'mcp_endpoint',
+    'mcp_token_create',
+    'mcp_token_revoke',
     'docker_overview',
     'docker_container_action',
     'docker_container_logs',
@@ -88,13 +110,6 @@ __all__ = [
     'docker_volume_remove',
     'docker_network_remove',
     'docker_prune',
-    'client_list',
-    'client_create',
-    'client_detail',
-    'client_edit',
-    'client_reset_password',
-    'client_toggle_active',
-    'client_delete',
     'project_list',
     'project_create',
     'project_detail',
@@ -114,6 +129,14 @@ __all__ = [
     'instance_restart',
     'instance_logs_api',
     'instance_tasks_api',
+    'instance_repo_add',
+    'instance_repo_remove',
+    'instance_ai_chat',
+    'instance_ai_reset',
+    'instance_ai_stop',
+    'instance_ai_modules',
+    'instance_ai_revert',
+    'instance_admin_login',
     'instance_console_exec',
     'instance_install_requirements',
     'instance_configure_domain',
@@ -123,6 +146,7 @@ __all__ = [
     'instance_delete',
     'instance_duplicate',
     'backup_list',
+    'backup_import',
     'instance_backup',
     'instance_restore',
     'instance_backups_list',
@@ -132,7 +156,9 @@ __all__ = [
     'backup_create_instance',
     'metrics_view',
     'metrics_data',
+    'metrics_history_data',
     'settings_view',
+    'settings_ai_test',
     'run_auto_backups_view',
     'generate_ssl_certificate',
     'user_list',

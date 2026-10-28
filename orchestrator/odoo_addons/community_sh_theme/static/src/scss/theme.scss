@@ -1,0 +1,74 @@
+// Community SH Theme: an original light look for the Odoo 15-20 backend.
+$csh-primary: #714b67;
+$csh-primary-dark: #5d3d55;
+$csh-accent: #017e84;
+$csh-surface: #f4f5f7;
+$csh-border: #e4e6eb;
+$csh-ink: #1f2937;
+$csh-radius: 10px;
+
+// Top bar: light, with dark text
+.o_main_navbar {
+    background: #fff !important;
+    border-bottom: 1px solid $csh-border !important;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, .04);
+    .o_menu_brand, .dropdown-toggle, .o_nav_entry, .o_menu_sections > *, .o_menu_systray > * > *,
+    a, button, .fa, .oi {
+        color: $csh-ink !important;
+    }
+    .o_menu_brand { font-weight: 600; }
+    // Odoo 18+ paints the section buttons with the brand color
+    .o_menu_brand, .dropdown-toggle, .o_nav_entry, .o_menu_sections > * {
+        background: transparent !important;
+    }
+    .dropdown-toggle:hover, .o_nav_entry:hover, .o_menu_sections > *:hover, .show > .dropdown-toggle {
+        background: $csh-surface !important;
+    }
+}
+
+// Work area on a soft grey, the control panel on white
+.o_action_manager, .o_content { background: $csh-surface; }
+.o_control_panel {
+    background: #fff;
+    border-bottom: 1px solid $csh-border;
+}
+
+// Form sheets as floating cards
+.o_form_view {
+    .o_form_sheet_bg { background: $csh-surface; }
+    .o_form_sheet {
+        border: 1px solid $csh-border !important;
+        border-radius: 14px;
+        box-shadow: 0 12px 32px -18px rgba(17, 24, 39, .28);
+    }
+    .o_form_statusbar { border-radius: $csh-radius $csh-radius 0 0; }
+}
+
+// Buttons and inputs
+.btn { border-radius: 8px; }
+.btn-primary {
+    background-color: $csh-primary !important;
+    border-color: $csh-primary !important;
+    color: #fff !important;
+    &:hover, &:focus { background-color: $csh-primary-dark !important; border-color: $csh-primary-dark !important; }
+}
+.btn-secondary { border-color: $csh-border; }
+.o_input, .o_field_widget input, .o_field_widget select, .o_field_widget textarea { border-radius: 6px; }
+a, .btn-link { color: $csh-accent; }
+
+// Lists and kanban
+.o_list_renderer, .o_list_view {
+    .o_list_table thead th { background: #f9fafb; font-weight: 600; color: #4b5563; }
+    .o_list_table tbody tr:hover > td { background: #f6f3f5; }
+}
+.o_kanban_record:not(.o_kanban_ghost) {
+    border-radius: $csh-radius;
+    border-color: $csh-border !important;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, .04);
+    &:hover { box-shadow: 0 8px 20px -12px rgba(17, 24, 39, .3); }
+}
+
+// Dropdowns, dialogs and the chatter
+.dropdown-menu { border-radius: $csh-radius; border-color: $csh-border; box-shadow: 0 16px 40px -20px rgba(17, 24, 39, .35); }
+.modal-content { border-radius: 14px; overflow: hidden; }
+.o-mail-Chatter, .o_Chatter, .oe_chatter { background: transparent; }

@@ -21,14 +21,84 @@ def host_path(path):
     return path
 
 
+def odoo_major(odoo_version):
+    return int(float(odoo_version))
+
+
 def odoo_config_target(odoo_version):
-    # Odoo 10 images still read the old OpenERP config file name
-    return '/etc/odoo/openerp-server.conf' if odoo_version == '10.0' else '/etc/odoo/odoo.conf'
+    # Odoo 8-9 images read OPENERP_SERVER, every later one (10.0 included) ODOO_RC
+    if odoo_major(odoo_version) <= 9:
+        return '/etc/odoo/openerp-server.conf'
+    return '/etc/odoo/odoo.conf'
+
+
+def odoo_command(odoo_version):
+    """The server binary inside the image: Odoo 8-9 still ship it as openerp-server."""
+    return 'openerp-server' if odoo_major(odoo_version) <= 9 else 'odoo'
+
+
+PANEL_ADDONS_DIR = '/mnt/community-sh-addons'
+# How Odoo containers reach the panel (they share the community-sh_web network)
+PANEL_INTERNAL_URL = 'http://app:8000'
+
+
+def admin_login_secret(instance):
+    """Key the panel and the instance's community_sh_login module share to sign admin links."""
+    import hashlib
+    return hashlib.sha256(f'community-sh-login:{instance.master_password}'.encode()).hexdigest()
+
+
+
+def read_backup_metadata(path):
+    """
+    Describe a backup file. Formats: the panel's ZIP (database.dump + metadata.json), Odoo's own
+    database-manager ZIP (dump.sql + filestore/ + manifest.json) and a bare pg_dump custom file.
+    Returns {'format', 'database_name', 'odoo_version', 'has_filestore'}.
+    """
+    import json
+    import zipfile
+    if not zipfile.is_zipfile(path):
+        with open(path, 'rb') as f:
+            if f.read(5) != b'PGDMP':
+                raise Exception('Formato no reconocido: sube un ZIP del panel, un ZIP de Odoo o un .dump de PostgreSQL')
+        return {'format': 'pg_dump', 'database_name': None, 'odoo_version': None, 'has_filestore': False}
+    with zipfile.ZipFile(path) as zf:
+        names = set(zf.namelist())
+        has_filestore = any(n.startswith('filestore/') and not n.endswith('/') for n in names)
+        if 'database.dump' in names:
+            metadata = json.loads(zf.read('metadata.json')) if 'metadata.json' in names else {}
+            return {'format': 'panel', 'database_name': metadata.get('database_name'),
+                    'odoo_version': metadata.get('odoo_version'), 'has_filestore': has_filestore}
+        if 'dump.sql' in names:
+            manifest = json.loads(zf.read('manifest.json')) if 'manifest.json' in names else {}
+            version = str(manifest.get('version') or manifest.get('version_info', [''])[0] or '')
+            major = version.split('.')[0] if version else ''
+            return {'format': 'odoo', 'database_name': manifest.get('db_name'),
+                    'odoo_version': f'{major}.0' if major.isdigit() else None, 'has_filestore': has_filestore}
+    raise Exception('El ZIP no contiene database.dump (backup del panel) ni dump.sql (backup de Odoo)')
+
+
+def postgres_image(odoo_version):
+    """PostgreSQL release each Odoo version supports (Odoo 20 needs 16+, Odoo 10-11 predate 12)."""
+    major = odoo_major(odoo_version)
+    if major <= 9:
+        return 'postgres:9.6'
+    if major <= 11:
+        return 'postgres:10'
+    if major <= 13:
+        return 'postgres:12'
+    if major <= 15:
+        return 'postgres:13'
+    if major <= 17:
+        return 'postgres:15'
+    return 'postgres:16'
 
 
 class DockerService:
     def __init__(self):
         self.client = docker.from_env()
+        # Remarks from the last deploy, shown in the task result
+        self.deploy_notes = []
 
     def _get_container(self, name):
         try:
@@ -48,22 +118,128 @@ class DockerService:
                     return mount['Name']
         return instance.data_volume or f"odoo_data_{instance.name}"
 
-    def _write_odoo_config(self, instance, workspace_path):
-        config_path = os.path.join(workspace_path, 'odoo.conf')
+    def _write_odoo_config(self, instance, workspace_path, extra_repos=()):
+        """
+        Write the config into its own folder, mounted at /etc/odoo. Mounting a folder instead of
+        a single file avoids Docker Desktop creating a directory when the file isn't synced yet.
+        """
+        config_dir = os.path.join(workspace_path, 'conf')
+        os.makedirs(config_dir, exist_ok=True)
+        addons_paths = ['/mnt/extra-addons'] + [f'/mnt/repos/{slug}' for slug in extra_repos]
+        # community_sh_login: one-time admin links from the panel (loaded without installing it)
+        addons_paths.append(PANEL_ADDONS_DIR)
+        # Odoo 8-10 also load web_kanban server-wide by default
+        server_wide = 'base,web,web_kanban' if odoo_major(instance.odoo_version) <= 10 else 'base,web'
+        # community_sh_ai: "/ia ..." in a chatter asks the panel's AI assistant (controllers load server-wide,
+        # the chatter hook once the module is installed in the database)
+        panel_login = (f"server_wide_modules = {server_wide},community_sh_login,community_sh_ai\n"
+                       f"community_sh_secret = {admin_login_secret(instance)}\n"
+                       f"community_sh_panel_url = {PANEL_INTERNAL_URL}\n"
+                       f"community_sh_instance = {instance.name}\n")
+        content = (
+            "[options]\n"
+            f"addons_path = {','.join(addons_paths)}\n"
+            f"data_dir = {ODOO_DATA_DIR}\n"
+            f"admin_passwd = {instance.master_password}\n"
+            # In the config (not only entrypoint args) so `odoo` run via exec can connect too
+            f"db_host = db_{instance.name}\n"
+            "db_port = 5432\n"
+            "db_user = odoo\n"
+            "db_password = odoo\n"
+            # Odoo 20 listens on 127.0.0.1 by default; Odoo 10 calls the option xmlrpc_interface
+            "http_interface = 0.0.0.0\n"
+            "xmlrpc_interface = 0.0.0.0\n"
+            # Behind Traefik: trust X-Forwarded-* so Odoo builds https:// URLs
+            "proxy_mode = True\n"
+            + panel_login
+        )
+        config_path = os.path.join(config_dir, os.path.basename(odoo_config_target(instance.odoo_version)))
         with open(config_path, 'w') as f:
-            f.write(
-                "[options]\n"
-                "addons_path = /mnt/extra-addons\n"
-                f"data_dir = {ODOO_DATA_DIR}\n"
-                f"admin_passwd = {instance.master_password}\n"
-                # In the config (not only entrypoint args) so `odoo` run via exec can connect too
-                f"db_host = db_{instance.name}\n"
-                "db_port = 5432\n"
-                "db_user = odoo\n"
-                "db_password = odoo\n"
-            )
+            f.write(content)
         os.chmod(config_path, 0o644)
-        return config_path
+        # Earlier builds wrote openerp-server.conf for Odoo 10, which the image never reads
+        for name in ('odoo.conf', 'openerp-server.conf'):
+            stale = os.path.join(config_dir, name)
+            if name != os.path.basename(config_path) and os.path.exists(stale):
+                os.remove(stale)
+        # Older deployments mounted <workspace>/odoo.conf as a file
+        legacy = os.path.join(workspace_path, 'odoo.conf')
+        if os.path.isfile(legacy):
+            os.remove(legacy)
+        return config_dir
+
+    def _github_token(self, instance):
+        from ..config_models import GitHubConfig
+        config = GitHubConfig.objects.filter(user=instance.owner).first() if instance.owner_id else None
+        return config.personal_access_token if config and config.personal_access_token else ''
+
+    def _sync_extra_repos(self, instance, workspace_path):
+        """Clone or update the instance's extra repositories into <workspace>/repos/<slug>."""
+        import shutil
+        repos_root = os.path.join(workspace_path, 'repos')
+        os.makedirs(repos_root, exist_ok=True)
+        token = self._github_token(instance)
+        wanted = {}
+        for repository in instance.repositories.all():
+            wanted[repository.slug] = repository
+            target = os.path.join(repos_root, repository.slug)
+            authed_url = repository.url.replace('https://', f'https://{token}@', 1) if token else repository.url
+            try:
+                if os.path.isdir(os.path.join(target, '.git')):
+                    repo = git.Repo(target)
+                    repo.remotes.origin.set_url(authed_url)
+                    try:
+                        repo.remotes.origin.fetch(repository.branch, depth=1)
+                        repo.git.checkout('-B', repository.branch, f'origin/{repository.branch}')
+                        repo.git.reset('--hard', f'origin/{repository.branch}')
+                    finally:
+                        repo.remotes.origin.set_url(repository.url)
+                else:
+                    shutil.rmtree(target, ignore_errors=True)
+                    repo = git.Repo.clone_from(authed_url, target, branch=repository.branch, depth=1)
+                    # Don't leave the token in .git/config (the AI assistant can read files here)
+                    repo.remotes.origin.set_url(repository.url)
+            except git.exc.GitCommandError as e:
+                error = str(e).replace(token, '***') if token else str(e)
+                self.deploy_notes.append(f'No se pudo sincronizar {repository.url} ({repository.branch}): {error[-300:]}')
+                wanted.pop(repository.slug, None)
+        # Folders of repositories that were removed from the instance
+        for folder in os.listdir(repos_root):
+            if folder not in wanted:
+                shutil.rmtree(os.path.join(repos_root, folder), ignore_errors=True)
+        return [slug for slug in wanted if os.path.isdir(os.path.join(repos_root, slug))]
+
+    def _ensure_db_container(self, instance, network_name, notes):
+        """Start the instance's Postgres with a version its Odoo supports."""
+        name = f"db_{instance.name}"
+        image = postgres_image(instance.odoo_version)
+        existing = self._get_container(name)
+        if existing is not None:
+            current = existing.attrs['Config'].get('Image', '')
+            if current == image:
+                return existing
+            if existing.status != 'running':
+                existing.start()
+            self._wait_for_postgres(existing)
+            if self._list_user_databases(existing):
+                notes.append(f"Aviso: Odoo {instance.odoo_version} recomienda {image} y la base de datos usa {current}. "
+                             "No se cambia automáticamente porque ya tiene datos.")
+                return existing
+            # Nothing to lose yet: replace it with the right Postgres
+            existing.remove(force=True, v=True)
+            notes.append(f"Base de datos recreada con {image} (usaba {current})")
+        self._ensure_image(image)
+        return self.client.containers.run(
+            image,
+            name=name,
+            environment={
+                "POSTGRES_DB": "postgres",
+                "POSTGRES_PASSWORD": "odoo",
+                "POSTGRES_USER": "odoo",
+            },
+            network=network_name,
+            detach=True
+        )
 
     def _ensure_image(self, image):
         """
@@ -81,11 +257,113 @@ class DockerService:
             self.client.images.pull(repository, tag=tag)
             return None
         except docker.errors.APIError as e:
-            if 'no matching manifest' not in str(e):
-                raise Exception(f"No se pudo descargar la imagen {image}: {getattr(e, 'explanation', None) or e}")
-        print(f"{image} has no build for this architecture; using linux/amd64 (emulated, slower)")
-        self.client.images.pull(repository, tag=tag, platform='linux/amd64')
+            # docker-py swallows the stream error ("no matching manifest for linux/arm64") and then
+            # reports "no such image", so any failure here may just mean "no build for this arch"
+            native_error = getattr(e, 'explanation', None) or str(e)
+        print(f"{image}: native pull failed ({native_error}); trying linux/amd64 (emulated, slower)")
+        try:
+            self.client.images.pull(repository, tag=tag, platform='linux/amd64')
+            self.client.images.get(image)
+        except docker.errors.APIError as e:
+            raise Exception(f"No se pudo descargar la imagen {image}: {native_error}; amd64: {getattr(e, 'explanation', None) or e}")
         return 'linux/amd64'
+
+    PORT_RANGE = (20000, 40000)
+
+    def _run_on_fixed_port(self, name, preferred, run):
+        """
+        Start a container publishing 8069 on an explicit host port: a port Docker picks itself
+        changes on every restart (of the container or the server) and breaks the stored links.
+        Keeps the instance's port when it's still free. Returns (container, port).
+        """
+        import random
+        from ..container_models import Container
+        from ..models import Instance
+        used = set(Instance.objects.exclude(port=None).values_list('port', flat=True))
+        used |= set(Container.objects.exclude(port=None).values_list('port', flat=True))
+        candidates = [preferred] if preferred else []
+        candidates += random.sample([p for p in range(*self.PORT_RANGE) if p not in used], 15)
+        for port in candidates:
+            try:
+                return run(port), port
+            except docker.errors.APIError as e:
+                message = str(e).lower()
+                if not any(text in message for text in ('allocated', 'address already in use', 'ports are not available')):
+                    raise
+                print(f"Port {port} is busy, trying another one")
+                stale = self._get_container(name)
+                if stale is not None:
+                    stale.remove(force=True)
+        raise Exception('No se encontró un puerto libre para publicar Odoo')
+
+    AI_MODULE = 'community_sh_ai'
+
+    def module_known(self, db_container, database, module):
+        output = db_container.exec_run(['psql', '-U', 'odoo', '-d', database, '-Atc',
+                                        f"SELECT count(*) FROM ir_module_module WHERE name = '{module}'"],
+                                       environment={"PGPASSWORD": "odoo"}).output.decode().strip()
+        return output == '1'
+
+    def refresh_module_list(self, instance, odoo_container, database):
+        """Rescan the addons folders (Apps → Update Apps List) through odoo shell (Odoo 9+)."""
+        script = "env['ir.module.module'].update_list()\nenv.cr.commit()\n"
+        return odoo_container.exec_run(
+            ['sh', '-c', f'printf "%s" "$SCRIPT" | {odoo_command(instance.odoo_version)} shell -d {database}'],
+            environment={'SCRIPT': script})
+
+    def _install_ai_module(self, instance, odoo_container, db_container_name):
+        """
+        "/ia ..." in Odoo chatters: community_sh_ai installs itself (auto_install) in new databases
+        with mail; add it to existing ones. Only when the AI assistant is configured. Odoo 8 has no
+        shell (and its old mail API isn't hooked), so it's skipped there.
+        """
+        from .ai import get_ai_config
+        if odoo_major(instance.odoo_version) < 9 or get_ai_config() is None:
+            return
+        db_container = self._get_container(db_container_name)
+        if db_container is None:
+            return
+        try:
+            self._wait_for_postgres(db_container)
+            for database in self._list_user_databases(db_container):
+                states = db_container.exec_run(
+                    ['psql', '-U', 'odoo', '-d', database, '-Atc',
+                     f"SELECT name, state FROM ir_module_module WHERE name IN ('mail', '{self.AI_MODULE}')"],
+                    environment={"PGPASSWORD": "odoo"}).output.decode()
+                states = dict(line.split('|', 1) for line in states.splitlines() if '|' in line)
+                if states.get('mail') != 'installed' or states.get(self.AI_MODULE) == 'installed':
+                    continue
+                script = (f"env['ir.module.module'].update_list()\n"
+                          f"env['ir.module.module'].search([('name', '=', '{self.AI_MODULE}')]).button_immediate_install()\n"
+                          "env.cr.commit()\n")
+                result = odoo_container.exec_run(
+                    ['sh', '-c', f'printf "%s" "$SCRIPT" | {odoo_command(instance.odoo_version)} shell -d {database}'],
+                    environment={'SCRIPT': script})
+                if result.exit_code == 0:
+                    self.deploy_notes.append(f'Asistente de IA en Odoo activado en {database}: escribe «/ia …» en cualquier chatter')
+                else:
+                    print(f"{self.AI_MODULE} install in {database} failed: {result.output.decode(errors='replace')[-800:]}")
+        except Exception as e:
+            print(f"Warning: could not install {self.AI_MODULE}: {e}")
+
+    def sync_published_ports(self):
+        """
+        Store the host port each running Odoo container actually publishes. Containers
+        deployed before fixed ports got a new random one on every restart. Returns the
+        names of the instances that changed.
+        """
+        from ..models import Instance
+        published = {}
+        for container in self.client.containers.list(filters={'name': 'odoo_'}):
+            bindings = (container.attrs['NetworkSettings'].get('Ports') or {}).get('8069/tcp')
+            if bindings:
+                published[container.name[len('odoo_'):]] = int(bindings[0]['HostPort'])
+        changed = []
+        for instance in Instance.objects.filter(name__in=published):
+            if instance.port != published[instance.name]:
+                Instance.objects.filter(pk=instance.pk).update(port=published[instance.name])
+                changed.append(instance.name)
+        return changed
 
     def _published_port(self, container, container_port, timeout=10):
         """Host port Docker assigned to container_port, or None if it never shows up."""
@@ -112,11 +390,13 @@ class DockerService:
         databases = [db.strip() for db in result.output.decode('utf-8').split('\n') if db.strip()]
         return [db for db in databases if db not in ('postgres', 'template0', 'template1')]
 
-    def _wait_for_postgres(self, db_container, timeout=60):
+    def _wait_for_postgres(self, db_container, timeout=180):
         import time
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if db_container.exec_run("pg_isready -U odoo").exit_code == 0:
+            # Over TCP: on first start the image runs a socket-only server to initialise the
+            # cluster, then restarts it; that one must not count as ready
+            if db_container.exec_run("pg_isready -U odoo -h 127.0.0.1").exit_code == 0:
                 return
             time.sleep(1)
         raise Exception(f"Database container {db_container.name} not ready after {timeout}s")
@@ -127,6 +407,7 @@ class DockerService:
         """
         instance.status = Instance.Status.DEPLOYING
         instance.save()
+        self.deploy_notes = []
         
         try:
             # 1. Prepare workspace
@@ -145,20 +426,7 @@ class DockerService:
 
             # 4. Start Postgres
             db_container_name = f"db_{instance.name}"
-            try:
-                self.client.containers.get(db_container_name)
-            except docker.errors.NotFound:
-                self.client.containers.run(
-                    "postgres:13",
-                    name=db_container_name,
-                    environment={
-                        "POSTGRES_DB": "postgres",
-                        "POSTGRES_PASSWORD": "odoo",
-                        "POSTGRES_USER": "odoo",
-                    },
-                    network=network_name,
-                    detach=True
-                )
+            self._ensure_db_container(instance, network_name, self.deploy_notes)
 
             # 5. Start Odoo
             odoo_container_name = f"odoo_{instance.name}"
@@ -168,17 +436,17 @@ class DockerService:
             data_volume = self._resolve_data_volume(instance, existing_container)
             
             # Bind mounts are resolved by the Docker daemon, so they need host paths
+            # Addons: the GitHub checkout or an empty folder (the AI assistant writes modules there)
+            addons_path = os.path.join(workspace_path, 'addons')
+            os.makedirs(addons_path, exist_ok=True)
+            extra_repos = self._sync_extra_repos(instance, workspace_path)
             volumes = {
                 data_volume: {'bind': ODOO_DATA_DIR, 'mode': 'rw'},
-                host_path(self._write_odoo_config(instance, workspace_path)): {
-                    'bind': odoo_config_target(instance.odoo_version), 'mode': 'rw',
-                },
+                host_path(self._write_odoo_config(instance, workspace_path, extra_repos)): {'bind': '/etc/odoo', 'mode': 'rw'},
+                host_path(addons_path): {'bind': '/mnt/extra-addons', 'mode': 'rw'},
+                host_path(os.path.join(workspace_path, 'repos')): {'bind': '/mnt/repos', 'mode': 'ro'},
+                host_path(os.path.join(settings.BASE_DIR, 'orchestrator', 'odoo_addons')): {'bind': PANEL_ADDONS_DIR, 'mode': 'ro'},
             }
-            # If we cloned addons, mount them
-            addons_path = os.path.join(workspace_path, 'addons')
-            if os.path.exists(addons_path):
-                # We mount it to /mnt/extra-addons which is standard in Odoo images
-                volumes[host_path(addons_path)] = {'bind': '/mnt/extra-addons', 'mode': 'rw'}
             
             is_redeploy = False
             try:
@@ -213,7 +481,7 @@ class DockerService:
             run_options = {'platform': platform} if platform else {}
             
             # Create the container
-            odoo_container = self.client.containers.run(
+            odoo_container, host_port = self._run_on_fixed_port(odoo_container_name, instance.port, lambda port: self.client.containers.run(
                 odoo_image,
                 **run_options,
                 name=odoo_container_name,
@@ -224,7 +492,7 @@ class DockerService:
                 },
                 network=start_network,
                 volumes=volumes,
-                ports={'8069/tcp': None}, # Let Docker assign a random host port
+                ports={'8069/tcp': port},
                 detach=True,
                 labels={
                     "traefik.enable": "true",
@@ -234,7 +502,7 @@ class DockerService:
                     "traefik.http.routers.odoo_" + instance.name + ".priority": "100",
                     "traefik.http.services.odoo_" + instance.name + ".loadbalancer.server.port": "8069",
                 }
-            )
+            ))
             
             # Private network shared with the instance's database
             if extra_network:
@@ -250,7 +518,7 @@ class DockerService:
                     
                     for database in databases:
                         result = odoo_container.exec_run(
-                            f"odoo -u all -d {database} --stop-after-init",
+                            f"{odoo_command(instance.odoo_version)} -u all -d {database} --stop-after-init",
                             detach=False
                         )
                         print(f"Module update for {database} (exit {result.exit_code}): {result.output.decode('utf-8')[-2000:]}")
@@ -261,9 +529,8 @@ class DockerService:
                 except Exception as e:
                     print(f"Warning: Error during module update: {str(e)}")
 
+            self._install_ai_module(instance, odoo_container, db_container_name)
 
-            # Get the assigned port; Docker may publish it shortly after start
-            host_port = self._published_port(odoo_container, '8069/tcp')
             if host_port:
                 instance.port = host_port
             
@@ -371,10 +638,10 @@ class DockerService:
         """
         Stops and removes containers, networks and the instance directory.
         """
-        # 1. Stop and Remove Odoo Container
-        if instance.container_id:
+        # 1. Stop and Remove Odoo Container (by id, or by name if the id isn't known)
+        if instance.container_id or self._get_container(f"odoo_{instance.name}"):
             try:
-                container = self.client.containers.get(instance.container_id)
+                container = self.client.containers.get(instance.container_id or f"odoo_{instance.name}")
                 container.stop()
                 container.remove(v=True)
             except docker.errors.NotFound:
@@ -472,6 +739,8 @@ class DockerService:
             status=Instance.Status.DEPLOYING,
             origin='duplicate'
         )
+        for repository in instance.repositories.all():
+            new_instance.repositories.create(url=repository.url, branch=repository.branch)
         
         try:
             # 1. Copy the database
@@ -507,8 +776,10 @@ class DockerService:
                 
                 # Start new PostgreSQL container
                 print("Creating new database container...")
+                db_image = postgres_image(instance.odoo_version)
+                self._ensure_image(db_image)
                 new_db_container = self.client.containers.run(
-                    "postgres:13",
+                    db_image,
                     name=db_target,
                     environment={
                         "POSTGRES_DB": "postgres",
@@ -534,6 +805,8 @@ class DockerService:
                 
                 # Note: psql reports harmless errors (e.g. role "odoo" already exists)
                 print(f"Database restore completed. Exit code: {restore_result.exit_code}")
+                if restore_result.exit_code == 2:  # could not connect: nothing was restored
+                    raise Exception(f"No se pudo restaurar la base de datos: {restore_result.output.decode('utf-8', errors='replace')[-300:]}")
                 if restore_result.output:
                     print(f"Restore output: {restore_result.output.decode('utf-8')[:500]}")
                     
@@ -876,6 +1149,15 @@ class DockerService:
         import json
         
         print(f"Restoring instance {instance.name} from backup...")
+        backup_format = read_backup_metadata(backup_file_path)['format']
+        if backup_format == 'pg_dump':
+            # A bare custom-format dump: wrap it like a panel backup without filestore
+            wrapped = tempfile.NamedTemporaryFile(suffix='.zip', delete=False).name
+            with zipfile.ZipFile(wrapped, 'w') as zf:
+                zf.write(backup_file_path, 'database.dump')
+                zf.writestr('metadata.json', '{}')
+            backup_file_path, backup_format = wrapped, 'panel'
+        native = backup_format == 'odoo'
         
         try:
             with zipfile.ZipFile(backup_file_path, 'r') as zipf:
@@ -891,10 +1173,14 @@ class DockerService:
                 temp_dir = tempfile.mkdtemp()
                 zipf.extractall(temp_dir)
                 
-                # Read metadata
+                # Read metadata (Odoo's own backups carry manifest.json instead)
                 metadata_path = os.path.join(temp_dir, 'metadata.json')
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
+                if os.path.exists(metadata_path):
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                else:
+                    metadata = {'database_name': read_backup_metadata(backup_file_path)['database_name']}
+                    metadata = {k: v for k, v in metadata.items() if v}
                 
                 print(f"Backup metadata: {metadata}")
                 
@@ -902,8 +1188,8 @@ class DockerService:
                 print("Restoring database...")
                 db_container = self.client.containers.get(f"db_{instance.name}")
                 
-                # Read dump file
-                dump_path = os.path.join(temp_dir, 'database.dump')
+                # Read dump file: custom format (panel) or plain SQL (Odoo database manager)
+                dump_path = os.path.join(temp_dir, 'dump.sql' if native else 'database.dump')
                 with open(dump_path, 'rb') as f:
                     dump_data = f.read()
                 
@@ -912,7 +1198,7 @@ class DockerService:
                 import io
                 tar_stream = io.BytesIO()
                 tar = tarfile.open(fileobj=tar_stream, mode='w')
-                tarinfo = tarfile.TarInfo(name='restore.dump')
+                tarinfo = tarfile.TarInfo(name='restore.sql' if native else 'restore.dump')
                 tarinfo.size = len(dump_data)
                 tar.addfile(tarinfo, io.BytesIO(dump_data))
                 tar.close()
@@ -933,28 +1219,50 @@ class DockerService:
                 from ..permissions import validate_database_name
                 validate_database_name(odoo_db_name)
                 
+                # Odoo keeps connections open: stop it and close them, or DROP DATABASE fails
+                odoo_container = self._get_container(f"odoo_{instance.name}")
+                if odoo_container is not None and odoo_container.status == 'running':
+                    odoo_container.stop()
+                db_container.exec_run(
+                    ['psql', '-U', 'odoo', '-d', 'postgres', '-c',
+                     f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{odoo_db_name}' AND pid <> pg_backend_pid()"],
+                    environment={"PGPASSWORD": "odoo"}
+                )
+                
                 # Drop and recreate the database
                 print(f"Dropping and recreating database '{odoo_db_name}'...")
                 drop_result = db_container.exec_run(
-                    f'psql -U odoo -c "DROP DATABASE IF EXISTS \\"{odoo_db_name}\\""',
-                    environment={"PGPASSWORD": "odoo", "PGDATABASE": "postgres"}
-                )
-                print(f"Drop database result: {drop_result.exit_code} - {drop_result.output.decode()}")
-                
-                create_result = db_container.exec_run(
-                    f'psql -U odoo -c "CREATE DATABASE \\"{odoo_db_name}\\""',
-                    environment={"PGPASSWORD": "odoo", "PGDATABASE": "postgres"}
-                )
-                print(f"Create database result: {create_result.exit_code} - {create_result.output.decode()}")
-                
-                # Restore dump to the database (without -c flag to avoid clean errors)
-                restore_result = db_container.exec_run(
-                    f"pg_restore -U odoo -d {odoo_db_name} --no-owner --no-acl /tmp/restore.dump",
+                    ['psql', '-U', 'odoo', '-d', 'postgres', '-c', f'DROP DATABASE IF EXISTS "{odoo_db_name}"'],
                     environment={"PGPASSWORD": "odoo"}
                 )
+                if drop_result.exit_code != 0:
+                    raise Exception(f"No se pudo borrar la base de datos {odoo_db_name}: {drop_result.output.decode()}")
+                
+                create_result = db_container.exec_run(
+                    ['psql', '-U', 'odoo', '-d', 'postgres', '-c', f'CREATE DATABASE "{odoo_db_name}"'],
+                    environment={"PGPASSWORD": "odoo"}
+                )
+                if create_result.exit_code != 0:
+                    raise Exception(f"No se pudo crear la base de datos {odoo_db_name}: {create_result.output.decode()}")
+                
+                # Restore dump to the database (without -c flag to avoid clean errors)
+                if native:
+                    restore_result = db_container.exec_run(
+                        ['psql', '-U', 'odoo', '-d', odoo_db_name, '-q', '-f', '/tmp/restore.sql'],
+                        environment={"PGPASSWORD": "odoo"}
+                    )
+                else:
+                    restore_result = db_container.exec_run(
+                        f"pg_restore -U odoo -d {odoo_db_name} --no-owner --no-acl /tmp/restore.dump",
+                        environment={"PGPASSWORD": "odoo"}
+                    )
                 print(f"Database restore completed. Exit code: {restore_result.exit_code}")
                 if restore_result.output:
                     print(f"Restore output: {restore_result.output.decode()}")
+                
+                # Filestore steps exec into the Odoo container, so it must be running again
+                if odoo_container is not None:
+                    odoo_container.start()
                 
                 # 2. Restore filestore if exists
                 filestore_dir = os.path.join(temp_dir, 'filestore')
@@ -978,8 +1286,9 @@ class DockerService:
                         # We need to get the actual files from inside that subdirectory
                         actual_filestore_dir = filestore_dir
                         
-                        # If there's a single subdirectory, use that as the actual filestore
-                        if len(filestore_contents) == 1 and os.path.isdir(os.path.join(filestore_dir, filestore_contents[0])):
+                        # Panel backups nest the files under the original database name; Odoo's own
+                        # backups put them directly in filestore/
+                        if not native and len(filestore_contents) == 1 and os.path.isdir(os.path.join(filestore_dir, filestore_contents[0])):
                             actual_filestore_dir = os.path.join(filestore_dir, filestore_contents[0])
                             print(f"Using subdirectory as filestore source: {actual_filestore_dir}")
                         
@@ -1018,7 +1327,7 @@ class DockerService:
                         # Create filestore directory in container
                         filestore_path = f"/var/lib/odoo/filestore/{odoo_db_name}"
                         print(f"Creating filestore directory in container: {filestore_path}")
-                        odoo_container.exec_run(f"mkdir -p {filestore_path}")
+                        odoo_container.exec_run(f"mkdir -p {filestore_path}", user='root')
                         
                         # Put filestore archive in container to the correct database folder
                         print(f"Uploading filestore to container...")
@@ -1030,7 +1339,7 @@ class DockerService:
                         
                         # Set correct ownership
                         print(f"Setting ownership...")
-                        odoo_container.exec_run(f"chown -R odoo:odoo {filestore_path}")
+                        odoo_container.exec_run(f"chown -R odoo:odoo {filestore_path}", user='root')
                         
                         print(f"Filestore restored successfully to container at {filestore_path}")
                     except Exception as e:

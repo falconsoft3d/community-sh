@@ -34,7 +34,7 @@
             </span>
             <span class="flex items-center gap-1">
                 <i data-lucide="user" class="h-4 w-4"></i>
-                {{ post.author.get_full_name|default:post.author.username }}
+                {{ post.author.get_full_name|default:post.author.username|default:"Community SH" }}
             </span>
             <span class="flex items-center gap-1">
                 <i data-lucide="clock" class="h-4 w-4"></i>

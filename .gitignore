@@ -55,3 +55,7 @@ docker-compose.override.yml
 
 # Instance workspaces (addons checkouts, odoo.conf with master passwords)
 /instances/
+
+# Temporary uploads (restores, module ZIPs)
+/backups/uploads/
+ai_attachments/
