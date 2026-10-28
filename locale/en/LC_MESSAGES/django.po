@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 16:56+0000\n"
+"POT-Creation-Date: 2026-10-28 17:04+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -498,7 +498,7 @@ msgid "Instalación rápida"
 msgstr "Quick install"
 
 #: orchestrator/templates/orchestrator/home.html:410
-#: orchestrator/templates/orchestrator/home.html:527
+#: orchestrator/templates/orchestrator/home.html:542
 msgid "Copiar"
 msgstr "Copy"
 
@@ -522,24 +522,44 @@ msgstr "Full history"
 msgid "Actual"
 msgstr "Current"
 
-#: orchestrator/templates/orchestrator/home.html:465
+#: orchestrator/templates/orchestrator/home.html:455
+#| msgid "Guías y novedades"
+msgid "Páginas de novedades"
+msgstr "Guides and news"
+
+#: orchestrator/templates/orchestrator/home.html:458
+#, fuzzy
+#| msgid "Tareas recientes"
+msgid "Más recientes"
+msgstr "Recent tasks"
+
+#: orchestrator/templates/orchestrator/home.html:461
+#, python-format
+msgid "Página %(page)s de %(pages)s"
+msgstr "Page %(page)s of %(pages)s"
+
+#: orchestrator/templates/orchestrator/home.html:464
+msgid "Anteriores"
+msgstr "Older"
+
+#: orchestrator/templates/orchestrator/home.html:480
 msgid "Guías y novedades"
 msgstr "Guides and news"
 
-#: orchestrator/templates/orchestrator/home.html:468
+#: orchestrator/templates/orchestrator/home.html:483
 msgid "Ver todo"
 msgstr "View all"
 
-#: orchestrator/templates/orchestrator/home.html:478
+#: orchestrator/templates/orchestrator/home.html:493
 #, python-format
 msgid "%(minutes)s min de lectura"
 msgstr "%(minutes)s min read"
 
-#: orchestrator/templates/orchestrator/home.html:490
+#: orchestrator/templates/orchestrator/home.html:505
 msgid "Libre, abierto y tuyo"
 msgstr "Free, open and yours"
 
-#: orchestrator/templates/orchestrator/home.html:492
+#: orchestrator/templates/orchestrator/home.html:507
 msgid ""
 "Community SH es gratuito y de código abierto. Instálalo en tu servidor, "
 "adáptalo a tu equipo o contribuye al proyecto."
@@ -547,19 +567,19 @@ msgstr ""
 "Community SH is free and open source. Install it on your server, adapt it to "
 "your team or contribute to the project."
 
-#: orchestrator/templates/orchestrator/home.html:501
+#: orchestrator/templates/orchestrator/home.html:516
 msgid "Reportar un problema"
 msgstr "Report an issue"
 
-#: orchestrator/templates/orchestrator/home.html:511
+#: orchestrator/templates/orchestrator/home.html:526
 msgid "Hecho por Marlon Falcón Hernández · Licencia MIT ·"
 msgstr "Made by Marlon Falcón Hernández · MIT license ·"
 
-#: orchestrator/templates/orchestrator/home.html:515
+#: orchestrator/templates/orchestrator/home.html:530
 msgid "Documentación"
 msgstr "Documentation"
 
-#: orchestrator/templates/orchestrator/home.html:526
+#: orchestrator/templates/orchestrator/home.html:541
 msgid "Copiado"
 msgstr "Copied"
 

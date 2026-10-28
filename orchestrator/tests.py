@@ -1074,3 +1074,15 @@ class AIUndoTests(AIAssistantTests):
     def test_revert_requires_manage_permission(self):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(reverse('instance-ai-revert', args=[self.alice_instance.pk, 1])).status_code, 404)
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
+class ReleaseNotesPaginationTests(TestCase):
+    def test_release_notes_are_paginated(self):
+        from config.version import CHANGELOG
+        first = self.client.get('/')
+        self.assertContains(first, f"v{CHANGELOG[0]['version']}")
+        self.assertNotContains(first, f"v{CHANGELOG[3]['version']}<")
+        second = self.client.get('/?novedades=2')
+        self.assertContains(second, f"v{CHANGELOG[3]['version']}")
+        self.assertContains(second, '?novedades=1#novedades')

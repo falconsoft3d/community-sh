@@ -437,11 +437,11 @@
             <ol class="mt-10 space-y-6 border-l border-slate-200 pl-6 dark:border-slate-800">
                 {% for release in changelog %}
                 <li class="relative">
-                    <span class="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full {% if forloop.first %}bg-brand-600 ring-4 ring-brand-100 dark:ring-brand-600/30{% else %}bg-slate-300 dark:bg-slate-700{% endif %}"></span>
+                    <span class="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full {% if forloop.first and changelog.number == 1 %}bg-brand-600 ring-4 ring-brand-100 dark:ring-brand-600/30{% else %}bg-slate-300 dark:bg-slate-700{% endif %}"></span>
                     <div class="flex flex-wrap items-baseline gap-x-3">
                         <h3 class="text-lg font-bold text-ink dark:text-white">v{{ release.version }}</h3>
                         <span class="text-sm text-slate-500 dark:text-slate-400">{{ release.date }}</span>
-                        {% if forloop.first %}<span class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-600/15 dark:text-blue-300">{% translate "Actual" %}</span>{% endif %}
+                        {% if forloop.first and changelog.number == 1 %}<span class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-600/15 dark:text-blue-300">{% translate "Actual" %}</span>{% endif %}
                     </div>
                     <ul class="mt-3 grid gap-2 text-sm text-slate-600 dark:text-slate-400 md:grid-cols-2">
                         {% for note in release.notes %}
@@ -451,6 +451,21 @@
                 </li>
                 {% endfor %}
             </ol>
+            {% if changelog.has_other_pages %}
+            <nav class="mt-8 flex items-center justify-between gap-4 text-sm" aria-label="{% translate 'Páginas de novedades' %}">
+                {% if changelog.has_previous %}
+                <a href="?novedades={{ changelog.previous_page_number }}#novedades" class="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                    <i data-lucide="arrow-left" class="mr-1 h-4 w-4"></i> {% translate "Más recientes" %}
+                </a>
+                {% else %}<span></span>{% endif %}
+                <span class="text-slate-500 dark:text-slate-400">{% blocktranslate with page=changelog.number pages=changelog.paginator.num_pages %}Página {{ page }} de {{ pages }}{% endblocktranslate %}</span>
+                {% if changelog.has_next %}
+                <a href="?novedades={{ changelog.next_page_number }}#novedades" class="inline-flex items-center rounded-md border border-slate-300 px-3 py-1.5 font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
+                    {% translate "Anteriores" %} <i data-lucide="arrow-right" class="ml-1 h-4 w-4"></i>
+                </a>
+                {% else %}<span></span>{% endif %}
+            </nav>
+            {% endif %}
         </div>
     </section>
     {% endif %}

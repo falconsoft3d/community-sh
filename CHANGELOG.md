@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.7**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.8**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.8 — 2026-10-28
+
+- Novedades de la página principal paginadas (3 versiones por página)
 
 ## 1.0.7 — 2026-10-28
 

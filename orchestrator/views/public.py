@@ -37,9 +37,11 @@ def home(request):
         if template['name'] != 'custom'
     ]
     odoo_versions = [value for value, _label in Instance._meta.get_field('odoo_version').choices]
+    from django.core.paginator import Paginator
     from config.version import CHANGELOG
+    releases = Paginator(CHANGELOG, 3).get_page(request.GET.get('novedades'))
     return render(request, 'orchestrator/home.html', {
-        'changelog': CHANGELOG[:3],
+        'changelog': releases,
         'featured_posts': featured_posts,
         'apps': apps,
         'odoo_versions': odoo_versions,
