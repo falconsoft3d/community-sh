@@ -22,7 +22,26 @@
 - Docker Desktop (or Docker Engine) running
 - Git
 
-### 1. Installation
+### 1. Configure DNS first
+
+> ⚠️ **Do this before running the installer.** The installer asks for your main domain and
+> Let's Encrypt can only issue the SSL certificates if the domain already points to the server.
+
+At your DNS provider, create:
+
+| Type | Name | Value |
+|------|------|-------|
+| `A` | `panel.example.com` (your main domain) | your server's public IP |
+| `A` | `*.example.com` (optional, for instance subdomains) | your server's public IP |
+
+Check it before installing (it may take a few minutes to propagate):
+```bash
+dig +short panel.example.com   # must print the server's IP
+```
+The installer verifies it too and warns you if the domain doesn't resolve to the server.
+Without a domain you can still install and use the panel by IP (no HTTPS).
+
+### 2. Installation
 
 **Option 1: Quick Install (Recommended)**
 Run this command on your fresh server:

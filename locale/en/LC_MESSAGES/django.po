@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 16:45+0000\n"
+"POT-Creation-Date: 2026-10-28 16:51+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -175,7 +175,7 @@ msgid "Instalación"
 msgstr "Installation"
 
 #: orchestrator/templates/orchestrator/home.html:62
-#: orchestrator/templates/orchestrator/home.html:419
+#: orchestrator/templates/orchestrator/home.html:429
 msgid "Novedades"
 msgstr "What's new"
 
@@ -438,18 +438,29 @@ msgstr ""
 "Docker."
 
 #: orchestrator/templates/orchestrator/home.html:385
+msgid "Configura el DNS antes"
+msgstr "Set up DNS first"
+
+#: orchestrator/templates/orchestrator/home.html:386
+msgid ""
+"Crea un registro A de tu dominio apuntando a la IP del servidor. El "
+"instalador te pedirá ese dominio para generar los certificados SSL, y solo "
+"funcionan si ya apunta al servidor."
+msgstr "Create an A record for your domain pointing to the server's IP. The installer asks for that domain to issue the SSL certificates, which only works if it already points to the server."
+
+#: orchestrator/templates/orchestrator/home.html:390
 msgid "Ejecuta el instalador"
 msgstr "Run the installer"
 
-#: orchestrator/templates/orchestrator/home.html:386
+#: orchestrator/templates/orchestrator/home.html:391
 msgid "Genera las claves, configura tu dominio y levanta todos los servicios."
 msgstr "It generates the keys, sets up your domain and starts every service."
 
-#: orchestrator/templates/orchestrator/home.html:390
+#: orchestrator/templates/orchestrator/home.html:395
 msgid "Crea tu primera instancia"
 msgstr "Create your first instance"
 
-#: orchestrator/templates/orchestrator/home.html:391
+#: orchestrator/templates/orchestrator/home.html:396
 msgid ""
 "La primera cuenta que se registra es la de administrador. Elige versión de "
 "Odoo y despliega."
@@ -457,53 +468,60 @@ msgstr ""
 "The first account to sign up becomes the administrator. Pick an Odoo version "
 "and deploy."
 
-#: orchestrator/templates/orchestrator/home.html:397
+#: orchestrator/templates/orchestrator/home.html:402
+msgid ""
+"Antes de ejecutarlo, comprueba que tu dominio ya apunta al servidor (por "
+"ejemplo con «dig +short tudominio.com»). El instalador lo verifica y te "
+"avisa si no es así."
+msgstr "Before running it, check that your domain already points to the server (e.g. with “dig +short yourdomain.com”). The installer checks it and warns you if it does not."
+
+#: orchestrator/templates/orchestrator/home.html:407
 msgid "Instalación rápida"
 msgstr "Quick install"
 
-#: orchestrator/templates/orchestrator/home.html:400
-#: orchestrator/templates/orchestrator/home.html:517
+#: orchestrator/templates/orchestrator/home.html:410
+#: orchestrator/templates/orchestrator/home.html:527
 msgid "Copiar"
 msgstr "Copy"
 
-#: orchestrator/templates/orchestrator/home.html:406
+#: orchestrator/templates/orchestrator/home.html:416
 msgid "¿Prefieres revisarlo antes? Descarga"
 msgstr "Prefer to review it first? Download"
 
-#: orchestrator/templates/orchestrator/home.html:408
+#: orchestrator/templates/orchestrator/home.html:418
 msgid "y lee el"
 msgstr "and read the"
 
-#: orchestrator/templates/orchestrator/home.html:420
+#: orchestrator/templates/orchestrator/home.html:430
 msgid "Qué hay de nuevo en cada versión"
 msgstr "What's new in each version"
 
-#: orchestrator/templates/orchestrator/home.html:424
+#: orchestrator/templates/orchestrator/home.html:434
 msgid "Historial completo"
 msgstr "Full history"
 
-#: orchestrator/templates/orchestrator/home.html:434
+#: orchestrator/templates/orchestrator/home.html:444
 msgid "Actual"
 msgstr "Current"
 
-#: orchestrator/templates/orchestrator/home.html:455
+#: orchestrator/templates/orchestrator/home.html:465
 msgid "Guías y novedades"
 msgstr "Guides and news"
 
-#: orchestrator/templates/orchestrator/home.html:458
+#: orchestrator/templates/orchestrator/home.html:468
 msgid "Ver todo"
 msgstr "View all"
 
-#: orchestrator/templates/orchestrator/home.html:468
+#: orchestrator/templates/orchestrator/home.html:478
 #, python-format
 msgid "%(minutes)s min de lectura"
 msgstr "%(minutes)s min read"
 
-#: orchestrator/templates/orchestrator/home.html:480
+#: orchestrator/templates/orchestrator/home.html:490
 msgid "Libre, abierto y tuyo"
 msgstr "Free, open and yours"
 
-#: orchestrator/templates/orchestrator/home.html:482
+#: orchestrator/templates/orchestrator/home.html:492
 msgid ""
 "Community SH es gratuito y de código abierto. Instálalo en tu servidor, "
 "adáptalo a tu equipo o contribuye al proyecto."
@@ -511,19 +529,19 @@ msgstr ""
 "Community SH is free and open source. Install it on your server, adapt it to "
 "your team or contribute to the project."
 
-#: orchestrator/templates/orchestrator/home.html:491
+#: orchestrator/templates/orchestrator/home.html:501
 msgid "Reportar un problema"
 msgstr "Report an issue"
 
-#: orchestrator/templates/orchestrator/home.html:501
+#: orchestrator/templates/orchestrator/home.html:511
 msgid "Hecho por Marlon Falcón Hernández · Licencia MIT ·"
 msgstr "Made by Marlon Falcón Hernández · MIT license ·"
 
-#: orchestrator/templates/orchestrator/home.html:505
+#: orchestrator/templates/orchestrator/home.html:515
 msgid "Documentación"
 msgstr "Documentation"
 
-#: orchestrator/templates/orchestrator/home.html:516
+#: orchestrator/templates/orchestrator/home.html:526
 msgid "Copiado"
 msgstr "Copied"
 

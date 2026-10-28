@@ -10,6 +10,17 @@ This guide describes how to deploy Community SH using Docker and Docker Compose.
   - [Docker Engine](https://docs.docker.com/engine/install/)
   - [Docker Compose](https://docs.docker.com/compose/install/) (or `docker compose` plugin)
 
+## 🌐 Before you start: DNS
+
+The SSL certificates (Let's Encrypt) are issued for the domain you give the installer, so the
+domain must **already point to the server** when you install:
+
+- `A` record: your main domain (e.g. `panel.example.com`) → the server's public IP
+- Optional `A` record `*.example.com` → the same IP, for instances on subdomains
+
+Verify with `dig +short panel.example.com` (it must print the server's IP). Ports 80 and 443
+must be open so Let's Encrypt can validate the domain.
+
 ## 🛠️ Step-by-Step Installation
 
 ### 1. Install Docker

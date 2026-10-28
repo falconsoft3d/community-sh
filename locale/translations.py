@@ -139,6 +139,11 @@ ES_TO_EN = {
     'Qué hay de nuevo en cada versión': "What's new in each version",
     'Historial completo': 'Full history',
     'Actual': 'Current',
+    'Configura el DNS antes': 'Set up DNS first',
+    'Crea un registro A de tu dominio apuntando a la IP del servidor. El instalador te pedirá ese dominio para generar los certificados SSL, y solo funcionan si ya apunta al servidor.':
+        "Create an A record for your domain pointing to the server's IP. The installer asks for that domain to issue the SSL certificates, which only works if it already points to the server.",
+    'Antes de ejecutarlo, comprueba que tu dominio ya apunta al servidor (por ejemplo con «dig +short tudominio.com»). El instalador lo verifica y te avisa si no es así.':
+        'Before running it, check that your domain already points to the server (e.g. with “dig +short yourdomain.com”). The installer checks it and warns you if it does not.',
 }
 
 # Strings written in English in the code -> Spanish

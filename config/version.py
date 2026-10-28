@@ -3,9 +3,18 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 
 CHANGELOG = [
+    {
+        'version': '1.0.3',
+        'date': '2026-10-28',
+        'notes': [
+            'Documentación: configurar el DNS del dominio antes de instalar (README, guía de despliegue y landing)',
+            'El instalador avisa del registro DNS necesario y comprueba que el dominio apunta al servidor antes de seguir',
+            'El instalador ya lee el dominio con «curl … | sudo bash» (antes la pregunta leía el propio script)',
+        ],
+    },
     {
         'version': '1.0.2',
         'date': '2026-10-28',

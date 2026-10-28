@@ -1,6 +1,12 @@
 # Changelog
 
-Versión actual: **1.0.2**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.3**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.3 — 2026-10-28
+
+- Documentación: configurar el DNS del dominio antes de instalar (README, guía de despliegue y landing)
+- El instalador avisa del registro DNS necesario y comprueba que el dominio apunta al servidor antes de seguir
+- El instalador ya lee el dominio con «curl … | sudo bash» (antes la pregunta leía el propio script)
 
 ## 1.0.2 — 2026-10-28
 

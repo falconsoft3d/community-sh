@@ -374,25 +374,35 @@
                 <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">{% translate "En marcha en minutos" %}</h2>
             </div>
 
-            <ol class="mt-10 grid gap-5 md:grid-cols-3">
+            <ol class="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
                 <li class="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
                     <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">1</span>
                     <h3 class="mt-4 font-semibold">{% translate "Un servidor Linux" %}</h3>
                     <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{% translate "Con acceso root y los puertos 80 y 443 libres. El instalador se encarga de Docker." %}</p>
                 </li>
+                <li class="rounded-xl border-2 border-amber-300 bg-amber-50/60 p-6 dark:border-amber-500/40 dark:bg-amber-500/10">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white">2</span>
+                    <h3 class="mt-4 flex items-center gap-2 font-semibold"><i data-lucide="globe" class="h-4 w-4 text-amber-600"></i>{% translate "Configura el DNS antes" %}</h3>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{% translate "Crea un registro A de tu dominio apuntando a la IP del servidor. El instalador te pedirá ese dominio para generar los certificados SSL, y solo funcionan si ya apunta al servidor." %}</p>
+                </li>
                 <li class="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">2</span>
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">3</span>
                     <h3 class="mt-4 font-semibold">{% translate "Ejecuta el instalador" %}</h3>
                     <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{% translate "Genera las claves, configura tu dominio y levanta todos los servicios." %}</p>
                 </li>
                 <li class="rounded-xl border border-slate-200 p-6 dark:border-slate-800">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">3</span>
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">4</span>
                     <h3 class="mt-4 font-semibold">{% translate "Crea tu primera instancia" %}</h3>
                     <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{% translate "La primera cuenta que se registra es la de administrador. Elige versión de Odoo y despliega." %}</p>
                 </li>
             </ol>
 
-            <div class="mt-8 rounded-xl bg-ink p-4 dark:ring-1 dark:ring-slate-800 sm:p-5">
+            <p class="mt-8 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                <i data-lucide="triangle-alert" class="mt-0.5 h-4 w-4 shrink-0"></i>
+                <span>{% translate "Antes de ejecutarlo, comprueba que tu dominio ya apunta al servidor (por ejemplo con «dig +short tudominio.com»). El instalador lo verifica y te avisa si no es así." %}</span>
+            </p>
+
+            <div class="mt-4 rounded-xl bg-ink p-4 dark:ring-1 dark:ring-slate-800 sm:p-5">
                 <div class="flex items-center justify-between gap-3">
                     <p class="text-xs font-medium text-slate-400">{% translate "Instalación rápida" %}</p>
                     <button type="button" id="copy-install"

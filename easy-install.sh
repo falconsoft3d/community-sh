@@ -56,16 +56,29 @@ fi
 echo -e "\n${GREEN}[4/5] Configuring environment...${NC}"
 PUBLIC_IP=$(curl -4 -s ifconfig.me 2>/dev/null || curl -4 -s icanhazip.com 2>/dev/null || hostname -I | awk '{print $1}')
 
-# Ask for main domain
+# Ask for main domain. The SSL certificates are issued for it, so its DNS must already point here.
 echo -e "\n${YELLOW}Domain Configuration:${NC}"
+echo -e "Before continuing, create a DNS A record for your domain pointing to this server: ${GREEN}${PUBLIC_IP}${NC}"
+echo -e "(and a wildcard *.yourdomain.com if instances will use subdomains). Let's Encrypt needs it to issue certificates."
 echo -e "Enter your main domain (e.g., example.com) or press Enter to use IP only:"
-read -p "Main Domain: " MAIN_DOMAIN
+# Read from the terminal: with 'curl ... | sudo bash' stdin is the script itself
+read -p "Main Domain: " MAIN_DOMAIN < /dev/tty
 
 # If no domain provided, use localhost as default
 if [ -z "$MAIN_DOMAIN" ]; then
     MAIN_DOMAIN="localhost"
     echo -e "${YELLOW}No domain provided. Using localhost (access via IP: ${PUBLIC_IP})${NC}"
 else
+    RESOLVED_IP=$(getent ahostsv4 "$MAIN_DOMAIN" 2>/dev/null | awk 'NR==1 {print $1}')
+    if [ "$RESOLVED_IP" != "$PUBLIC_IP" ]; then
+        echo -e "${RED}⚠ ${MAIN_DOMAIN} resolves to '${RESOLVED_IP:-nothing}', not to this server (${PUBLIC_IP}).${NC}"
+        echo -e "${YELLOW}Certificates will fail until the DNS record points here (changes can take a few minutes).${NC}"
+        read -p "Continue anyway? [y/N]: " CONTINUE_WITHOUT_DNS < /dev/tty
+        case "$CONTINUE_WITHOUT_DNS" in
+            [yY]*) ;;
+            *) echo "Configure the DNS record and run the installer again."; exit 1 ;;
+        esac
+    fi
     echo -e "${GREEN}✓ Domain configured: ${MAIN_DOMAIN}${NC}"
 fi
 
