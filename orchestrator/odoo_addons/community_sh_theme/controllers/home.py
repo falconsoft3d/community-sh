@@ -30,7 +30,7 @@ PAGE = """<!DOCTYPE html>
   .app { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 6px; border-radius: 16px;
          color: #fff; text-decoration: none; transition: background .15s, transform .15s; }
   .app:hover, .app:focus-visible { background: rgba(255,255,255,.1); transform: translateY(-2px); outline: none; }
-  .app img, .app .placeholder { width: 72px; height: 72px; border-radius: 18px; background: #fff;
+  .app img, .app .placeholder { width: 72px; height: 72px; border-radius: 9px; background: #fff;
          box-shadow: 0 10px 24px -8px rgba(0,0,0,.45); object-fit: cover; }
   .app .placeholder { display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #714b67; }
   .app span { font-size: 13.5px; text-align: center; line-height: 1.25; text-shadow: 0 1px 2px rgba(0,0,0,.35); }

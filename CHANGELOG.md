@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.27**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.28**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.28 — 2026-10-28
+
+- Tema: la barra superior de Odoo 18-20 ya no deja los menús de la app en morado; iconos de la pantalla de inicio menos redondeados
 
 ## 1.0.27 — 2026-10-28
 

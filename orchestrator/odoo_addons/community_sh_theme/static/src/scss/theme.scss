@@ -17,6 +17,10 @@ $csh-radius: 10px;
         color: $csh-ink !important;
     }
     .o_menu_brand { font-weight: 600; }
+    // Odoo 18+ paints the section buttons with the brand color
+    .o_menu_brand, .dropdown-toggle, .o_nav_entry, .o_menu_sections > * {
+        background: transparent !important;
+    }
     .dropdown-toggle:hover, .o_nav_entry:hover, .o_menu_sections > *:hover, .show > .dropdown-toggle {
         background: $csh-surface !important;
     }

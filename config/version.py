@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.27'
+VERSION = '1.0.28'
 
 CHANGELOG = [
+    {
+        'version': '1.0.28',
+        'date': '2026-10-28',
+        'notes': [
+            "Tema: la barra superior de Odoo 18-20 ya no deja los menús de la app en morado; iconos de la pantalla de inicio menos redondeados",
+        ],
+    },
     {
         'version': '1.0.27',
         'date': '2026-10-28',
