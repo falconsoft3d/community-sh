@@ -33,6 +33,11 @@ class Command(BaseCommand):
                     call_command('run_auto_backups', stdout=self.stdout)
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Scheduled backups failed: {e}'))
+                try:
+                    from orchestrator.services.metrics import record_sample
+                    record_sample()
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Metrics sample failed: {e}'))
 
             task = claim_next_task()
             if task is not None:

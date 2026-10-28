@@ -1151,3 +1151,38 @@ class TodoTests(MCPServerTests):
         self.rpc('tools/call', {'name': 'update_todo', 'arguments': {'todo_id': todo.id, 'status': 'done', 'note': 'hecho'}})
         todo.refresh_from_db()
         self.assertEqual((todo.status, todo.completed_by), ('done', 'Claude (MCP, alice)'))
+
+
+class MetricsHistoryTests(BaseTestCase):
+    def test_samples_rollups_retention_and_ranges(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .metrics_models import MetricRollup, MetricSample
+        from .services import metrics
+        now = timezone.now().replace(minute=30, second=0, microsecond=0)
+        cpu = iter([10.0, 30.0]); mem = iter([40.0, 60.0])
+        with mock.patch.object(metrics.psutil, 'cpu_percent', side_effect=lambda interval: next(cpu)), \
+                mock.patch.object(metrics.psutil, 'virtual_memory', side_effect=lambda: mock.Mock(percent=next(mem))):
+            metrics.record_sample(now - timedelta(minutes=1))
+            metrics.record_sample(now)
+        hour = MetricRollup.objects.get(period='hour')
+        self.assertEqual((hour.cpu_avg, hour.cpu_max, hour.memory_max), (20.0, 30.0, 60.0))
+        self.assertEqual(MetricRollup.objects.get(period='day').cpu_max, 30.0)
+
+        # Old raw samples are pruned on the next sample
+        MetricSample.objects.create(timestamp=now - timedelta(days=3), cpu_percent=1, memory_percent=1)
+        with mock.patch.object(metrics.psutil, 'cpu_percent', return_value=5.0), \
+                mock.patch.object(metrics.psutil, 'virtual_memory', return_value=mock.Mock(percent=50.0)):
+            metrics.record_sample(now + timedelta(minutes=1))
+        self.assertFalse(MetricSample.objects.filter(timestamp__lt=now - timedelta(days=2)).exists())
+
+        day_points = metrics.metrics_history('24h', now=now + timedelta(minutes=2))
+        self.assertTrue(all(set(p) == {'t', 'cpu', 'cpu_max', 'memory', 'memory_max'} for p in day_points))
+        self.assertEqual(max(p['cpu_max'] for p in day_points), 30.0)
+        self.assertEqual(len(metrics.metrics_history('12m', now=now)), 1)
+
+    def test_history_endpoint_is_admin_only(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('metrics-history')).status_code, 403)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(reverse('metrics-history') + '?range=bogus').json()['range'], '24h')

@@ -2,6 +2,7 @@
 {% load i18n %}
 
 {% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 {{ metrics|json_script:"metrics-initial" }}
 <div class="flex flex-col gap-6" x-data="liveMetrics()" x-init="start()">
     <div class="flex items-center justify-between">
@@ -38,6 +39,40 @@
 
     <!-- Overview Tab -->
     <div x-show="activeTab === 'overview'" class="space-y-6">
+
+    <!-- CPU / RAM history -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm" x-data="metricsHistory()" x-init="load()">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-4">
+            <div>
+                <h3 class="font-semibold leading-none tracking-tight">{% translate "Historial del servidor" %}</h3>
+                <p class="mt-1 text-sm text-muted-foreground">{% translate "Media por intervalo; el tooltip muestra también el pico." %}</p>
+            </div>
+            <div class="inline-flex rounded-md border border-input p-0.5 text-sm" role="group" aria-label="{% translate 'Rango' %}">
+                <template x-for="option in ranges" :key="option.key">
+                    <button type="button" @click="range = option.key; load()" x-text="option.label"
+                        :class="range === option.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'"
+                        class="rounded px-3 py-1 font-medium transition-colors"></button>
+                </template>
+            </div>
+        </div>
+        <div class="grid gap-6 p-6 lg:grid-cols-2">
+            <figure>
+                <figcaption class="mb-2 flex items-baseline justify-between text-sm">
+                    <span class="font-medium">CPU</span>
+                    <span class="text-muted-foreground" x-text="summary('cpu')"></span>
+                </figcaption>
+                <div class="relative h-56"><canvas x-ref="cpu" role="img" aria-label="{% translate 'Uso de CPU en el tiempo' %}"></canvas></div>
+            </figure>
+            <figure>
+                <figcaption class="mb-2 flex items-baseline justify-between text-sm">
+                    <span class="font-medium">RAM</span>
+                    <span class="text-muted-foreground" x-text="summary('memory')"></span>
+                </figcaption>
+                <div class="relative h-56"><canvas x-ref="memory" role="img" aria-label="{% translate 'Uso de RAM en el tiempo' %}"></canvas></div>
+            </figure>
+        </div>
+        <p x-show="!loading && points.length === 0" class="px-6 pb-6 text-sm text-muted-foreground">{% translate "Aún no hay datos: el worker toma una muestra por minuto." %}</p>
+    </div>
 
     <!-- System Metrics Grid -->
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -220,6 +255,66 @@
 </div>
 
 <script>
+    // CPU/RAM history charts (one series each: one axis per measure)
+    function metricsHistory() {
+        const palette = () => document.documentElement.classList.contains('dark')
+            ? { cpu: '#3987e5', memory: '#d95926', grid: '#2c2c2a', axis: '#898781' }
+            : { cpu: '#2a78d6', memory: '#eb6834', grid: '#e1e0d9', axis: '#898781' };
+        const charts = {};
+        return {
+            ranges: [
+                { key: '24h', label: '24 h' }, { key: '7d', label: '{% translate "7 días" %}' },
+                { key: '30d', label: '{% translate "30 días" %}' }, { key: '12m', label: '{% translate "12 meses" %}' },
+            ],
+            range: '24h', points: [], loading: true,
+            format(ms) {
+                const date = new Date(ms);
+                if (this.range === '24h') return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                if (this.range === '12m') return date.toLocaleDateString([], { month: 'short', year: '2-digit' });
+                return date.toLocaleDateString([], { day: '2-digit', month: 'short' }) + (this.range === '7d' ? ' ' + date.toLocaleTimeString([], { hour: '2-digit' }) + 'h' : '');
+            },
+            summary(key) {
+                if (!this.points.length) return '';
+                const avg = this.points.reduce((s, p) => s + p[key], 0) / this.points.length;
+                const peak = Math.max(...this.points.map(p => p[key + '_max']));
+                return `{% translate "media" %} ${avg.toFixed(1)}% · {% translate "pico" %} ${peak.toFixed(1)}%`;
+            },
+            async load() {
+                this.loading = true;
+                const data = await (await fetch("{% url 'metrics-history' %}?range=" + this.range)).json();
+                this.points = data.points; this.loading = false;
+                this.draw('cpu', 'CPU'); this.draw('memory', 'RAM');
+            },
+            draw(key, label) {
+                const colors = palette();
+                const data = this.points.map(p => ({ x: p.t, y: p[key], max: p[key + '_max'] }));
+                if (charts[key]) charts[key].destroy();
+                charts[key] = new Chart(this.$refs[key], {
+                    type: 'line',
+                    data: { datasets: [{ label, data, borderColor: colors[key], backgroundColor: colors[key] + '1f', fill: 'origin',
+                        borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, animation: false, parsing: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: {
+                                title: items => this.format(items[0].parsed.x),
+                                label: item => ` ${label} ${item.parsed.y.toFixed(1)}%  ({% translate "pico" %} ${item.raw.max.toFixed(1)}%)`,
+                            } },
+                        },
+                        scales: {
+                            x: { type: 'linear', grid: { display: false }, border: { color: colors.grid },
+                                 ticks: { color: colors.axis, maxTicksLimit: 6, callback: value => this.format(value) } },
+                            y: { min: 0, max: 100, grid: { color: colors.grid }, border: { display: false },
+                                 ticks: { color: colors.axis, stepSize: 25, callback: value => value + '%' } },
+                        },
+                    },
+                });
+            },
+        };
+    }
+
     // Polls /metrics/data/ every 5 s; container stats are only requested while their tab is open
     function liveMetrics() {
         return {

@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.11'
+VERSION = '1.0.12'
 
 CHANGELOG = [
+    {
+        'version': '1.0.12',
+        'date': '2026-10-28',
+        'notes': [
+            "Metrics: gráficas del uso de CPU y RAM del servidor en las últimas 24 horas, 7 días, 30 días y 12 meses (media y pico)",
+            "El worker guarda una muestra por minuto (2 días) y resúmenes por hora (120 días) y por día (sin límite)",
+        ],
+    },
     {
         'version': '1.0.11',
         'date': '2026-10-28',

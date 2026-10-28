@@ -246,3 +246,14 @@ def settings_ai_test(request):
     except AIError as e:
         return JsonResponse({'ok': False, 'error': str(e)}, status=400)
     return JsonResponse({'ok': True, 'models': models})
+
+
+@login_required
+@superuser_required
+def metrics_history_data(request):
+    from django.http import JsonResponse
+    from ..services.metrics import RANGES, metrics_history
+    range_key = request.GET.get('range', '24h')
+    if range_key not in RANGES:
+        range_key = '24h'
+    return JsonResponse({'range': range_key, 'points': metrics_history(range_key)})

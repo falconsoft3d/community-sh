@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.11**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.12**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.12 — 2026-10-28
+
+- Metrics: gráficas del uso de CPU y RAM del servidor en las últimas 24 horas, 7 días, 30 días y 12 meses (media y pico)
+- El worker guarda una muestra por minuto (2 días) y resúmenes por hora (120 días) y por día (sin límite)
 
 ## 1.0.11 — 2026-10-28
 

@@ -118,6 +118,7 @@ from .ai_models import AIFileChange, AIMessage
 from .repository_models import InstanceRepository
 from .mcp_models import MCPToken
 from .todo_models import Todo
+from .metrics_models import MetricRollup, MetricSample
 
 class UserProfile(models.Model):
     """Extended user profile with additional information"""

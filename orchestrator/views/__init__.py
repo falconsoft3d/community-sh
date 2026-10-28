@@ -74,6 +74,7 @@ from .backups import (
 from .platform import (
     metrics_view,
     metrics_data,
+    metrics_history_data,
     settings_view,
     settings_ai_test,
     run_auto_backups_view,
@@ -147,6 +148,7 @@ __all__ = [
     'backup_create_instance',
     'metrics_view',
     'metrics_data',
+    'metrics_history_data',
     'settings_view',
     'settings_ai_test',
     'run_auto_backups_view',
