@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 16:51+0000\n"
+"POT-Creation-Date: 2026-10-28 16:56+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -41,7 +41,8 @@ msgid "Error"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:7
-#: orchestrator/templates/orchestrator/base.html:225
+#: orchestrator/templates/orchestrator/base.html:233
+#: orchestrator/templates/orchestrator/base.html:235
 msgid "Backups"
 msgstr ""
 
@@ -115,43 +116,54 @@ msgstr ""
 "Create one from an instance's Backups tab, or turn on automatic backups in "
 "Settings."
 
-#: orchestrator/templates/orchestrator/base.html:194
+#: orchestrator/templates/orchestrator/base.html:199
+msgid "Minimizar o expandir el menú"
+msgstr "Collapse or expand the menu"
+
+#: orchestrator/templates/orchestrator/base.html:207
+#: orchestrator/templates/orchestrator/base.html:209
 #: orchestrator/templates/orchestrator/project_detail.html:9
 #: orchestrator/templates/orchestrator/project_form.html:7
 #: orchestrator/templates/orchestrator/project_list.html:7
 msgid "Proyectos"
 msgstr "Projects"
 
-#: orchestrator/templates/orchestrator/base.html:199
+#: orchestrator/templates/orchestrator/base.html:211
+#: orchestrator/templates/orchestrator/base.html:213
 #: orchestrator/templates/orchestrator/instance_list.html:6
 msgid "Instances"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:205
+#: orchestrator/templates/orchestrator/base.html:216
+#: orchestrator/templates/orchestrator/base.html:218
 msgid "Containers"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:219
+#: orchestrator/templates/orchestrator/base.html:228
+#: orchestrator/templates/orchestrator/base.html:230
 msgid "Metrics"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:231
+#: orchestrator/templates/orchestrator/base.html:238
+#: orchestrator/templates/orchestrator/base.html:240
 msgid "Usuarios"
 msgstr "Users"
 
-#: orchestrator/templates/orchestrator/base.html:238
+#: orchestrator/templates/orchestrator/base.html:244
+#: orchestrator/templates/orchestrator/base.html:246
 msgid "Settings"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:244
+#: orchestrator/templates/orchestrator/base.html:249
+#: orchestrator/templates/orchestrator/base.html:251
 msgid "About"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:280
+#: orchestrator/templates/orchestrator/base.html:287
 msgid "Mi Perfil"
 msgstr "My profile"
 
-#: orchestrator/templates/orchestrator/base.html:287
+#: orchestrator/templates/orchestrator/base.html:294
 msgid "Logout"
 msgstr ""
 
@@ -446,7 +458,10 @@ msgid ""
 "Crea un registro A de tu dominio apuntando a la IP del servidor. El "
 "instalador te pedirá ese dominio para generar los certificados SSL, y solo "
 "funcionan si ya apunta al servidor."
-msgstr "Create an A record for your domain pointing to the server's IP. The installer asks for that domain to issue the SSL certificates, which only works if it already points to the server."
+msgstr ""
+"Create an A record for your domain pointing to the server's IP. The "
+"installer asks for that domain to issue the SSL certificates, which only "
+"works if it already points to the server."
 
 #: orchestrator/templates/orchestrator/home.html:390
 msgid "Ejecuta el instalador"
@@ -473,7 +488,10 @@ msgid ""
 "Antes de ejecutarlo, comprueba que tu dominio ya apunta al servidor (por "
 "ejemplo con «dig +short tudominio.com»). El instalador lo verifica y te "
 "avisa si no es así."
-msgstr "Before running it, check that your domain already points to the server (e.g. with “dig +short yourdomain.com”). The installer checks it and warns you if it does not."
+msgstr ""
+"Before running it, check that your domain already points to the server (e.g. "
+"with “dig +short yourdomain.com”). The installer checks it and warns you if "
+"it does not."
 
 #: orchestrator/templates/orchestrator/home.html:407
 msgid "Instalación rápida"

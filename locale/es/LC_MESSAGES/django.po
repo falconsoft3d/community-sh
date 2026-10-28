@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 16:51+0000\n"
+"POT-Creation-Date: 2026-10-28 16:56+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -42,7 +42,8 @@ msgid "Error"
 msgstr "Error"
 
 #: orchestrator/templates/orchestrator/backup_list.html:7
-#: orchestrator/templates/orchestrator/base.html:225
+#: orchestrator/templates/orchestrator/base.html:233
+#: orchestrator/templates/orchestrator/base.html:235
 msgid "Backups"
 msgstr ""
 
@@ -114,43 +115,54 @@ msgid ""
 "en Settings."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:194
+#: orchestrator/templates/orchestrator/base.html:199
+msgid "Minimizar o expandir el menú"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/base.html:207
+#: orchestrator/templates/orchestrator/base.html:209
 #: orchestrator/templates/orchestrator/project_detail.html:9
 #: orchestrator/templates/orchestrator/project_form.html:7
 #: orchestrator/templates/orchestrator/project_list.html:7
 msgid "Proyectos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:199
+#: orchestrator/templates/orchestrator/base.html:211
+#: orchestrator/templates/orchestrator/base.html:213
 #: orchestrator/templates/orchestrator/instance_list.html:6
 msgid "Instances"
 msgstr "Instancias"
 
-#: orchestrator/templates/orchestrator/base.html:205
+#: orchestrator/templates/orchestrator/base.html:216
+#: orchestrator/templates/orchestrator/base.html:218
 msgid "Containers"
 msgstr "Contenedores"
 
-#: orchestrator/templates/orchestrator/base.html:219
+#: orchestrator/templates/orchestrator/base.html:228
+#: orchestrator/templates/orchestrator/base.html:230
 msgid "Metrics"
 msgstr "Métricas"
 
-#: orchestrator/templates/orchestrator/base.html:231
+#: orchestrator/templates/orchestrator/base.html:238
+#: orchestrator/templates/orchestrator/base.html:240
 msgid "Usuarios"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:238
+#: orchestrator/templates/orchestrator/base.html:244
+#: orchestrator/templates/orchestrator/base.html:246
 msgid "Settings"
 msgstr "Configuración"
 
-#: orchestrator/templates/orchestrator/base.html:244
+#: orchestrator/templates/orchestrator/base.html:249
+#: orchestrator/templates/orchestrator/base.html:251
 msgid "About"
 msgstr "Acerca de"
 
-#: orchestrator/templates/orchestrator/base.html:280
+#: orchestrator/templates/orchestrator/base.html:287
 msgid "Mi Perfil"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:287
+#: orchestrator/templates/orchestrator/base.html:294
 msgid "Logout"
 msgstr "Cerrar sesión"
 

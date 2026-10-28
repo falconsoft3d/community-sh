@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.4'
+VERSION = '1.0.5'
 
 CHANGELOG = [
+    {
+        'version': '1.0.5',
+        'date': '2026-10-28',
+        'notes': [
+            'Menú lateral minimizable: deja solo los iconos (con el nombre al pasar el ratón) y recuerda la preferencia en el navegador',
+        ],
+    },
     {
         'version': '1.0.4',
         'date': '2026-10-28',

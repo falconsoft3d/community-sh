@@ -166,6 +166,17 @@
             font-family: 'Inter', sans-serif;
         }
         
+        /* Collapsed sidebar: icons only (class set on <html> by theme.js before paint) */
+        .sidebar-collapsed .app-sidebar { width: 4rem; }
+        .sidebar-collapsed .app-sidebar .nav-label { display: none; }
+        .sidebar-collapsed .app-sidebar nav { padding-left: 0.5rem; padding-right: 0.5rem; }
+        .sidebar-collapsed .app-sidebar nav a { justify-content: center; padding-left: 0; padding-right: 0; }
+        .sidebar-collapsed .app-sidebar .sidebar-head { flex-direction: column; justify-content: center; height: auto; padding: 0.75rem 0; }
+        .sidebar-collapsed .app-sidebar .sidebar-head a { flex: none; }
+        .sidebar-icon-open { display: none; }
+        .sidebar-collapsed .sidebar-icon-open { display: block; }
+        .sidebar-collapsed .sidebar-icon-close { display: none; }
+
         [x-cloak] {
             display: none !important;
         }
@@ -177,71 +188,67 @@
     <div class="flex min-h-screen w-full">
         {% if user.is_authenticated and not public_page %}
         <!-- Sidebar -->
-        <aside class="sticky top-0 hidden h-screen shrink-0 overflow-y-auto border-r bg-muted/40 w-64 lg:block">
+        <aside class="app-sidebar sticky top-0 hidden h-screen shrink-0 overflow-y-auto overflow-x-hidden border-r bg-muted/40 w-64 transition-[width] duration-200 lg:block">
             <div class="flex h-full max-h-screen flex-col gap-2">
-                <div class="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-                    <a href="/" class="flex items-center gap-2 font-semibold">
-                        <i data-lucide="package-2" class="h-6 w-6"></i>
-                        <span class="">Community SH</span>
-                        <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">v{{ app_version }}</span>
+                <div class="sidebar-head flex h-14 items-center gap-2 border-b px-4 lg:h-[60px]">
+                    <a href="/" class="flex min-w-0 flex-1 items-center gap-2 font-semibold">
+                        <i data-lucide="package-2" class="h-6 w-6 shrink-0"></i>
+                        <span class="nav-label truncate">Community SH</span>
+                        <span class="nav-label rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">v{{ app_version }}</span>
                     </a>
+                    <button type="button" onclick="toggleSidebar()" title="{% translate 'Minimizar o expandir el menú' %}" aria-label="{% translate 'Minimizar o expandir el menú' %}"
+                        class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                        <i data-lucide="panel-left-close" class="sidebar-icon-close h-4 w-4"></i>
+                        <i data-lucide="panel-left-open" class="sidebar-icon-open h-4 w-4"></i>
+                    </button>
                 </div>
                 <div class="flex-1">
                     <nav class="grid items-start px-2 text-sm font-medium lg:px-4">
-                        <a href="{% url 'project-list' %}"
+                        <a href="{% url 'project-list' %}" title="{% translate "Proyectos" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'projects' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="folder-kanban" class="h-4 w-4"></i>
-                            {% translate "Proyectos" %}
+                            <i data-lucide="folder-kanban" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Proyectos" %}</span>
                         </a>
-                        <a href="{% url 'instance-list' %}"
+                        <a href="{% url 'instance-list' %}" title="{% translate "Instances" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'instances' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="server" class="h-4 w-4"></i>
-                            {% translate "Instances" %}
+                            <i data-lucide="server" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Instances" %}</span>
                         </a>
                         {% if not user_is_client %}
-                        <a href="{% url 'container-list' %}"
+                        <a href="{% url 'container-list' %}" title="{% translate "Containers" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'containers' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="box" class="h-4 w-4"></i>
-                            {% translate "Containers" %}
+                            <i data-lucide="box" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Containers" %}</span>
                         </a>
                         {% endif %}
                         {% if user.is_superuser %}
-                        <a href="{% url 'docker-overview' %}"
+                        <a href="{% url 'docker-overview' %}" title="Docker"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'docker' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="container" class="h-4 w-4"></i>
-                            Docker
+                            <i data-lucide="container" class="h-4 w-4 shrink-0"></i><span class="nav-label">Docker</span>
                         </a>
                         {% endif %}
                         {% if user.is_superuser %}
-                        <a href="{% url 'metrics' %}"
+                        <a href="{% url 'metrics' %}" title="{% translate "Metrics" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'metrics' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
-                            {% translate "Metrics" %}
+                            <i data-lucide="bar-chart-3" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Metrics" %}</span>
                         </a>
                         {% endif %}
-                        <a href="{% url 'backup-list' %}"
+                        <a href="{% url 'backup-list' %}" title="{% translate "Backups" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'backups' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="archive" class="h-4 w-4"></i>
-                            {% translate "Backups" %}
+                            <i data-lucide="archive" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Backups" %}</span>
                         </a>
                         {% if user.is_superuser %}
-                        <a href="{% url 'user-list' %}"
+                        <a href="{% url 'user-list' %}" title="{% translate "Usuarios" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'users' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="users" class="h-4 w-4"></i>
-                            {% translate "Usuarios" %}
+                            <i data-lucide="users" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Usuarios" %}</span>
                         </a>
                         {% endif %}
                         {% if not user_is_client %}
-                        <a href="{% url 'settings' %}"
+                        <a href="{% url 'settings' %}" title="{% translate "Settings" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'settings' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="settings" class="h-4 w-4"></i>
-                            {% translate "Settings" %}
+                            <i data-lucide="settings" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Settings" %}</span>
                         </a>
                         {% endif %}
-                        <a href="{% url 'about' %}"
+                        <a href="{% url 'about' %}" title="{% translate "About" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'about' %}bg-muted text-primary{% endif %}">
-                            <i data-lucide="info" class="h-4 w-4"></i>
-                            {% translate "About" %}
+                            <i data-lucide="info" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "About" %}</span>
                         </a>
                     </nav>
                 </div>

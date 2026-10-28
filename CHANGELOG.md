@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.4**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.5**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.5 — 2026-10-28
+
+- Menú lateral minimizable: deja solo los iconos (con el nombre al pasar el ratón) y recuerda la preferencia en el navegador
 
 ## 1.0.4 — 2026-10-28
 
