@@ -158,6 +158,14 @@
                 <i data-lucide="archive" class="inline-block h-4 w-4 mr-2"></i>
                 Backups
             </button>
+            {% if can_manage %}
+            <button @click="activeTab = 'migrate'"
+                :class="activeTab === 'migrate' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="arrow-right-left" class="inline-block h-4 w-4 mr-2"></i>
+                Migrar
+            </button>
+            {% endif %}
             {% if ai_enabled %}
             <button @click="activeTab = 'ai'"
                 :class="activeTab === 'ai' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
@@ -612,6 +620,66 @@
     </div>
 
     <!-- Logs Tab -->
+    {% if can_manage %}
+    <!-- Migrate from another Odoo -->
+    <div x-show="activeTab === 'migrate'" x-cloak class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="border-b p-6">
+                <h3 class="font-semibold">Migrar desde otro Odoo</h3>
+                <p class="mt-1 text-sm text-muted-foreground">Copia por XML-RPC los datos de cualquier Odoo (versión 8 o posterior, en tu servidor o en Internet) a esta instancia. Se puede repetir: lo ya copiado no se duplica y continúa donde se quedó.</p>
+            </div>
+            {% if migration_supported %}
+            <form method="post" action="{% url 'instance-migrate' object.pk %}" class="grid gap-6 p-6 lg:grid-cols-2">
+                {% csrf_token %}
+                <fieldset class="space-y-3">
+                    <legend class="text-sm font-semibold">Origen</legend>
+                    <input name="source_url" required placeholder="https://erp.miempresa.com" aria-label="URL del Odoo de origen" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <input name="source_db" required placeholder="Base de datos" aria-label="Base de datos de origen" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input name="source_login" required value="admin" aria-label="Usuario de origen" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        <input name="source_password" type="password" required placeholder="Contraseña o clave API" aria-label="Contraseña de origen" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    </div>
+                </fieldset>
+                <fieldset class="space-y-3">
+                    <legend class="text-sm font-semibold">Destino: {{ object.name }} (Odoo {{ object.odoo_version }})</legend>
+                    <input name="target_db" required value="{{ object.database_name|default:'' }}" placeholder="Base de datos" aria-label="Base de datos de destino" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input name="target_login" required value="admin" aria-label="Usuario de destino" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        <input name="target_password" type="password" required placeholder="Contraseña del administrador" aria-label="Contraseña de destino" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    </div>
+                    <p class="text-xs text-muted-foreground">Instala antes en el destino Ventas, Compras y Facturación si vas a migrar esos datos. Las contraseñas no se guardan: solo se usan durante la migración.</p>
+                </fieldset>
+                <fieldset class="lg:col-span-2">
+                    <legend class="text-sm font-semibold">Qué migrar</legend>
+                    <div class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {% for step, label in migration_steps %}
+                        <label class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"><input type="checkbox" name="steps" value="{{ step }}" checked class="h-4 w-4 rounded border-input"> {{ label }}</label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+                <div class="flex items-center justify-between gap-3 lg:col-span-2">
+                    <p class="text-xs text-muted-foreground">Haz un backup de esta instancia antes de migrar. Los impuestos, monedas, países y unidades se buscan por nombre o código en el destino.</p>
+                    <button type="submit" class="inline-flex h-10 shrink-0 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="arrow-right-left" class="mr-2 h-4 w-4"></i> Migrar
+                    </button>
+                </div>
+            </form>
+            {% else %}
+            <p class="p-6 text-sm text-muted-foreground">La migración escribe en esta instancia con el modelo de facturación de Odoo {{ migration_min_version }}+: crea una instancia de Odoo {{ migration_min_version }} o posterior para migrar a ella (el origen puede ser cualquier versión desde la 8).</p>
+            {% endif %}
+        </div>
+        {% if last_migration %}
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex items-center justify-between border-b px-6 py-3">
+                <h3 class="text-sm font-semibold">Última migración · {{ last_migration.params.source }}</h3>
+                <span class="text-xs text-muted-foreground">{{ last_migration.get_status_display }} · {{ last_migration.created_at|date:"d M Y H:i" }}</span>
+            </div>
+            <pre class="max-h-96 overflow-auto whitespace-pre-wrap p-6 text-xs">{{ last_migration.result|default:"En cola…" }}</pre>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <div x-show="activeTab === 'logs'" class="space-y-6">
         <!-- Live Logs Card -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col h-[500px]">
@@ -695,7 +763,11 @@
     {% if ai_enabled %}
     <!-- AI assistant Tab -->
     <div x-show="activeTab === 'ai'" x-data="aiChat()" x-init="load()" class="space-y-4">
-        <div class="rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col" style="height: 70vh">
+        <div class="relative rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col" style="height: 70vh"
+            @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="dragging = false; addFiles($event.dataTransfer.files)">
+            <div x-show="dragging" x-cloak class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-background/80 text-sm font-medium">
+                Suelta aquí los PDF, imágenes o archivos de texto
+            </div>
             <div class="flex items-center justify-between border-b px-5 py-3">
                 <div>
                     <h3 class="font-semibold">Asistente de IA</h3>
@@ -716,12 +788,35 @@
                         <div class="max-w-[85%] rounded-lg px-4 py-2.5 text-sm"
                             :class="message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'">
                             <template x-if="message.content"><div class="whitespace-pre-wrap break-words" x-text="message.content"></div></template>
+                            <template x-if="message.attachments && message.attachments.length">
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    <template x-for="file in message.attachments">
+                                        <span class="inline-flex items-center gap-1 rounded-md bg-primary-foreground/15 px-2 py-0.5 text-xs"
+                                            x-text="(file.type === 'application/pdf' ? '📄 ' : file.type.startsWith('image/') ? '🖼 ' : '📝 ') + file.name"></span>
+                                    </template>
+                                </div>
+                            </template>
                             <template x-if="message.tools.length">
                                 <ul class="mt-1 space-y-0.5 text-xs text-muted-foreground">
                                     <template x-for="tool in message.tools">
                                         <li class="font-mono" x-text="'⚙ ' + tool.name + (tool.target ? ' · ' + tool.target : '')"></li>
                                     </template>
                                 </ul>
+                            </template>
+                            <template x-if="message.plan && message.plan.length">
+                                <div class="mt-3 rounded-md bg-background p-3 text-xs text-foreground">
+                                    <p class="mb-2 font-semibold" x-text="'Plan · ' + message.plan.filter(s => s.status === 'done').length + '/' + message.plan.length + ' hechos'"></p>
+                                    <ul class="space-y-1">
+                                        <template x-for="(step, index) in message.plan" :key="index">
+                                            <li class="flex items-start gap-2">
+                                                <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px]"
+                                                    :class="step.status === 'done' ? 'bg-green-600 text-white' : step.status === 'in_progress' ? 'bg-primary text-primary-foreground animate-pulse' : 'border border-input'"
+                                                    x-text="step.status === 'done' ? '✓' : ''"></span>
+                                                <span :class="step.status === 'done' ? 'text-muted-foreground line-through' : step.status === 'in_progress' ? 'font-medium' : ''" x-text="step.step"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
                             </template>
                             <template x-if="message.undo">
                                 <div class="mt-2 border-t border-border/60 pt-2 text-xs">
@@ -737,8 +832,12 @@
                         </div>
                     </div>
                 </template>
-                <div x-show="sending" class="flex justify-start">
-                    <div class="rounded-lg bg-muted px-4 py-2.5 text-sm text-muted-foreground">Pensando y trabajando en los archivos…</div>
+                <div x-show="sending || running" class="flex justify-start">
+                    <div class="flex items-center gap-3 rounded-lg bg-muted px-4 py-2.5 text-sm text-muted-foreground">
+                        <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-primary"></span>
+                        <span x-text="progress()"></span>
+                        <button type="button" x-show="running" @click="stop()" class="rounded-md border border-input bg-background px-2 py-0.5 text-xs text-foreground hover:bg-accent">Detener</button>
+                    </div>
                 </div>
             </div>
             <p x-show="error" x-text="error" class="px-5 pb-2 text-sm text-red-600"></p>
@@ -750,7 +849,21 @@
                         x-text="'@' + module.name + (module.editable ? '' : ' · ' + module.source)"></span>
                 </template>
             </div>
+            <div x-show="files.length" x-cloak class="flex flex-wrap gap-1.5 border-t px-3 pt-2">
+                <template x-for="(file, index) in files" :key="index">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+                        <span x-text="file.name"></span>
+                        <button type="button" @click="files.splice(index, 1)" class="text-muted-foreground hover:text-foreground" aria-label="Quitar">×</button>
+                    </span>
+                </template>
+            </div>
             <form @submit.prevent="send()" class="relative flex gap-2 border-t p-3">
+                <input type="file" x-ref="picker" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md,.csv,.xml,.py,.json,.js,.html,.css,.po,.log"
+                    @change="addFiles($event.target.files); $event.target.value = ''">
+                <button type="button" @click="$refs.picker.click()" title="Adjuntar PDF, imágenes o archivos de texto" aria-label="Adjuntar archivos"
+                    class="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 hover:bg-accent">
+                    <i data-lucide="paperclip" class="h-4 w-4"></i>
+                </button>
                 <!-- @mention suggestions -->
                 <ul x-show="suggestions.length" x-cloak
                     class="absolute bottom-full left-3 z-20 mb-1 max-h-56 w-80 overflow-y-auto rounded-md border bg-card text-sm shadow-lg">
@@ -771,20 +884,60 @@
                     @keydown.escape="suggestions = []"
                     @keydown.enter="if (suggestions.length) { $event.preventDefault(); pick(suggestions[active]); } else if (!$event.shiftKey) { $event.preventDefault(); send(); }"
                     class="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm"></textarea>
-                <button type="submit" :disabled="sending || !draft.trim()" aria-label="Enviar"
+                <button type="submit" :disabled="sending || running || (!draft.trim() && !files.length)" aria-label="Enviar"
                     class="inline-flex items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                     <i data-lucide="send" class="h-4 w-4"></i>
                 </button>
             </form>
         </div>
-        <p class="text-xs text-muted-foreground">La instalación de módulos se hace en segundo plano: sigue su estado en «Tareas recientes». Haz un backup antes de cambios grandes.</p>
+        {% if object.odoo_version != '8.0' %}
+        <p class="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <i data-lucide="message-square-text" class="mt-0.5 h-3.5 w-3.5 shrink-0"></i>
+            <span>También desde Odoo: un administrador escribe <code class="font-mono">/ia …</code> en el chatter de cualquier registro (p. ej. «/ia añade una columna Obra a esta lista») y la respuesta llega a ese mismo chatter. El módulo <code class="font-mono">community_sh_ai</code> se instala solo al desplegar.</span>
+        </p>
+        {% endif %}
+        <p class="text-xs text-muted-foreground">Puedes adjuntar PDF con capturas o especificaciones: en peticiones largas la IA arma un plan y lo va completando paso a paso (puedes cerrar la página, sigue trabajando). La instalación de módulos aparece en «Tareas recientes». Haz un backup antes de cambios grandes.</p>
     </div>
     <script>
         function aiChat() {
             const csrf = () => document.querySelector('[name=csrfmiddlewaretoken]').value;
             return {
-                messages: [], draft: '', sending: false, loading: true, error: '',
-                modules: [], suggestions: [], active: 0,
+                messages: [], draft: '', sending: false, running: false, loading: true, error: '',
+                modules: [], suggestions: [], active: 0, files: [], dragging: false, timer: null,
+                addFiles(list) {
+                    for (const file of list) {
+                        if (this.files.length >= 5) { this.error = 'Adjunta como máximo 5 archivos'; break; }
+                        if (file.size > 20 * 1024 * 1024) { this.error = file.name + ' supera los 20 MB'; continue; }
+                        this.files.push(file);
+                    }
+                },
+                progress() {
+                    if (this.sending) return 'Enviando…';
+                    const turn = [...this.messages].reverse().find(m => m.role === 'user');
+                    const plan = (turn && turn.plan) || [];
+                    if (!plan.length) return 'Pensando y trabajando en los archivos…';
+                    const current = plan.find(s => s.status === 'in_progress');
+                    const done = plan.filter(s => s.status === 'done').length;
+                    return 'Paso ' + Math.min(done + 1, plan.length) + ' de ' + plan.length + (current ? ': ' + current.step : '');
+                },
+                apply(data) {
+                    const before = this.messages.length;
+                    this.messages = data.messages || [];
+                    this.running = !!data.running;
+                    if (this.messages.length !== before) this.scroll();
+                    clearTimeout(this.timer);
+                    if (this.running) this.timer = setTimeout(() => this.poll(), 2000);
+                },
+                async poll() {
+                    try {
+                        this.apply(await (await fetch("{% url 'instance-ai-chat' object.pk %}")).json());
+                    } catch (e) {
+                        this.timer = setTimeout(() => this.poll(), 5000);
+                    }
+                },
+                async stop() {
+                    await fetch("{% url 'instance-ai-stop' object.pk %}", { method: 'POST', headers: { 'X-CSRFToken': csrf() } });
+                },
                 tagged() {
                     const names = new Set([...this.draft.matchAll(/@([A-Za-z0-9_]+)/g)].map(m => m[1]));
                     return this.modules.filter(m => names.has(m.name));
@@ -811,26 +964,33 @@
                 async load() {
                     fetch("{% url 'instance-ai-modules' object.pk %}").then(r => r.json()).then(d => { this.modules = d.modules || []; });
                     const data = await (await fetch("{% url 'instance-ai-chat' object.pk %}")).json();
-                    this.messages = data.messages || []; this.error = data.error || ''; this.loading = false; this.scroll();
+                    this.error = data.error || ''; this.loading = false; this.apply(data); this.scroll();
                 },
                 async send() {
                     const text = this.draft.trim();
-                    if (!text || this.sending) return;
-                    const modules = this.tagged().map(m => m.name);
-                    this.messages.push({ id: 'local-' + Date.now(), role: 'user', content: text, tools: [] });
-                    this.draft = ''; this.sending = true; this.error = ''; this.scroll();
+                    if ((!text && !this.files.length) || this.sending || this.running) return;
+                    const body = new FormData();
+                    body.append('message', text);
+                    body.append('modules', JSON.stringify(this.tagged().map(m => m.name)));
+                    this.files.forEach(file => body.append('files', file));
+                    this.messages.push({ id: 'local-' + Date.now(), role: 'user', content: text, tools: [],
+                        attachments: this.files.map(f => ({ name: f.name, type: f.type || '' })) });
+                    const draft = this.draft, files = this.files;
+                    this.draft = ''; this.files = []; this.sending = true; this.error = ''; this.scroll();
                     try {
                         const response = await fetch("{% url 'instance-ai-chat' object.pk %}", {
-                            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
-                            body: JSON.stringify({ message: text, modules }),
+                            method: 'POST', headers: { 'X-CSRFToken': csrf() }, body,
                         });
                         const data = await response.json();
                         if (!response.ok) throw new Error(data.error || response.status);
-                        this.messages = this.messages.filter(m => !String(m.id).startsWith('local-')).concat(data.messages);
+                        this.sending = false;
+                        this.apply(data);
                     } catch (e) {
                         this.error = String(e.message || e);
+                        this.messages = this.messages.filter(m => !String(m.id).startsWith('local-'));
+                        this.draft = draft; this.files = files; this.sending = false;
                     }
-                    this.sending = false; this.scroll();
+                    this.scroll();
                 },
                 async revert(undo) {
                     if (!confirm('Se restaurarán los archivos como estaban antes de esta petición (y se deshacen también las posteriores). ¿Continuar?')) return;
@@ -850,7 +1010,9 @@
                 },
                 async reset() {
                     if (!confirm('¿Borrar la conversación?')) return;
-                    await fetch("{% url 'instance-ai-reset' object.pk %}", { method: 'POST', headers: { 'X-CSRFToken': csrf() } });
+                    const response = await fetch("{% url 'instance-ai-reset' object.pk %}", { method: 'POST', headers: { 'X-CSRFToken': csrf() } });
+                    const data = await response.json();
+                    if (!response.ok) { this.error = data.error || response.status; return; }
                     this.messages = [];
                 },
             };

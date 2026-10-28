@@ -41,10 +41,12 @@ def list_chat_models(api_key):
     return sorted(i for i in ids if not any(marker in i for marker in NON_CHAT_MARKERS))
 
 
-def chat(config, messages, tools=None):
+def chat(config, messages, tools=None, tool_choice=None):
     """One Chat Completions call. Returns the assistant message dict (content and/or tool_calls)."""
     payload = {'model': config.openai_model, 'messages': messages}
     if tools:
         payload['tools'] = tools
+    if tool_choice:
+        payload['tool_choice'] = tool_choice
     data = _request('POST', '/chat/completions', config.openai_api_key, json=payload, timeout=180)
     return data['choices'][0]['message']

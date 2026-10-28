@@ -83,7 +83,7 @@ services:
   worker:
     image: community-sh-app
     restart: always
-    command: python manage.py run_worker
+    command: python manage.py run_worker --exclude ai_chat --exclude odoo_migration
     environment:
       - DATABASE_URL=${DATABASE_URL:-}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
@@ -104,6 +104,28 @@ services:
       app:
         condition: service_started
     # web: git clones need internet; backend: panel database
+    networks:
+      - web
+      - backend
+
+  # Runs the long jobs that don't touch Docker (AI assistant requests, migrations from another
+  # Odoo) without holding up deploys and backups. Edits the instances' addons folders.
+  ai-worker:
+    image: community-sh-app
+    restart: always
+    command: python manage.py run_worker --only ai_chat --only odoo_migration
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      - DEBUG=${DEBUG:-False}
+      - HOST_WORKDIR=${HOST_WORKDIR}
+      - RUN_MIGRATIONS=false
+    volumes:
+      - ./:/app
+      - ./instances:/app/instances
+    depends_on:
+      app:
+        condition: service_started
     networks:
       - web
       - backend

@@ -21,12 +21,25 @@ def host_path(path):
     return path
 
 
+def odoo_major(odoo_version):
+    return int(float(odoo_version))
+
+
 def odoo_config_target(odoo_version):
-    # Every official image (10.0 included) reads ODOO_RC=/etc/odoo/odoo.conf
+    # Odoo 8-9 images read OPENERP_SERVER, every later one (10.0 included) ODOO_RC
+    if odoo_major(odoo_version) <= 9:
+        return '/etc/odoo/openerp-server.conf'
     return '/etc/odoo/odoo.conf'
 
 
+def odoo_command(odoo_version):
+    """The server binary inside the image: Odoo 8-9 still ship it as openerp-server."""
+    return 'openerp-server' if odoo_major(odoo_version) <= 9 else 'odoo'
+
+
 PANEL_ADDONS_DIR = '/mnt/community-sh-addons'
+# How Odoo containers reach the panel (they share the community-sh_web network)
+PANEL_INTERNAL_URL = 'http://app:8000'
 
 
 def admin_login_secret(instance):
@@ -67,7 +80,9 @@ def read_backup_metadata(path):
 
 def postgres_image(odoo_version):
     """PostgreSQL release each Odoo version supports (Odoo 20 needs 16+, Odoo 10-11 predate 12)."""
-    major = int(float(odoo_version))
+    major = odoo_major(odoo_version)
+    if major <= 9:
+        return 'postgres:9.6'
     if major <= 11:
         return 'postgres:10'
     if major <= 13:
@@ -113,10 +128,14 @@ class DockerService:
         addons_paths = ['/mnt/extra-addons'] + [f'/mnt/repos/{slug}' for slug in extra_repos]
         # community_sh_login: one-time admin links from the panel (loaded without installing it)
         addons_paths.append(PANEL_ADDONS_DIR)
-        # Odoo 10 also loads web_kanban server-wide by default
-        server_wide = 'base,web,web_kanban' if int(float(instance.odoo_version)) == 10 else 'base,web'
-        panel_login = (f"server_wide_modules = {server_wide},community_sh_login\n"
-                       f"community_sh_secret = {admin_login_secret(instance)}\n")
+        # Odoo 8-10 also load web_kanban server-wide by default
+        server_wide = 'base,web,web_kanban' if odoo_major(instance.odoo_version) <= 10 else 'base,web'
+        # community_sh_ai: "/ia ..." in a chatter asks the panel's AI assistant (controllers load server-wide,
+        # the chatter hook once the module is installed in the database)
+        panel_login = (f"server_wide_modules = {server_wide},community_sh_login,community_sh_ai\n"
+                       f"community_sh_secret = {admin_login_secret(instance)}\n"
+                       f"community_sh_panel_url = {PANEL_INTERNAL_URL}\n"
+                       f"community_sh_instance = {instance.name}\n")
         content = (
             "[options]\n"
             f"addons_path = {','.join(addons_paths)}\n"
@@ -139,9 +158,10 @@ class DockerService:
             f.write(content)
         os.chmod(config_path, 0o644)
         # Earlier builds wrote openerp-server.conf for Odoo 10, which the image never reads
-        stale = os.path.join(config_dir, 'openerp-server.conf')
-        if os.path.exists(stale):
-            os.remove(stale)
+        for name in ('odoo.conf', 'openerp-server.conf'):
+            stale = os.path.join(config_dir, name)
+            if name != os.path.basename(config_path) and os.path.exists(stale):
+                os.remove(stale)
         # Older deployments mounted <workspace>/odoo.conf as a file
         legacy = os.path.join(workspace_path, 'odoo.conf')
         if os.path.isfile(legacy):
@@ -248,6 +268,103 @@ class DockerService:
             raise Exception(f"No se pudo descargar la imagen {image}: {native_error}; amd64: {getattr(e, 'explanation', None) or e}")
         return 'linux/amd64'
 
+    PORT_RANGE = (20000, 40000)
+
+    def _run_on_fixed_port(self, name, preferred, run):
+        """
+        Start a container publishing 8069 on an explicit host port: a port Docker picks itself
+        changes on every restart (of the container or the server) and breaks the stored links.
+        Keeps the instance's port when it's still free. Returns (container, port).
+        """
+        import random
+        from ..container_models import Container
+        from ..models import Instance
+        used = set(Instance.objects.exclude(port=None).values_list('port', flat=True))
+        used |= set(Container.objects.exclude(port=None).values_list('port', flat=True))
+        candidates = [preferred] if preferred else []
+        candidates += random.sample([p for p in range(*self.PORT_RANGE) if p not in used], 15)
+        for port in candidates:
+            try:
+                return run(port), port
+            except docker.errors.APIError as e:
+                message = str(e).lower()
+                if not any(text in message for text in ('allocated', 'address already in use', 'ports are not available')):
+                    raise
+                print(f"Port {port} is busy, trying another one")
+                stale = self._get_container(name)
+                if stale is not None:
+                    stale.remove(force=True)
+        raise Exception('No se encontró un puerto libre para publicar Odoo')
+
+    AI_MODULE = 'community_sh_ai'
+
+    def module_known(self, db_container, database, module):
+        output = db_container.exec_run(['psql', '-U', 'odoo', '-d', database, '-Atc',
+                                        f"SELECT count(*) FROM ir_module_module WHERE name = '{module}'"],
+                                       environment={"PGPASSWORD": "odoo"}).output.decode().strip()
+        return output == '1'
+
+    def refresh_module_list(self, instance, odoo_container, database):
+        """Rescan the addons folders (Apps → Update Apps List) through odoo shell (Odoo 9+)."""
+        script = "env['ir.module.module'].update_list()\nenv.cr.commit()\n"
+        return odoo_container.exec_run(
+            ['sh', '-c', f'printf "%s" "$SCRIPT" | {odoo_command(instance.odoo_version)} shell -d {database}'],
+            environment={'SCRIPT': script})
+
+    def _install_ai_module(self, instance, odoo_container, db_container_name):
+        """
+        "/ia ..." in Odoo chatters: community_sh_ai installs itself (auto_install) in new databases
+        with mail; add it to existing ones. Only when the AI assistant is configured. Odoo 8 has no
+        shell (and its old mail API isn't hooked), so it's skipped there.
+        """
+        from .ai import get_ai_config
+        if odoo_major(instance.odoo_version) < 9 or get_ai_config() is None:
+            return
+        db_container = self._get_container(db_container_name)
+        if db_container is None:
+            return
+        try:
+            self._wait_for_postgres(db_container)
+            for database in self._list_user_databases(db_container):
+                states = db_container.exec_run(
+                    ['psql', '-U', 'odoo', '-d', database, '-Atc',
+                     f"SELECT name, state FROM ir_module_module WHERE name IN ('mail', '{self.AI_MODULE}')"],
+                    environment={"PGPASSWORD": "odoo"}).output.decode()
+                states = dict(line.split('|', 1) for line in states.splitlines() if '|' in line)
+                if states.get('mail') != 'installed' or states.get(self.AI_MODULE) == 'installed':
+                    continue
+                script = (f"env['ir.module.module'].update_list()\n"
+                          f"env['ir.module.module'].search([('name', '=', '{self.AI_MODULE}')]).button_immediate_install()\n"
+                          "env.cr.commit()\n")
+                result = odoo_container.exec_run(
+                    ['sh', '-c', f'printf "%s" "$SCRIPT" | {odoo_command(instance.odoo_version)} shell -d {database}'],
+                    environment={'SCRIPT': script})
+                if result.exit_code == 0:
+                    self.deploy_notes.append(f'Asistente de IA en Odoo activado en {database}: escribe «/ia …» en cualquier chatter')
+                else:
+                    print(f"{self.AI_MODULE} install in {database} failed: {result.output.decode(errors='replace')[-800:]}")
+        except Exception as e:
+            print(f"Warning: could not install {self.AI_MODULE}: {e}")
+
+    def sync_published_ports(self):
+        """
+        Store the host port each running Odoo container actually publishes. Containers
+        deployed before fixed ports got a new random one on every restart. Returns the
+        names of the instances that changed.
+        """
+        from ..models import Instance
+        published = {}
+        for container in self.client.containers.list(filters={'name': 'odoo_'}):
+            bindings = (container.attrs['NetworkSettings'].get('Ports') or {}).get('8069/tcp')
+            if bindings:
+                published[container.name[len('odoo_'):]] = int(bindings[0]['HostPort'])
+        changed = []
+        for instance in Instance.objects.filter(name__in=published):
+            if instance.port != published[instance.name]:
+                Instance.objects.filter(pk=instance.pk).update(port=published[instance.name])
+                changed.append(instance.name)
+        return changed
+
     def _published_port(self, container, container_port, timeout=10):
         """Host port Docker assigned to container_port, or None if it never shows up."""
         import time
@@ -273,11 +390,13 @@ class DockerService:
         databases = [db.strip() for db in result.output.decode('utf-8').split('\n') if db.strip()]
         return [db for db in databases if db not in ('postgres', 'template0', 'template1')]
 
-    def _wait_for_postgres(self, db_container, timeout=60):
+    def _wait_for_postgres(self, db_container, timeout=180):
         import time
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            if db_container.exec_run("pg_isready -U odoo").exit_code == 0:
+            # Over TCP: on first start the image runs a socket-only server to initialise the
+            # cluster, then restarts it; that one must not count as ready
+            if db_container.exec_run("pg_isready -U odoo -h 127.0.0.1").exit_code == 0:
                 return
             time.sleep(1)
         raise Exception(f"Database container {db_container.name} not ready after {timeout}s")
@@ -362,7 +481,7 @@ class DockerService:
             run_options = {'platform': platform} if platform else {}
             
             # Create the container
-            odoo_container = self.client.containers.run(
+            odoo_container, host_port = self._run_on_fixed_port(odoo_container_name, instance.port, lambda port: self.client.containers.run(
                 odoo_image,
                 **run_options,
                 name=odoo_container_name,
@@ -373,7 +492,7 @@ class DockerService:
                 },
                 network=start_network,
                 volumes=volumes,
-                ports={'8069/tcp': None}, # Let Docker assign a random host port
+                ports={'8069/tcp': port},
                 detach=True,
                 labels={
                     "traefik.enable": "true",
@@ -383,7 +502,7 @@ class DockerService:
                     "traefik.http.routers.odoo_" + instance.name + ".priority": "100",
                     "traefik.http.services.odoo_" + instance.name + ".loadbalancer.server.port": "8069",
                 }
-            )
+            ))
             
             # Private network shared with the instance's database
             if extra_network:
@@ -399,7 +518,7 @@ class DockerService:
                     
                     for database in databases:
                         result = odoo_container.exec_run(
-                            f"odoo -u all -d {database} --stop-after-init",
+                            f"{odoo_command(instance.odoo_version)} -u all -d {database} --stop-after-init",
                             detach=False
                         )
                         print(f"Module update for {database} (exit {result.exit_code}): {result.output.decode('utf-8')[-2000:]}")
@@ -410,9 +529,8 @@ class DockerService:
                 except Exception as e:
                     print(f"Warning: Error during module update: {str(e)}")
 
+            self._install_ai_module(instance, odoo_container, db_container_name)
 
-            # Get the assigned port; Docker may publish it shortly after start
-            host_port = self._published_port(odoo_container, '8069/tcp')
             if host_port:
                 instance.port = host_port
             
@@ -687,6 +805,8 @@ class DockerService:
                 
                 # Note: psql reports harmless errors (e.g. role "odoo" already exists)
                 print(f"Database restore completed. Exit code: {restore_result.exit_code}")
+                if restore_result.exit_code == 2:  # could not connect: nothing was restored
+                    raise Exception(f"No se pudo restaurar la base de datos: {restore_result.output.decode('utf-8', errors='replace')[-300:]}")
                 if restore_result.output:
                     print(f"Restore output: {restore_result.output.decode('utf-8')[:500]}")
                     

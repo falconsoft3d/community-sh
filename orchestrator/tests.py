@@ -305,7 +305,9 @@ class DockerServiceTests(TestCase):
         self.assertEqual(db_call.args[0], 'postgres:15')  # default instance version is 17.0
         self.instance.refresh_from_db()
         self.assertEqual(self.instance.data_volume, 'odoo_data_acme')
-        self.assertEqual(self.instance.port, 32768)
+        # Published on an explicit port (kept across restarts), stored on the instance
+        self.assertEqual(odoo_call.kwargs['ports'], {'8069/tcp': self.instance.port})
+        self.assertTrue(20000 <= self.instance.port < 40000)
 
     def test_rename_moves_resources_and_keeps_data(self):
         import os
@@ -763,7 +765,7 @@ class LanguageTests(TestCase):
 class PostgresVersionTests(TestCase):
     def test_each_odoo_version_gets_a_supported_postgres(self):
         from .services.docker_service import postgres_image
-        expected = {'10.0': 'postgres:10', '11.0': 'postgres:10', '12.0': 'postgres:12', '13.0': 'postgres:12',
+        expected = {'8.0': 'postgres:9.6', '9.0': 'postgres:9.6', '10.0': 'postgres:10', '11.0': 'postgres:10', '12.0': 'postgres:12', '13.0': 'postgres:12',
                     '14.0': 'postgres:13', '15.0': 'postgres:13', '16.0': 'postgres:15', '17.0': 'postgres:15',
                     '18.0': 'postgres:16', '19.0': 'postgres:16', '20.0': 'postgres:16'}
         choices = [v for v, _ in Instance._meta.get_field('odoo_version').choices]
@@ -824,8 +826,30 @@ class AIAssistantTests(BaseTestCase):
         self.assertIn('Escrito', result)
         self.assertEqual(run_tool(self.alice_instance, self.alice, 'read_file', {'path': 'my_mod/__init__.py'}), 'x = 1\n')
         self.assertIn('my_mod/__init__.py', run_tool(self.alice_instance, self.alice, 'list_files', {}))
-        for evil in ('../../etc/passwd', '/etc/passwd', 'my_mod/../../../x'):
+        # The addons folder itself as a prefix is the same path
+        run_tool(self.alice_instance, self.alice, 'write_file', {'path': 'addons/other/__init__.py', 'content': ''})
+        run_tool(self.alice_instance, self.alice, 'write_file', {'path': '/mnt/extra-addons/third/__init__.py', 'content': ''})
+        listed = run_tool(self.alice_instance, self.alice, 'list_files', {})
+        self.assertIn('other/__init__.py', listed)
+        self.assertIn('third/__init__.py', listed)
+        self.assertNotIn('addons/other', listed)
+        for evil in ('../../etc/passwd', '/etc/passwd', 'my_mod/../../../x', 'addons/../../x'):
             self.assertIn('dentro de la carpeta de addons', run_tool(self.alice_instance, self.alice, 'write_file', {'path': evil, 'content': 'x'}))
+
+    def test_write_file_rejects_what_odoo_would_skip(self):
+        from .services.ai_assistant import run_tool
+        write = lambda path, content: run_tool(self.alice_instance, self.alice, 'write_file', {'path': path, 'content': content})
+        self.assertIn('True/False', write('m/__manifest__.py', '{"name": "M", "installable": true}'))
+        self.assertIn('sintaxis', write('m/models.py', 'def broken(:\n'))
+        self.assertIn('XML mal formado', write('m/views.xml', '<odoo><record></odoo>'))
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, 'instances', 'alice-odoo', 'addons', 'm', '__manifest__.py')))
+        self.assertIn('Escrito', write('m/__manifest__.py', "{'name': 'M', 'installable': True}"))
+
+    def test_install_errors_are_summarised_by_whole_lines(self):
+        from .services.ai_assistant import install_error_summary
+        log = '\n'.join(['INFO loading'] * 50 + ['  File "/odoo/registry.py", line 86, in new', 'odoo.exceptions.UserError: depends on contacts'])
+        summary = install_error_summary(log, limit=60)
+        self.assertEqual(summary, 'odoo.exceptions.UserError: depends on contacts')
 
     def test_install_tool_queues_a_task(self):
         from .services.ai_assistant import run_tool
@@ -846,7 +870,13 @@ class AIAssistantTests(BaseTestCase):
         with mock.patch('orchestrator.services.ai_assistant.chat', side_effect=replies) as chat:
             response = self.client.post(reverse('instance-ai-chat', args=[self.alice_instance.pk]),
                                         json.dumps({'message': 'crea hello'}), content_type='application/json')
-        data = response.json()
+            # Queued for the AI worker; a second request waits for it
+            self.assertTrue(response.json()['running'])
+            self.assertEqual(self.client.post(reverse('instance-ai-chat', args=[self.alice_instance.pk]),
+                                              json.dumps({'message': 'otra'}), content_type='application/json').status_code, 409)
+            self.run_ai_worker()
+        data = self.client.get(reverse('instance-ai-chat', args=[self.alice_instance.pk])).json()
+        self.assertFalse(data['running'])
         self.assertEqual([m['role'] for m in data['messages']], ['user', 'assistant', 'assistant'])
         self.assertEqual(data['messages'][1]['tools'], [{'name': 'write_file', 'target': 'hello/__manifest__.py'}])
         self.assertEqual(data['messages'][2]['content'], 'Listo: módulo hello creado.')
@@ -854,6 +884,80 @@ class AIAssistantTests(BaseTestCase):
         history = chat.call_args_list[1].args[1]
         self.assertTrue(any(m['role'] == 'tool' and m['tool_call_id'] == 'c1' for m in history))
         self.assertTrue(os.path.exists(os.path.join(self.tmp, 'instances', 'alice-odoo', 'addons', 'hello', '__manifest__.py')))
+
+    def run_ai_worker(self):
+        from io import StringIO
+        from django.core.management import call_command
+        call_command('run_worker', once=True, only=['ai_chat'], stdout=StringIO())
+
+    def test_pdf_attachment_plan_and_stop(self):
+        import json
+        from django.core.cache import cache
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .services.ai_assistant import stop_key
+        from .task_models import Task
+        replies = [
+            {'content': None, 'tool_calls': [{'id': 'p1', 'type': 'function', 'function': {'name': 'update_plan', 'arguments': json.dumps(
+                {'steps': [{'step': 'Leer el PDF', 'status': 'done'}, {'step': 'Crear el módulo', 'status': 'in_progress'}]})}}]},
+            {'content': 'Hecho.'},
+        ]
+        self.client.force_login(self.alice)
+        url = reverse('instance-ai-chat', args=[self.alice_instance.pk])
+        pdf = SimpleUploadedFile('spec.pdf', b'%PDF-1.4 fake', content_type='application/pdf')
+        self.assertEqual(self.client.post(url, {'message': 'x', 'files': [SimpleUploadedFile('x.exe', b'MZ')]}).status_code, 400)
+        self.client.post(url, {'message': 'Implementa lo del PDF', 'modules': '[]', 'files': [pdf]})
+        with mock.patch('orchestrator.services.ai_assistant.chat', side_effect=replies) as chat:
+            self.run_ai_worker()
+        # The PDF went to the model as a file part
+        user_content = chat.call_args_list[0].args[1][1]['content']
+        self.assertEqual(user_content[1]['type'], 'file')
+        self.assertTrue(user_content[1]['file']['file_data'].startswith('data:application/pdf;base64,'))
+        user = self.client.get(url).json()['messages'][0]
+        self.assertEqual(user['attachments'], [{'name': 'spec.pdf', 'size': 13, 'type': 'application/pdf'}])
+        self.assertEqual([s['status'] for s in user['plan']], ['done', 'in_progress'])
+
+        # Stop: the worker ends the turn before calling the model again
+        self.client.post(url, json.dumps({'message': 'sigue'}), content_type='application/json')
+        task = Task.objects.filter(kind='ai_chat').order_by('-id').first()
+        task.status = Task.Status.RUNNING
+        task.save()
+        self.assertEqual(self.client.post(reverse('instance-ai-stop', args=[self.alice_instance.pk])).status_code, 200)
+        self.assertTrue(cache.get(stop_key(task.params['turn'])))
+        task.status = Task.Status.PENDING
+        task.save()
+        with mock.patch('orchestrator.services.ai_assistant.chat') as chat:
+            self.run_ai_worker()
+        chat.assert_not_called()
+        self.assertIn('Detenido', self.client.get(url).json()['messages'][-1]['content'])
+
+    def test_multi_step_requests_start_with_a_plan_and_close_it(self):
+        import json
+        plan = lambda status: {'content': None, 'tool_calls': [{'id': f'p-{status}', 'type': 'function', 'function': {
+            'name': 'update_plan', 'arguments': json.dumps({'steps': [{'step': 'Crear', 'status': status}, {'step': 'Instalar', 'status': status}]})}}]}
+        replies = [plan('pending'), {'content': 'Listo'}, plan('done')]
+        self.client.force_login(self.alice)
+        url = reverse('instance-ai-chat', args=[self.alice_instance.pk])
+        self.client.post(url, json.dumps({'message': 'Tareas:\n1. crear\n2. campo\n3. instalar'}), content_type='application/json')
+        with mock.patch('orchestrator.services.ai_assistant.chat', side_effect=replies) as chat:
+            self.run_ai_worker()
+        # First call forced to plan; the answer with open steps triggered one forced plan update
+        self.assertEqual(chat.call_args_list[0].kwargs['tool_choice']['function']['name'], 'update_plan')
+        self.assertIsNone(chat.call_args_list[1].kwargs['tool_choice'])
+        self.assertEqual(chat.call_args_list[2].kwargs['tool_choice']['function']['name'], 'update_plan')
+        messages = self.client.get(url).json()['messages']
+        self.assertEqual([s['status'] for s in messages[0]['plan']], ['done', 'done'])
+        # Plan-only assistant messages are not shown as chat bubbles
+        self.assertEqual([m['content'] for m in messages[1:]], ['Listo'])
+
+    def test_unanswered_tool_calls_are_dropped_from_history(self):
+        from .services.ai_assistant import clean_history
+        history = [
+            {'role': 'user', 'content': 'a'},
+            {'role': 'assistant', 'content': '', 'tool_calls': [{'id': 'lost', 'function': {'name': 'x'}}]},
+            {'role': 'assistant', 'content': 'ok', 'tool_calls': [{'id': 't1', 'function': {'name': 'x'}}]},
+            {'role': 'tool', 'tool_call_id': 't1', 'content': 'r'},
+        ]
+        self.assertEqual([m['role'] for m in clean_history(history)], ['user', 'assistant', 'tool'])
 
     def test_chat_needs_manage_permission_and_configuration(self):
         self.client.force_login(self.bob)
@@ -1015,6 +1119,7 @@ class AIModuleTagTests(AIAssistantTests):
             response = self.client.post(reverse('instance-ai-chat', args=[self.alice_instance.pk]),
                                         json.dumps({'message': 'añade un campo a @acme_sales', 'modules': ['acme_sales']}),
                                         content_type='application/json')
+            self.run_ai_worker()
         sent = [m for m in chat.call_args.args[1] if m['role'] == 'user'][-1]['content']
         self.assertIn('[Módulos etiquetados]', sent)
         self.assertIn('@acme_sales — «ACME Sales»', sent)
@@ -1027,9 +1132,11 @@ class AIUndoTests(AIAssistantTests):
     def chat(self, text, replies):
         import json
         self.client.force_login(self.alice)
+        url = reverse('instance-ai-chat', args=[self.alice_instance.pk])
         with mock.patch('orchestrator.services.ai_assistant.chat', side_effect=replies):
-            return self.client.post(reverse('instance-ai-chat', args=[self.alice_instance.pk]),
-                                    json.dumps({'message': text}), content_type='application/json').json()
+            self.client.post(url, json.dumps({'message': text}), content_type='application/json')
+            self.run_ai_worker()
+        return self.client.get(url).json()
 
     def write_call(self, call_id, path, content):
         import json
@@ -1416,3 +1523,139 @@ class DomainTests(BaseTestCase):
         panel = yaml.safe_load(open(os.path.join(traefik, 'dynamic.yml')))['http']['routers']
         self.assertEqual(panel['app-domain-0-secure']['rule'], 'Host(`hosting.example.com`)')
         self.assertTrue(os.path.exists(os.path.join(traefik, 'instance-bob-odoo.yml')))
+
+
+class FixedPortTests(BaseTestCase):
+    def service(self):
+        from .services.docker_service import DockerService
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            return DockerService()
+
+    def test_keeps_the_instance_port_and_skips_busy_ones(self):
+        import docker
+        service = self.service()
+        service._get_container = mock.Mock(return_value=None)
+        run = mock.Mock(side_effect=lambda port: 'container')
+        self.assertEqual(service._run_on_fixed_port('odoo_x', 23456, run), ('container', 23456))
+
+        busy = docker.errors.APIError('Bind for 0.0.0.0:23456 failed: port is already allocated')
+        stale = mock.Mock()
+        service._get_container = mock.Mock(return_value=stale)
+        run = mock.Mock(side_effect=[busy, 'container'])
+        container, port = service._run_on_fixed_port('odoo_x', 23456, run)
+        self.assertEqual(container, 'container')
+        self.assertNotEqual(port, 23456)
+        self.assertTrue(20000 <= port < 40000)
+        stale.remove.assert_called_once_with(force=True)
+
+    def test_other_errors_are_not_retried(self):
+        import docker
+        service = self.service()
+        with self.assertRaises(docker.errors.APIError):
+            service._run_on_fixed_port('odoo_x', None, mock.Mock(side_effect=docker.errors.APIError('no such image')))
+
+    def test_sync_published_ports(self):
+        service = self.service()
+        self.alice_instance.port = 30001
+        self.alice_instance.save()
+        container = mock.Mock(attrs={'NetworkSettings': {'Ports': {'8069/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '30555'}]}}})
+        container.name = 'odoo_alice-odoo'
+        service.client.containers.list.return_value = [container]
+        self.assertEqual(service.sync_published_ports(), ['alice-odoo'])
+        self.alice_instance.refresh_from_db()
+        self.assertEqual(self.alice_instance.port, 30555)
+        self.assertEqual(service.sync_published_ports(), [])
+
+
+class Odoo8And9Tests(TestCase):
+    def test_openerp_config_command_and_manifest(self):
+        from .services.docker_service import odoo_command, odoo_config_target
+        self.assertEqual((odoo_config_target('8.0'), odoo_command('9.0')), ('/etc/odoo/openerp-server.conf', 'openerp-server'))
+        self.assertEqual((odoo_config_target('10.0'), odoo_command('10.0')), ('/etc/odoo/odoo.conf', 'odoo'))
+        from .services.ai_assistant import system_prompt
+        config = GitHubConfig(ai_instructions='')
+        self.assertIn('__openerp__.py', system_prompt(Instance(name='old', odoo_version='9.0'), config))
+        self.assertIn('__manifest__.py', system_prompt(Instance(name='new', odoo_version='16.0'), config))
+
+
+class OdooChatterAITests(AIAssistantTests):
+    def signed_post(self, data, tamper=False):
+        import hashlib, hmac, json, time
+        from .services.docker_service import admin_login_secret
+        body = json.dumps(data).encode()
+        timestamp = str(int(time.time()))
+        signature = hmac.new(admin_login_secret(self.alice_instance).encode(), timestamp.encode() + b'.' + body, hashlib.sha256).hexdigest()
+        return self.client.post(reverse('odoo-ai-request', args=[self.alice_instance.name]), body, content_type='application/json',
+                                HTTP_X_CSH_TIMESTAMP=timestamp, HTTP_X_CSH_SIGNATURE='0' * 64 if tamper else signature)
+
+    def test_chatter_request_runs_and_answers_in_odoo(self):
+        from .task_models import Task
+        request = {'db': 'acme', 'model': 'sale.order', 'res_id': 7, 'record': 'S00007', 'login': 'admin', 'text': 'añade una columna Obra'}
+        self.assertEqual(self.signed_post(request, tamper=True).status_code, 403)
+        response = self.signed_post(request)
+        self.assertEqual(response.status_code, 202)
+        task = Task.objects.get(kind='ai_chat')
+        self.assertEqual(task.params['odoo'], {'db': 'acme', 'model': 'sale.order', 'res_id': 7})
+        turn = self.alice_instance.ai_messages.get(pk=task.params['turn'])
+        self.assertIn('sale.order #7', turn.content)
+        self.assertEqual(turn.user, self.alice)  # the instance owner
+        # A second request while the first runs is turned away with a message
+        self.assertIn('trabajando', self.signed_post(request).json()['message'])
+
+        with mock.patch('orchestrator.services.ai_assistant.chat', return_value={'content': 'Columna añadida.'}), \
+                mock.patch('orchestrator.services.odoo_bridge.post_reply') as post_reply:
+            self.run_ai_worker()
+        post_reply.assert_called_once_with(self.alice_instance, 'acme', 'sale.order', 7, 'Columna añadida.')
+
+    def test_model_info_tool_formats_fields_and_views(self):
+        from .services.ai_assistant import run_tool
+        answer = {'fields': [{'name': 'partner_id', 'type': 'many2one', 'relation': 'res.partner', 'string': 'Cliente', 'required': True}],
+                  'views': [{'xml_id': 'sale.view_order_form', 'type': 'form', 'name': 'sale.order.form', 'priority': 16}]}
+        with mock.patch('orchestrator.services.odoo_bridge._post', return_value=answer) as post:
+            self.alice_instance.database_name = 'acme'
+            text = run_tool(self.alice_instance, self.alice, 'odoo_model_info', {'model': 'sale.order'})
+        self.assertEqual(post.call_args.args[1:], ('/community_sh/ai/introspect', {'db': 'acme', 'model': 'sale.order'}))
+        self.assertIn('form: sale.view_order_form', text)
+        self.assertIn('partner_id (many2one, res.partner) «Cliente» obligatorio', text)
+
+
+class OdooMigrationTests(BaseTestCase):
+    def post(self, instance, **extra):
+        data = {'source_url': 'erp.example.com', 'source_db': 'prod', 'source_login': 'admin', 'source_password': 's3cret',
+                'target_db': 'new', 'target_login': 'admin', 'target_password': 't4rget', 'steps': ['contacts', 'invoices']}
+        data.update(extra)
+        return self.client.post(reverse('instance-migrate', args=[instance.pk]), data)
+
+    def test_queues_with_passwords_only_in_the_cache(self):
+        import json
+        from django.core.cache import cache
+        from .task_models import Task
+        self.alice_instance.odoo_version = '18.0'
+        self.alice_instance.save()
+        self.client.force_login(self.alice)
+        self.post(self.alice_instance)
+        task = Task.objects.get(kind='odoo_migration')
+        self.assertEqual(task.params['steps'], ['contacts', 'invoices'])
+        self.assertNotIn('s3cret', json.dumps(task.params))
+        credentials = cache.get(task.params['credentials'])
+        self.assertEqual((credentials['source_url'], credentials['target_password']), ('https://erp.example.com', 't4rget'))
+        # One at a time per instance
+        self.post(self.alice_instance)
+        self.assertEqual(Task.objects.filter(kind='odoo_migration').count(), 1)
+
+    def test_needs_a_recent_target_and_manage_permission(self):
+        from .task_models import Task
+        self.alice_instance.odoo_version = '12.0'
+        self.alice_instance.save()
+        self.client.force_login(self.alice)
+        self.post(self.alice_instance)
+        self.assertFalse(Task.objects.filter(kind='odoo_migration').exists())
+        self.client.force_login(self.bob)
+        self.assertEqual(self.post(self.alice_instance).status_code, 404)
+
+    def test_worker_fails_cleanly_when_credentials_expired(self):
+        from .task_models import Task
+        from .tasks import enqueue, run_task
+        task = run_task(enqueue(Task.Kind.ODOO_MIGRATION, self.alice_instance, self.alice, credentials='gone', steps=['contacts']))
+        self.assertEqual(task.status, 'failed')
+        self.assertIn('caducaron', task.result)

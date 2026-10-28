@@ -15,9 +15,14 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--once', action='store_true', help='Process pending tasks and exit')
         parser.add_argument('--poll-interval', type=float, default=2.0, help='Seconds between queue checks')
+        parser.add_argument('--only', action='append', default=[], metavar='KIND',
+                            help='Run only tasks of this kind (repeatable); such a worker skips the schedules')
+        parser.add_argument('--exclude', action='append', default=[], metavar='KIND',
+                            help='Leave tasks of this kind to another worker (repeatable)')
 
     def handle(self, *args, **options):
-        recovered = recover_interrupted_tasks()
+        only, exclude = options['only'], options['exclude']
+        recovered = recover_interrupted_tasks(only, exclude)
         if recovered:
             self.stdout.write(self.style.WARNING(f'Marked {recovered} interrupted task(s) as failed'))
 
@@ -25,7 +30,7 @@ class Command(BaseCommand):
         while True:
             close_old_connections()
 
-            if not options['once'] and (
+            if not options['once'] and not only and (
                 last_schedule_check is None or time.monotonic() - last_schedule_check >= SCHEDULE_CHECK_SECONDS
             ):
                 last_schedule_check = time.monotonic()
@@ -38,8 +43,15 @@ class Command(BaseCommand):
                     record_sample()
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Metrics sample failed: {e}'))
+                try:
+                    from orchestrator.services.docker_service import DockerService
+                    changed = DockerService().sync_published_ports()
+                    if changed:
+                        self.stdout.write(f"Updated the published port of: {', '.join(changed)}")
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Port sync failed: {e}'))
 
-            task = claim_next_task()
+            task = claim_next_task(only, exclude)
             if task is not None:
                 self.stdout.write(f'Running task {task.pk} ({task.kind})...')
                 run_task(task)

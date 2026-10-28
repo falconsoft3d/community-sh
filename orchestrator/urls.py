@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views.odoo_ai import instance_migrate, odoo_ai_request
 from .views.api import BackupViewSet, InstanceAPIViewSet, ProjectViewSet, TaskViewSet, TodoViewSet
 from .views import (
     todo_list,
@@ -36,6 +37,7 @@ from .views import (
     instance_repo_remove,
     instance_ai_chat,
     instance_ai_reset,
+    instance_ai_stop,
     instance_ai_modules,
     instance_ai_revert,
     instance_admin_login,
@@ -151,6 +153,9 @@ urlpatterns = [
     path('instance/<int:pk>/repos/<int:repo_id>/remove/', instance_repo_remove, name='instance-repo-remove'),
     path('instance/<int:pk>/ai/', instance_ai_chat, name='instance-ai-chat'),
     path('instance/<int:pk>/ai/reset/', instance_ai_reset, name='instance-ai-reset'),
+    path('instance/<int:pk>/ai/stop/', instance_ai_stop, name='instance-ai-stop'),
+    path('odoo-ai/<str:name>/', odoo_ai_request, name='odoo-ai-request'),
+    path('instance/<int:pk>/migrate/', instance_migrate, name='instance-migrate'),
     path('instance/<int:pk>/ai/modules/', instance_ai_modules, name='instance-ai-modules'),
     path('instance/<int:pk>/ai/revert/<int:turn_id>/', instance_ai_revert, name='instance-ai-revert'),
     path('instance/<int:pk>/admin-login/', instance_admin_login, name='instance-admin-login'),

@@ -65,7 +65,8 @@ class DynamicAllowedHostsMiddleware(MiddlewareMixin):
         allowed_hosts = list(settings.ALLOWED_HOSTS) if settings.ALLOWED_HOSTS != ['*'] else []
         
         # Agregar localhost y community.local siempre
-        default_hosts = ['localhost', '127.0.0.1', 'community.local']
+        # 'app': Odoo containers calling the panel on the Docker network
+        default_hosts = ['localhost', '127.0.0.1', 'community.local', 'app']
         allowed_hosts.extend(default_hosts)
         
         # Intentar obtener el dominio principal desde la configuración

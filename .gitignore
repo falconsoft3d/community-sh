@@ -58,3 +58,4 @@ docker-compose.override.yml
 
 # Temporary uploads (restores, module ZIPs)
 /backups/uploads/
+ai_attachments/

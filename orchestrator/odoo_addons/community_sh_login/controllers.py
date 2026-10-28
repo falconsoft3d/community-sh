@@ -1,7 +1,7 @@
 # Loaded as a server-wide module by Community SH (no install needed).
 # The panel signs db:exp:nonce with community_sh_secret (from odoo.conf); a valid,
 # unexpired, unused link logs the browser in as the database administrator.
-# Kept compatible with Python 2.7 (Odoo 10) and 3.5 (Odoo 11/12): no f-strings.
+# Kept compatible with Python 2.7 (Odoo 8-10) and 3.5 (Odoo 11/12): no f-strings.
 import hashlib
 import hmac
 import time
@@ -9,10 +9,16 @@ import time
 import werkzeug.exceptions
 import werkzeug.utils
 
-import odoo
-from odoo import SUPERUSER_ID, api, http
-from odoo.http import request
-from odoo.tools import config
+try:
+    import odoo
+    from odoo import SUPERUSER_ID, api, http
+    from odoo.http import request
+    from odoo.tools import config
+except ImportError:  # Odoo 8-9 are still called openerp
+    import openerp as odoo
+    from openerp import SUPERUSER_ID, api, http
+    from openerp.http import request
+    from openerp.tools import config
 
 _used_nonces = {}
 PANEL_ADMIN_LOGIN = 'community_sh_admin'

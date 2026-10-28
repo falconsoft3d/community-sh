@@ -23,6 +23,8 @@ class Instance(models.Model):
     owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='instances')
     project = models.ForeignKey('Project', on_delete=models.PROTECT, null=True, blank=True, related_name='instances')
     odoo_version = models.CharField(max_length=10, choices=[
+        ('8.0', '8.0'),
+        ('9.0', '9.0'),
         ('10.0', '10.0'),
         ('11.0', '11.0'),
         ('12.0', '12.0'),
@@ -129,7 +131,7 @@ from .backup_models import Backup
 from .blog_models import BlogPost
 from .task_models import Task
 from .project_models import Project
-from .ai_models import AIFileChange, AIMessage
+from .ai_models import AIAttachment, AIFileChange, AIMessage
 from .repository_models import InstanceRepository
 from .mcp_models import MCPToken
 from .todo_models import Todo

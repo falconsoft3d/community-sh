@@ -1,6 +1,18 @@
 # Changelog
 
-Versión actual: **1.0.22**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.23**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.23 — 2026-10-28
+
+- Odoo 8 y 9: se despliegan, crean base de datos y pasan backup, exportar, importar, duplicar y crear desde backup
+- Puertos fijos: Odoo se publica en un puerto explícito que no cambia al reiniciar el contenedor o el servidor, y el worker corrige cada minuto los enlaces de las instancias antiguas
+- Chat y notificaciones de Odoo verificados en 8-20: longpolling (8-15) y websocket (16-20), también a través de Traefik
+- IA: adjunta PDF, imágenes o archivos de texto; en peticiones largas arma un plan visible que va marcando paso a paso, se puede detener y corre en su propio worker (ai-worker)
+- IA desde Odoo: escribe «/ia …» en el chatter de cualquier registro (Odoo 9-20) y la respuesta, con el resultado de la instalación, llega a ese chatter (módulo community_sh_ai, se instala solo)
+- IA más fiable: consulta campos y vistas reales de Odoo, valida manifiestos, Python y XML antes de escribir, espera el resultado de la instalación y corrige los errores
+- Migrar desde otro Odoo (8+) por XML-RPC a instancias Odoo 14+: contactos, categorías, productos y variantes, ventas, compras, facturas y pagos; se puede repetir sin duplicar
+- Tema Community SH para Odoo 15-20: barra clara, formularios como tarjetas y pantalla de inicio con las apps en iconos (diseño propio, sin código de Enterprise)
+- Arreglos: duplicar ya no falla si Postgres tarda en arrancar; módulos nuevos de la IA se reconocen en Odoo 8-10
 
 ## 1.0.22 — 2026-10-28
 

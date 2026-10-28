@@ -13,6 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.views.decorators.http import require_POST
+from ..ai_models import AIAttachment
 from ..task_models import Task
 from ..tasks import enqueue
 from ..permissions import (
@@ -106,6 +107,11 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         from ..services.ai import get_ai_config
         context['ai_enabled'] = context['can_manage'] and get_ai_config() is not None
         context['tasks'] = list(self.object.tasks.all()[:5])
+        from ..services.odoo_migration import MIN_TARGET_VERSION, STEP_LABELS, STEPS
+        context['migration_steps'] = [(step, STEP_LABELS[step]) for step in STEPS]
+        context['migration_supported'] = int(float(self.object.odoo_version)) >= MIN_TARGET_VERSION
+        context['migration_min_version'] = MIN_TARGET_VERSION
+        context['last_migration'] = self.object.tasks.filter(kind=Task.Kind.ODOO_MIGRATION).first()
         context['has_active_tasks'] = any(task.is_active for task in context['tasks'])
         
         return context
@@ -467,13 +473,19 @@ def _ai_message_json(message):
             arguments = json.loads(call['function'].get('arguments') or '{}')
         except ValueError:
             arguments = {}
+        if call['function']['name'] == 'update_plan':
+            continue  # shown as the plan card of the turn
         tools.append({'name': call['function']['name'], 'target': arguments.get('path') or arguments.get('module') or ''})
     content = message.content
     if message.role == 'user':
         # The tagged-modules context is for the model, not for the chat bubble
         content = content.split('\n\n[Módulos etiquetados]')[0]
-    return {'id': message.id, 'role': message.role, 'content': content, 'tools': tools,
+    data = {'id': message.id, 'role': message.role, 'content': content, 'tools': tools,
             'created_at': message.created_at.isoformat()}
+    if message.role == 'user':
+        data['attachments'] = [{'name': a.name, 'size': a.size, 'type': a.content_type} for a in message.attachments.all()]
+        data['plan'] = message.plan or []
+    return data
 
 
 def _ai_messages_json(instance, messages_list):
@@ -492,6 +504,8 @@ def _ai_messages_json(instance, messages_list):
         info = turns.get(message.turn_id)
         if info and last_of_turn.get(message.turn_id) == message.id:
             item['undo'] = {'turn': message.turn_id, 'files': info['files'], 'reverted': info['pending'] == 0}
+        if message.role == 'assistant' and not (item['content'] or item['tools'] or item.get('undo')):
+            continue  # only updated the plan
         data.append(item)
     return data
 
@@ -510,36 +524,92 @@ def instance_ai_revert(request, pk, turn_id):
     return JsonResponse({'summary': summary, 'messages': _ai_messages_json(instance, list(instance.ai_messages.exclude(role='tool')))})
 
 
+AI_MAX_FILES = 5
+AI_MAX_FILE_BYTES = 20 * 1024 * 1024
+
+
+def _ai_running_task(instance):
+    return instance.tasks.filter(kind=Task.Kind.AI_CHAT, status__in=[Task.Status.PENDING, Task.Status.RUNNING]).first()
+
+
+def _ai_conversation(instance):
+    task = _ai_running_task(instance)
+    messages_list = list(instance.ai_messages.exclude(role='tool').prefetch_related('attachments'))
+    return {'messages': _ai_messages_json(instance, messages_list), 'running': task is not None,
+            'turn': task.params.get('turn') if task else None}
+
+
 @login_required
 def instance_ai_chat(request, pk):
-    """GET: conversation. POST {message}: ask the assistant (runs its tools) and return the new messages."""
+    """
+    GET: the conversation and whether a request is still running. POST (JSON or multipart with
+    files): store the message and queue it for the AI worker, which runs the tools step by step.
+    """
     import json
-    from ..services.ai import AIError, get_ai_config
-    from ..services.ai_assistant import ask
+    from ..services.ai import get_ai_config
+    from ..services.ai_assistant import attachment_type, start_turn
     instance = get_instance_for_user(request.user, pk, manage=True)
     if get_ai_config() is None:
         return JsonResponse({'error': 'El asistente de IA no está configurado (Settings → IA)'}, status=400)
     if request.method == 'POST':
-        try:
-            payload = json.loads(request.body or '{}')
-        except ValueError:
-            payload = {}
+        if request.content_type == 'application/json':
+            try:
+                payload = json.loads(request.body or '{}')
+            except ValueError:
+                payload = {}
+            modules = payload.get('modules') or []
+        else:
+            payload = request.POST
+            try:
+                modules = json.loads(payload.get('modules') or '[]')
+            except ValueError:
+                modules = []
         text = str(payload.get('message', '')).strip()
-        modules = [str(m) for m in payload.get('modules') or []][:10]
-        if not text:
+        modules = [str(m) for m in modules][:10]
+        files = request.FILES.getlist('files')
+        if not text and not files:
             return JsonResponse({'error': 'Escribe un mensaje'}, status=400)
-        try:
-            new_messages = ask(instance, request.user, text, modules)
-        except AIError as e:
-            return JsonResponse({'error': str(e)}, status=502)
-        return JsonResponse({'messages': _ai_messages_json(instance, [m for m in new_messages if m.role != 'tool'])})
-    return JsonResponse({'messages': _ai_messages_json(instance, list(instance.ai_messages.exclude(role='tool')))})
+        if len(files) > AI_MAX_FILES:
+            return JsonResponse({'error': f'Adjunta como máximo {AI_MAX_FILES} archivos'}, status=400)
+        for upload in files:
+            if attachment_type(upload.name) is None:
+                return JsonResponse({'error': f'Tipo de archivo no admitido: {upload.name} (PDF, imágenes o texto)'}, status=400)
+            if upload.size > AI_MAX_FILE_BYTES:
+                return JsonResponse({'error': f'{upload.name} supera los 20 MB'}, status=400)
+        if _ai_running_task(instance):
+            return JsonResponse({'error': 'La IA todavía está trabajando en la petición anterior'}, status=409)
+        turn = start_turn(instance, request.user, text or 'Revisa los archivos adjuntos.', modules, files)
+        enqueue(Task.Kind.AI_CHAT, instance, request.user, turn=turn.pk)
+        return JsonResponse(_ai_conversation(instance))
+    return JsonResponse(_ai_conversation(instance))
+
+
+@login_required
+@require_POST
+def instance_ai_stop(request, pk):
+    """Ask the running request to stop after its current step."""
+    from django.core.cache import cache
+    from ..services.ai_assistant import stop_key
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    task = _ai_running_task(instance)
+    if task is None:
+        return JsonResponse({'error': 'No hay ninguna petición en curso'}, status=400)
+    if task.status == Task.Status.PENDING:
+        task.status, task.result = Task.Status.FAILED, 'Cancelada antes de empezar'
+        task.save(update_fields=['status', 'result'])
+    else:
+        cache.set(stop_key(task.params['turn']), True, 3600)
+    return JsonResponse({'ok': True})
 
 
 @login_required
 @require_POST
 def instance_ai_reset(request, pk):
     instance = get_instance_for_user(request.user, pk, manage=True)
+    if _ai_running_task(instance):
+        return JsonResponse({'error': 'Espera a que la IA termine o detenla antes de borrar la conversación'}, status=409)
+    for attachment in AIAttachment.objects.filter(message__instance=instance):
+        attachment.file.delete(save=False)
     instance.ai_messages.all().delete()
     return JsonResponse({'ok': True})
 
