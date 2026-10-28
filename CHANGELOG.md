@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.10**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.11**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.11 — 2026-10-28
+
+- Menú Todo: tareas del equipo (por hacer, en curso, completadas) con nota de lo realizado y la versión en que se completó
+- Claude puede listar, añadir y completar tareas de Todo desde el servidor MCP
 
 ## 1.0.10 — 2026-10-28
 

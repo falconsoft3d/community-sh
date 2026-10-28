@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.10'
+VERSION = '1.0.11'
 
 CHANGELOG = [
+    {
+        'version': '1.0.11',
+        'date': '2026-10-28',
+        'notes': [
+            "Menú Todo: tareas del equipo (por hacer, en curso, completadas) con nota de lo realizado y la versión en que se completó",
+            "Claude puede listar, añadir y completar tareas de Todo desde el servidor MCP",
+        ],
+    },
     {
         'version': '1.0.10',
         'date': '2026-10-28',

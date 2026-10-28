@@ -117,6 +117,7 @@ from .project_models import Project
 from .ai_models import AIFileChange, AIMessage
 from .repository_models import InstanceRepository
 from .mcp_models import MCPToken
+from .todo_models import Todo
 
 class UserProfile(models.Model):
     """Extended user profile with additional information"""

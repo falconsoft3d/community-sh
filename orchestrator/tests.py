@@ -1113,3 +1113,41 @@ class ProjectDeleteAllTests(BaseTestCase):
     def test_only_managers_delete(self):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(reverse('project-delete', args=[self.alice_project.pk]), {'confirm': 'ACME'}).status_code, 404)
+
+
+class TodoTests(MCPServerTests):
+    def test_ui_add_complete_and_reopen(self):
+        from .todo_models import Todo
+        self.client.force_login(self.alice)
+        self.client.post(reverse('todo-create'), {'title': 'Revisar backups', 'description': 'todas las versiones'})
+        todo = Todo.objects.get(title='Revisar backups')
+        self.assertContains(self.client.get(reverse('todo-list')), 'Revisar backups')
+        self.client.post(reverse('todo-status', args=[todo.pk]), {'status': 'done', 'note': 'probadas 10-20'})
+        todo.refresh_from_db()
+        from config.version import VERSION
+        self.assertEqual((todo.status, todo.completion_note, todo.completed_in_version), ('done', 'probadas 10-20', VERSION))
+        self.client.post(reverse('todo-status', args=[todo.pk]), {'status': 'pending'})
+        todo.refresh_from_db()
+        self.assertEqual((todo.status, todo.completed_in_version), ('pending', ''))
+
+    def test_scoping_and_clients(self):
+        from .todo_models import Todo
+        Todo.objects.create(title='de bob', created_by=self.bob)
+        self.client.force_login(self.alice)
+        self.assertNotContains(self.client.get(reverse('todo-list')), 'de bob')
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse('todo-list')), 'de bob')
+        self.bob.profile.is_client = True
+        self.bob.profile.save()
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.get(reverse('todo-list')).status_code, 403)
+
+    def test_claude_completes_todos_over_mcp(self):
+        import json
+        from .todo_models import Todo
+        todo = Todo.objects.create(title='Menú Todo', created_by=self.alice)
+        listed = json.loads(self.rpc('tools/call', {'name': 'list_todos', 'arguments': {'status': 'pending'}}).json()['result']['content'][0]['text'])
+        self.assertEqual([t['id'] for t in listed], [todo.id])
+        self.rpc('tools/call', {'name': 'update_todo', 'arguments': {'todo_id': todo.id, 'status': 'done', 'note': 'hecho'}})
+        todo.refresh_from_db()
+        self.assertEqual((todo.status, todo.completed_by), ('done', 'Claude (MCP, alice)'))

@@ -1,6 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
+    todo_list,
+    todo_create,
+    todo_status,
+    todo_delete,
     mcp_endpoint,
     mcp_token_create,
     mcp_token_revoke,
@@ -94,6 +98,10 @@ urlpatterns = [
     path('blog/<slug:slug>/', blog_detail, name='blog-detail'),
     
     # Dashboard routes (protected area)
+    path('todo/', todo_list, name='todo-list'),
+    path('todo/new/', todo_create, name='todo-create'),
+    path('todo/<int:pk>/status/', todo_status, name='todo-status'),
+    path('todo/<int:pk>/delete/', todo_delete, name='todo-delete'),
     path('projects/', project_list, name='project-list'),
     path('project/new/', project_create, name='project-create'),
     path('project/<int:pk>/', project_detail, name='project-detail'),

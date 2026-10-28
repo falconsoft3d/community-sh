@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 17:06+0000\n"
+"POT-Creation-Date: 2026-10-28 17:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -42,8 +42,8 @@ msgid "Error"
 msgstr "Error"
 
 #: orchestrator/templates/orchestrator/backup_list.html:7
-#: orchestrator/templates/orchestrator/base.html:233
-#: orchestrator/templates/orchestrator/base.html:235
+#: orchestrator/templates/orchestrator/base.html:239
+#: orchestrator/templates/orchestrator/base.html:241
 msgid "Backups"
 msgstr ""
 
@@ -102,6 +102,7 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:75
 #: orchestrator/templates/orchestrator/project_detail.html:37
+#: orchestrator/templates/orchestrator/todo_list.html:49
 msgid "Eliminar"
 msgstr ""
 
@@ -143,26 +144,26 @@ msgstr "Contenedores"
 msgid "Metrics"
 msgstr "Métricas"
 
-#: orchestrator/templates/orchestrator/base.html:238
-#: orchestrator/templates/orchestrator/base.html:240
+#: orchestrator/templates/orchestrator/base.html:244
+#: orchestrator/templates/orchestrator/base.html:246
 msgid "Usuarios"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:244
-#: orchestrator/templates/orchestrator/base.html:246
+#: orchestrator/templates/orchestrator/base.html:250
+#: orchestrator/templates/orchestrator/base.html:252
 msgid "Settings"
 msgstr "Configuración"
 
-#: orchestrator/templates/orchestrator/base.html:249
-#: orchestrator/templates/orchestrator/base.html:251
+#: orchestrator/templates/orchestrator/base.html:255
+#: orchestrator/templates/orchestrator/base.html:257
 msgid "About"
 msgstr "Acerca de"
 
-#: orchestrator/templates/orchestrator/base.html:287
+#: orchestrator/templates/orchestrator/base.html:293
 msgid "Mi Perfil"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:294
+#: orchestrator/templates/orchestrator/base.html:300
 msgid "Logout"
 msgstr "Cerrar sesión"
 
@@ -803,6 +804,67 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/project_list.html:60
 msgid "Crear el primer proyecto"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:8
+msgid ""
+"Tareas del equipo. Claude puede leerlas y completarlas desde el servidor MCP."
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:13
+msgid "Nueva tarea…"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:13
+msgid "Título"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:15
+msgid "Detalles (opcional)"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:15
+msgid "Detalles"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:19
+msgid "Añadir"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:25
+msgid "Por hacer"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:32
+msgid "Marcar como completada"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:38
+msgid "En curso"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:46
+msgid "Empezar"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:48
+msgid "¿Eliminar esta tarea?"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:53
+msgid "No hay tareas pendientes."
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:60
+msgid "Completadas"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:67
+msgid "Reabrir"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/todo_list.html:73
+msgid "completada por"
 msgstr ""
 
 #: orchestrator/templates/registration/login.html:10

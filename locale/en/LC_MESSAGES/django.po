@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 17:06+0000\n"
+"POT-Creation-Date: 2026-10-28 17:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -41,8 +41,8 @@ msgid "Error"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:7
-#: orchestrator/templates/orchestrator/base.html:233
-#: orchestrator/templates/orchestrator/base.html:235
+#: orchestrator/templates/orchestrator/base.html:239
+#: orchestrator/templates/orchestrator/base.html:241
 msgid "Backups"
 msgstr ""
 
@@ -101,6 +101,7 @@ msgstr "Restore"
 
 #: orchestrator/templates/orchestrator/backup_list.html:75
 #: orchestrator/templates/orchestrator/project_detail.html:37
+#: orchestrator/templates/orchestrator/todo_list.html:49
 msgid "Eliminar"
 msgstr "Delete"
 
@@ -144,26 +145,26 @@ msgstr ""
 msgid "Metrics"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:238
-#: orchestrator/templates/orchestrator/base.html:240
+#: orchestrator/templates/orchestrator/base.html:244
+#: orchestrator/templates/orchestrator/base.html:246
 msgid "Usuarios"
 msgstr "Users"
 
-#: orchestrator/templates/orchestrator/base.html:244
-#: orchestrator/templates/orchestrator/base.html:246
+#: orchestrator/templates/orchestrator/base.html:250
+#: orchestrator/templates/orchestrator/base.html:252
 msgid "Settings"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:249
-#: orchestrator/templates/orchestrator/base.html:251
+#: orchestrator/templates/orchestrator/base.html:255
+#: orchestrator/templates/orchestrator/base.html:257
 msgid "About"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:287
+#: orchestrator/templates/orchestrator/base.html:293
 msgid "Mi Perfil"
 msgstr "My profile"
 
-#: orchestrator/templates/orchestrator/base.html:294
+#: orchestrator/templates/orchestrator/base.html:300
 msgid "Logout"
 msgstr ""
 
@@ -527,7 +528,6 @@ msgid "Páginas de novedades"
 msgstr "Guides and news"
 
 #: orchestrator/templates/orchestrator/home.html:458
-#| msgid "Tareas recientes"
 msgid "Más recientes"
 msgstr "Recent tasks"
 
@@ -756,7 +756,6 @@ msgstr "Edit"
 
 #: orchestrator/templates/orchestrator/project_detail.html:44
 #: orchestrator/templates/orchestrator/project_detail.html:62
-#, fuzzy
 #| msgid "Eliminar"
 msgid "Eliminar todo"
 msgstr "Delete"
@@ -771,7 +770,9 @@ msgstr "This project doesn't have any instances yet."
 msgid ""
 "Se borrarán de forma permanente los contenedores, bases de datos, "
 "filestores, workspaces y backups de:"
-msgstr "This permanently deletes the containers, databases, filestores, workspaces and backups of:"
+msgstr ""
+"This permanently deletes the containers, databases, filestores, workspaces "
+"and backups of:"
 
 #: orchestrator/templates/orchestrator/project_detail.html:55
 #, python-format
@@ -850,6 +851,73 @@ msgstr "Create a project per client and deploy its Odoo instances inside it."
 #: orchestrator/templates/orchestrator/project_list.html:60
 msgid "Crear el primer proyecto"
 msgstr "Create the first project"
+
+#: orchestrator/templates/orchestrator/todo_list.html:8
+msgid ""
+"Tareas del equipo. Claude puede leerlas y completarlas desde el servidor MCP."
+msgstr "Team tasks. Claude can read and complete them through the MCP server."
+
+#: orchestrator/templates/orchestrator/todo_list.html:13
+#, fuzzy
+#| msgid "Nueva instancia"
+msgid "Nueva tarea…"
+msgstr "New instance"
+
+#: orchestrator/templates/orchestrator/todo_list.html:13
+msgid "Título"
+msgstr "Title"
+
+#: orchestrator/templates/orchestrator/todo_list.html:15
+msgid "Detalles (opcional)"
+msgstr "Details (optional)"
+
+#: orchestrator/templates/orchestrator/todo_list.html:15
+msgid "Detalles"
+msgstr "Details"
+
+#: orchestrator/templates/orchestrator/todo_list.html:19
+msgid "Añadir"
+msgstr "Add"
+
+#: orchestrator/templates/orchestrator/todo_list.html:25
+msgid "Por hacer"
+msgstr "To do"
+
+#: orchestrator/templates/orchestrator/todo_list.html:32
+msgid "Marcar como completada"
+msgstr "Mark as done"
+
+#: orchestrator/templates/orchestrator/todo_list.html:38
+msgid "En curso"
+msgstr "In progress"
+
+#: orchestrator/templates/orchestrator/todo_list.html:46
+msgid "Empezar"
+msgstr "Start"
+
+#: orchestrator/templates/orchestrator/todo_list.html:48
+msgid "¿Eliminar esta tarea?"
+msgstr "Delete this task?"
+
+#: orchestrator/templates/orchestrator/todo_list.html:53
+#, fuzzy
+#| msgid "Tareas recientes"
+msgid "No hay tareas pendientes."
+msgstr "Recent tasks"
+
+#: orchestrator/templates/orchestrator/todo_list.html:60
+msgid "Completadas"
+msgstr "Done"
+
+#: orchestrator/templates/orchestrator/todo_list.html:67
+#, fuzzy
+#| msgid "Abrir"
+msgid "Reabrir"
+msgstr "Open"
+
+#: orchestrator/templates/orchestrator/todo_list.html:73
+msgid "completada por"
+msgstr "completed by"
 
 #: orchestrator/templates/registration/login.html:10
 msgid "Enter your credentials to sign in to your account"

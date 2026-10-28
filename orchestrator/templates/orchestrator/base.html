@@ -230,6 +230,12 @@
                             <i data-lucide="bar-chart-3" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Metrics" %}</span>
                         </a>
                         {% endif %}
+                        {% if not user_is_client %}
+                        <a href="{% url 'todo-list' %}" title="Todo"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'todo' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="list-todo" class="h-4 w-4 shrink-0"></i><span class="nav-label">Todo</span>
+                        </a>
+                        {% endif %}
                         <a href="{% url 'backup-list' %}" title="{% translate "Backups" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'backups' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="archive" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Backups" %}</span>

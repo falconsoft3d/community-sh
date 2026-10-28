@@ -42,6 +42,13 @@ TOOLS = [
      'inputSchema': _schema({'instance': {'type': 'string', 'description': 'Optional instance name'}})},
     {'name': 'get_task', 'description': 'Status and result of a background task (deploy, backup, restore...).',
      'inputSchema': _schema({'task_id': {'type': 'integer'}}, ['task_id'])},
+    {'name': 'list_todos', 'description': 'List the team to-do items (the "Todo" menu). Filter by status: pending, in_progress or done.',
+     'inputSchema': _schema({'status': {'type': 'string', 'enum': ['pending', 'in_progress', 'done']}})},
+    {'name': 'add_todo', 'description': 'Add a to-do item.',
+     'inputSchema': _schema({'title': {'type': 'string'}, 'description': {'type': 'string'}}, ['title'])},
+    {'name': 'update_todo', 'description': 'Change a to-do status. When marking it done, explain what was done in note.',
+     'inputSchema': _schema({'todo_id': {'type': 'integer'}, 'status': {'type': 'string', 'enum': ['pending', 'in_progress', 'done']},
+                             'note': {'type': 'string', 'description': 'What was done (shown under the item)'}}, ['todo_id', 'status'])},
 ]
 
 
@@ -115,6 +122,29 @@ def call_tool(user, name, arguments):
             'id': b.id, 'instance': b.instance.name, 'file': b.filename, 'size_mb': b.file_size_mb,
             'with_filestore': b.include_filestore, 'created_at': b.created_at.isoformat(),
         } for b in backups.order_by('-created_at')[:50]]
+    if name in ('list_todos', 'add_todo', 'update_todo'):
+        from ..permissions import is_client
+        from ..todo_models import Todo
+        from ..views.todo import todos_for
+        if is_client(user):
+            raise ToolError('Clients cannot use the to-do list')
+        if name == 'list_todos':
+            todos = todos_for(user)
+            if arguments.get('status'):
+                todos = todos.filter(status=arguments['status'])
+            return [{'id': t.id, 'title': t.title, 'description': t.description, 'status': t.status,
+                     'completion_note': t.completion_note, 'completed_in_version': t.completed_in_version}
+                    for t in todos.order_by('created_at')]
+        if name == 'add_todo':
+            todo = Todo.objects.create(title=arguments['title'][:200], description=arguments.get('description', ''), created_by=user)
+            return {'id': todo.id, 'status': todo.status}
+        todo = todos_for(user).filter(pk=arguments['todo_id']).first()
+        if todo is None:
+            raise ToolError('To-do not found')
+        if arguments['status'] not in Todo.Status.values:
+            raise ToolError('Invalid status')
+        todo.set_status(arguments['status'], by=f'Claude (MCP, {user.username})', note=arguments.get('note', ''))
+        return {'id': todo.id, 'status': todo.status, 'completed_in_version': todo.completed_in_version}
     if name == 'get_task':
         task = Task.objects.filter(pk=arguments['task_id'], instance__in=instances_for(user)).first()
         if task is None:

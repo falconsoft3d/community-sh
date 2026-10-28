@@ -5,6 +5,7 @@ from .backup_models import Backup
 from .blog_models import BlogPost
 from .task_models import Task
 from .project_models import Project
+from .todo_models import Todo
 
 @admin.register(Instance)
 class InstanceAdmin(admin.ModelAdmin):
@@ -55,3 +56,9 @@ class ProjectAdmin(admin.ModelAdmin):
     list_display = ['name', 'client', 'owner', 'created_at']
     list_filter = ['owner']
     search_fields = ['name', 'client']
+
+@admin.register(Todo)
+class TodoAdmin(admin.ModelAdmin):
+    list_display = ['title', 'status', 'created_by', 'completed_by', 'completed_in_version', 'created_at']
+    list_filter = ['status']
+    search_fields = ['title', 'description']
