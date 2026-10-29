@@ -908,6 +908,24 @@ class PostgresVersionTests(TestCase):
             client.containers.run.assert_not_called()
             self.assertIn('ya tiene datos', notes[0])
 
+    def test_instance_containers_come_back_after_a_reboot(self):
+        with mock.patch('orchestrator.services.docker_service.docker.from_env') as from_env:
+            from .services import DockerService
+            service = DockerService()
+            client = from_env.return_value
+        instance = Instance(name='twenty', odoo_version='20.0')
+        # A database created before the restart policy gets it when it is reused
+        old_db = mock.Mock(status='running', attrs={'Config': {'Image': 'postgres:16'}, 'HostConfig': {'RestartPolicy': {'Name': 'no'}}})
+        client.containers.get.return_value = old_db
+        service._ensure_db_container(instance, 'net_twenty', [])
+        old_db.update.assert_called_once_with(restart_policy={'Name': 'unless-stopped'})
+        # A new one is created with it
+        import docker
+        client.containers.get.side_effect = docker.errors.NotFound('no')
+        with mock.patch.object(service, '_ensure_image'):
+            service._ensure_db_container(instance, 'net_twenty', [])
+        self.assertEqual(client.containers.run.call_args.kwargs['restart_policy'], {'Name': 'unless-stopped'})
+
 
 class VersionTests(TestCase):
     def test_current_version_is_documented(self):

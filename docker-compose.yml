@@ -26,6 +26,8 @@ services:
 
   db:
     image: postgres:15
+    # Back after a reboot or a restart of Docker: without it the panel answers 500 (no database)
+    restart: always
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:

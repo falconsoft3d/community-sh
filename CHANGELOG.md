@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.36**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.37**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.37 — 2026-10-30
+
+- Reinicios del servidor: la base de datos del panel, las instancias de Odoo y su PostgreSQL vuelven a arrancar solas (antes quedaban paradas y el panel respondía Server Error 500); una instancia parada desde el panel sigue parada
 
 ## 1.0.36 — 2026-10-29
 

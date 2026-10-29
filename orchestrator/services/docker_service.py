@@ -9,6 +9,9 @@ from ..task_log import progress
 
 ODOO_DATA_DIR = '/var/lib/odoo'
 
+# Instances come back after a reboot of the server, and stay down when stopped from the panel
+RESTART_POLICY = {'Name': 'unless-stopped'}
+
 PIP_INSTALL = re.compile(r'^\s*(pip3?|python3?\s+-m\s+pip)\s+install(\s.*)?$', re.S)
 
 
@@ -231,6 +234,9 @@ class DockerService:
         image = postgres_image(instance.odoo_version)
         existing = self._get_container(name)
         if existing is not None:
+            if existing.attrs.get('HostConfig', {}).get('RestartPolicy', {}).get('Name') != RESTART_POLICY['Name']:
+                # Databases created before the restart policy: they come back after a reboot too
+                existing.update(restart_policy=RESTART_POLICY)
             current = existing.attrs['Config'].get('Image', '')
             if current == image:
                 return existing
@@ -254,7 +260,8 @@ class DockerService:
                 "POSTGRES_USER": "odoo",
             },
             network=network_name,
-            detach=True
+            detach=True,
+            restart_policy=RESTART_POLICY,
         )
 
     def _ensure_image(self, image):
@@ -516,6 +523,7 @@ class DockerService:
                 volumes=volumes,
                 ports={'8069/tcp': port},
                 detach=True,
+                restart_policy=RESTART_POLICY,
                 labels={
                     "traefik.enable": "true",
                     "traefik.docker.network": "community-sh_web",
@@ -811,7 +819,8 @@ class DockerService:
                         "POSTGRES_USER": "odoo",
                     },
                     network=network_name,
-                    detach=True
+                    detach=True,
+                    restart_policy=RESTART_POLICY,
                 )
                 
                 print("Waiting for new database to be ready...")

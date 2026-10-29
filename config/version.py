@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.36'
+VERSION = '1.0.37'
 
 CHANGELOG = [
+    {
+        'version': '1.0.37',
+        'date': '2026-10-30',
+        'notes': [
+            "Reinicios del servidor: la base de datos del panel, las instancias de Odoo y su PostgreSQL vuelven a arrancar solas (antes quedaban paradas y el panel respondía Server Error 500); una instancia parada desde el panel sigue parada",
+        ],
+    },
     {
         'version': '1.0.36',
         'date': '2026-10-29',
