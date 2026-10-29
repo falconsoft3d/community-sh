@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.32**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.33**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.33 — 2026-10-29
+
+- Tema: los iconos de las apps vuelven a verse en Odoo 20 (Odoo 20 lee los campos binarios como adjuntos; ahora se sirven por /web/image)
 
 ## 1.0.32 — 2026-10-28
 

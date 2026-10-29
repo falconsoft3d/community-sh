@@ -80,8 +80,8 @@ PAGE = """<!DOCTYPE html>
 
 def _icon(menu):
     if menu.web_icon_data:
-        data = menu.web_icon_data.decode() if isinstance(menu.web_icon_data, bytes) else menu.web_icon_data
-        return '<span class="tile"><img src="data:image/png;base64,%s" alt=""></span>' % data
+        # Served by /web/image: Odoo 20 reads binary fields as attachment objects, not base64
+        return '<span class="tile"><img src="/web/image/ir.ui.menu/%d/web_icon_data" alt=""></span>' % menu.id
     if menu.web_icon and ',' in menu.web_icon and not menu.web_icon.startswith('fa'):
         module, path = menu.web_icon.split(',', 1)
         return '<span class="tile"><img src="/%s/%s" alt=""></span>' % (escape(module), escape(path))
