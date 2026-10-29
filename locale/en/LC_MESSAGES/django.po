@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-28 22:13+0000\n"
+"POT-Creation-Date: 2026-10-29 22:37+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -39,6 +39,13 @@ msgstr ""
 #: orchestrator/models.py:20
 msgid "Error"
 msgstr ""
+
+#: orchestrator/templates/orchestrator/activity_detail.html:7
+#: orchestrator/templates/orchestrator/activity_list.html:7
+#: orchestrator/templates/orchestrator/base.html:244
+#: orchestrator/templates/orchestrator/base.html:246
+msgid "Actividad"
+msgstr "Activity"
 
 #: orchestrator/templates/orchestrator/backup_list.html:7
 #: orchestrator/templates/orchestrator/base.html:240
@@ -143,26 +150,32 @@ msgstr ""
 msgid "Metrics"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:245
-#: orchestrator/templates/orchestrator/base.html:247
+#: orchestrator/templates/orchestrator/base.html:246
+#: orchestrator/templates/orchestrator/todo_list.html:30
+#: orchestrator/templates/orchestrator/todo_list.html:69
+msgid "En curso"
+msgstr "In progress"
+
+#: orchestrator/templates/orchestrator/base.html:249
+#: orchestrator/templates/orchestrator/base.html:251
 msgid "Usuarios"
 msgstr "Users"
 
-#: orchestrator/templates/orchestrator/base.html:251
-#: orchestrator/templates/orchestrator/base.html:253
+#: orchestrator/templates/orchestrator/base.html:255
+#: orchestrator/templates/orchestrator/base.html:257
 msgid "Settings"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:256
-#: orchestrator/templates/orchestrator/base.html:258
+#: orchestrator/templates/orchestrator/base.html:260
+#: orchestrator/templates/orchestrator/base.html:262
 msgid "About"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:294
+#: orchestrator/templates/orchestrator/base.html:298
 msgid "Mi Perfil"
 msgstr "My profile"
 
-#: orchestrator/templates/orchestrator/base.html:301
+#: orchestrator/templates/orchestrator/base.html:305
 msgid "Logout"
 msgstr ""
 
@@ -925,11 +938,6 @@ msgstr "Show"
 #: orchestrator/templates/orchestrator/todo_list.html:26
 msgid "Sin terminar"
 msgstr "Unfinished"
-
-#: orchestrator/templates/orchestrator/todo_list.html:30
-#: orchestrator/templates/orchestrator/todo_list.html:69
-msgid "En curso"
-msgstr "In progress"
 
 #: orchestrator/templates/orchestrator/todo_list.html:34
 msgid "Completado"

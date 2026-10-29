@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.34**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.35**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.35 — 2026-10-29
+
+- Actividad: cada tarea (desplegar, respaldar, restaurar, duplicar, instalar módulos, migrar…) guarda su log completo con la hora —lo que imprime el servidor y sus avisos— y una barra de progreso con el paso en curso, que avanzan en directo en la pestaña «Tareas recientes» y en la nueva página «Actividad» del menú (todas las tareas, con filtros por estado, tipo e instancia y el log completo de cada una)
 
 ## 1.0.34 — 2026-10-29
 

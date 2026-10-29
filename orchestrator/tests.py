@@ -528,6 +528,85 @@ class TaskQueueTests(BaseTestCase):
         self.assertFalse(Instance.objects.filter(name='from-backup').exists())
 
 
+class TaskLogTests(BaseTestCase):
+    """What a task prints and logs is kept in its log, with a progress bar; the activity pages show it."""
+
+    def run_worker(self):
+        from io import StringIO
+        from django.core.management import call_command
+        call_command('run_worker', once=True, stdout=StringIO())
+
+    def test_log_and_progress_of_a_task(self):
+        import logging
+        from .task_log import progress
+        from .task_models import Task
+        from .tasks import enqueue
+
+        def deploy(instance):
+            progress(40, 'Clonando el repositorio')
+            print('Cloning into alice-odoo...')
+            logging.getLogger('orchestrator.services').warning('Imagen sin firma')
+            progress(20, 'Un paso de otro paso')  # the bar never goes back
+            self.assertEqual(Task.objects.get(kind='deploy').progress, 40)
+        self.docker.return_value.deploy_instance.side_effect = deploy
+        self.docker.return_value.deploy_notes = []
+        enqueue('deploy', self.alice_instance, self.alice)
+
+        with mock.patch('orchestrator.tasks.TraefikService.generate_instance_config', return_value=(True, '')):
+            self.run_worker()
+
+        task = Task.objects.get(kind='deploy')
+        self.assertEqual((task.status, task.progress, task.bar_percent, task.step), ('done', 100, 100, 'Completada'))
+        for text in ('Desplegar · alice-odoo · alice', '▶ Clonando el repositorio', 'Cloning into alice-odoo...',
+                     'WARNING: Imagen sin firma', '▶ Rutas de Traefik', 'Instancia desplegada'):
+            self.assertIn(text, task.log)
+        self.assertRegex(task.log.splitlines()[0], r'^\d\d:\d\d:\d\d ')
+
+    def test_failed_task_keeps_the_error_in_its_log(self):
+        from .task_models import Task
+        from .tasks import enqueue
+        self.docker.return_value.backup_instance.side_effect = Exception('disk full')
+        enqueue('backup', self.alice_instance, self.alice)
+        self.run_worker()
+        task = Task.objects.get(kind='backup')
+        self.assertEqual((task.status, task.bar_percent), ('failed', 100))
+        self.assertIn('✖ Fallida: disk full', task.log)
+        self.assertIn('Traceback', task.log)
+
+    def test_print_outside_a_task_is_not_kept(self):
+        from .task_log import line, progress
+        progress(50, 'nada')
+        line('nada')  # no task running: nothing happens
+
+    def test_activity_pages_are_scoped(self):
+        from .task_models import Task
+        mine = Task.objects.create(kind='deploy', instance=self.alice_instance, created_by=self.alice, status='running',
+                                   progress=30, step='Base de datos PostgreSQL', log='10:00:00 ▶ Base de datos PostgreSQL\n')
+        other = Task.objects.create(kind='backup', instance=self.bob_instance, created_by=self.bob, status='done', log='secreto')
+        self.client.force_login(self.alice)
+
+        page = self.client.get(reverse('activity'))
+        self.assertContains(page, 'Base de datos PostgreSQL')
+        self.assertNotContains(page, 'secreto')
+        self.assertContains(page, 'width: 30%')
+        self.assertEqual(self.client.get(reverse('activity-detail', args=[other.pk])).status_code, 404)
+        self.assertContains(self.client.get(reverse('activity-detail', args=[mine.pk])), 'Base de datos PostgreSQL')
+
+        data = self.client.get(reverse('task-live'), {'ids': f'{mine.pk},{other.pk}'}).json()
+        self.assertEqual([t['id'] for t in data['tasks']], [mine.pk])
+        self.assertEqual((data['tasks'][0]['progress'], data['tasks'][0]['active']), (30, True))
+
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse('activity'), {'status': 'done'}), 'secreto')
+
+    def test_sidebar_counts_the_running_tasks(self):
+        from .task_models import Task
+        Task.objects.create(kind='deploy', instance=self.alice_instance, created_by=self.alice, status='running')
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('activity'))
+        self.assertEqual(response.context['nav_counts']['activity'], 1)
+
+
 class GitHubServiceTests(TestCase):
     def test_token_is_redacted_from_errors(self):
         import subprocess

@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views.activity import activity_detail, activity_list, task_live
 from .views.odoo_ai import instance_migrate, odoo_ai_request
 from .views.api import BackupViewSet, InstanceAPIViewSet, ProjectViewSet, TaskViewSet, TodoViewSet
 from .views import (
@@ -142,6 +143,9 @@ urlpatterns = [
     path('instance/<int:pk>/backups/', instance_backups_list, name='instance-backups'),
     path('instance/<int:pk>/restore/', instance_restore, name='instance-restore'),
     path('backups/', backup_list, name='backup-list'),
+    path('activity/', activity_list, name='activity'),
+    path('activity/<int:pk>/', activity_detail, name='activity-detail'),
+    path('tasks/live/', task_live, name='task-live'),
     path('backups/import/', backup_import, name='backup-import'),
     path('backup/<int:backup_id>/download/', backup_download, name='backup-download'),
     path('backup/<int:backup_id>/delete/', backup_delete, name='backup-delete'),

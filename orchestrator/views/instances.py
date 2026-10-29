@@ -143,6 +143,8 @@ def instance_tasks_api(request, pk):
             'status': task.status,
             'status_display': task.get_status_display(),
             'result': task.result,
+            'progress': task.bar_percent,
+            'step': task.step,
             'created_at': task.created_at.isoformat(),
         }
         for task in instance.tasks.all()[:5]

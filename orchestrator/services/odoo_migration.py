@@ -189,10 +189,12 @@ class Migration:
 
     # -- steps ---------------------------------------------------------------------------------
     def run(self, steps):
-        for step in STEPS:
-            if step in steps:
-                self.log(f'▶ {STEP_LABELS[step]}')
-                getattr(self, f'migrate_{step}')()
+        from ..task_log import progress
+        chosen = [step for step in STEPS if step in steps]
+        for index, step in enumerate(chosen):
+            progress(5 + 90 * index // max(len(chosen), 1), STEP_LABELS[step])
+            self.log(f'▶ {STEP_LABELS[step]}')
+            getattr(self, f'migrate_{step}')()
         self.log('Resumen: ' + (', '.join(f'{model}: {count}' for model, count in self.counts.items()) or 'nada nuevo que copiar'))
         return self.counts
 

@@ -32,6 +32,10 @@ class Task(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     params = models.JSONField(default=dict, blank=True)
     result = models.TextField(blank=True)
+    # Kept up to date while it runs (orchestrator.task_log): what the worker printed and logged, the bar and its step
+    log = models.TextField(blank=True)
+    progress = models.PositiveSmallIntegerField(default=0)
+    step = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
@@ -46,3 +50,27 @@ class Task(models.Model):
     @property
     def is_active(self):
         return self.status in (self.Status.PENDING, self.Status.RUNNING)
+
+    @property
+    def duration(self):
+        """Seconds it took, or has been running; None while it waits in the queue."""
+        if not self.started_at:
+            return None
+        from django.utils import timezone
+        return int(((self.finished_at or timezone.now()) - self.started_at).total_seconds())
+
+    @property
+    def duration_display(self):
+        seconds = self.duration
+        if seconds is None:
+            return ''
+        if seconds < 60:
+            return f'{seconds} s'
+        if seconds < 3600:
+            return f'{seconds // 60} min {seconds % 60:02d} s'
+        return f'{seconds // 3600} h {seconds % 3600 // 60:02d} min'
+
+    @property
+    def bar_percent(self):
+        """What the bar shows: full once it finished, whatever the last step said."""
+        return 100 if self.status in (self.Status.DONE, self.Status.FAILED) else self.progress

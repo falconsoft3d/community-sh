@@ -241,6 +241,10 @@
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'backups' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="archive" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Backups" %}</span>{% if nav_counts.backups != None and nav_counts.backups != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.backups }}</span>{% endif %}
                         </a>
+                        <a href="{% url 'activity' %}" title="{% translate "Actividad" %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'activity' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="activity" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Actividad" %}</span>{% if nav_counts.activity %}<span class="nav-label ml-auto inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium tabular-nums text-blue-800" title="{% translate "En curso" %}"><span class="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"></span>{{ nav_counts.activity }}</span>{% endif %}
+                        </a>
                         {% if user.is_superuser %}
                         <a href="{% url 'user-list' %}" title="{% translate "Usuarios" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'users' %}bg-muted text-primary{% endif %}">

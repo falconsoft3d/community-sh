@@ -11,6 +11,7 @@ from django.utils import timezone
 from .backup_models import Backup
 from .config_models import GitHubConfig
 from .email_notifications import send_instance_notification
+from . import task_log
 from .models import Instance
 from .services import DockerService
 from .services.github import create_branch
@@ -72,15 +73,23 @@ def recover_interrupted_tasks(only=(), exclude=()):
 
 
 def run_task(task):
-    try:
-        task.result = HANDLERS[task.kind](task) or ''
-        task.status = Task.Status.DONE
-    except Exception as e:
-        logger.exception('Task %s (%s) failed', task.pk, task.kind)
-        task.result = str(e)
-        task.status = Task.Status.FAILED
-        if task.kind == Task.Kind.CREATE_FROM_BACKUP and task.instance_id:
-            Instance.objects.filter(pk=task.instance_id).update(status=Instance.Status.ERROR)
+    with task_log.capture(task) as log:
+        who = f' · {task.created_by.username}' if task.created_by_id else ''
+        where = f' · {task.instance.name}' if task.instance_id else ''
+        log.set_progress(0, f'{task.get_kind_display()}{where}{who}')
+        try:
+            task.result = HANDLERS[task.kind](task) or ''
+            task.status = Task.Status.DONE
+            log.set_progress(100, 'Completada')
+        except Exception as e:
+            logger.exception('Task %s (%s) failed', task.pk, task.kind)
+            task.result = str(e)
+            task.status = Task.Status.FAILED
+            log.line(f'✖ Fallida: {e}')
+            if task.kind == Task.Kind.CREATE_FROM_BACKUP and task.instance_id:
+                Instance.objects.filter(pk=task.instance_id).update(status=Instance.Status.ERROR)
+        if task.result and task.status == Task.Status.DONE:
+            log.line(task.result)
     task.finished_at = timezone.now()
     task.save(update_fields=['status', 'result', 'finished_at'])
     return task
@@ -119,7 +128,9 @@ def backup_all_instances(retention, user=None):
     """Back up every instance and prune old backups. Returns (successes, errors)."""
     service = DockerService()
     successes, errors = [], []
-    for instance in Instance.objects.all():
+    instances = list(Instance.objects.all())
+    for index, instance in enumerate(instances):
+        task_log.progress(100 * index // max(len(instances), 1), f'Respaldo de {instance.name} ({index + 1}/{len(instances)})')
         try:
             backup = service.backup_instance(instance, include_filestore=True, user=user)
             successes.append(backup.filename)
@@ -143,6 +154,7 @@ def deploy(task):
     service = DockerService()
     service.deploy_instance(instance)
     notes += service.deploy_notes
+    task_log.progress(95, 'Rutas de Traefik')
     ok, message = TraefikService.generate_instance_config(instance)
     if not ok:
         notes.append(f'Traefik: {message}')
@@ -244,6 +256,7 @@ def odoo_migration(task):
 
     def log(text):
         lines.append(text)
+        task_log.line(text)
         Task.objects.filter(pk=task.pk).update(result='\n'.join(lines[-300:]))
 
     source = Odoo(credentials['source_url'], credentials['source_db'], credentials['source_login'], credentials['source_password'])
@@ -284,6 +297,7 @@ def create_from_backup(task):
 
     service = DockerService()
     service.deploy_instance(instance)
+    task_log.progress(75, f'Restaurando {backup_record.filename}')
     service._wait_for_postgres(service.client.containers.get(f'db_{instance.name}'))
     service.restore_instance(instance, backup_record.file_path)
     instance.status = Instance.Status.RUNNING
@@ -297,6 +311,7 @@ def install_module(task):
     from django.core.files import File
     from .services import OdooModuleService
     file_path = task.params['file_path']
+    task_log.progress(10, f"Instalando {task.params.get('label') or 'el módulo'}")
     try:
         with open(file_path, 'rb') as f:
             ok, message, _module_name = OdooModuleService.install_module_from_zip(task.instance, File(f, name=task.params.get('label')))
@@ -311,6 +326,7 @@ def install_module(task):
 @handler(Task.Kind.PULL_IMAGE)
 def pull_image(task):
     from .services import docker_admin
+    task_log.progress(10, f"Descargando {task.params['image']}")
     return f"Imagen descargada: {docker_admin.pull_image(task.params['image'])}"
 
 
@@ -334,7 +350,8 @@ def ai_module(task):
         raise Exception('La instancia todavía no tiene base de datos: créala desde Odoo y vuelve a intentarlo')
     flag = '-u' if task.params.get('upgrade') else '-i'
     from .services.docker_service import odoo_command, odoo_major
-    for database in databases:
+    for index, database in enumerate(databases):
+        task_log.progress(20 + 70 * index // len(databases), f'{"Actualizando" if flag == "-u" else "Instalando"} {module} en {database}')
         extra = ''
         if flag == '-i' and odoo_major(instance.odoo_version) <= 10 and not service.module_known(db_container, database, module):
             # Up to Odoo 10, -i only rescans the addons folders when base is updated too
@@ -354,8 +371,11 @@ def ai_module(task):
                                    "UPDATE ir_module_module SET state = CASE state WHEN 'to install' THEN 'uninstalled' "
                                    "ELSE 'installed' END WHERE state IN ('to install', 'to upgrade', 'to remove')"],
                                   environment={'PGPASSWORD': 'odoo'})
+            task_log.line(output[-20000:])
             raise Exception(f'Error instalando {module} en {database} (la base queda como estaba):\n{output[-3000:]}')
+        task_log.line(output[-5000:])
         notes.append(f'{module} {"actualizado" if flag == "-u" else "instalado"} en {database}')
+    task_log.progress(95, 'Reiniciando Odoo')
     container.restart()
     return '\n'.join(notes)
 

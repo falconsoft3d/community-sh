@@ -4,6 +4,7 @@ import os
 import git
 from django.conf import settings
 from ..models import Instance
+from ..task_log import progress
 
 ODOO_DATA_DIR = '/var/lib/odoo'
 
@@ -412,10 +413,12 @@ class DockerService:
         
         try:
             # 1. Prepare workspace
+            progress(5, 'Preparando el espacio de trabajo')
             workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
             os.makedirs(workspace_path, exist_ok=True)
             
             # 2. Clone Repository if exists
+            progress(10, 'Sincronizando el repositorio de GitHub')
             self._clone_repo(instance, workspace_path)
 
             # 3. Create network
@@ -426,6 +429,7 @@ class DockerService:
                 self.client.networks.create(network_name, driver="bridge")
 
             # 4. Start Postgres
+            progress(25, 'Base de datos PostgreSQL')
             db_container_name = f"db_{instance.name}"
             self._ensure_db_container(instance, network_name, self.deploy_notes)
 
@@ -440,6 +444,7 @@ class DockerService:
             # Addons: the GitHub checkout or an empty folder (the AI assistant writes modules there)
             addons_path = os.path.join(workspace_path, 'addons')
             os.makedirs(addons_path, exist_ok=True)
+            progress(35, 'Repositorios de módulos')
             extra_repos = self._sync_extra_repos(instance, workspace_path)
             volumes = {
                 data_volume: {'bind': ODOO_DATA_DIR, 'mode': 'rw'},
@@ -478,10 +483,12 @@ class DockerService:
                 start_network, extra_network = network_name, None
             
             odoo_image = f"odoo:{instance.odoo_version}"
+            progress(50, f'Imagen {odoo_image}')
             platform = self._ensure_image(odoo_image)
             run_options = {'platform': platform} if platform else {}
             
             # Create the container
+            progress(60, 'Arrancando el contenedor de Odoo')
             odoo_container, host_port = self._run_on_fixed_port(odoo_container_name, instance.port, lambda port: self.client.containers.run(
                 odoo_image,
                 **run_options,
@@ -511,6 +518,7 @@ class DockerService:
             
             # If this is a redeploy, update all modules
             if is_redeploy:
+                progress(70, 'Actualizando los módulos')
                 print("Redeploy detected. Running module update...")
                 try:
                     db_container = self.client.containers.get(db_container_name)
@@ -745,6 +753,7 @@ class DockerService:
         
         try:
             # 1. Copy the database
+            progress(5, 'Copiando la base de datos')
             print("Step 1: Copying database...")
             db_source = f"db_{instance.name}"
             db_target = f"db_{new_name}"
@@ -816,6 +825,7 @@ class DockerService:
                 raise
             
             # 2. Copy the workspace (addons checkout)
+            progress(40, 'Copiando el espacio de trabajo')
             print("Step 2: Copying workspace...")
             source_workspace = os.path.join(settings.BASE_DIR, 'instances', instance.name)
             target_workspace = os.path.join(settings.BASE_DIR, 'instances', new_name)
@@ -828,6 +838,7 @@ class DockerService:
             
             # 3. Create new Git branch if repo exists
             if instance.github_repo:
+                progress(45, 'Creando la rama de Git')
                 print("Step 3: Creating Git branch...")
                 source_addons = os.path.join(source_workspace, 'addons')
                 target_addons = os.path.join(target_workspace, 'addons')
@@ -852,10 +863,12 @@ class DockerService:
                         print(f"Warning: Error creating Git branch: {e}")
             
             # 4. Deploy the new instance
+            progress(50, 'Desplegando la nueva instancia')
             print("Step 4: Deploying new instance...")
             self.deploy_instance(new_instance)
             
             # 5. Copy the filestore (attachments) between the Odoo containers
+            progress(85, 'Copiando los adjuntos (filestore)')
             print("Step 5: Copying filestore...")
             self._copy_filestore(f"odoo_{instance.name}", f"odoo_{new_name}")
             
@@ -994,6 +1007,7 @@ class DockerService:
         try:
             with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # 1. Backup Odoo database
+                progress(10, 'Copiando la base de datos')
                 print(f"Backing up database for {instance.name}...")
                 db_container = self.client.containers.get(f"db_{instance.name}")
                 
@@ -1057,6 +1071,7 @@ class DockerService:
                 
                 # 2. Backup filestore if requested
                 if include_filestore:
+                    progress(55, 'Copiando los adjuntos (filestore)')
                     print("Backing up filestore from Odoo container...")
                     try:
                         odoo_container = self.client.containers.get(f"odoo_{instance.name}")
@@ -1103,6 +1118,7 @@ class DockerService:
                 else:
                     print("Skipping filestore backup (not requested)")
                 
+                progress(90, 'Guardando el archivo del respaldo')
                 # 3. Add metadata
                 metadata = {
                     'instance_name': instance.name,
@@ -1186,6 +1202,7 @@ class DockerService:
                 print(f"Backup metadata: {metadata}")
                 
                 # 1. Restore database
+                progress(15, 'Restaurando la base de datos')
                 print("Restoring database...")
                 db_container = self.client.containers.get(f"db_{instance.name}")
                 
@@ -1271,6 +1288,7 @@ class DockerService:
                 print(f"Filestore exists: {os.path.exists(filestore_dir)}")
                 
                 if os.path.exists(filestore_dir):
+                    progress(60, 'Restaurando los adjuntos (filestore)')
                     print("Restoring filestore to Odoo container...")
                     try:
                         odoo_container = self.client.containers.get(f"odoo_{instance.name}")

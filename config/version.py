@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.34'
+VERSION = '1.0.35'
 
 CHANGELOG = [
+    {
+        'version': '1.0.35',
+        'date': '2026-10-29',
+        'notes': [
+            "Actividad: cada tarea (desplegar, respaldar, restaurar, duplicar, instalar módulos, migrar…) guarda su log completo con la hora —lo que imprime el servidor y sus avisos— y una barra de progreso con el paso en curso, que avanzan en directo en la pestaña «Tareas recientes» y en la nueva página «Actividad» del menú (todas las tareas, con filtros por estado, tipo e instancia y el log completo de cada una)",
+        ],
+    },
     {
         'version': '1.0.34',
         'date': '2026-10-29',
