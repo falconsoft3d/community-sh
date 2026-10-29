@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.33'
+VERSION = '1.0.34'
 
 CHANGELOG = [
+    {
+        'version': '1.0.34',
+        'date': '2026-10-29',
+        'notes': [
+            "Instancia: «Tareas recientes» pasa a su propia pestaña (con un punto azul mientras hay tareas en curso); la pestaña abierta queda en la URL y se conserva al recargar",
+        ],
+    },
     {
         'version': '1.0.33',
         'date': '2026-10-29',

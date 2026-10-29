@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.33**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.34**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.34 — 2026-10-29
+
+- Instancia: «Tareas recientes» pasa a su propia pestaña (con un punto azul mientras hay tareas en curso); la pestaña abierta queda en la URL y se conserva al recargar
 
 ## 1.0.33 — 2026-10-29
 
