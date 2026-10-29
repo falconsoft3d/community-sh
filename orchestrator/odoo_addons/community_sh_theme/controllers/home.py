@@ -9,62 +9,83 @@ PAGE = """<!DOCTYPE html>
 <html lang="%(lang)s"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%(company)s</title>
 <style>
-  :root { --ink: #1f2937; --muted: #6b7280; }
   * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff;
-         background: radial-gradient(1200px 600px at 10%% -10%%, #8f6a87 0%%, transparent 60%%),
-                     radial-gradient(900px 500px at 110%% 10%%, #3f8f8a 0%%, transparent 55%%),
-                     linear-gradient(160deg, #4b3248 0%%, #2f2a3d 55%%, #1f2b33 100%%); }
-  header { display: flex; align-items: center; justify-content: space-between; padding: 18px 28px; }
-  header .company { font-weight: 600; letter-spacing: .2px; opacity: .95; }
-  header .user { display: flex; align-items: center; gap: 10px; font-size: 14px; opacity: .9; }
-  header .user img { width: 32px; height: 32px; border-radius: 50%%; border: 2px solid rgba(255,255,255,.4); }
-  header a { color: #fff; text-decoration: none; opacity: .8; font-size: 13px; }
-  main { max-width: 980px; margin: 0 auto; padding: 24px 24px 64px; }
-  .search { display: flex; justify-content: center; margin: 8px 0 40px; }
-  .search input { width: min(520px, 100%%); padding: 12px 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25);
-                  background: rgba(255,255,255,.12); color: #fff; font-size: 15px; outline: none; backdrop-filter: blur(8px); }
-  .search input::placeholder { color: rgba(255,255,255,.7); }
-  .search input:focus { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.5); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 28px 12px; }
-  .app { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 6px; border-radius: 16px;
-         color: #fff; text-decoration: none; transition: background .15s, transform .15s; }
-  .app:hover, .app:focus-visible { background: rgba(255,255,255,.1); transform: translateY(-2px); outline: none; }
-  .app img, .app .placeholder { width: 72px; height: 72px; border-radius: 9px; background: #fff;
-         box-shadow: 0 10px 24px -8px rgba(0,0,0,.45); object-fit: cover; }
-  .app .placeholder { display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #714b67; }
-  .app span { font-size: 13.5px; text-align: center; line-height: 1.25; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
-  .empty { text-align: center; opacity: .8; display: none; }
+  body { margin: 0; min-height: 100vh; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+         color: #374151; background-color: #dcd8ea;
+         background-image:
+           linear-gradient(135deg, transparent 0%%, transparent 38%%, rgba(255,255,255,.28) 38%%, rgba(255,255,255,.28) 52%%, transparent 52%%),
+           linear-gradient(135deg, transparent 0%%, transparent 58%%, rgba(255,255,255,.18) 58%%, rgba(255,255,255,.18) 70%%, transparent 70%%),
+           linear-gradient(160deg, #cfcae4 0%%, #e3e0ef 45%%, #d6d1e8 100%%);
+         background-attachment: fixed; }
+  header { display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 12px 22px; font-size: 14px; }
+  header .company { color: #1f2937; }
+  header img { width: 30px; height: 30px; border-radius: 4px; object-fit: cover; }
+  header a { color: #6b7280; text-decoration: none; display: flex; }
+  header a:hover { color: #1f2937; }
+  main { max-width: 880px; margin: 0 auto; padding: 40px 24px 64px; }
+  .search { display: flex; justify-content: center; height: 0; overflow: hidden; transition: height .15s, margin .15s; }
+  .search.open { height: 46px; margin-bottom: 36px; }
+  .search input { width: min(560px, 100%%); padding: 11px 16px; border-radius: 6px; border: 1px solid #c9c3dc;
+                  background: rgba(255,255,255,.85); color: #1f2937; font-size: 15px; outline: none; }
+  .search input:focus { border-color: #714b67; box-shadow: 0 0 0 3px rgba(113,75,103,.15); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 30px 8px; }
+  .app { display: flex; flex-direction: column; align-items: center; gap: 9px; padding: 6px 4px; border-radius: 6px;
+         color: #374151; text-decoration: none; outline: none; }
+  .app .tile { display: flex; align-items: center; justify-content: center; width: 68px; height: 68px; border-radius: 4px;
+         background: #fff; box-shadow: 0 1px 2px rgba(31,41,55,.12), 0 3px 8px rgba(31,41,55,.07); transition: transform .12s, box-shadow .12s; }
+  .app .tile img { width: 48px; height: 48px; object-fit: contain; }
+  .app:hover .tile, .app:focus-visible .tile { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(31,41,55,.14), 0 8px 18px rgba(31,41,55,.14); }
+  .app .placeholder { font-size: 24px; font-weight: 700; color: #714b67; }
+  .app span { max-width: 124px; font-size: 14px; text-align: center; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .empty { text-align: center; color: #6b7280; display: none; }
+  .version { position: fixed; left: 16px; bottom: 12px; font-size: 12px; color: #6b7280; }
 </style></head>
 <body>
-<header><div class="company">%(company)s</div>
-  <div class="user"><img src="/web/image/res.users/%(uid)s/avatar_128" alt=""><span>%(user)s</span><a href="/web/session/logout">Salir</a></div></header>
+<header>
+  <span class="company">%(company)s</span>
+  <img src="/web/image/res.users/%(uid)s/avatar_128" alt="%(user)s" title="%(user)s">
+  <a href="/web/session/logout" title="Cerrar sesión" aria-label="Cerrar sesión">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+  </a>
+</header>
 <main>
-  <div class="search"><input id="q" type="search" placeholder="Buscar aplicación…" aria-label="Buscar aplicación" autofocus></div>
+  <div class="search" id="search"><input id="q" type="search" placeholder="Buscar aplicación…" aria-label="Buscar aplicación"></div>
   <nav class="grid" id="apps">%(apps)s</nav>
   <p class="empty" id="empty">No hay aplicaciones con ese nombre.</p>
 </main>
+<footer class="version">Odoo %(version)s (Edición %(edition)s)</footer>
 <script>
-  const q = document.getElementById('q'), apps = [...document.querySelectorAll('.app')], empty = document.getElementById('empty');
-  q.addEventListener('input', () => {
+  // As in Odoo: start typing anywhere to search the apps; Enter opens the first match, Esc closes
+  const box = document.getElementById('search'), q = document.getElementById('q'), empty = document.getElementById('empty');
+  const apps = [...document.querySelectorAll('.app')];
+  function filter() {
     const term = q.value.trim().toLowerCase();
     let shown = 0;
     apps.forEach(a => { const hit = a.dataset.name.includes(term); a.style.display = hit ? '' : 'none'; shown += hit; });
     empty.style.display = shown ? 'none' : 'block';
+    if (!term) box.classList.remove('open');
+  }
+  q.addEventListener('input', filter);
+  document.addEventListener('keydown', e => {
+    if (e.target === q) {
+      if (e.key === 'Enter') { const first = apps.find(a => a.style.display !== 'none'); if (first) first.click(); }
+      if (e.key === 'Escape') { q.value = ''; filter(); q.blur(); }
+      return;
+    }
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) { box.classList.add('open'); q.focus(); }
   });
-  q.addEventListener('keydown', e => { if (e.key === 'Enter') { const first = apps.find(a => a.style.display !== 'none'); if (first) first.click(); } });
 </script>
 </body></html>"""
 
 
 def _icon(menu):
     if menu.web_icon_data:
-        data = menu.web_icon_data.decode() if isinstance(menu.web_icon_data, bytes) else menu.web_icon_data
-        return '<img src="data:image/png;base64,%s" alt="">' % data
+        # Served by /web/image: Odoo 20 reads binary fields as attachment objects, not base64
+        return '<span class="tile"><img src="/web/image/ir.ui.menu/%d/web_icon_data" alt=""></span>' % menu.id
     if menu.web_icon and ',' in menu.web_icon and not menu.web_icon.startswith('fa'):
         module, path = menu.web_icon.split(',', 1)
-        return '<img src="/%s/%s" alt="">' % (escape(module), escape(path))
-    return '<div class="placeholder">%s</div>' % escape((menu.name or '?')[:1].upper())
+        return '<span class="tile"><img src="/%s/%s" alt=""></span>' % (escape(module), escape(path))
+    return '<span class="tile placeholder">%s</span>' % escape((menu.name or '?')[:1].upper())
 
 
 def _app_action(menu):
@@ -100,6 +121,8 @@ class CommunityShHome(http.Controller):
             '<a class="app" href="%s" data-name="%s">%s<span>%s</span></a>'
             % (escape(_app_url(menu)), escape(menu.name.lower()), _icon(menu), escape(menu.name)) for menu in menus)
         user = env.user
+        enterprise = env['ir.module.module'].sudo().search_count([('name', '=', 'web_enterprise'), ('state', '=', 'installed')])
         html = PAGE % {'lang': escape((user.lang or 'en')[:2]), 'company': escape(user.company_id.name),
-                       'uid': user.id, 'user': escape(user.name), 'apps': apps}
+                       'uid': user.id, 'user': escape(user.name), 'apps': apps,
+                       'version': escape(release.version), 'edition': 'Enterprise' if enterprise else 'Community'}
         return request.make_response(html, headers=[('Content-Type', 'text/html; charset=utf-8')])

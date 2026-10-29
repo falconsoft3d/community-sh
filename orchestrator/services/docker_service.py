@@ -183,7 +183,8 @@ class DockerService:
         for repository in instance.repositories.all():
             wanted[repository.slug] = repository
             target = os.path.join(repos_root, repository.slug)
-            authed_url = repository.url.replace('https://', f'https://{token}@', 1) if token else repository.url
+            from .github import authed_url as with_token
+            authed_url = with_token(repository.url, token)
             try:
                 if os.path.isdir(os.path.join(target, '.git')):
                     repo = git.Repo(target)

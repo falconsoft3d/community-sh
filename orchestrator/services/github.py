@@ -4,13 +4,23 @@ import subprocess
 import tempfile
 
 
+def authed_url(repo_url, token):
+    """
+    HTTPS URL with the token as the password: fine-grained tokens (github_pat_...) are rejected
+    as the user name, with a misleading "Write access to repository not granted" (403).
+    """
+    if not token or not repo_url.startswith('https://'):
+        return repo_url
+    return repo_url.replace('https://', f'https://x-access-token:{token}@', 1)
+
+
 def create_branch(repo_url, base_branch, new_branch, token):
     """Create new_branch from base_branch on the remote. Returns (ok, message)."""
-    authed_url = repo_url.replace('https://', f'https://{token}@', 1)
+    clone_url = authed_url(repo_url, token)
     temp_git_dir = tempfile.mkdtemp()
     try:
         subprocess.run(
-            ['git', 'clone', '--branch', base_branch, '--single-branch', authed_url, temp_git_dir],
+            ['git', 'clone', '--branch', base_branch, '--single-branch', clone_url, temp_git_dir],
             check=True, capture_output=True, text=True
         )
         subprocess.run(

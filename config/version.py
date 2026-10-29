@@ -3,9 +3,45 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.29'
+VERSION = '1.0.34'
 
 CHANGELOG = [
+    {
+        'version': '1.0.34',
+        'date': '2026-10-29',
+        'notes': [
+            "Instancia: «Tareas recientes» pasa a su propia pestaña (con un punto azul mientras hay tareas en curso); la pestaña abierta queda en la URL y se conserva al recargar",
+        ],
+    },
+    {
+        'version': '1.0.33',
+        'date': '2026-10-29',
+        'notes': [
+            "Tema: los iconos de las apps vuelven a verse en Odoo 20 (Odoo 20 lee los campos binarios como adjuntos; ahora se sirven por /web/image)",
+        ],
+    },
+    {
+        'version': '1.0.32',
+        'date': '2026-10-28',
+        'notes': [
+            "Documentación: cómo crear el token de GitHub para repos privados (clásico y fine-grained) en el README y en Configuración → Ayuda, y qué significa el error 403",
+        ],
+    },
+    {
+        'version': '1.0.31',
+        'date': '2026-10-28',
+        'notes': [
+            "Tema: los iconos de la pantalla de inicio van dentro de una tarjeta blanca con margen, como en Odoo Enterprise",
+        ],
+    },
+    {
+        'version': '1.0.30',
+        'date': '2026-10-28',
+        'notes': [
+            "GitHub: los tokens fine-grained (github_pat_) ya clonan repos privados; antes GitHub respondía 403 «Write access to repository not granted»",
+            "Tema: pantalla de inicio clara con bandas diagonales, iconos con sombra suave, búsqueda al empezar a escribir y la versión de Odoo abajo a la izquierda",
+        ],
+    },
     {
         'version': '1.0.29',
         'date': '2026-10-28',

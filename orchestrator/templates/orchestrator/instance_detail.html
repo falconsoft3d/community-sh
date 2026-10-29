@@ -6,7 +6,7 @@
     step: 1, 
     confirmText: '', 
     activeTab: window.location.hash ? window.location.hash.slice(1) : 'info' 
-}">
+}" x-init="$watch('activeTab', value => history.replaceState(null, '', '#' + value))">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
@@ -71,52 +71,6 @@
         </div>
     </div>
 
-    <!-- Background tasks (deploys, backups, restores run in the worker) -->
-    {% if tasks %}
-    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-        <div class="px-4 py-3 border-b flex items-center gap-2">
-            <i data-lucide="list-checks" class="h-4 w-4"></i>
-            <h3 class="text-sm font-semibold">Tareas recientes</h3>
-            {% if has_active_tasks %}
-            <span class="text-xs text-muted-foreground">· la página se actualizará al terminar</span>
-            {% endif %}
-        </div>
-        <ul class="divide-y">
-            {% for task in tasks %}
-            <li class="px-4 py-2 flex items-start gap-3 text-sm">
-                <span class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium
-                    {% if task.status == 'done' %}bg-green-100 text-green-800
-                    {% elif task.status == 'failed' %}bg-red-100 text-red-800
-                    {% elif task.status == 'running' %}bg-blue-100 text-blue-800
-                    {% else %}bg-muted text-muted-foreground{% endif %}">
-                    {{ task.get_status_display }}
-                </span>
-                <div class="min-w-0 flex-1">
-                    <div class="font-medium">{{ task.get_kind_display }}
-                        <span class="text-xs font-normal text-muted-foreground">· {{ task.created_at|timesince }}</span>
-                    </div>
-                    {% if task.result %}
-                    <pre class="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">{{ task.result|truncatechars:500 }}</pre>
-                    {% endif %}
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% if has_active_tasks %}
-    <script>
-        (function () {
-            const url = "{% url 'instance-tasks-api' object.pk %}";
-            const poll = () => fetch(url, { headers: { 'Accept': 'application/json' } })
-                .then(response => response.json())
-                .then(data => data.active ? setTimeout(poll, 4000) : window.location.reload())
-                .catch(() => setTimeout(poll, 8000));
-            setTimeout(poll, 4000);
-        })();
-    </script>
-    {% endif %}
-    {% endif %}
-
     <!-- Tabs Navigation -->
     <div class="border-b border-border">
         <nav class="flex space-x-8" aria-label="Tabs">
@@ -174,8 +128,65 @@
                 IA
             </button>
             {% endif %}
+            <button @click="activeTab = 'tasks'"
+                :class="activeTab === 'tasks' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="list-checks" class="inline-block h-4 w-4 mr-2"></i>
+                Tareas recientes
+                {% if has_active_tasks %}<span class="ml-1 inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="En curso"></span>{% endif %}
+            </button>
         </nav>
     </div>
+
+    <!-- Recent Tasks Tab: deploys, backups, restores run in the worker -->
+    <div x-show="activeTab === 'tasks'" x-cloak class="space-y-6">
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="px-4 py-3 border-b flex items-center gap-2">
+            <i data-lucide="list-checks" class="h-4 w-4"></i>
+            <h3 class="text-sm font-semibold">Tareas recientes</h3>
+            {% if has_active_tasks %}
+            <span class="text-xs text-muted-foreground">· la página se actualizará al terminar</span>
+            {% endif %}
+        </div>
+        {% if tasks %}
+        <ul class="divide-y">
+            {% for task in tasks %}
+            <li class="px-4 py-2 flex items-start gap-3 text-sm">
+                <span class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium
+                    {% if task.status == 'done' %}bg-green-100 text-green-800
+                    {% elif task.status == 'failed' %}bg-red-100 text-red-800
+                    {% elif task.status == 'running' %}bg-blue-100 text-blue-800
+                    {% else %}bg-muted text-muted-foreground{% endif %}">
+                    {{ task.get_status_display }}
+                </span>
+                <div class="min-w-0 flex-1">
+                    <div class="font-medium">{{ task.get_kind_display }}
+                        <span class="text-xs font-normal text-muted-foreground">· {{ task.created_at|timesince }}</span>
+                    </div>
+                    {% if task.result %}
+                    <pre class="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">{{ task.result|truncatechars:500 }}</pre>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="px-4 py-6 text-sm text-muted-foreground">Aún no hay tareas en esta instancia.</p>
+        {% endif %}
+    </div>
+    </div>
+    {% if has_active_tasks %}
+    <script>
+        (function () {
+            const url = "{% url 'instance-tasks-api' object.pk %}";
+            const poll = () => fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(response => response.json())
+                .then(data => data.active ? setTimeout(poll, 4000) : window.location.reload())
+                .catch(() => setTimeout(poll, 8000));
+            setTimeout(poll, 4000);
+        })();
+    </script>
+    {% endif %}
 
     <!-- Information Tab -->
     <div x-show="activeTab === 'info'" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -896,7 +907,7 @@
             <span>También desde Odoo: un administrador escribe <code class="font-mono">/ia …</code> en el chatter de cualquier registro (p. ej. «/ia añade una columna Obra a esta lista») y la respuesta llega a ese mismo chatter. El módulo <code class="font-mono">community_sh_ai</code> se instala solo al desplegar.</span>
         </p>
         {% endif %}
-        <p class="text-xs text-muted-foreground">Puedes adjuntar PDF con capturas o especificaciones: en peticiones largas la IA arma un plan y lo va completando paso a paso (puedes cerrar la página, sigue trabajando). La instalación de módulos aparece en «Tareas recientes». Haz un backup antes de cambios grandes.</p>
+        <p class="text-xs text-muted-foreground">Puedes adjuntar PDF con capturas o especificaciones: en peticiones largas la IA arma un plan y lo va completando paso a paso (puedes cerrar la página, sigue trabajando). La instalación de módulos aparece en la pestaña «Tareas recientes». Haz un backup antes de cambios grandes.</p>
     </div>
     <script>
         function aiChat() {

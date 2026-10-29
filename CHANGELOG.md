@@ -1,6 +1,27 @@
 # Changelog
 
-Versión actual: **1.0.29**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.34**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.34 — 2026-10-29
+
+- Instancia: «Tareas recientes» pasa a su propia pestaña (con un punto azul mientras hay tareas en curso); la pestaña abierta queda en la URL y se conserva al recargar
+
+## 1.0.33 — 2026-10-29
+
+- Tema: los iconos de las apps vuelven a verse en Odoo 20 (Odoo 20 lee los campos binarios como adjuntos; ahora se sirven por /web/image)
+
+## 1.0.32 — 2026-10-28
+
+- Documentación: cómo crear el token de GitHub para repos privados (clásico y fine-grained) en el README y en Configuración → Ayuda, y qué significa el error 403
+
+## 1.0.31 — 2026-10-28
+
+- Tema: los iconos de la pantalla de inicio van dentro de una tarjeta blanca con margen, como en Odoo Enterprise
+
+## 1.0.30 — 2026-10-28
+
+- GitHub: los tokens fine-grained (github_pat_) ya clonan repos privados; antes GitHub respondía 403 «Write access to repository not granted»
+- Tema: pantalla de inicio clara con bandas diagonales, iconos con sombra suave, búsqueda al empezar a escribir y la versión de Odoo abajo a la izquierda
 
 ## 1.0.29 — 2026-10-28
 

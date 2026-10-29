@@ -168,7 +168,33 @@ To verify your SSL configuration, run:
 python scripts/check_ssl_config.py
 ```
 
+## 🔑 Token de GitHub (repositorios privados)
+
+Para clonar repositorios privados (el repo principal de una instancia o los **repositorios de addons** de la pestaña *Modules*), el panel usa el token de GitHub del **dueño de la instancia**, que se guarda en **Configuración → GitHub**. Sin acceso, el despliegue avisa con `remote: Write access to repository not granted` / `403` y los módulos de ese repo no aparecen en Odoo.
+
+### Opción A: token clásico (la más sencilla)
+
+1. En GitHub, con la cuenta dueña del repo: foto de perfil → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)**.
+2. Ponle un nombre (por ejemplo «Community SH») y una caducidad.
+3. Marca el permiso **`repo`** (acceso a repositorios privados) y pulsa **Generate token**.
+4. Copia el token (empieza por `ghp_`): GitHub no vuelve a mostrarlo.
+5. En Community SH → **Configuración → GitHub**, pega el token y guarda.
+6. En la instancia, pulsa **Upgrade / Deploy** y después, en Odoo, **Aplicaciones → Actualizar lista de aplicaciones**.
+
+### Opción B: token *fine-grained* (`github_pat_…`)
+
+En **Developer settings** → **Personal access tokens** → **Fine-grained tokens**, crea o edita el token y comprueba:
+
+- **Resource owner**: la cuenta u organización dueña del repo (por ejemplo `falconsoft3d`).
+- **Repository access**: el repo en *Only select repositories*, o *All repositories*.
+- **Permissions → Repository permissions → Contents**: *Read-only* (o *Read and write* si quieres que el panel cree una rama por instancia).
+
+Si el repo es de una organización, puede que un administrador tenga que aprobar el token. Al cambiar los permisos de un token ya guardado no hace falta volver a pegarlo: basta con redesplegar.
+
 ## 🛠️ Troubleshooting
+
+### `remote: Write access to repository not granted` / `403` al desplegar
+El token de **Configuración → GitHub** no tiene acceso a ese repositorio (GitHub da ese mensaje aunque solo se esté leyendo). Revisa sus permisos como se explica en [Token de GitHub](#-token-de-github-repositorios-privados) y vuelve a desplegar.
 
 ### Check SSL Configuration
 ```bash
