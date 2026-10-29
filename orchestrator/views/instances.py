@@ -630,6 +630,20 @@ def instance_ai_reset(request, pk):
 
 @login_required
 @require_POST
+def instance_pull(request, pk):
+    """Pull the repositories of the instance and restart Odoo, in the worker."""
+    from django.urls import reverse
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    if not instance.github_repo and not instance.repositories.exists():
+        messages.error(request, 'La instancia no tiene repositorios que actualizar')
+        return redirect(reverse('instance-detail', args=[pk]) + '#modules')
+    enqueue(Task.Kind.PULL_REPOS, instance, request.user)
+    messages.success(request, 'Actualizando los repositorios: sigue el progreso en «Tareas recientes»')
+    return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
+
+
+@login_required
+@require_POST
 def instance_browser(request, pk):
     """Google Chrome in the Odoo container (WhatsApp Web): installed now and again on every deploy, or no more."""
     from django.urls import reverse

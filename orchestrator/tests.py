@@ -673,6 +673,34 @@ class BrowserTests(BaseTestCase):
             service.install_browser(self.alice_instance, container)
 
 
+class PullTests(BaseTestCase):
+    """Pull: the repositories updated and Odoo restarted, in the worker, without redeploying."""
+
+    def test_pull_is_queued_and_run(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from .task_models import Task
+        self.alice_instance.github_repo = 'https://github.com/acme/addons'
+        self.alice_instance.save()
+        self.docker.return_value.pull_repositories.return_value = ['principal: abc1234 Fix the bridge']
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('instance-pull', args=[self.alice_instance.pk]))
+        self.assertTrue(response.url.endswith('#tasks'))
+        call_command('run_worker', once=True, stdout=StringIO())
+        task = Task.objects.get(kind='pull_repos')
+        self.assertEqual(task.status, 'done')
+        self.assertIn('abc1234 Fix the bridge', task.result)
+        self.docker.return_value.deploy_instance.assert_not_called()
+
+    def test_nothing_to_pull(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        self.client.post(reverse('instance-pull', args=[self.alice_instance.pk]))
+        self.assertFalse(Task.objects.filter(kind='pull_repos').exists())
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(reverse('instance-pull', args=[self.alice_instance.pk])).status_code, 404)
+
+
 class GitHubServiceTests(TestCase):
     def test_token_is_redacted_from_errors(self):
         import subprocess

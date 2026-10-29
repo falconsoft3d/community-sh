@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.39**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.40**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.40 — 2026-10-30
+
+- Módulos: botón «Pull» que trae los últimos commits del repositorio principal y de los de módulos y reinicia Odoo, como tarea con su log y barra, sin redesplegar ni actualizar todos los módulos
 
 ## 1.0.39 — 2026-10-30
 

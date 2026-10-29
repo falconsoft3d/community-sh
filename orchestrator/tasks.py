@@ -323,6 +323,13 @@ def install_module(task):
     return message
 
 
+@handler(Task.Kind.PULL_REPOS)
+def pull_repos(task):
+    notes = DockerService().pull_repositories(task.instance)
+    return '\n'.join(notes + ['Repositorios actualizados y Odoo reiniciado. Si cambian vistas o datos, actualiza el módulo '
+                               'en Odoo (Aplicaciones → Actualizar)'])
+
+
 @handler(Task.Kind.INSTALL_BROWSER)
 def install_browser(task):
     task_log.progress(10, 'Instalando Google Chrome en el contenedor de Odoo')

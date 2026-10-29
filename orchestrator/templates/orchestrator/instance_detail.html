@@ -437,9 +437,20 @@
         </div>
         <!-- Addons repositories -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Repositorios de addons</h3>
-                <p class="text-sm text-muted-foreground">Cada repositorio se clona y se añade al addons_path de Odoo. Los cambios se aplican al desplegar.</p>
+            <div class="flex flex-wrap items-start gap-3 p-6 pb-2">
+                <div class="min-w-0 flex-1 space-y-1.5">
+                    <h3 class="font-semibold leading-none tracking-tight">Repositorios de addons</h3>
+                    <p class="text-sm text-muted-foreground">Cada repositorio se clona y se añade al addons_path de Odoo. «Pull» trae los últimos cambios de todos y reinicia Odoo, sin redesplegar.</p>
+                </div>
+                {% if object.github_repo or object.repositories.exists %}
+                <form method="post" action="{% url 'instance-pull' object.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" title="Descarga los últimos commits de cada repositorio y reinicia Odoo. Si cambian vistas o datos, actualiza el módulo en Odoo."
+                        class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="git-pull-request-arrow" class="mr-2 h-4 w-4"></i> Pull
+                    </button>
+                </form>
+                {% endif %}
             </div>
             <div class="p-6 pt-4 space-y-4">
                 <ul class="divide-y rounded-lg border text-sm">

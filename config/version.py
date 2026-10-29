@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.39'
+VERSION = '1.0.40'
 
 CHANGELOG = [
+    {
+        'version': '1.0.40',
+        'date': '2026-10-30',
+        'notes': [
+            "Módulos: botón «Pull» que trae los últimos commits del repositorio principal y de los de módulos y reinicia Odoo, como tarea con su log y barra, sin redesplegar ni actualizar todos los módulos",
+        ],
+    },
     {
         'version': '1.0.39',
         'date': '2026-10-30',

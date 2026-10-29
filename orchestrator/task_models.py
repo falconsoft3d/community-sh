@@ -20,6 +20,7 @@ class Task(models.Model):
         AI_CHAT = 'ai_chat', 'Asistente de IA'
         ODOO_MIGRATION = 'odoo_migration', 'Migrar desde otro Odoo'
         INSTALL_BROWSER = 'install_browser', 'Instalar navegador'
+        PULL_REPOS = 'pull_repos', 'Actualizar repositorios (pull)'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

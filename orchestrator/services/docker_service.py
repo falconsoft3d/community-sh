@@ -1050,6 +1050,30 @@ class DockerService:
         except Exception as e:
             return f"Error executing command: {str(e)}"
     
+    def pull_repositories(self, instance):
+        """The instance's repositories brought to the last commit of their branch, and Odoo restarted to load the
+        code: what a deploy does with them, without recreating the container nor updating every module."""
+        workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
+        os.makedirs(workspace_path, exist_ok=True)
+        self.deploy_notes = []
+        progress(10, 'Actualizando el repositorio principal')
+        self._clone_repo(instance, workspace_path)
+        progress(40, 'Actualizando los repositorios de módulos')
+        extra_repos = self._sync_extra_repos(instance, workspace_path)
+        self._write_odoo_config(instance, workspace_path, extra_repos)
+        notes = list(self.deploy_notes)
+        folders = [('principal', os.path.join(workspace_path, 'addons'))] if instance.github_repo else []
+        folders += [(slug, os.path.join(workspace_path, 'repos', slug)) for slug in extra_repos]
+        for label, folder in folders:
+            try:
+                commit = git.Repo(folder).head.commit
+                notes.append(f'{label}: {commit.hexsha[:7]} {commit.summary}')
+            except Exception:
+                pass
+        progress(85, 'Reiniciando Odoo para cargar el código')
+        self.restart_instance(instance)
+        return notes
+
     def install_browser(self, instance, container=None):
         """Google Chrome in the Odoo container, as root (WhatsApp Web runs it). What it prints goes to the task log."""
         container = container or self.client.containers.get(f'odoo_{instance.name}')
