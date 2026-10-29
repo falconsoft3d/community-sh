@@ -53,6 +53,7 @@ class Instance(models.Model):
     # Custom Domain & SSL
     custom_domain = models.CharField(max_length=255, blank=True, null=True, validators=[validate_domain], help_text="Custom domain (e.g., ejemplo.com)")
     ssl_enabled = models.BooleanField(default=False, help_text="SSL/HTTPS enabled")
+    browser = models.BooleanField(default=False, help_text="Google Chrome in the Odoo container (WhatsApp Web...): installed again on every deploy")
     ssl_certificate_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_key_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_email = models.EmailField(blank=True, null=True, help_text="Email for Let's Encrypt notifications")

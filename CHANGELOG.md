@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.38**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.39**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.39 — 2026-10-30
+
+- Módulos: opción «Navegador (WhatsApp Web)» por instancia: instala Google Chrome en el contenedor de Odoo (como root, con su log y barra de progreso) y lo reinstala solo en cada despliegue, porque el contenedor se recrea; la imagen de Odoo no trae navegador y el chromium de Ubuntu es un snap que Docker no puede ejecutar
 
 ## 1.0.38 — 2026-10-30
 

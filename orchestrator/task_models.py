@@ -19,6 +19,7 @@ class Task(models.Model):
         DELETE_PROJECT = 'delete_project', 'Eliminar proyecto'
         AI_CHAT = 'ai_chat', 'Asistente de IA'
         ODOO_MIGRATION = 'odoo_migration', 'Migrar desde otro Odoo'
+        INSTALL_BROWSER = 'install_browser', 'Instalar navegador'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

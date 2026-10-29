@@ -9,6 +9,24 @@ from ..task_log import progress
 
 ODOO_DATA_DIR = '/var/lib/odoo'
 
+# Google Chrome in an Odoo container (Debian or Ubuntu): Ubuntu's own chromium is a snap, which Docker cannot run
+BROWSER_SCRIPT = r'''set -e
+if command -v google-chrome >/dev/null 2>&1; then google-chrome --version; exit 0; fi
+arch=$(dpkg --print-architecture)
+if [ "$arch" != amd64 ]; then echo "Google Chrome solo existe para amd64 y este servidor es $arch"; exit 3; fi
+export DEBIAN_FRONTEND=noninteractive
+echo "Descargando Google Chrome..."
+url=https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+if command -v curl >/dev/null 2>&1; then curl -fsSL -o /tmp/google-chrome.deb "$url"
+else python3 -c "import urllib.request, sys; urllib.request.urlretrieve(sys.argv[1], '/tmp/google-chrome.deb')" "$url"; fi
+echo "Instalando Google Chrome y sus dependencias..."
+apt-get update -qq
+apt-get install -y -qq --no-install-recommends /tmp/google-chrome.deb fonts-liberation
+rm -f /tmp/google-chrome.deb
+rm -rf /var/lib/apt/lists/*
+google-chrome --version
+'''
+
 # Instances come back after a reboot of the server, and stay down when stopped from the panel
 RESTART_POLICY = {'Name': 'unless-stopped'}
 
@@ -562,6 +580,14 @@ class DockerService:
 
             self._install_ai_module(instance, odoo_container, db_container_name)
 
+            if instance.browser:
+                # The container is new on every deploy: Chrome is installed again
+                progress(85, 'Instalando Google Chrome (WhatsApp Web)')
+                try:
+                    self.deploy_notes.append(self.install_browser(instance, odoo_container))
+                except Exception as e:
+                    self.deploy_notes.append(f'No se pudo instalar Google Chrome: {e}')
+
             if host_port:
                 instance.port = host_port
             
@@ -1024,6 +1050,22 @@ class DockerService:
         except Exception as e:
             return f"Error executing command: {str(e)}"
     
+    def install_browser(self, instance, container=None):
+        """Google Chrome in the Odoo container, as root (WhatsApp Web runs it). What it prints goes to the task log."""
+        container = container or self.client.containers.get(f'odoo_{instance.name}')
+        api = self.client.api
+        exec_id = api.exec_create(container.id, ['sh', '-c', BROWSER_SCRIPT], user='root')['Id']
+        tail = ''
+        for chunk in api.exec_start(exec_id, stream=True):
+            text = chunk.decode('utf-8', errors='replace')
+            print(text, end='')
+            tail = (tail + text)[-3000:]
+        exit_code = api.exec_inspect(exec_id)['ExitCode']
+        if exit_code != 0:
+            raise Exception(f'la instalación terminó con el código {exit_code}:\n{tail[-1500:]}')
+        version = [line for line in tail.splitlines() if line.startswith('Google Chrome')]
+        return f'Navegador: {version[-1] if version else "Google Chrome instalado"}'
+
     def pip_install(self, instance, command):
         """Run a `pip install` in the Odoo container so that it works and lasts.
 

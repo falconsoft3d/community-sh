@@ -640,6 +640,39 @@ class PipInstallTests(BaseTestCase):
         self.docker.return_value.execute_command.assert_not_called()
 
 
+class BrowserTests(BaseTestCase):
+    """Google Chrome in the Odoo container, for WhatsApp Web: installed from the panel and on every deploy."""
+
+    def test_enable_and_disable(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        self.client.post(reverse('instance-browser', args=[self.alice_instance.pk]), {'enable': '1'})
+        self.alice_instance.refresh_from_db()
+        self.assertTrue(self.alice_instance.browser)
+        self.assertEqual(Task.objects.get(instance=self.alice_instance).kind, 'install_browser')
+        self.client.post(reverse('instance-browser', args=[self.alice_instance.pk]), {'enable': '0'})
+        self.alice_instance.refresh_from_db()
+        self.assertFalse(self.alice_instance.browser)
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(reverse('instance-browser', args=[self.alice_instance.pk]), {'enable': '1'}).status_code, 404)
+
+    def test_install_streams_and_reports(self):
+        with mock.patch('orchestrator.services.docker_service.docker.from_env') as from_env:
+            from .services import DockerService
+            service = DockerService()
+            api = from_env.return_value.api
+        api.exec_create.return_value = {'Id': 'x'}
+        api.exec_start.return_value = iter([b'Descargando Google Chrome...\n', b'Google Chrome 142.0.7444.59 \n'])
+        api.exec_inspect.return_value = {'ExitCode': 0}
+        container = mock.Mock(id='abc')
+        self.assertEqual(service.install_browser(self.alice_instance, container), 'Navegador: Google Chrome 142.0.7444.59 ')
+        self.assertEqual(api.exec_create.call_args.kwargs['user'], 'root')
+        api.exec_start.return_value = iter([b'E: Unable to locate package\n'])
+        api.exec_inspect.return_value = {'ExitCode': 100}
+        with self.assertRaisesRegex(Exception, 'Unable to locate package'):
+            service.install_browser(self.alice_instance, container)
+
+
 class GitHubServiceTests(TestCase):
     def test_token_is_redacted_from_errors(self):
         import subprocess

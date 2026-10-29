@@ -630,6 +630,23 @@ def instance_ai_reset(request, pk):
 
 @login_required
 @require_POST
+def instance_browser(request, pk):
+    """Google Chrome in the Odoo container (WhatsApp Web): installed now and again on every deploy, or no more."""
+    from django.urls import reverse
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    enable = request.POST.get('enable') == '1'
+    instance.browser = enable
+    instance.save(update_fields=['browser'])
+    if enable:
+        enqueue(Task.Kind.INSTALL_BROWSER, instance, request.user)
+        messages.success(request, 'Instalando Google Chrome: sigue el progreso en «Tareas recientes». Se reinstala solo en cada despliegue.')
+        return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
+    messages.success(request, 'Google Chrome ya no se instalará: desaparece del contenedor en el próximo despliegue.')
+    return redirect(reverse('instance-detail', args=[pk]) + '#modules')
+
+
+@login_required
+@require_POST
 def instance_repo_add(request, pk):
     from ..repository_models import REPO_URL_RE
     instance = get_instance_for_user(request.user, pk, manage=True)

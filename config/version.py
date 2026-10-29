@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.38'
+VERSION = '1.0.39'
 
 CHANGELOG = [
+    {
+        'version': '1.0.39',
+        'date': '2026-10-30',
+        'notes': [
+            "Módulos: opción «Navegador (WhatsApp Web)» por instancia: instala Google Chrome en el contenedor de Odoo (como root, con su log y barra de progreso) y lo reinstala solo en cada despliegue, porque el contenedor se recrea; la imagen de Odoo no trae navegador y el chromium de Ubuntu es un snap que Docker no puede ejecutar",
+        ],
+    },
     {
         'version': '1.0.38',
         'date': '2026-10-30',

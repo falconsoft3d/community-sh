@@ -323,6 +323,12 @@ def install_module(task):
     return message
 
 
+@handler(Task.Kind.INSTALL_BROWSER)
+def install_browser(task):
+    task_log.progress(10, 'Instalando Google Chrome en el contenedor de Odoo')
+    return DockerService().install_browser(task.instance)
+
+
 @handler(Task.Kind.PULL_IMAGE)
 def pull_image(task):
     from .services import docker_admin
