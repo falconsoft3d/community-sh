@@ -607,6 +607,39 @@ class TaskLogTests(BaseTestCase):
         self.assertEqual(response.context['nav_counts']['activity'], 1)
 
 
+class PipInstallTests(BaseTestCase):
+    """pip in an instance installs for the odoo user, on the data volume: it works on Odoo 17+ and lasts."""
+
+    def test_command_rewrite(self):
+        from .services.docker_service import pip_user_command
+        self.assertEqual(pip_user_command('pip install websocket-client'), 'pip install --user --break-system-packages websocket-client')
+        self.assertEqual(pip_user_command('pip3 install -r req.txt'), 'pip3 install --user --break-system-packages -r req.txt')
+        self.assertEqual(pip_user_command('python3 -m pip install a b'), 'python3 -m pip install --user --break-system-packages a b')
+        for command in ('pip install --user x', 'pip install -t /tmp x', 'pip list', 'ls -la'):
+            self.assertEqual(pip_user_command(command), command)
+
+    def test_old_pip_without_the_flag(self):
+        from .services.docker_service import DockerService
+        service = DockerService.__new__(DockerService)
+        calls = []
+        def execute(instance, command):
+            calls.append(command)
+            return '[Exit Code: 2]\nno such option: --break-system-packages' if 'break' in command else 'Successfully installed x'
+        service.execute_command = execute
+        self.assertEqual(service.pip_install(self.alice_instance, 'pip install x'), (True, 'Successfully installed x'))
+        self.assertEqual(calls, ['pip install --user --break-system-packages x', 'pip install --user x'])
+
+    def test_console_installs_for_the_odoo_user(self):
+        import json
+        self.docker.return_value.pip_install.return_value = (True, 'Successfully installed websocket-client')
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('instance-console-exec', args=[self.alice_instance.pk]),
+                                    json.dumps({'command': 'pip install websocket-client'}), content_type='application/json')
+        self.docker.return_value.pip_install.assert_called_once_with(self.alice_instance, 'pip install websocket-client')
+        self.assertIn('se conserva al redesplegar', response.json()['output'])
+        self.docker.return_value.execute_command.assert_not_called()
+
+
 class GitHubServiceTests(TestCase):
     def test_token_is_redacted_from_errors(self):
         import subprocess

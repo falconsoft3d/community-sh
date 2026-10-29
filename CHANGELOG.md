@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.35**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.36**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.36 — 2026-10-29
+
+- Consola e «Instalar desde requirements.txt»: pip instala los paquetes para el usuario odoo en el volumen de datos (/var/lib/odoo/.local), así funciona en Odoo 17-20 (antes Debian lo rechazaba: «externally-managed-environment») y el paquete se conserva al redesplegar
 
 ## 1.0.35 — 2026-10-29
 

@@ -197,6 +197,13 @@ def instance_console_exec(request, pk):
         
         try:
             service = DockerService()
+            from ..services.docker_service import PIP_INSTALL
+            if PIP_INSTALL.match(command):
+                ok, output = service.pip_install(instance, command)
+                if ok:
+                    output += ('\n✓ Instalado en /var/lib/odoo/.local (volumen de datos): se conserva al redesplegar. '
+                               'Reinicia la instancia (Restart) para que Odoo lo cargue.')
+                return JsonResponse({'output': output, 'success': ok})
             output = service.execute_command(instance, command)
             return JsonResponse({'output': output, 'success': True})
         except Exception as e:
@@ -238,17 +245,16 @@ def instance_install_requirements(request, pk):
                 
                 # Try pip3 first, then pip
                 for pip_cmd in ['pip3', 'pip']:
-                    command = f"{pip_cmd} install {package}"
-                    output = service.execute_command(instance, command)
-                    
-                    if '[Exit Code:' not in output or 'Exit Code: 0' in output:
+                    ok, output = service.pip_install(instance, f"{pip_cmd} install {package}")
+                    if ok:
                         outputs.append(f"  ✓ {package} instalado correctamente")
                         break
                 else:
                     outputs.append(f"  ✗ Error instalando {package}")
-                    outputs.append(f"  {output[:200]}")
+                    outputs.append(f"  {output[-500:]}")
             
-            outputs.append("\n✓ Proceso de instalación completado")
+            outputs.append("\n✓ Proceso de instalación completado: los paquetes quedan en el volumen de datos y se "
+                           "conservan al redesplegar. Reinicia la instancia (Restart) para que Odoo los cargue.")
             
             return JsonResponse({
                 'success': True, 

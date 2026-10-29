@@ -1,12 +1,26 @@
 """Odoo instance lifecycle on Docker: deploy, copy, rename, backup and restore."""
 import docker
 import os
+import re
 import git
 from django.conf import settings
 from ..models import Instance
 from ..task_log import progress
 
 ODOO_DATA_DIR = '/var/lib/odoo'
+
+PIP_INSTALL = re.compile(r'^\s*(pip3?|python3?\s+-m\s+pip)\s+install(\s.*)?$', re.S)
+
+
+def pip_user_command(command):
+    """`pip install x` -> `pip install --user --break-system-packages x`: see DockerService.pip_install."""
+    match = PIP_INSTALL.match(command)
+    if not match:
+        return command
+    args = match.group(2) or ''
+    if any(flag in args.split() for flag in ('--user', '-t', '--target', '--prefix', '--root')):
+        return command
+    return f'{match.group(1)} install --user --break-system-packages{args}'
 
 
 def host_path(path):
@@ -985,6 +999,21 @@ class DockerService:
         except Exception as e:
             return f"Error executing command: {str(e)}"
     
+    def pip_install(self, instance, command):
+        """Run a `pip install` in the Odoo container so that it works and lasts.
+
+        The Debian of the Odoo 17+ images refuses pip on the system Python (PEP 668), and what root installs lives in
+        the container, which every redeploy recreates. So the packages go to the site-packages of the odoo user,
+        under /var/lib/odoo: the data volume, kept across redeploys. Returns (ok, output).
+        """
+        command = pip_user_command(command)
+        output = self.execute_command(instance, command)
+        if 'no such option: --break-system-packages' in output:
+            # pip older than 23 (Odoo up to 16) has no such flag, nor the restriction
+            output = self.execute_command(instance, command.replace(' --break-system-packages', ''))
+        ok = not output.startswith('[Exit Code:') and not output.startswith(('No container', 'Container not found', 'Docker API Error', 'Error executing'))
+        return ok, output
+
     def backup_instance(self, instance, include_filestore=True, user=None):
         """
         Creates a backup of the instance (database + optionally filestore)
