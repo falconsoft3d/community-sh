@@ -908,6 +908,23 @@ class PostgresVersionTests(TestCase):
             client.containers.run.assert_not_called()
             self.assertIn('ya tiene datos', notes[0])
 
+    def test_restart_starts_a_stopped_database_first(self):
+        with mock.patch('orchestrator.services.docker_service.docker.from_env') as from_env:
+            from .services import DockerService
+            service = DockerService()
+            client = from_env.return_value
+        instance = Instance.objects.create(name='rebooted', container_id='abc')
+        db = mock.Mock(status='exited', attrs={'HostConfig': {'RestartPolicy': {'Name': 'no'}}})
+        odoo = mock.Mock(status='exited', attrs={'HostConfig': {'RestartPolicy': {'Name': 'no'}}})
+        order = mock.Mock()
+        order.attach_mock(db.start, 'db_start'); order.attach_mock(odoo.restart, 'odoo_restart')
+        client.containers.get.side_effect = lambda name: db if name == 'db_rebooted' else odoo
+        with mock.patch.object(service, '_wait_for_postgres'):
+            service.restart_instance(instance)
+        self.assertEqual([c[0] for c in order.mock_calls], ['db_start', 'odoo_restart'])
+        db.update.assert_called_once_with(restart_policy={'Name': 'unless-stopped'})
+        odoo.update.assert_called_once_with(restart_policy={'Name': 'unless-stopped'})
+
     def test_instance_containers_come_back_after_a_reboot(self):
         with mock.patch('orchestrator.services.docker_service.docker.from_env') as from_env:
             from .services import DockerService

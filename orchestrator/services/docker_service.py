@@ -651,12 +651,28 @@ class DockerService:
         except docker.errors.NotFound:
             pass
     
+    def _start_db_container(self, instance):
+        """The instance's Postgres, started if it was stopped (a reboot without restart policy), and kept up from now on."""
+        db_container = self._get_container(f'db_{instance.name}')
+        if db_container is None:
+            return None
+        if db_container.attrs.get('HostConfig', {}).get('RestartPolicy', {}).get('Name') != RESTART_POLICY['Name']:
+            db_container.update(restart_policy=RESTART_POLICY)
+        if db_container.status != 'running':
+            print(f"Starting database container {db_container.name}...")
+            db_container.start()
+            self._wait_for_postgres(db_container)
+        return db_container
+
     def restart_instance(self, instance):
-        """Restart the Odoo container"""
+        """Restart the Odoo container, starting its database first if it was stopped"""
         if not instance.container_id:
             return
         try:
+            self._start_db_container(instance)
             container = self.client.containers.get(instance.container_id)
+            if container.attrs.get('HostConfig', {}).get('RestartPolicy', {}).get('Name') != RESTART_POLICY['Name']:
+                container.update(restart_policy=RESTART_POLICY)
             print(f"Restarting container {container.name}...")
             container.restart()
             instance.status = Instance.Status.RUNNING

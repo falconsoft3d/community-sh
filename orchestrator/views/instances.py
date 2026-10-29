@@ -684,7 +684,11 @@ def instance_admin_login(request, pk):
     if not database:
         try:
             service = DockerService()
-            databases = service._list_user_databases(service.client.containers.get(f'db_{instance.name}'))
+            db_container = service.client.containers.get(f'db_{instance.name}')
+            if db_container.status != 'running':
+                messages.error(request, 'La base de datos de la instancia está parada: pulsa Restart para arrancarla')
+                return redirect('instance-detail', pk=pk)
+            databases = service._list_user_databases(db_container)
         except Exception:
             databases = []
         if not databases:

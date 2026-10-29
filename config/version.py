@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.37'
+VERSION = '1.0.38'
 
 CHANGELOG = [
+    {
+        'version': '1.0.38',
+        'date': '2026-10-30',
+        'notes': [
+            "Restart de una instancia: si su base de datos estaba parada (por ejemplo tras reiniciar el servidor), la arranca antes que Odoo y deja las dos con reinicio automático; «Entrar como admin» dice que la base de datos está parada en vez de «todavía no tiene base de datos»",
+        ],
+    },
     {
         'version': '1.0.37',
         'date': '2026-10-30',
