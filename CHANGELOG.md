@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.42**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.43**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.43 — 2026-10-30
+
+- Demos: varias bases en una instancia y un certificado, abiertas con `https://dominio/?nombre` (Odoo 18 a 20). Se activa con «Base por defecto de las demos».
+- Copias de seguridad: una instancia con varias bases guarda una copia de cada una.
 
 ## 1.0.42 — 2026-10-30
 

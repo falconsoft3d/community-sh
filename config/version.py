@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.42'
+VERSION = '1.0.43'
 
 CHANGELOG = [
+    {
+        'version': '1.0.43',
+        'date': '2026-10-30',
+        'notes': [
+            "Demos: varias bases en una instancia y un certificado, abiertas con https://dominio/?nombre (Odoo 18 a 20). Se activa con «Base por defecto de las demos».",
+            "Copias de seguridad: una instancia con varias bases guarda una copia de cada una.",
+        ],
+    },
     {
         'version': '1.0.42',
         'date': '2026-10-30',

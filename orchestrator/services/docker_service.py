@@ -74,6 +74,7 @@ def odoo_command(odoo_version):
 
 
 PANEL_ADDONS_DIR = '/mnt/community-sh-addons'
+DEMO_MIN_VERSION = 18
 # How Odoo containers reach the panel (they share the community-sh_web network)
 PANEL_INTERNAL_URL = 'http://app:8000'
 
@@ -168,7 +169,11 @@ class DockerService:
         server_wide = 'base,web,web_kanban' if odoo_major(instance.odoo_version) <= 10 else 'base,web'
         # community_sh_ai: "/ia ..." in a chatter asks the panel's AI assistant (controllers load server-wide,
         # the chatter hook once the module is installed in the database)
-        panel_login = (f"server_wide_modules = {server_wide},community_sh_login,community_sh_ai\n"
+        # Demos: /?name opens the database name; without it, the default one, and the list of databases stays hidden
+        demo = bool(instance.demo_default_db) and odoo_major(instance.odoo_version) >= DEMO_MIN_VERSION
+        demo_lines = f"community_sh_demo_default = {instance.demo_default_db}\nlist_db = False\n" if demo else ''
+        panel_login = (f"server_wide_modules = {server_wide},community_sh_login,community_sh_ai"
+                       f"{',community_sh_demo' if demo else ''}\n{demo_lines}"
                        f"community_sh_secret = {admin_login_secret(instance)}\n"
                        f"community_sh_panel_url = {PANEL_INTERNAL_URL}\n"
                        f"community_sh_instance = {instance.name}\n")
@@ -1104,7 +1109,17 @@ class DockerService:
         ok = not output.startswith('[Exit Code:') and not output.startswith(('No container', 'Container not found', 'Docker API Error', 'Error executing'))
         return ok, output
 
-    def backup_instance(self, instance, include_filestore=True, user=None):
+    def backup_all_databases(self, instance, include_filestore=True, user=None):
+        """The backups of the instance: one file per database when it has several (a file restores one database)."""
+        databases = []
+        db_container = None if instance.database_name else self._get_container(f'db_{instance.name}')
+        if db_container is not None:
+            databases = self._list_user_databases(db_container)
+        if len(databases) < 2:
+            return [self.backup_instance(instance, include_filestore, user)]
+        return [self.backup_instance(instance, include_filestore, user, database=database) for database in databases]
+
+    def backup_instance(self, instance, include_filestore=True, user=None, database=None):
         """
         Creates a backup of the instance (database + optionally filestore)
         Returns the Backup model instance
@@ -1113,7 +1128,7 @@ class DockerService:
         from datetime import datetime
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_filename = f"{instance.name}_backup_{timestamp}.zip"
+        backup_filename = f"{instance.name}{f'_{database}' if database else ''}_backup_{timestamp}.zip"
         
         # Create backups directory if it doesn't exist
         backups_dir = os.path.join(settings.BASE_DIR, 'backups')
@@ -1131,7 +1146,9 @@ class DockerService:
                 db_container = self.client.containers.get(f"db_{instance.name}")
                 
                 # Check if database_name is specified in instance
-                if instance.database_name:
+                if database:
+                    odoo_db_name = database
+                elif instance.database_name:
                     odoo_db_name = instance.database_name
                     print(f"Using specified database name: {odoo_db_name}")
                 else:

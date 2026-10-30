@@ -132,13 +132,13 @@ def backup_all_instances(retention, user=None):
     for index, instance in enumerate(instances):
         task_log.progress(100 * index // max(len(instances), 1), f'Respaldo de {instance.name} ({index + 1}/{len(instances)})')
         try:
-            backup = service.backup_instance(instance, include_filestore=True, user=user)
-            successes.append(backup.filename)
+            backups = service.backup_all_databases(instance, include_filestore=True, user=user)
+            successes += [backup.filename for backup in backups]
         except Exception as e:
             logger.exception('Backup of %s failed', instance.name)
             errors.append(f'{instance.name}: {e}')
             continue
-        for old_backup in Backup.objects.filter(instance=instance).order_by('-created_at')[retention:]:
+        for old_backup in Backup.objects.filter(instance=instance).order_by('-created_at')[retention * len(backups):]:
             if os.path.exists(old_backup.file_path):
                 os.remove(old_backup.file_path)
             old_backup.delete()
@@ -269,10 +269,10 @@ def odoo_migration(task):
 
 @handler(Task.Kind.BACKUP)
 def backup(task):
-    record = DockerService().backup_instance(
+    records = DockerService().backup_all_databases(
         task.instance, include_filestore=task.params.get('include_filestore', True), user=task.created_by,
     )
-    return f'Backup creado: {record.filename}'
+    return f"Backup creado: {', '.join(record.filename for record in records)}"
 
 
 @handler(Task.Kind.RESTORE)

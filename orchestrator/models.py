@@ -62,6 +62,10 @@ class Instance(models.Model):
     # Database
     database_name = models.CharField(max_length=100, blank=True, null=True, validators=[validate_database_name], help_text="Nombre de la base de datos de Odoo (dejar vacío para auto-detección)")
     
+    # Demos: several databases in one instance (and one certificate), opened with https://host/?name
+    demo_default_db = models.CharField(max_length=100, blank=True, default='', validators=[validate_database_name],
+                                       help_text="Odoo 18+: database opened without ?name. Empty: a normal instance.")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

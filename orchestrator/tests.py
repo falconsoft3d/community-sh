@@ -364,19 +364,19 @@ class AutoBackupScheduleTests(TestCase):
         from django.utils import timezone
         self.run_command()
         self.run_command()
-        self.assertEqual(self.service.return_value.backup_instance.call_count, 1)
+        self.assertEqual(self.service.return_value.backup_all_databases.call_count, 1)
 
         self.config.refresh_from_db()
         self.config.last_auto_backup_at = timezone.now() - timedelta(hours=6, minutes=1)
         self.config.save()
         self.run_command()
-        self.assertEqual(self.service.return_value.backup_instance.call_count, 2)
+        self.assertEqual(self.service.return_value.backup_all_databases.call_count, 2)
 
     def test_disabled_does_nothing(self):
         self.config.auto_backup_enabled = False
         self.config.save()
         self.run_command()
-        self.service.return_value.backup_instance.assert_not_called()
+        self.service.return_value.backup_all_databases.assert_not_called()
 
 
 class PostOnlyActionTests(BaseTestCase):
@@ -436,7 +436,7 @@ class TaskQueueTests(BaseTestCase):
         self.client.force_login(self.alice)
         self.client.post(reverse('instance-deploy', args=[self.alice_instance.pk]))
         self.client.post(reverse('instance-backup', args=[self.alice_instance.pk]), {'filestore': 'false'})
-        self.docker.return_value.backup_instance.side_effect = Exception('disk full')
+        self.docker.return_value.backup_all_databases.side_effect = Exception('disk full')
 
         self.run_worker()
 
@@ -565,7 +565,7 @@ class TaskLogTests(BaseTestCase):
     def test_failed_task_keeps_the_error_in_its_log(self):
         from .task_models import Task
         from .tasks import enqueue
-        self.docker.return_value.backup_instance.side_effect = Exception('disk full')
+        self.docker.return_value.backup_all_databases.side_effect = Exception('disk full')
         enqueue('backup', self.alice_instance, self.alice)
         self.run_worker()
         task = Task.objects.get(kind='backup')
@@ -1666,6 +1666,51 @@ class AdminLoginTests(BaseTestCase):
     def test_only_managers(self):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk])).status_code, 404)
+
+
+class DemoDatabasesTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from .services.docker_service import DockerService
+        self.workspace = tempfile.mkdtemp()
+        self.instance = self.alice_instance
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            self.service = DockerService()
+
+    def odoo_conf(self):
+        self.service._write_odoo_config(self.instance, self.workspace, [])
+        with open(os.path.join(self.workspace, 'conf', 'odoo.conf')) as conf:
+            return conf.read()
+
+    def test_demo_instance_loads_the_module_and_hides_the_databases(self):
+        self.instance.odoo_version = '20.0'
+        self.assertNotIn('community_sh_demo', self.odoo_conf())
+        self.instance.demo_default_db = 'shop'
+        config = self.odoo_conf()
+        self.assertIn('community_sh_login,community_sh_ai,community_sh_demo', config)
+        self.assertIn('community_sh_demo_default = shop', config)
+        self.assertIn('list_db = False', config)
+
+    def test_demos_need_odoo_18(self):
+        self.instance.odoo_version = '17.0'
+        self.instance.demo_default_db = 'shop'
+        self.assertNotIn('community_sh_demo', self.odoo_conf())
+
+    def test_one_backup_per_database(self):
+        container = mock.Mock()
+        with mock.patch.object(self.service, '_get_container', return_value=container), \
+                mock.patch.object(self.service, '_list_user_databases', return_value=['hotel', 'shop']), \
+                mock.patch.object(self.service, 'backup_instance') as backup:
+            self.assertEqual(len(self.service.backup_all_databases(self.instance)), 2)
+        self.assertEqual([call.kwargs['database'] for call in backup.call_args_list], ['hotel', 'shop'])
+
+    def test_one_database_keeps_one_plain_backup(self):
+        with mock.patch.object(self.service, '_get_container', return_value=mock.Mock()), \
+                mock.patch.object(self.service, '_list_user_databases', return_value=['acme']), \
+                mock.patch.object(self.service, 'backup_instance') as backup:
+            self.service.backup_all_databases(self.instance)
+        self.assertNotIn('database', backup.call_args.kwargs)
 
 
 class CloneRepoTests(BaseTestCase):
