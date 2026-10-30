@@ -321,6 +321,27 @@
             </div>
             <div class="p-6 pt-4 space-y-4"
                 x-data="{ showDomainForm: {% if not object.custom_domain %}true{% else %}false{% endif %} }">
+                {% if certificate_problem %}
+                <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm space-y-1">
+                    <div class="flex items-center gap-2 font-medium">
+                        <i data-lucide="shield-alert" class="h-4 w-4"></i>
+                        <span>Certificado pendiente</span>
+                    </div>
+                    <p class="text-muted-foreground">
+                        {% if certificate_problem.kind == 'rate_limit' %}
+                        Let's Encrypt ha alcanzado su límite semanal de certificados para este dominio. Se reintenta solo{% if certificate_problem.retry_after %}, no antes de {{ certificate_problem.retry_after }} UTC{% endif %}.
+                        {% elif certificate_problem.kind == 'failed' %}
+                        Let's Encrypt no pudo comprobar el dominio: revisa que su DNS apunte a este servidor.
+                        {% elif certificate_problem.kind == 'error' %}
+                        Let's Encrypt no pudo emitir el certificado: revisa el DNS del dominio y los registros de Traefik.
+                        {% else %}
+                        El certificado se está solicitando.
+                        {% endif %}
+                        Mientras tanto la instancia funciona, pero el navegador mostrará un aviso de seguridad.
+                    </p>
+                    <p class="text-xs text-muted-foreground">{{ certificate_problem.hosts|join:", " }}</p>
+                </div>
+                {% endif %}
                 {% if object.custom_domain %}
                 <div class="space-y-3">
                     <div class="flex items-center justify-between p-3 bg-accent/50 rounded-lg">

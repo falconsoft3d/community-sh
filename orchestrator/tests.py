@@ -1687,6 +1687,40 @@ class DomainTests(BaseTestCase):
         path = os.path.join(self.base_dir, 'traefik', f'instance-{instance.name}.yml')
         return yaml.safe_load(open(path)) if os.path.exists(path) else None
 
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_stopped_instance_has_no_route(self):
+        self.alice_instance.status = Instance.Status.RUNNING
+        self.assertIsNotNone(self.routes(self.alice_instance))
+        self.alice_instance.status = Instance.Status.STOPPED
+        self.assertIsNone(self.routes(self.alice_instance))
+
+    def acme_storage(self, *hosts):
+        import json
+        path = os.path.join(self.base_dir, 'acme.json')
+        with open(path, 'w') as storage:
+            json.dump({'letsencrypt': {'Certificates': [{'domain': {'main': host}, 'key': 'secret'} for host in hosts]}}, storage)
+        return path
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_certificate_problem(self):
+        from .services import domains
+        host = 'acme-17-alice-odoo.hosting.example.com'
+        self.alice_instance.status = Instance.Status.RUNNING
+        limit = (f'level=error msg="Unable to obtain ACME certificate for domains \\"{host}\\": too many certificates (50) '
+                 'already issued for \\"hosting.example.com\\" in the last 168h0m0s, retry after 2026-10-30 14:02:41 UTC"')
+        with mock.patch.object(domains, 'ACME_STORAGE', self.acme_storage('other.hosting.example.com')), \
+                mock.patch.object(domains, '_traefik_log', return_value=limit):
+            self.assertEqual(domains.certificate_problem(self.alice_instance),
+                             {'hosts': [host], 'kind': 'rate_limit', 'retry_after': '2026-10-30 14:02'})
+        with mock.patch.object(domains, 'ACME_STORAGE', self.acme_storage(host)):
+            self.assertIsNone(domains.certificate_problem(self.alice_instance))
+        with mock.patch.object(domains, 'ACME_STORAGE', self.acme_storage('*.hosting.example.com')):
+            self.assertIsNone(domains.certificate_problem(self.alice_instance))
+        with mock.patch.object(domains, 'ACME_STORAGE', '/nonexistent/acme.json'):
+            self.assertIsNone(domains.certificate_problem(self.alice_instance))
+        self.alice_instance.status = Instance.Status.STOPPED
+        self.assertIsNone(domains.certificate_problem(self.alice_instance))
+
     def test_subdomain_is_client_version_name(self):
         self.alice_project.client = self.bob
         self.alice_project.save()

@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.40'
+VERSION = '1.0.41'
 
 CHANGELOG = [
+    {
+        'version': '1.0.41',
+        'date': '2026-10-30',
+        'notes': [
+            "Dominios: una instancia parada deja de tener ruta en Traefik y no gasta certificados; la recupera al reiniciarla.",
+            "La ficha de la instancia avisa cuando falta el certificado y explica por qué (límite semanal de Let's Encrypt, DNS...).",
+        ],
+    },
     {
         'version': '1.0.40',
         'date': '2026-10-30',

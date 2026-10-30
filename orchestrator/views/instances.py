@@ -113,6 +113,8 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         from ..services.ai import get_ai_config
         context['ai_enabled'] = context['can_manage'] and get_ai_config() is not None
         context['tasks'] = list(self.object.tasks.all()[:5])
+        from ..services.domains import certificate_problem
+        context['certificate_problem'] = certificate_problem(self.object)
         from ..services.odoo_migration import MIN_TARGET_VERSION, STEP_LABELS, STEPS
         context['migration_steps'] = [(step, STEP_LABELS[step]) for step in STEPS]
         context['migration_supported'] = int(float(self.object.odoo_version)) >= MIN_TARGET_VERSION

@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.40**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.41**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.41 — 2026-10-30
+
+- Dominios: una instancia parada deja de tener ruta en Traefik y no gasta certificados; la recupera al reiniciarla.
+- La ficha de la instancia avisa cuando falta el certificado y explica por qué (límite semanal de Let's Encrypt, DNS...).
 
 ## 1.0.40 — 2026-10-30
 

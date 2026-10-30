@@ -674,8 +674,15 @@ class DockerService:
             container.stop()
             instance.status = Instance.Status.STOPPED
             instance.save()
+            self._refresh_routes(instance)
         except docker.errors.NotFound:
             pass
+
+    @staticmethod
+    def _refresh_routes(instance):
+        """The Traefik routes follow the state of the instance (a stopped one has none)."""
+        from ..traefik_service import TraefikService
+        TraefikService.generate_instance_config(instance)
     
     def _start_db_container(self, instance):
         """The instance's Postgres, started if it was stopped (a reboot without restart policy), and kept up from now on."""
@@ -703,6 +710,7 @@ class DockerService:
             container.restart()
             instance.status = Instance.Status.RUNNING
             instance.save()
+            self._refresh_routes(instance)
             print(f"Container {container.name} restarted successfully")
         except docker.errors.NotFound:
             print(f"Container not found for instance {instance.name}")

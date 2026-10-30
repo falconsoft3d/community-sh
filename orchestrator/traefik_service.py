@@ -92,7 +92,8 @@ class TraefikService:
         try:
             name = f'instance-{instance.name}.yml'
             hosts = instance_hosts(instance)
-            if not hosts:
+            # A stopped instance serves nothing: without a route no certificate is requested for it
+            if not hosts or instance.status == instance.Status.STOPPED:
                 TraefikService._write(name, None)
                 return True, "Configuración de instancia eliminada"
             certificate = None
