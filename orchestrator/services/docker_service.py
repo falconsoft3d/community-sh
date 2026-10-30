@@ -604,66 +604,57 @@ class DockerService:
         return instance
 
     def _clone_repo(self, instance, workspace_path):
+        """The main repository of the instance in <workspace>/addons, with the token of its owner (it may be
+        private). A failed update keeps the code there; without any code the deploy fails instead of going on empty."""
         if not instance.github_repo:
             return
-        
+        import shutil
+        from .github import authed_url as with_token
+        token = self._github_token(instance)
+        authed_url = with_token(instance.github_repo, token)
+        clean = lambda error: str(error).replace(token, '***')[-300:] if token else str(error)[-300:]  # noqa: E731
         addons_path = os.path.join(workspace_path, 'addons')
-        
-        # If the directory exists, try to pull changes
-        if os.path.exists(addons_path):
+        has_code = os.path.isdir(os.path.join(addons_path, '.git'))
+        error = ''
+        if has_code:
             try:
-                print(f"Addons path already exists: {addons_path}. Pulling latest changes...")
                 repo = git.Repo(addons_path)
-                
-                # Get the current branch name
-                current_branch = repo.active_branch.name
-                print(f"Current branch: {current_branch}")
-                
-                # Pull latest changes
-                origin = repo.remotes.origin
-                origin.pull(current_branch)
-                print(f"Successfully pulled latest changes from {current_branch}")
+                branch = repo.active_branch.name
+                repo.remotes.origin.set_url(authed_url)
+                try:
+                    repo.remotes.origin.pull(branch)
+                finally:
+                    # Don't leave the token in .git/config (the AI assistant can read files here)
+                    repo.remotes.origin.set_url(instance.github_repo)
+                print(f"Successfully pulled latest changes from {branch}")
                 return
-            except git.exc.InvalidGitRepositoryError:
-                print(f"Directory exists but is not a git repository. Removing and cloning fresh...")
-                import shutil
-                shutil.rmtree(addons_path)
             except Exception as e:
-                print(f"Error pulling changes: {str(e)}. Will try to clone fresh...")
-                import shutil
-                shutil.rmtree(addons_path)
-        
-        # Try to clone the repository with error handling
+                error = clean(e)
+                print(f"Error pulling changes: {error}. Will try to clone fresh...")
+
         branch = instance.github_branch or 'main'
-        branches_to_try = [branch]
-        
-        # If the specified branch is 'main', also try 'master'
-        if branch == 'main':
-            branches_to_try.append('master')
-        elif branch == 'master':
-            branches_to_try.append('main')
-        
+        branches_to_try = [branch] + ({'main': ['master'], 'master': ['main']}.get(branch) or [])
+        # Into another folder: the code in place is only replaced by a clone that worked
+        fresh_path = f'{addons_path}.new'
         for branch_name in branches_to_try:
+            shutil.rmtree(fresh_path, ignore_errors=True)
             try:
                 print(f"Attempting to clone {instance.github_repo} (branch: {branch_name})")
-                git.Repo.clone_from(
-                    instance.github_repo, 
-                    addons_path, 
-                    branch=branch_name,
-                    depth=1  # Shallow clone for faster performance
-                )
+                repo = git.Repo.clone_from(authed_url, fresh_path, branch=branch_name, depth=1)
+                repo.remotes.origin.set_url(instance.github_repo)
+                shutil.rmtree(addons_path, ignore_errors=True)
+                os.rename(fresh_path, addons_path)
                 print(f"Successfully cloned repository on branch {branch_name}")
                 return
             except git.exc.GitCommandError as e:
-                print(f"Failed to clone branch '{branch_name}': {str(e)}")
-                # Try next branch
-                continue
-            except Exception as e:
-                print(f"Unexpected error cloning repository: {str(e)}")
-                break
-        
-        # If we get here, all attempts failed
-        print(f"Warning: Could not clone repository {instance.github_repo}. Continuing without custom addons.")
+                error = clean(e)
+                print(f"Failed to clone branch '{branch_name}': {error}")
+        shutil.rmtree(fresh_path, ignore_errors=True)
+        message = f'No se pudo obtener {instance.github_repo} ({branch}): {error}'
+        if has_code:
+            self.deploy_notes.append(f'{message}. Sigue el código anterior.')
+            return
+        raise Exception(message)
 
 
     def stop_instance(self, instance):

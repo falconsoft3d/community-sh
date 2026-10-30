@@ -1668,6 +1668,57 @@ class AdminLoginTests(BaseTestCase):
         self.assertEqual(self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk])).status_code, 404)
 
 
+class CloneRepoTests(BaseTestCase):
+    REPO = 'https://github.com/acme/private'
+
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from .config_models import GitHubConfig
+        from .services.docker_service import DockerService
+        self.workspace = tempfile.mkdtemp()
+        self.alice_instance.github_repo = self.REPO
+        self.alice_instance.github_branch = '20.0'
+        self.alice_instance.owner = self.alice
+        GitHubConfig.objects.filter(user=self.alice).delete()
+        GitHubConfig.objects.create(user=self.alice, personal_access_token='s3cret')
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            self.service = DockerService()
+        self.service.deploy_notes = []
+
+    def fake_clone(self, url, path, **kwargs):
+        os.makedirs(os.path.join(path, '.git'))
+        return mock.MagicMock()
+
+    def test_private_repository_is_cloned_with_the_token_of_the_owner(self):
+        with mock.patch('orchestrator.services.docker_service.git.Repo.clone_from', side_effect=self.fake_clone) as clone:
+            self.service._clone_repo(self.alice_instance, self.workspace)
+        self.assertIn('s3cret', clone.call_args.args[0])
+        self.assertTrue(os.path.isdir(os.path.join(self.workspace, 'addons', '.git')))
+        self.assertFalse(os.path.exists(os.path.join(self.workspace, 'addons.new')))
+
+    def test_failed_clone_without_code_fails_the_deploy_and_hides_the_token(self):
+        import git
+        failure = git.exc.GitCommandError('git clone https://s3cret@github.com/acme/private', 128)
+        with mock.patch('orchestrator.services.docker_service.git.Repo.clone_from', side_effect=failure):
+            with self.assertRaises(Exception) as caught:
+                self.service._clone_repo(self.alice_instance, self.workspace)
+        self.assertIn('No se pudo obtener', str(caught.exception))
+        self.assertNotIn('s3cret', str(caught.exception))
+
+    def test_failed_update_keeps_the_code_in_place(self):
+        import git
+        addons = os.path.join(self.workspace, 'addons')
+        os.makedirs(os.path.join(addons, '.git'))
+        open(os.path.join(addons, 'module.py'), 'w').close()
+        failure = git.exc.GitCommandError('git clone', 128)
+        with mock.patch('orchestrator.services.docker_service.git.Repo', side_effect=failure) as repo:
+            repo.clone_from.side_effect = failure
+            self.service._clone_repo(self.alice_instance, self.workspace)
+        self.assertTrue(os.path.exists(os.path.join(addons, 'module.py')))
+        self.assertEqual(len(self.service.deploy_notes), 1)
+
+
 class DomainTests(BaseTestCase):
     def setUp(self):
         super().setUp()

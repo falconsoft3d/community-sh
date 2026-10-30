@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.41**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.42**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.42 — 2026-10-30
+
+- Repositorio principal: se clona y actualiza con el token del propietario, así que los repositorios privados ya funcionan.
+- Si no se puede obtener el código, el despliegue falla en lugar de terminar con los módulos vacíos; un fallo al actualizar conserva el código que había.
 
 ## 1.0.41 — 2026-10-30
 

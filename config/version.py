@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.41'
+VERSION = '1.0.42'
 
 CHANGELOG = [
+    {
+        'version': '1.0.42',
+        'date': '2026-10-30',
+        'notes': [
+            "Repositorio principal: se clona y actualiza con el token del propietario, así que los repositorios privados ya funcionan.",
+            "Si no se puede obtener el código, el despliegue falla en lugar de terminar con los módulos vacíos; un fallo al actualizar conserva el código que había.",
+        ],
+    },
     {
         'version': '1.0.41',
         'date': '2026-10-30',
