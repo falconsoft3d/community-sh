@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views.activity import activity_detail, activity_list, task_live
 from .views.odoo_ai import instance_migrate, odoo_ai_request
-from .views.api import BackupViewSet, InstanceAPIViewSet, ProjectViewSet, TaskViewSet, TodoViewSet
+from .views.api import BackupViewSet, ContainerViewSet, InstanceAPIViewSet, ProjectViewSet, TaskViewSet, TodoViewSet
 from .views import (
     todo_list,
     todo_create,
@@ -100,6 +100,7 @@ router.register(r'api/projects', ProjectViewSet, basename='api-project')
 router.register(r'api/backups', BackupViewSet, basename='api-backup')
 router.register(r'api/tasks', TaskViewSet, basename='api-task')
 router.register(r'api/todos', TodoViewSet, basename='api-todo')
+router.register(r'api/containers', ContainerViewSet, basename='api-container')
 
 urlpatterns = [
     path('accounts/register/', register, name='register'),

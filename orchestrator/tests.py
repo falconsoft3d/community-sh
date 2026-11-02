@@ -2075,3 +2075,137 @@ class GitHubTokenURLTests(TestCase):
         self.assertEqual(authed_url('https://github.com/acme/private', 'github_pat_X'),
                          'https://x-access-token:github_pat_X@github.com/acme/private')
         self.assertEqual(authed_url('https://github.com/acme/public', ''), 'https://github.com/acme/public')
+
+
+class ContainerApiTests(BaseTestCase):
+    """Generic containers through the REST API, also built from a repository."""
+
+    def setUp(self):
+        super().setUp()
+        service = mock.patch('orchestrator.container_service.ContainerService')
+        self.service = service.start()
+        self.addCleanup(service.stop)
+        self.service.return_value.create_container.return_value = (True, 'creado')
+        self.service.return_value.delete_container.return_value = (True, 'borrado')
+
+    def test_create_from_image_gets_a_free_port(self):
+        Container.objects.create(name='old', image='redis', port=40000, container_port=6379, created_by=self.bob)
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/containers/', {'name': 'Web1', 'image': 'nginx', 'container_port': 80},
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 201, response.content)
+        container = Container.objects.get(name='web1')
+        self.assertEqual((container.created_by, container.port), (self.alice, 40001))
+        self.service.return_value.create_container.assert_called_once()
+
+    def test_create_from_repository_queues_a_build(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/containers/', {
+            'name': 'erpsqlite', 'git_repo': 'https://github.com/acme/erp.git', 'dockerfile': 'Dockerfile.server',
+            'container_port': 8169, 'environment': {'ERPSQLITE_ADMIN_KEY': 'k'},
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 202, response.content)
+        task = Task.objects.get(pk=response.json()['task_id'])
+        container = Container.objects.get(name='erpsqlite')
+        self.assertEqual((task.kind, task.params['container']), (Task.Kind.BUILD_CONTAINER, container.pk))
+        self.assertEqual(container.environment, {'ERPSQLITE_ADMIN_KEY': 'k'})
+        self.service.return_value.create_container.assert_not_called()
+        # The build task is the user's even without an instance
+        ids = [t['id'] for t in self.client.get('/api/tasks/').json()]
+        self.assertIn(task.pk, ids)
+        self.client.force_login(self.bob)
+        self.assertNotIn(task.pk, [t['id'] for t in self.client.get('/api/tasks/').json()])
+
+    def test_image_or_repository_is_required(self):
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/containers/', {'name': 'empty', 'container_port': 80},
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_users_only_see_and_delete_their_containers(self):
+        bobs = Container.objects.create(name='bobs', image='redis', port=40010, container_port=6379, created_by=self.bob)
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get('/api/containers/').json(), [])
+        self.assertEqual(self.client.delete(f'/api/containers/{bobs.pk}/').status_code, 404)
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.delete(f'/api/containers/{bobs.pk}/').status_code, 204)
+        self.assertFalse(Container.objects.filter(pk=bobs.pk).exists())
+
+    def test_only_admins_mount_volumes(self):
+        self.client.force_login(self.alice)
+        self.client.post('/api/containers/', {
+            'name': 'sneaky', 'image': 'alpine', 'container_port': 80, 'volumes': {'root': {'host': '/', 'container': '/host'}},
+        }, content_type='application/json')
+        self.assertEqual(Container.objects.get(name='sneaky').volumes, {})
+
+    def test_name_cannot_take_an_instance_subdomain(self):
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/containers/', {'name': self.alice_instance.subdomain, 'image': 'nginx',
+                                                         'container_port': 80}, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_build_task_builds_and_starts(self):
+        from .task_models import Task
+        from .tasks import run_task
+        container = Container.objects.create(name='erpsqlite', image='', port=40020, container_port=8169,
+                                             git_repo='https://github.com/acme/erp.git', created_by=self.alice)
+        self.service.return_value.build_image.return_value = container.built_image
+        self.service.return_value.restart_container.return_value = (True, 'arrancado')
+        task = Task.objects.create(kind=Task.Kind.BUILD_CONTAINER, created_by=self.alice, params={'container': container.pk})
+        run_task(task)
+        task.refresh_from_db()
+        container.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.DONE, task.result)
+        self.assertEqual(container.image, 'csh-build/erpsqlite:latest')
+
+
+class InstanceApiDeployTests(BaseTestCase):
+    def test_created_instance_is_deployed(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/instances/', {'name': 'alice-new', 'project': self.alice_project.pk})
+        self.assertEqual(response.status_code, 201)
+        task = Task.objects.get(pk=response.json()['task_id'])
+        self.assertEqual((task.kind, task.instance.name), (Task.Kind.DEPLOY, 'alice-new'))
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
+class ContainerRouteTests(TestCase):
+    def setUp(self):
+        import tempfile
+        from .services.domains import clear_cache
+        clear_cache()
+        self.addCleanup(clear_cache)
+        self.base_dir = tempfile.mkdtemp()
+        base_dir = override_settings(BASE_DIR=self.base_dir)
+        base_dir.enable()
+        self.addCleanup(base_dir.disable)
+        user = User.objects.create_user('carol', password='pass-12345')
+        self.container = Container.objects.create(name='erpsqlite', image='x', port=40030, container_port=8169,
+                                                  created_by=user)
+
+    def routes(self):
+        import yaml
+        from .traefik_service import TraefikService
+        TraefikService.generate_container_config(self.container)
+        path = os.path.join(self.base_dir, 'traefik', 'container-erpsqlite.yml')
+        return yaml.safe_load(open(path)) if os.path.exists(path) else None
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_running_container_gets_https_subdomain(self):
+        self.container.status = 'running'
+        routes = self.routes()
+        secure = routes['http']['routers']['container-erpsqlite-0-secure']
+        self.assertEqual(secure['rule'], 'Host(`erpsqlite.hosting.example.com`)')
+        service = routes['http']['services']['container-erpsqlite-service']
+        self.assertEqual(service['loadBalancer']['servers'], [{'url': 'http://erpsqlite:8169'}])
+        self.assertEqual(self.container.url, 'https://erpsqlite.hosting.example.com')
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_stopped_container_has_no_route(self):
+        self.container.status = 'running'
+        self.assertIsNotNone(self.routes())
+        self.container.status = 'stopped'
+        self.assertIsNone(self.routes())
+

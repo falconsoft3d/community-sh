@@ -112,6 +112,7 @@ class ContainerService:
             container.container_id = docker_container.id
             container.status = 'running'
             container.save()
+            self._route(container)
             
             return True, f"Container {container.name} created successfully"
             
@@ -127,6 +128,7 @@ class ContainerService:
             docker_container.stop()
             container.status = 'stopped'
             container.save()
+            self._route(container)
             return True, f"Container {container.name} stopped"
         except Exception as e:
             return False, f"Error stopping container: {str(e)}"
@@ -138,6 +140,7 @@ class ContainerService:
             docker_container.start()
             container.status = 'running'
             container.save()
+            self._route(container)
             return True, f"Container {container.name} started"
         except Exception as e:
             return False, f"Error starting container: {str(e)}"
@@ -194,10 +197,57 @@ class ContainerService:
                     except Exception as e:
                         print(f"Error removing volume {docker_volume_name}: {e}")
             
+            from .traefik_service import TraefikService
+            TraefikService.remove_container_config(container.name)
             return True, f"Container {container.name} deleted"
         except Exception as e:
             return False, f"Error deleting container: {str(e)}"
     
+    @staticmethod
+    def _route(container):
+        """HTTPS route under the platform domain, like the instances."""
+        from .traefik_service import TraefikService
+        ok, message = TraefikService.generate_container_config(container)
+        if not ok:
+            print(message)
+
+    def build_image(self, container, log=print):
+        """
+        Clone container.git_repo (with the owner's GitHub token, so private repos work)
+        and build its Dockerfile as container.built_image. Returns the image tag.
+        """
+        import shutil
+        import tempfile
+        import git
+        from .config_models import GitHubConfig
+        from .services.github import authed_url
+        config = GitHubConfig.objects.filter(user=container.created_by).first()
+        token = config.personal_access_token if config and config.personal_access_token else ''
+        clean = lambda text: str(text).replace(token, '***') if token else str(text)  # noqa: E731
+        workdir = tempfile.mkdtemp(prefix=f'csh-build-{container.name}-')
+        try:
+            branch = container.git_branch or 'main'
+            log(f'Clonando {container.git_repo} ({branch})')
+            try:
+                git.Repo.clone_from(authed_url(container.git_repo, token), workdir, branch=branch, depth=1)
+            except git.exc.GitCommandError as error:
+                raise Exception(f'No se pudo clonar {container.git_repo}: {clean(error)[-300:]}')
+            dockerfile = container.dockerfile or 'Dockerfile'
+            if not os.path.exists(os.path.join(workdir, dockerfile)):
+                raise Exception(f'El repositorio no tiene {dockerfile}')
+            log(f'Construyendo la imagen con {dockerfile}')
+            output = self.client.api.build(path=workdir, dockerfile=dockerfile, tag=container.built_image,
+                                           rm=True, forcerm=True, pull=True, decode=True)
+            for chunk in output:
+                if 'error' in chunk:
+                    raise Exception(chunk['error'].strip())
+                line = (chunk.get('stream') or '').strip()
+                if line:
+                    log(line)
+            return container.built_image
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
+
     def get_container_logs(self, container, tail=100):
         """Get container logs"""
         try:

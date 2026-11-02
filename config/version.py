@@ -3,9 +3,20 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.43'
+VERSION = '1.0.44'
 
 CHANGELOG = [
+    {
+        'version': '1.0.44',
+        'date': '2026-11-02',
+        'notes': [
+            "API: contenedores Docker en /api/containers/ (crear, arrancar, detener, recrear, logs y eliminar), con los mismos límites que el formulario para quien no es administrador.",
+            "Contenedores construidos desde un repositorio (también privado, con el token del propietario) y un Dockerfile, como tarea con su log en un worker propio (build-worker) para no frenar despliegues ni backups.",
+            "Cada contenedor tiene https://nombre.dominio con certificado, como las instancias; parado deja de tener ruta.",
+            "API: crear una instancia también la despliega y devuelve el task_id (antes quedaba en «deploying» sin desplegarse hasta llamar a /deploy/).",
+            "API: /api/tasks/ muestra también tus tareas sin instancia, como construir un contenedor.",
+        ],
+    },
     {
         'version': '1.0.43',
         'date': '2026-10-30',

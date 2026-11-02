@@ -417,3 +417,27 @@ def backup_all(task):
     if errors:
         summary += f', {len(errors)} con errores:\n' + '\n'.join(errors)
     return summary
+
+
+@handler(Task.Kind.BUILD_CONTAINER)
+def build_container(task):
+    """Build a generic container's image from its repository and (re)create it."""
+    from .container_models import Container
+    from .container_service import ContainerService
+    container = Container.objects.get(pk=task.params['container'])
+    service = ContainerService()
+    container.status = 'creating'
+    container.save(update_fields=['status'])
+    try:
+        task_log.progress(5, f'Clonando {container.git_repo}')
+        container.image = service.build_image(container, log=task_log.line)
+        container.save(update_fields=['image'])
+        task_log.progress(90, 'Arrancando el contenedor')
+        ok, message = service.restart_container(container)
+    except Exception:
+        container.status = 'error'
+        container.save(update_fields=['status'])
+        raise
+    if not ok:
+        raise Exception(message)
+    return f'{message}: {container.url}'

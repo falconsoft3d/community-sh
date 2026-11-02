@@ -1,6 +1,14 @@
 # Changelog
 
-Versión actual: **1.0.43**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.44**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.44 — 2026-11-02
+
+- API: contenedores Docker en `/api/containers/` (crear, arrancar, detener, recrear, logs y eliminar), con los mismos límites que el formulario para quien no es administrador.
+- Contenedores construidos desde un repositorio (también privado, con el token del propietario) y un Dockerfile, como tarea con su log en un worker propio (`build-worker`) para no frenar despliegues ni backups.
+- Cada contenedor tiene `https://nombre.dominio` con certificado, como las instancias; parado deja de tener ruta.
+- API: crear una instancia también la despliega y devuelve el `task_id` (antes quedaba en «deploying» sin desplegarse hasta llamar a `/deploy/`).
+- API: `/api/tasks/` muestra también tus tareas sin instancia, como construir un contenedor.
 
 ## 1.0.43 — 2026-10-30
 

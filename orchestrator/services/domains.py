@@ -105,6 +105,18 @@ def certificate_problem(instance):
     return problem
 
 
+def container_hosts(container):
+    """Every host name Traefik routes to a generic container: its custom domain and
+    <name>.<platform domain>, as the instances."""
+    hosts = []
+    if container.custom_domain:
+        hosts.append(container.custom_domain)
+    domain = main_domain()
+    if domain:
+        hosts.append(f'{container.name}.{domain}')
+    return hosts
+
+
 def instance_hosts(instance):
     """Every host name Traefik routes to the instance."""
     hosts = []

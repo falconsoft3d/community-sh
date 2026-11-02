@@ -21,6 +21,7 @@ class Task(models.Model):
         ODOO_MIGRATION = 'odoo_migration', 'Migrar desde otro Odoo'
         INSTALL_BROWSER = 'install_browser', 'Instalar navegador'
         PULL_REPOS = 'pull_repos', 'Actualizar repositorios (pull)'
+        BUILD_CONTAINER = 'build_container', 'Construir contenedor'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'
