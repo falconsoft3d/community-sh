@@ -1,6 +1,12 @@
 # Changelog
 
-Versión actual: **1.0.45**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.46**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.46 — 2026-11-02
+
+- Docker: botón «Limpiar lo no utilizado» y pestaña «Limpieza» con lo que se puede liberar (cuántos y cuánto ocupa): contenedores detenidos, imágenes sin etiqueta, imágenes sin usar, caché de build, redes y volúmenes sin uso. Se elige qué limpiar y corre como tarea con su log en Actividad.
+- La limpieza nunca toca el panel, las instancias (aunque estén paradas), sus filestores y redes ni los contenedores del panel y sus volúmenes; las imágenes sin usar y los volúmenes hay que marcarlos a mano (los volúmenes, escribiendo BORRAR). No corre mientras se construye un contenedor.
+- Arreglo: «Eliminar detenidos» borraba también los contenedores de las instancias paradas, y con ellos su base de datos; ahora sigue las mismas reglas.
 
 ## 1.0.45 — 2026-11-02
 

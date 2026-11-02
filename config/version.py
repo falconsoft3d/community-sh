@@ -3,9 +3,18 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.45'
+VERSION = '1.0.46'
 
 CHANGELOG = [
+    {
+        'version': '1.0.46',
+        'date': '2026-11-02',
+        'notes': [
+            "Docker: botón «Limpiar lo no utilizado» y pestaña «Limpieza» con lo que se puede liberar (cuántos y cuánto ocupa): contenedores detenidos, imágenes sin etiqueta, imágenes sin usar, caché de build, redes y volúmenes sin uso. Se elige qué limpiar y corre como tarea con su log en Actividad.",
+            "La limpieza nunca toca el panel, las instancias (aunque estén paradas), sus filestores y redes ni los contenedores del panel y sus volúmenes; las imágenes sin usar y los volúmenes hay que marcarlos a mano (los volúmenes, escribiendo BORRAR). No corre mientras se construye un contenedor.",
+            "Arreglo: «Eliminar detenidos» borraba también los contenedores de las instancias paradas, y con ellos su base de datos; ahora sigue las mismas reglas.",
+        ],
+    },
     {
         'version': '1.0.45',
         'date': '2026-11-02',

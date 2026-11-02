@@ -79,6 +79,7 @@ def overview():
             'build_cache': sum(b.get('Size', 0) for b in df.get('BuildCache') or []),
         },
         'version': client.version().get('Version'),
+        'cleanup_plan': cleanup_plan(client, df),
     }
 
 
@@ -121,21 +122,121 @@ def remove_network(network_id):
     network.remove()
 
 
-def prune(kind):
+# What "Limpiar lo no utilizado" can remove, in the order it runs
+CLEANUP_KINDS = {
+    'containers': 'Contenedores detenidos',
+    'images': 'Imágenes sin etiqueta',
+    'unused_images': 'Imágenes sin usar',
+    'build_cache': 'Caché de build',
+    'networks': 'Redes sin uso',
+    'volumes': 'Volúmenes sin uso',
+}
+STOPPED = {'exited', 'created', 'dead'}
+
+
+def _owned():
+    """
+    Names the panel still needs although Docker sees them stopped or unused: a stopped instance keeps its
+    containers (its Postgres data lives in the anonymous volume of db_<name>), its network and its filestore.
+    """
+    from ..container_models import Container as AppContainer
+    from ..models import Instance
+
+    containers, volumes, networks = set(), set(), set()
+    for name, data_volume in Instance.objects.values_list('name', 'data_volume'):
+        containers |= {f'odoo_{name}', f'db_{name}'}
+        volumes |= {data_volume, f'odoo_data_{name}'} - {''}
+        networks.add(f'net_{name}')
+    apps = set(AppContainer.objects.values_list('name', flat=True))
+    return containers | apps, volumes, networks, tuple(f'{app}_' for app in apps)
+
+
+def cleanup_plan(client=None, df=None, remove_stopped=True):
+    """
+    What nothing uses, by kind: {kind: [(name, bytes, docker object)]}. Sizes are an upper bound (images share
+    layers). With remove_stopped, what only the removable stopped containers use counts as unused too.
+    """
+    client = client or _client()
+    df = df if df is not None else client.df()
+    owned_containers, owned_volumes, owned_networks, app_volume_prefixes = _owned()
+
+    container_sizes = {c['Id']: c.get('SizeRw') or 0 for c in df.get('Containers') or []}
+    all_containers = client.containers.list(all=True)
+    stopped = [c for c in all_containers
+               if c.status in STOPPED and not _is_protected_container(c) and c.name not in owned_containers]
+    removed = {c.id for c in stopped} if remove_stopped else set()
+    kept = [c for c in all_containers if c.id not in removed]
+
+    used_images, used_networks, used_volumes = set(), set(), set()
+    for c in kept:
+        used_images.add(c.attrs['Image'])
+        used_networks |= set((c.attrs.get('NetworkSettings') or {}).get('Networks') or {})
+        used_networks.add(c.attrs.get('HostConfig', {}).get('NetworkMode', ''))
+        used_volumes |= {m['Name'] for m in c.attrs.get('Mounts', []) if m.get('Type') == 'volume'}
+    images = [img for img in client.images.list() if img.id not in used_images]
+    volume_sizes = {v['Name']: max((v.get('UsageData') or {}).get('Size', 0), 0) for v in df.get('Volumes') or []}
+
+    return {
+        'containers': [(c.name, container_sizes.get(c.id, 0), c) for c in stopped],
+        'images': [(img.short_id.replace('sha256:', ''), img.attrs.get('Size', 0), img) for img in images if not img.tags],
+        'unused_images': [(img.tags[0], img.attrs.get('Size', 0), img) for img in images if img.tags],
+        'build_cache': [(b.get('ID', ''), b.get('Size', 0), None) for b in df.get('BuildCache') or [] if not b.get('InUse')],
+        'networks': [(n.name, 0, n) for n in client.networks.list()
+                     if n.name not in used_networks | owned_networks | DEFAULT_NETWORKS
+                     and not n.name.startswith(PROTECTED_PREFIX) and not n.attrs.get('Containers')],
+        'volumes': [(v.name, volume_sizes.get(v.name, 0), v) for v in client.volumes.list()
+                    if v.name not in used_volumes | owned_volumes
+                    and not v.name.startswith((PROTECTED_PREFIX,) + app_volume_prefixes)],
+    }
+
+
+def cleanup_summary(plan):
+    """The plan for the template: label, count, size and the first names of each kind."""
+    return [{'kind': kind, 'label': label, 'count': len(plan[kind]), 'size': sum(size for _, size, _ in plan[kind]),
+             'items': [name for name, _, _ in plan[kind][:20]]} for kind, label in CLEANUP_KINDS.items()]
+
+
+def _remove_image(client, img):
+    # An image with several tags goes away when its last tag is removed
+    for tag in img.tags or [img.id]:
+        client.images.remove(tag)
+
+
+def cleanup(kinds, progress=None):
+    """Remove what nothing uses, of these kinds. Returns {kind: (count, bytes reclaimed)}."""
     client = _client()
-    if kind == 'containers':
-        result = client.containers.prune()
-        return len(result.get('ContainersDeleted') or []), result.get('SpaceReclaimed', 0)
-    if kind == 'images':
-        result = client.images.prune(filters={'dangling': True})
-        return len(result.get('ImagesDeleted') or []), result.get('SpaceReclaimed', 0)
-    if kind == 'volumes':
-        result = client.volumes.prune()
-        return len(result.get('VolumesDeleted') or []), result.get('SpaceReclaimed', 0)
-    if kind == 'networks':
-        result = client.networks.prune()
-        return len(result.get('NetworksDeleted') or []), 0
-    raise ValueError(kind)
+    kinds = [kind for kind in CLEANUP_KINDS if kind in kinds]
+    plan = cleanup_plan(client, remove_stopped='containers' in kinds)
+    results = {}
+    for step, kind in enumerate(kinds):
+        if progress:
+            progress(10 + 85 * step // len(kinds), f'{CLEANUP_KINDS[kind]}: {len(plan[kind])}')
+        if kind == 'images':
+            result = client.images.prune(filters={'dangling': True})
+            results[kind] = len(result.get('ImagesDeleted') or []), result.get('SpaceReclaimed') or 0
+            continue
+        if kind == 'build_cache':
+            result = client.api.prune_builds(all=True)
+            results[kind] = len(result.get('CachesDeleted') or []), result.get('SpaceReclaimed') or 0
+            continue
+        # One by one: what Docker refuses (in use again, a parent image...) is kept and reported
+        count, freed = 0, 0
+        for name, size, obj in plan[kind]:
+            try:
+                _remove_image(client, obj) if kind == 'unused_images' else obj.remove()
+                print(f'  Eliminado {name}')
+                count, freed = count + 1, freed + size
+            except docker.errors.APIError as e:
+                print(f'  Se conserva {name}: {getattr(e, "explanation", None) or e}')
+        results[kind] = count, freed
+    return results
+
+
+def prune(kind):
+    """One kind of cleanup, from the buttons of each tab: the same rules as cleaning everything."""
+    if kind not in CLEANUP_KINDS:
+        raise ValueError(kind)
+    return cleanup([kind])[kind]
 
 
 def pull_image(reference):

@@ -17,7 +17,7 @@
 - 🔌 **MCP server for Claude** (Claude Code / Claude Desktop) and a full **REST API** with personal tokens
 - ⚙️ Long operations run in background **workers** (one for Docker jobs, one for AI and migrations), with live task status
 - 🔗 GitHub integration: main repo with a branch per instance, plus **extra addons repositories**
-- 📊 Live metrics and CPU/RAM history (24 h, 7 d, 30 d, 12 months); Docker management (containers, images, volumes, networks)
+- 📊 Live metrics and CPU/RAM history (24 h, 7 d, 30 d, 12 months); Docker management (containers, images, volumes, networks) with a safe «clean up unused» that never touches instances
 - ✅ **Todo** list for the team (Claude can complete items over MCP)
 - 🔐 2FA (optional or mandatory), per-user permissions, login lockout, per-instance Odoo master password
 - 🌓 Light/dark theme, 🇪🇸/🇬🇧 Spanish and English

@@ -29,6 +29,7 @@ from .docker import (
     docker_volume_remove,
     docker_network_remove,
     docker_prune,
+    docker_cleanup,
 )
 from .projects import (
     project_list,
@@ -112,6 +113,7 @@ __all__ = [
     'docker_volume_remove',
     'docker_network_remove',
     'docker_prune',
+    'docker_cleanup',
     'project_list',
     'project_create',
     'project_detail',

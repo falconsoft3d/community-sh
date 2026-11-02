@@ -914,6 +914,74 @@ class DockerAdminTests(BaseTestCase):
             self.client.post(reverse('docker-prune', args=['volumes']), {'confirm': 'BORRAR'})
             prune.assert_called_once_with('volumes')
 
+    def test_cleanup_keeps_stopped_instances_and_app_containers(self):
+        from .services import docker_admin
+        Container.objects.create(name='redis1', image='redis', port=40020, container_port=6379, created_by=self.admin)
+
+        def named(name, attrs=None, **fields):
+            obj = mock.Mock(attrs=attrs or {}, **fields)
+            obj.name = name
+            return obj
+
+        def container(name, status, image, volumes=(), networks=(), labels=None):
+            return named(name, id=name, status=status, labels=labels or {}, attrs={
+                'Image': image, 'HostConfig': {'NetworkMode': 'default'},
+                'NetworkSettings': {'Networks': {n: {} for n in networks}},
+                'Mounts': [{'Type': 'volume', 'Name': v} for v in volumes],
+            })
+
+        client = mock.Mock()
+        client.containers.list.return_value = [
+            container('odoo_alice-odoo', 'exited', 'sha-odoo', ['odoo_data_alice-odoo'], ['net_alice-odoo']),
+            container('db_alice-odoo', 'exited', 'sha-pg', ['anon-pg'], ['net_alice-odoo']),
+            container('redis1', 'exited', 'sha-redis'),
+            container('community-sh-db-1', 'exited', 'sha-pg', labels={'com.docker.compose.project': 'community-sh'}),
+            container('leftover', 'exited', 'sha-old', ['anon-leftover'], ['net_gone']),
+        ]
+        client.images.list.return_value = [
+            mock.Mock(id=i, short_id=i, tags=tags, attrs={'Size': 100})
+            for i, tags in [('sha-odoo', ['odoo:18.0']), ('sha-pg', ['postgres:16']), ('sha-redis', ['redis:7']),
+                            ('sha-old', ['old:1']), ('sha-dangling', []), ('sha-spare', ['odoo:16.0'])]
+        ]
+        client.networks.list.return_value = [named(n) for n in ('bridge', 'net_alice-odoo', 'net_gone', 'community-sh_default')]
+        client.volumes.list.return_value = [named(v) for v in (
+            'odoo_data_alice-odoo', 'anon-pg', 'anon-leftover', 'redis1_data', 'community-sh_pgdata', 'odoo_data_deleted')]
+        df = {'Containers': [{'Id': 'leftover', 'SizeRw': 5}], 'Volumes': [{'Name': 'odoo_data_deleted', 'UsageData': {'Size': 7}}],
+              'BuildCache': [{'ID': 'b1', 'Size': 9, 'InUse': False}, {'ID': 'b2', 'Size': 9, 'InUse': True}]}
+
+        plan = docker_admin.cleanup_plan(client, df)
+        names = {kind: [name for name, _, _ in items] for kind, items in plan.items()}
+        self.assertEqual(names['containers'], ['leftover'])
+        self.assertEqual(names['images'], ['sha-dangling'])
+        self.assertEqual(names['unused_images'], ['old:1', 'odoo:16.0'])
+        self.assertEqual(names['build_cache'], ['b1'])
+        self.assertEqual(names['networks'], ['net_gone'])
+        self.assertEqual(names['volumes'], ['anon-leftover', 'odoo_data_deleted'])
+
+        # Without removing the stopped containers, what the leftover one uses stays
+        names = {kind: [n for n, _, _ in items] for kind, items in docker_admin.cleanup_plan(client, df, remove_stopped=False).items()}
+        self.assertEqual(names['unused_images'], ['odoo:16.0'])
+        self.assertEqual(names['volumes'], ['odoo_data_deleted'])
+
+    def test_cleanup_is_queued_and_volumes_need_confirmation(self):
+        from .task_models import Task
+        self.client.force_login(self.admin)
+        self.client.post(reverse('docker-cleanup'), {'kinds': ['containers', 'volumes']})
+        self.assertFalse(Task.objects.exists())
+        self.client.post(reverse('docker-cleanup'), {'kinds': ['containers', 'volumes', 'everything'], 'confirm': 'BORRAR'})
+        self.assertEqual(Task.objects.get().params['kinds'], ['containers', 'volumes'])
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.post(reverse('docker-cleanup'), {'kinds': ['images']}).status_code, 403)
+
+    def test_cleanup_waits_for_a_running_build(self):
+        from .task_models import Task
+        from .tasks import enqueue, run_task
+        Task.objects.create(kind=Task.Kind.BUILD_CONTAINER, status=Task.Status.RUNNING)
+        with mock.patch('orchestrator.services.docker_admin.cleanup') as cleanup:
+            task = run_task(enqueue(Task.Kind.DOCKER_CLEANUP, user=self.admin, kinds=['images']))
+            cleanup.assert_not_called()
+        self.assertEqual(task.status, Task.Status.FAILED)
+
     def test_pull_is_queued_and_validated(self):
         from .task_models import Task
         self.client.force_login(self.admin)
