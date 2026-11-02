@@ -216,12 +216,18 @@ class ContainerViewSet(viewsets.ModelViewSet):
             values.setdefault('container_port', defaults.get('container_port'))
             values.setdefault('environment', defaults.get('environment', {}))
             values.setdefault('command', defaults.get('command', ''))
+            if defaults.get('git_repo'):
+                values.setdefault('git_repo', defaults['git_repo'])
+                values.setdefault('git_branch', defaults.get('git_branch', 'main'))
+                values.setdefault('dockerfile', defaults.get('dockerfile', 'Dockerfile'))
             if request.user.is_superuser:
                 values.setdefault('volumes', defaults.get('volumes', {}))
                 values.setdefault('network', defaults.get('network', 'bridge'))
         if not values.get('container_port'):
             return Response({'container_port': ['Obligatorio sin plantilla.']}, status=status.HTTP_400_BAD_REQUEST)
         values.setdefault('port', _free_container_port())
+        from ..template_services import with_secrets
+        values['environment'] = with_secrets(values.get('environment'))
         if values.get('git_repo'):
             values['image'] = ''
         container = serializer.save(created_by=request.user, **values)

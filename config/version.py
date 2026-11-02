@@ -3,9 +3,18 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.44'
+VERSION = '1.0.45'
 
 CHANGELOG = [
+    {
+        'version': '1.0.45',
+        'date': '2026-11-02',
+        'notes': [
+            "Contenedores: plantilla ERPSqlite (ERP con API compatible con la de Odoo, para MultiERP Móvil). Se construye desde su repositorio al crearla y arranca sola al terminar.",
+            "Las plantillas pueden construirse desde un repositorio (git_repo, dockerfile) y generar claves aleatorias con {secret}, que se ven en la página del contenedor.",
+            "API: /api/tasks/{id}/ devuelve también el log, el progreso y el paso en curso, como la página Actividad.",
+        ],
+    },
     {
         'version': '1.0.44',
         'date': '2026-11-02',

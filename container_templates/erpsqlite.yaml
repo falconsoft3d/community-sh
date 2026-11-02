@@ -1,0 +1,24 @@
+name: erpsqlite
+display_name: "ERPSqlite - ERP con API externa"
+description: "ERP sobre SQLite con API JSON-RPC, XML-RPC y REST compatible con la de Odoo (para MultiERP Móvil). Se construye desde su repositorio: tarda unos minutos la primera vez."
+icon: "database"
+# No se descarga: se construye desde el repositorio con el token de GitHub del propietario
+image: "github.com/falconsoft3d/erp-sqlite (Dockerfile.server)"
+git_repo: "https://github.com/falconsoft3d/erp-sqlite.git"
+git_branch: "main"
+dockerfile: "Dockerfile.server"
+container_port: 8169
+default_port: 8169
+
+# {secret} se cambia por una clave aleatoria al crear el contenedor (se ve en su página)
+environment:
+  ERPSQLITE_API_PORT: "8169"
+  ERPSQLITE_ADMIN_KEY: "{secret}"
+  ERPSQLITE_SELLER_KEY: "{secret}"
+
+volumes:
+  data:
+    host: "data"
+    container: "/root/.local/share"
+
+network: "bridge"

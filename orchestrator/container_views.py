@@ -4,7 +4,7 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from .container_models import Container
 from .container_service import ContainerService
-from .template_services import get_template_loader
+from .template_services import get_template_loader, with_secrets
 from django.core.exceptions import ValidationError
 from .permissions import domain_in_use, management_required, validate_domain, validate_resource_name
 
@@ -80,19 +80,31 @@ def container_create(request):
             container_port = int(request.POST.get('container_port', template_defaults['container_port']))
             description = request.POST.get('description', template_defaults['description'])
             
+            git_repo = template_defaults.get('git_repo', '')
             container = Container.objects.create(
                 name=name,
                 template=template_key,
-                image=image,
+                # Built from the repository: the form shows the repository where the image goes
+                image='' if git_repo else image,
                 port=port,
                 container_port=container_port,
-                environment=template_defaults.get('environment', {}),
+                environment=with_secrets(template_defaults.get('environment', {})),
                 volumes=template_defaults.get('volumes', {}),
                 network=template_defaults.get('network', 'bridge'),
                 command=template_defaults.get('command', ''),
                 description=description,
+                git_repo=git_repo,
+                git_branch=template_defaults.get('git_branch', 'main'),
+                dockerfile=template_defaults.get('dockerfile', 'Dockerfile'),
                 created_by=request.user
             )
+            if git_repo:
+                from .task_models import Task
+                from .tasks import enqueue
+                enqueue(Task.Kind.BUILD_CONTAINER, None, request.user, container=container.pk, label=container.name)
+                messages.success(request, 'Construyendo la imagen desde el repositorio: tarda unos minutos y lo puedes '
+                                          'seguir en Actividad. El contenedor arranca solo al terminar.')
+                return redirect('container-detail', pk=container.pk)
         else:
             # Custom container
             container = Container.objects.create(

@@ -1,6 +1,12 @@
 # Changelog
 
-Versión actual: **1.0.44**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.45**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.45 — 2026-11-02
+
+- Contenedores: plantilla ERPSqlite (ERP con API compatible con la de Odoo, para MultiERP Móvil). Se construye desde su repositorio al crearla y arranca sola al terminar.
+- Las plantillas pueden construirse desde un repositorio (`git_repo`, `dockerfile`) y generar claves aleatorias con `{secret}`, que se ven en la página del contenedor.
+- API: `/api/tasks/{id}/` devuelve también el log, el progreso y el paso en curso, como la página Actividad.
 
 ## 1.0.44 — 2026-11-02
 

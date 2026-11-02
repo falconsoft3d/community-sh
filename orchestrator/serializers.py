@@ -56,7 +56,9 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         from .task_models import Task
         model = Task
-        fields = ['id', 'kind', 'status', 'instance', 'params', 'result', 'created_at', 'started_at', 'finished_at']
+        # log, progress and step: the same as the Activity page, to follow long tasks such as a build
+        fields = ['id', 'kind', 'status', 'instance', 'params', 'result', 'log', 'progress', 'step',
+                  'created_at', 'started_at', 'finished_at']
 
 
 class TodoSerializer(serializers.ModelSerializer):
@@ -80,7 +82,8 @@ class ContainerSerializer(serializers.ModelSerializer):
                   'network', 'command', 'description', 'git_repo', 'git_branch', 'dockerfile',
                   'custom_domain', 'status', 'container_id', 'url', 'created_at', 'updated_at']
         read_only_fields = ['status', 'container_id', 'url', 'created_at', 'updated_at']
-        extra_kwargs = {'image': {'required': False}}
+        # A template fills in the image (or repository) and the port
+        extra_kwargs = {'image': {'required': False}, 'container_port': {'required': False}}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,6 +111,7 @@ class ContainerSerializer(serializers.ModelSerializer):
         return value or None
 
     def validate(self, attrs):
-        if self.instance is None and not attrs.get('image') and not attrs.get('git_repo'):
+        from_template = attrs.get('template') not in (None, '', 'custom')
+        if self.instance is None and not from_template and not attrs.get('image') and not attrs.get('git_repo'):
             raise serializers.ValidationError('Indica una imagen (image) o un repositorio para construirla (git_repo).')
         return attrs

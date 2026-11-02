@@ -2160,6 +2160,44 @@ class ContainerApiTests(BaseTestCase):
         self.assertEqual(container.image, 'csh-build/erpsqlite:latest')
 
 
+class ContainerTemplateBuildTests(BaseTestCase):
+    """Templates built from a repository, such as ERPSqlite."""
+
+    def setUp(self):
+        super().setUp()
+        service = mock.patch('orchestrator.container_views.ContainerService')
+        self.service = service.start()
+        self.addCleanup(service.stop)
+
+    def test_form_queues_the_build_and_generates_keys(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('container-create'), {
+            'template': 'erpsqlite', 'name': 'erp', 'image': 'github.com/falconsoft3d/erp-sqlite (Dockerfile.server)',
+            'port': 8169, 'container_port': 8169,
+        })
+        container = Container.objects.get(name='erp')
+        self.assertRedirects(response, reverse('container-detail', args=[container.pk]), fetch_redirect_response=False)
+        self.assertEqual((container.image, container.dockerfile), ('', 'Dockerfile.server'))
+        self.assertEqual(container.git_repo, 'https://github.com/falconsoft3d/erp-sqlite.git')
+        keys = container.environment['ERPSQLITE_ADMIN_KEY'], container.environment['ERPSQLITE_SELLER_KEY']
+        self.assertTrue(all(len(key) == 40 for key in keys))
+        self.assertNotEqual(*keys)
+        task = Task.objects.get(kind=Task.Kind.BUILD_CONTAINER)
+        self.assertEqual(task.params['container'], container.pk)
+        self.service.return_value.create_container.assert_not_called()
+
+    def test_api_template_brings_the_repository(self):
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.container_service.ContainerService'):
+            response = self.client.post('/api/containers/', {'name': 'erp2', 'template': 'erpsqlite'},
+                                        content_type='application/json')
+        self.assertEqual(response.status_code, 202, response.content)
+        container = Container.objects.get(name='erp2')
+        self.assertEqual((container.dockerfile, container.container_port), ('Dockerfile.server', 8169))
+        self.assertNotEqual(container.environment['ERPSQLITE_ADMIN_KEY'], '{secret}')
+
+
 class InstanceApiDeployTests(BaseTestCase):
     def test_created_instance_is_deployed(self):
         from .task_models import Task
