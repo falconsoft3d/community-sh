@@ -21,15 +21,17 @@ class InstanceForm(forms.ModelForm):
     
     class Meta:
         model = Instance
-        fields = ['project', 'name', 'odoo_version', 'github_repo', 'github_branch', 'database_name', 'custom_domain']
+        fields = ['project', 'name', 'odoo_version', 'github_repo', 'github_branch', 'database_name', 'demo_default_db', 'custom_domain']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'mi-empresa'}),
             'github_branch': forms.TextInput(attrs={'placeholder': 'main'}),
             'database_name': forms.TextInput(attrs={'placeholder': 'Dejar vacío para auto-detección'}),
+            'demo_default_db': forms.TextInput(attrs={'placeholder': 'Dejar vacío si no es una instancia de demos'}),
             'custom_domain': forms.TextInput(attrs={'placeholder': 'ejemplo.midominio.com'}),
         }
         labels = {
             'project': 'Proyecto',
+            'demo_default_db': 'Base por defecto de las demos (opcional)',
             'custom_domain': 'Dominio Personalizado (opcional)',
         }
         help_texts = {

@@ -26,6 +26,8 @@ services:
 
   db:
     image: postgres:15
+    # Back after a reboot or a restart of Docker: without it the panel answers 500 (no database)
+    restart: always
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -86,7 +88,7 @@ services:
     # Built by the app service: never look for it on Docker Hub
     pull_policy: never
     restart: always
-    command: python manage.py run_worker --exclude ai_chat --exclude odoo_migration
+    command: python manage.py run_worker --exclude ai_chat --exclude odoo_migration --exclude build_container
     environment:
       - DATABASE_URL=${DATABASE_URL:-}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
@@ -107,6 +109,34 @@ services:
       app:
         condition: service_started
     # web: git clones need internet; backend: panel database
+    networks:
+      - web
+      - backend
+
+  # Builds the images of generic containers from their repository (minutes for a large app)
+  # without holding up deploys and backups.
+  build-worker:
+    image: community-sh-app
+    # Built by the app service: never look for it on Docker Hub
+    pull_policy: never
+    restart: always
+    command: python manage.py run_worker --only build_container
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
+      - DEBUG=${DEBUG:-False}
+      - HOST_WORKDIR=${HOST_WORKDIR}
+      - SERVER_IP=${SERVER_IP}
+      - MAIN_DOMAIN=${MAIN_DOMAIN:-}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-}
+      - RUN_MIGRATIONS=false
+    volumes:
+      - ./:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      app:
+        condition: service_started
+    # web: git clones and image builds need internet; backend: panel database
     networks:
       - web
       - backend

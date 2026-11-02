@@ -53,6 +53,7 @@ class Instance(models.Model):
     # Custom Domain & SSL
     custom_domain = models.CharField(max_length=255, blank=True, null=True, validators=[validate_domain], help_text="Custom domain (e.g., ejemplo.com)")
     ssl_enabled = models.BooleanField(default=False, help_text="SSL/HTTPS enabled")
+    browser = models.BooleanField(default=False, help_text="Google Chrome in the Odoo container (WhatsApp Web...): installed again on every deploy")
     ssl_certificate_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_key_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_email = models.EmailField(blank=True, null=True, help_text="Email for Let's Encrypt notifications")
@@ -61,6 +62,10 @@ class Instance(models.Model):
     # Database
     database_name = models.CharField(max_length=100, blank=True, null=True, validators=[validate_database_name], help_text="Nombre de la base de datos de Odoo (dejar vacío para auto-detección)")
     
+    # Demos: several databases in one instance (and one certificate), opened with https://host/?name
+    demo_default_db = models.CharField(max_length=100, blank=True, default='', validators=[validate_database_name],
+                                       help_text="Odoo 18+: database opened without ?name. Empty: a normal instance.")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

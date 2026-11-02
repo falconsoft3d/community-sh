@@ -7,6 +7,7 @@ SECTIONS = {
     'project': 'projects', 'instance': 'instances', 'container': 'containers', 'metrics': 'metrics',
     'backup': 'backups', 'client': 'clients', 'user': 'users', 'change': 'users', 'settings': 'settings',
     'generate': 'settings', 'run': 'settings', 'about': 'about', 'docker': 'docker', 'todo': 'todo',
+    'activity': 'activity',
 }
 
 
@@ -43,6 +44,10 @@ def nav_counts(user):
         'containers': Container.objects.filter(created_by=user).count(),
         'todo': todos_for(user).exclude(status=Todo.Status.DONE).count(),
     }
+    from .task_models import Task
+    from .views.activity import tasks_for
+    # Activity: the tasks running or waiting now (no badge when there are none)
+    counts['activity'] = tasks_for(user).filter(status__in=(Task.Status.PENDING, Task.Status.RUNNING)).count() or ''
     if user.is_superuser:
         counts['users'] = User.objects.count()
         counts['docker'] = _docker_running()

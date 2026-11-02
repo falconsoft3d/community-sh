@@ -1,0 +1,29 @@
+{% extends "orchestrator/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div>
+    <nav class="mb-1 text-sm text-muted-foreground">
+        <a href="{% url 'activity' %}" class="hover:text-foreground">{% translate "Actividad" %}</a>
+        <span class="mx-1">/</span>
+        <span class="font-medium text-foreground">{{ task.get_kind_display }} #{{ task.pk }}</span>
+    </nav>
+    <h1 class="text-lg font-semibold md:text-2xl">{{ task.get_kind_display }}{% if task.instance %} · {{ task.instance.name }}{% endif %}</h1>
+    <p class="text-sm text-muted-foreground">
+        Creada {{ task.created_at|date:"d/m/Y H:i:s" }}{% if task.created_by %} por {{ task.created_by.username }}{% endif %}
+        {% if task.started_at %} · empezó {{ task.started_at|date:"H:i:s" }}{% endif %}
+        {% if task.finished_at %} · terminó {{ task.finished_at|date:"H:i:s" }}{% endif %}
+    </p>
+</div>
+
+<div class="mt-4 rounded-xl border bg-card text-card-foreground shadow-sm">
+    <ul>
+        {% include "orchestrator/includes/task_row.html" with show_instance=True %}
+    </ul>
+</div>
+<script>
+    // The full log, open and tall
+    document.querySelectorAll('[data-task-log]').forEach(log => { log.classList.remove('max-h-80'); log.style.maxHeight = '70vh'; log.closest('details').open = true; });
+</script>
+{% include "orchestrator/includes/task_live.html" with reload_when_done=False full_log=True %}
+{% endblock %}

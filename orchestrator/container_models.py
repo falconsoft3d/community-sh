@@ -42,6 +42,11 @@ class Container(models.Model):
 
     # Command
     command = models.CharField(max_length=255, blank=True, null=True, help_text="Custom command to run")
+
+    # Build the image from a repository instead of pulling it (private repos use the owner's GitHub token)
+    git_repo = models.CharField(max_length=500, blank=True, default='', help_text="Repository to build the image from")
+    git_branch = models.CharField(max_length=255, blank=True, default='main')
+    dockerfile = models.CharField(max_length=255, blank=True, default='Dockerfile', help_text="Dockerfile path inside the repository")
     
     # Domain and SSL
     custom_domain = models.CharField(max_length=255, blank=True, null=True, validators=[validate_domain], help_text="Custom domain for this container")
@@ -69,12 +74,23 @@ class Container(models.Model):
         return f"{self.name} ({self.template})"
     
     @property
+    def built_image(self):
+        """Tag of the image built from git_repo."""
+        return f'csh-build/{self.name}:latest'
+
+    @property
     def url(self):
         """Get the URL for this container"""
+        from .services.domains import acme_enabled, main_domain
         # If custom domain is set, use it
         if self.custom_domain:
-            protocol = 'https' if self.ssl_enabled else 'http'
+            protocol = 'https' if self.ssl_enabled or acme_enabled() else 'http'
             return f"{protocol}://{self.custom_domain}"
+
+        # Then its subdomain under the platform domain, like the instances
+        domain = main_domain()
+        if domain:
+            return f"{'https' if acme_enabled() else 'http'}://{self.name}.{domain}"
         
         # Otherwise use SERVER_IP from .env if available, otherwise default to 127.0.0.1
         server_ip = os.environ.get('SERVER_IP', '127.0.0.1')

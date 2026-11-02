@@ -66,3 +66,48 @@ class TodoSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'description', 'status', 'completed_by', 'completion_note', 'completed_in_version',
                   'created_at', 'completed_at']
         read_only_fields = ['completed_by', 'completed_in_version', 'created_at', 'completed_at']
+
+
+class ContainerSerializer(serializers.ModelSerializer):
+    """Generic Docker container. volumes, network and the SSL files are admin-only, as in the web form."""
+    url = serializers.CharField(read_only=True)
+    port = serializers.IntegerField(required=False)
+
+    class Meta:
+        from .container_models import Container
+        model = Container
+        fields = ['id', 'name', 'template', 'image', 'port', 'container_port', 'environment', 'volumes',
+                  'network', 'command', 'description', 'git_repo', 'git_branch', 'dockerfile',
+                  'custom_domain', 'status', 'container_id', 'url', 'created_at', 'updated_at']
+        read_only_fields = ['status', 'container_id', 'url', 'created_at', 'updated_at']
+        extra_kwargs = {'image': {'required': False}}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        if request is not None and not request.user.is_superuser:
+            for field in ('volumes', 'network'):
+                self.fields[field].read_only = True
+
+    def to_internal_value(self, data):
+        # As the web form: names are lowercased before validating them
+        if isinstance(data.get('name'), str):
+            data = {**data, 'name': data['name'].strip().lower()}
+        return super().to_internal_value(data)
+
+    def validate_name(self, value):
+        from .models import Instance
+        # Its subdomain must not take one of an instance
+        if Instance.objects.filter(subdomain=value).exists():
+            raise serializers.ValidationError('Ese nombre ya es el subdominio de una instancia.')
+        return value
+
+    def validate_custom_domain(self, value):
+        if value and domain_in_use(value, exclude_container=self.instance):
+            raise serializers.ValidationError('Este dominio ya está en uso.')
+        return value or None
+
+    def validate(self, attrs):
+        if self.instance is None and not attrs.get('image') and not attrs.get('git_repo'):
+            raise serializers.ValidationError('Indica una imagen (image) o un repositorio para construirla (git_repo).')
+        return attrs

@@ -113,6 +113,8 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         from ..services.ai import get_ai_config
         context['ai_enabled'] = context['can_manage'] and get_ai_config() is not None
         context['tasks'] = list(self.object.tasks.all()[:5])
+        from ..services.domains import certificate_problem
+        context['certificate_problem'] = certificate_problem(self.object)
         from ..services.odoo_migration import MIN_TARGET_VERSION, STEP_LABELS, STEPS
         context['migration_steps'] = [(step, STEP_LABELS[step]) for step in STEPS]
         context['migration_supported'] = int(float(self.object.odoo_version)) >= MIN_TARGET_VERSION
@@ -143,6 +145,8 @@ def instance_tasks_api(request, pk):
             'status': task.status,
             'status_display': task.get_status_display(),
             'result': task.result,
+            'progress': task.bar_percent,
+            'step': task.step,
             'created_at': task.created_at.isoformat(),
         }
         for task in instance.tasks.all()[:5]
@@ -195,6 +199,13 @@ def instance_console_exec(request, pk):
         
         try:
             service = DockerService()
+            from ..services.docker_service import PIP_INSTALL
+            if PIP_INSTALL.match(command):
+                ok, output = service.pip_install(instance, command)
+                if ok:
+                    output += ('\n✓ Instalado en /var/lib/odoo/.local (volumen de datos): se conserva al redesplegar. '
+                               'Reinicia la instancia (Restart) para que Odoo lo cargue.')
+                return JsonResponse({'output': output, 'success': ok})
             output = service.execute_command(instance, command)
             return JsonResponse({'output': output, 'success': True})
         except Exception as e:
@@ -236,17 +247,16 @@ def instance_install_requirements(request, pk):
                 
                 # Try pip3 first, then pip
                 for pip_cmd in ['pip3', 'pip']:
-                    command = f"{pip_cmd} install {package}"
-                    output = service.execute_command(instance, command)
-                    
-                    if '[Exit Code:' not in output or 'Exit Code: 0' in output:
+                    ok, output = service.pip_install(instance, f"{pip_cmd} install {package}")
+                    if ok:
                         outputs.append(f"  ✓ {package} instalado correctamente")
                         break
                 else:
                     outputs.append(f"  ✗ Error instalando {package}")
-                    outputs.append(f"  {output[:200]}")
+                    outputs.append(f"  {output[-500:]}")
             
-            outputs.append("\n✓ Proceso de instalación completado")
+            outputs.append("\n✓ Proceso de instalación completado: los paquetes quedan en el volumen de datos y se "
+                           "conservan al redesplegar. Reinicia la instancia (Restart) para que Odoo los cargue.")
             
             return JsonResponse({
                 'success': True, 
@@ -622,6 +632,37 @@ def instance_ai_reset(request, pk):
 
 @login_required
 @require_POST
+def instance_pull(request, pk):
+    """Pull the repositories of the instance and restart Odoo, in the worker."""
+    from django.urls import reverse
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    if not instance.github_repo and not instance.repositories.exists():
+        messages.error(request, 'La instancia no tiene repositorios que actualizar')
+        return redirect(reverse('instance-detail', args=[pk]) + '#modules')
+    enqueue(Task.Kind.PULL_REPOS, instance, request.user)
+    messages.success(request, 'Actualizando los repositorios: sigue el progreso en «Tareas recientes»')
+    return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
+
+
+@login_required
+@require_POST
+def instance_browser(request, pk):
+    """Google Chrome in the Odoo container (WhatsApp Web): installed now and again on every deploy, or no more."""
+    from django.urls import reverse
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    enable = request.POST.get('enable') == '1'
+    instance.browser = enable
+    instance.save(update_fields=['browser'])
+    if enable:
+        enqueue(Task.Kind.INSTALL_BROWSER, instance, request.user)
+        messages.success(request, 'Instalando Google Chrome: sigue el progreso en «Tareas recientes». Se reinstala solo en cada despliegue.')
+        return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
+    messages.success(request, 'Google Chrome ya no se instalará: desaparece del contenedor en el próximo despliegue.')
+    return redirect(reverse('instance-detail', args=[pk]) + '#modules')
+
+
+@login_required
+@require_POST
 def instance_repo_add(request, pk):
     from ..repository_models import REPO_URL_RE
     instance = get_instance_for_user(request.user, pk, manage=True)
@@ -676,7 +717,11 @@ def instance_admin_login(request, pk):
     if not database:
         try:
             service = DockerService()
-            databases = service._list_user_databases(service.client.containers.get(f'db_{instance.name}'))
+            db_container = service.client.containers.get(f'db_{instance.name}')
+            if db_container.status != 'running':
+                messages.error(request, 'La base de datos de la instancia está parada: pulsa Restart para arrancarla')
+                return redirect('instance-detail', pk=pk)
+            databases = service._list_user_databases(db_container)
         except Exception:
             databases = []
         if not databases:

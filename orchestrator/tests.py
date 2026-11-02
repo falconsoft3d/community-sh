@@ -364,19 +364,19 @@ class AutoBackupScheduleTests(TestCase):
         from django.utils import timezone
         self.run_command()
         self.run_command()
-        self.assertEqual(self.service.return_value.backup_instance.call_count, 1)
+        self.assertEqual(self.service.return_value.backup_all_databases.call_count, 1)
 
         self.config.refresh_from_db()
         self.config.last_auto_backup_at = timezone.now() - timedelta(hours=6, minutes=1)
         self.config.save()
         self.run_command()
-        self.assertEqual(self.service.return_value.backup_instance.call_count, 2)
+        self.assertEqual(self.service.return_value.backup_all_databases.call_count, 2)
 
     def test_disabled_does_nothing(self):
         self.config.auto_backup_enabled = False
         self.config.save()
         self.run_command()
-        self.service.return_value.backup_instance.assert_not_called()
+        self.service.return_value.backup_all_databases.assert_not_called()
 
 
 class PostOnlyActionTests(BaseTestCase):
@@ -436,7 +436,7 @@ class TaskQueueTests(BaseTestCase):
         self.client.force_login(self.alice)
         self.client.post(reverse('instance-deploy', args=[self.alice_instance.pk]))
         self.client.post(reverse('instance-backup', args=[self.alice_instance.pk]), {'filestore': 'false'})
-        self.docker.return_value.backup_instance.side_effect = Exception('disk full')
+        self.docker.return_value.backup_all_databases.side_effect = Exception('disk full')
 
         self.run_worker()
 
@@ -526,6 +526,179 @@ class TaskQueueTests(BaseTestCase):
         self.client.force_login(self.alice)
         self.client.post(reverse('backup-create-instance', args=[backup.pk]), {'name': 'from-backup'})
         self.assertFalse(Instance.objects.filter(name='from-backup').exists())
+
+
+class TaskLogTests(BaseTestCase):
+    """What a task prints and logs is kept in its log, with a progress bar; the activity pages show it."""
+
+    def run_worker(self):
+        from io import StringIO
+        from django.core.management import call_command
+        call_command('run_worker', once=True, stdout=StringIO())
+
+    def test_log_and_progress_of_a_task(self):
+        import logging
+        from .task_log import progress
+        from .task_models import Task
+        from .tasks import enqueue
+
+        def deploy(instance):
+            progress(40, 'Clonando el repositorio')
+            print('Cloning into alice-odoo...')
+            logging.getLogger('orchestrator.services').warning('Imagen sin firma')
+            progress(20, 'Un paso de otro paso')  # the bar never goes back
+            self.assertEqual(Task.objects.get(kind='deploy').progress, 40)
+        self.docker.return_value.deploy_instance.side_effect = deploy
+        self.docker.return_value.deploy_notes = []
+        enqueue('deploy', self.alice_instance, self.alice)
+
+        with mock.patch('orchestrator.tasks.TraefikService.generate_instance_config', return_value=(True, '')):
+            self.run_worker()
+
+        task = Task.objects.get(kind='deploy')
+        self.assertEqual((task.status, task.progress, task.bar_percent, task.step), ('done', 100, 100, 'Completada'))
+        for text in ('Desplegar · alice-odoo · alice', '▶ Clonando el repositorio', 'Cloning into alice-odoo...',
+                     'WARNING: Imagen sin firma', '▶ Rutas de Traefik', 'Instancia desplegada'):
+            self.assertIn(text, task.log)
+        self.assertRegex(task.log.splitlines()[0], r'^\d\d:\d\d:\d\d ')
+
+    def test_failed_task_keeps_the_error_in_its_log(self):
+        from .task_models import Task
+        from .tasks import enqueue
+        self.docker.return_value.backup_all_databases.side_effect = Exception('disk full')
+        enqueue('backup', self.alice_instance, self.alice)
+        self.run_worker()
+        task = Task.objects.get(kind='backup')
+        self.assertEqual((task.status, task.bar_percent), ('failed', 100))
+        self.assertIn('✖ Fallida: disk full', task.log)
+        self.assertIn('Traceback', task.log)
+
+    def test_print_outside_a_task_is_not_kept(self):
+        from .task_log import line, progress
+        progress(50, 'nada')
+        line('nada')  # no task running: nothing happens
+
+    def test_activity_pages_are_scoped(self):
+        from .task_models import Task
+        mine = Task.objects.create(kind='deploy', instance=self.alice_instance, created_by=self.alice, status='running',
+                                   progress=30, step='Base de datos PostgreSQL', log='10:00:00 ▶ Base de datos PostgreSQL\n')
+        other = Task.objects.create(kind='backup', instance=self.bob_instance, created_by=self.bob, status='done', log='secreto')
+        self.client.force_login(self.alice)
+
+        page = self.client.get(reverse('activity'))
+        self.assertContains(page, 'Base de datos PostgreSQL')
+        self.assertNotContains(page, 'secreto')
+        self.assertContains(page, 'width: 30%')
+        self.assertEqual(self.client.get(reverse('activity-detail', args=[other.pk])).status_code, 404)
+        self.assertContains(self.client.get(reverse('activity-detail', args=[mine.pk])), 'Base de datos PostgreSQL')
+
+        data = self.client.get(reverse('task-live'), {'ids': f'{mine.pk},{other.pk}'}).json()
+        self.assertEqual([t['id'] for t in data['tasks']], [mine.pk])
+        self.assertEqual((data['tasks'][0]['progress'], data['tasks'][0]['active']), (30, True))
+
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse('activity'), {'status': 'done'}), 'secreto')
+
+    def test_sidebar_counts_the_running_tasks(self):
+        from .task_models import Task
+        Task.objects.create(kind='deploy', instance=self.alice_instance, created_by=self.alice, status='running')
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('activity'))
+        self.assertEqual(response.context['nav_counts']['activity'], 1)
+
+
+class PipInstallTests(BaseTestCase):
+    """pip in an instance installs for the odoo user, on the data volume: it works on Odoo 17+ and lasts."""
+
+    def test_command_rewrite(self):
+        from .services.docker_service import pip_user_command
+        self.assertEqual(pip_user_command('pip install websocket-client'), 'pip install --user --break-system-packages websocket-client')
+        self.assertEqual(pip_user_command('pip3 install -r req.txt'), 'pip3 install --user --break-system-packages -r req.txt')
+        self.assertEqual(pip_user_command('python3 -m pip install a b'), 'python3 -m pip install --user --break-system-packages a b')
+        for command in ('pip install --user x', 'pip install -t /tmp x', 'pip list', 'ls -la'):
+            self.assertEqual(pip_user_command(command), command)
+
+    def test_old_pip_without_the_flag(self):
+        from .services.docker_service import DockerService
+        service = DockerService.__new__(DockerService)
+        calls = []
+        def execute(instance, command):
+            calls.append(command)
+            return '[Exit Code: 2]\nno such option: --break-system-packages' if 'break' in command else 'Successfully installed x'
+        service.execute_command = execute
+        self.assertEqual(service.pip_install(self.alice_instance, 'pip install x'), (True, 'Successfully installed x'))
+        self.assertEqual(calls, ['pip install --user --break-system-packages x', 'pip install --user x'])
+
+    def test_console_installs_for_the_odoo_user(self):
+        import json
+        self.docker.return_value.pip_install.return_value = (True, 'Successfully installed websocket-client')
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('instance-console-exec', args=[self.alice_instance.pk]),
+                                    json.dumps({'command': 'pip install websocket-client'}), content_type='application/json')
+        self.docker.return_value.pip_install.assert_called_once_with(self.alice_instance, 'pip install websocket-client')
+        self.assertIn('se conserva al redesplegar', response.json()['output'])
+        self.docker.return_value.execute_command.assert_not_called()
+
+
+class BrowserTests(BaseTestCase):
+    """Google Chrome in the Odoo container, for WhatsApp Web: installed from the panel and on every deploy."""
+
+    def test_enable_and_disable(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        self.client.post(reverse('instance-browser', args=[self.alice_instance.pk]), {'enable': '1'})
+        self.alice_instance.refresh_from_db()
+        self.assertTrue(self.alice_instance.browser)
+        self.assertEqual(Task.objects.get(instance=self.alice_instance).kind, 'install_browser')
+        self.client.post(reverse('instance-browser', args=[self.alice_instance.pk]), {'enable': '0'})
+        self.alice_instance.refresh_from_db()
+        self.assertFalse(self.alice_instance.browser)
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(reverse('instance-browser', args=[self.alice_instance.pk]), {'enable': '1'}).status_code, 404)
+
+    def test_install_streams_and_reports(self):
+        with mock.patch('orchestrator.services.docker_service.docker.from_env') as from_env:
+            from .services import DockerService
+            service = DockerService()
+            api = from_env.return_value.api
+        api.exec_create.return_value = {'Id': 'x'}
+        api.exec_start.return_value = iter([b'Descargando Google Chrome...\n', b'Google Chrome 142.0.7444.59 \n'])
+        api.exec_inspect.return_value = {'ExitCode': 0}
+        container = mock.Mock(id='abc')
+        self.assertEqual(service.install_browser(self.alice_instance, container), 'Navegador: Google Chrome 142.0.7444.59 ')
+        self.assertEqual(api.exec_create.call_args.kwargs['user'], 'root')
+        api.exec_start.return_value = iter([b'E: Unable to locate package\n'])
+        api.exec_inspect.return_value = {'ExitCode': 100}
+        with self.assertRaisesRegex(Exception, 'Unable to locate package'):
+            service.install_browser(self.alice_instance, container)
+
+
+class PullTests(BaseTestCase):
+    """Pull: the repositories updated and Odoo restarted, in the worker, without redeploying."""
+
+    def test_pull_is_queued_and_run(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from .task_models import Task
+        self.alice_instance.github_repo = 'https://github.com/acme/addons'
+        self.alice_instance.save()
+        self.docker.return_value.pull_repositories.return_value = ['principal: abc1234 Fix the bridge']
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('instance-pull', args=[self.alice_instance.pk]))
+        self.assertTrue(response.url.endswith('#tasks'))
+        call_command('run_worker', once=True, stdout=StringIO())
+        task = Task.objects.get(kind='pull_repos')
+        self.assertEqual(task.status, 'done')
+        self.assertIn('abc1234 Fix the bridge', task.result)
+        self.docker.return_value.deploy_instance.assert_not_called()
+
+    def test_nothing_to_pull(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        self.client.post(reverse('instance-pull', args=[self.alice_instance.pk]))
+        self.assertFalse(Task.objects.filter(kind='pull_repos').exists())
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(reverse('instance-pull', args=[self.alice_instance.pk])).status_code, 404)
 
 
 class GitHubServiceTests(TestCase):
@@ -795,6 +968,41 @@ class PostgresVersionTests(TestCase):
             old_db.remove.assert_not_called()
             client.containers.run.assert_not_called()
             self.assertIn('ya tiene datos', notes[0])
+
+    def test_restart_starts_a_stopped_database_first(self):
+        with mock.patch('orchestrator.services.docker_service.docker.from_env') as from_env:
+            from .services import DockerService
+            service = DockerService()
+            client = from_env.return_value
+        instance = Instance.objects.create(name='rebooted', container_id='abc')
+        db = mock.Mock(status='exited', attrs={'HostConfig': {'RestartPolicy': {'Name': 'no'}}})
+        odoo = mock.Mock(status='exited', attrs={'HostConfig': {'RestartPolicy': {'Name': 'no'}}})
+        order = mock.Mock()
+        order.attach_mock(db.start, 'db_start'); order.attach_mock(odoo.restart, 'odoo_restart')
+        client.containers.get.side_effect = lambda name: db if name == 'db_rebooted' else odoo
+        with mock.patch.object(service, '_wait_for_postgres'):
+            service.restart_instance(instance)
+        self.assertEqual([c[0] for c in order.mock_calls], ['db_start', 'odoo_restart'])
+        db.update.assert_called_once_with(restart_policy={'Name': 'unless-stopped'})
+        odoo.update.assert_called_once_with(restart_policy={'Name': 'unless-stopped'})
+
+    def test_instance_containers_come_back_after_a_reboot(self):
+        with mock.patch('orchestrator.services.docker_service.docker.from_env') as from_env:
+            from .services import DockerService
+            service = DockerService()
+            client = from_env.return_value
+        instance = Instance(name='twenty', odoo_version='20.0')
+        # A database created before the restart policy gets it when it is reused
+        old_db = mock.Mock(status='running', attrs={'Config': {'Image': 'postgres:16'}, 'HostConfig': {'RestartPolicy': {'Name': 'no'}}})
+        client.containers.get.return_value = old_db
+        service._ensure_db_container(instance, 'net_twenty', [])
+        old_db.update.assert_called_once_with(restart_policy={'Name': 'unless-stopped'})
+        # A new one is created with it
+        import docker
+        client.containers.get.side_effect = docker.errors.NotFound('no')
+        with mock.patch.object(service, '_ensure_image'):
+            service._ensure_db_container(instance, 'net_twenty', [])
+        self.assertEqual(client.containers.run.call_args.kwargs['restart_policy'], {'Name': 'unless-stopped'})
 
 
 class VersionTests(TestCase):
@@ -1460,6 +1668,102 @@ class AdminLoginTests(BaseTestCase):
         self.assertEqual(self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk])).status_code, 404)
 
 
+class DemoDatabasesTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from .services.docker_service import DockerService
+        self.workspace = tempfile.mkdtemp()
+        self.instance = self.alice_instance
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            self.service = DockerService()
+
+    def odoo_conf(self):
+        self.service._write_odoo_config(self.instance, self.workspace, [])
+        with open(os.path.join(self.workspace, 'conf', 'odoo.conf')) as conf:
+            return conf.read()
+
+    def test_demo_instance_loads_the_module_and_hides_the_databases(self):
+        self.instance.odoo_version = '20.0'
+        self.assertNotIn('community_sh_demo', self.odoo_conf())
+        self.instance.demo_default_db = 'shop'
+        config = self.odoo_conf()
+        self.assertIn('community_sh_login,community_sh_ai,community_sh_demo', config)
+        self.assertIn('community_sh_demo_default = shop', config)
+        self.assertIn('list_db = False', config)
+
+    def test_demos_need_odoo_18(self):
+        self.instance.odoo_version = '17.0'
+        self.instance.demo_default_db = 'shop'
+        self.assertNotIn('community_sh_demo', self.odoo_conf())
+
+    def test_one_backup_per_database(self):
+        container = mock.Mock()
+        with mock.patch.object(self.service, '_get_container', return_value=container), \
+                mock.patch.object(self.service, '_list_user_databases', return_value=['hotel', 'shop']), \
+                mock.patch.object(self.service, 'backup_instance') as backup:
+            self.assertEqual(len(self.service.backup_all_databases(self.instance)), 2)
+        self.assertEqual([call.kwargs['database'] for call in backup.call_args_list], ['hotel', 'shop'])
+
+    def test_one_database_keeps_one_plain_backup(self):
+        with mock.patch.object(self.service, '_get_container', return_value=mock.Mock()), \
+                mock.patch.object(self.service, '_list_user_databases', return_value=['acme']), \
+                mock.patch.object(self.service, 'backup_instance') as backup:
+            self.service.backup_all_databases(self.instance)
+        self.assertNotIn('database', backup.call_args.kwargs)
+
+
+class CloneRepoTests(BaseTestCase):
+    REPO = 'https://github.com/acme/private'
+
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from .config_models import GitHubConfig
+        from .services.docker_service import DockerService
+        self.workspace = tempfile.mkdtemp()
+        self.alice_instance.github_repo = self.REPO
+        self.alice_instance.github_branch = '20.0'
+        self.alice_instance.owner = self.alice
+        GitHubConfig.objects.filter(user=self.alice).delete()
+        GitHubConfig.objects.create(user=self.alice, personal_access_token='s3cret')
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            self.service = DockerService()
+        self.service.deploy_notes = []
+
+    def fake_clone(self, url, path, **kwargs):
+        os.makedirs(os.path.join(path, '.git'))
+        return mock.MagicMock()
+
+    def test_private_repository_is_cloned_with_the_token_of_the_owner(self):
+        with mock.patch('orchestrator.services.docker_service.git.Repo.clone_from', side_effect=self.fake_clone) as clone:
+            self.service._clone_repo(self.alice_instance, self.workspace)
+        self.assertIn('s3cret', clone.call_args.args[0])
+        self.assertTrue(os.path.isdir(os.path.join(self.workspace, 'addons', '.git')))
+        self.assertFalse(os.path.exists(os.path.join(self.workspace, 'addons.new')))
+
+    def test_failed_clone_without_code_fails_the_deploy_and_hides_the_token(self):
+        import git
+        failure = git.exc.GitCommandError('git clone https://s3cret@github.com/acme/private', 128)
+        with mock.patch('orchestrator.services.docker_service.git.Repo.clone_from', side_effect=failure):
+            with self.assertRaises(Exception) as caught:
+                self.service._clone_repo(self.alice_instance, self.workspace)
+        self.assertIn('No se pudo obtener', str(caught.exception))
+        self.assertNotIn('s3cret', str(caught.exception))
+
+    def test_failed_update_keeps_the_code_in_place(self):
+        import git
+        addons = os.path.join(self.workspace, 'addons')
+        os.makedirs(os.path.join(addons, '.git'))
+        open(os.path.join(addons, 'module.py'), 'w').close()
+        failure = git.exc.GitCommandError('git clone', 128)
+        with mock.patch('orchestrator.services.docker_service.git.Repo', side_effect=failure) as repo:
+            repo.clone_from.side_effect = failure
+            self.service._clone_repo(self.alice_instance, self.workspace)
+        self.assertTrue(os.path.exists(os.path.join(addons, 'module.py')))
+        self.assertEqual(len(self.service.deploy_notes), 1)
+
+
 class DomainTests(BaseTestCase):
     def setUp(self):
         super().setUp()
@@ -1478,6 +1782,40 @@ class DomainTests(BaseTestCase):
         TraefikService.generate_instance_config(instance)
         path = os.path.join(self.base_dir, 'traefik', f'instance-{instance.name}.yml')
         return yaml.safe_load(open(path)) if os.path.exists(path) else None
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_stopped_instance_has_no_route(self):
+        self.alice_instance.status = Instance.Status.RUNNING
+        self.assertIsNotNone(self.routes(self.alice_instance))
+        self.alice_instance.status = Instance.Status.STOPPED
+        self.assertIsNone(self.routes(self.alice_instance))
+
+    def acme_storage(self, *hosts):
+        import json
+        path = os.path.join(self.base_dir, 'acme.json')
+        with open(path, 'w') as storage:
+            json.dump({'letsencrypt': {'Certificates': [{'domain': {'main': host}, 'key': 'secret'} for host in hosts]}}, storage)
+        return path
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_certificate_problem(self):
+        from .services import domains
+        host = 'acme-17-alice-odoo.hosting.example.com'
+        self.alice_instance.status = Instance.Status.RUNNING
+        limit = (f'level=error msg="Unable to obtain ACME certificate for domains \\"{host}\\": too many certificates (50) '
+                 'already issued for \\"hosting.example.com\\" in the last 168h0m0s, retry after 2026-10-30 14:02:41 UTC"')
+        with mock.patch.object(domains, 'ACME_STORAGE', self.acme_storage('other.hosting.example.com')), \
+                mock.patch.object(domains, '_traefik_log', return_value=limit):
+            self.assertEqual(domains.certificate_problem(self.alice_instance),
+                             {'hosts': [host], 'kind': 'rate_limit', 'retry_after': '2026-10-30 14:02'})
+        with mock.patch.object(domains, 'ACME_STORAGE', self.acme_storage(host)):
+            self.assertIsNone(domains.certificate_problem(self.alice_instance))
+        with mock.patch.object(domains, 'ACME_STORAGE', self.acme_storage('*.hosting.example.com')):
+            self.assertIsNone(domains.certificate_problem(self.alice_instance))
+        with mock.patch.object(domains, 'ACME_STORAGE', '/nonexistent/acme.json'):
+            self.assertIsNone(domains.certificate_problem(self.alice_instance))
+        self.alice_instance.status = Instance.Status.STOPPED
+        self.assertIsNone(domains.certificate_problem(self.alice_instance))
 
     def test_subdomain_is_client_version_name(self):
         self.alice_project.client = self.bob
@@ -1737,3 +2075,137 @@ class GitHubTokenURLTests(TestCase):
         self.assertEqual(authed_url('https://github.com/acme/private', 'github_pat_X'),
                          'https://x-access-token:github_pat_X@github.com/acme/private')
         self.assertEqual(authed_url('https://github.com/acme/public', ''), 'https://github.com/acme/public')
+
+
+class ContainerApiTests(BaseTestCase):
+    """Generic containers through the REST API, also built from a repository."""
+
+    def setUp(self):
+        super().setUp()
+        service = mock.patch('orchestrator.container_service.ContainerService')
+        self.service = service.start()
+        self.addCleanup(service.stop)
+        self.service.return_value.create_container.return_value = (True, 'creado')
+        self.service.return_value.delete_container.return_value = (True, 'borrado')
+
+    def test_create_from_image_gets_a_free_port(self):
+        Container.objects.create(name='old', image='redis', port=40000, container_port=6379, created_by=self.bob)
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/containers/', {'name': 'Web1', 'image': 'nginx', 'container_port': 80},
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 201, response.content)
+        container = Container.objects.get(name='web1')
+        self.assertEqual((container.created_by, container.port), (self.alice, 40001))
+        self.service.return_value.create_container.assert_called_once()
+
+    def test_create_from_repository_queues_a_build(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/containers/', {
+            'name': 'erpsqlite', 'git_repo': 'https://github.com/acme/erp.git', 'dockerfile': 'Dockerfile.server',
+            'container_port': 8169, 'environment': {'ERPSQLITE_ADMIN_KEY': 'k'},
+        }, content_type='application/json')
+        self.assertEqual(response.status_code, 202, response.content)
+        task = Task.objects.get(pk=response.json()['task_id'])
+        container = Container.objects.get(name='erpsqlite')
+        self.assertEqual((task.kind, task.params['container']), (Task.Kind.BUILD_CONTAINER, container.pk))
+        self.assertEqual(container.environment, {'ERPSQLITE_ADMIN_KEY': 'k'})
+        self.service.return_value.create_container.assert_not_called()
+        # The build task is the user's even without an instance
+        ids = [t['id'] for t in self.client.get('/api/tasks/').json()]
+        self.assertIn(task.pk, ids)
+        self.client.force_login(self.bob)
+        self.assertNotIn(task.pk, [t['id'] for t in self.client.get('/api/tasks/').json()])
+
+    def test_image_or_repository_is_required(self):
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/containers/', {'name': 'empty', 'container_port': 80},
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_users_only_see_and_delete_their_containers(self):
+        bobs = Container.objects.create(name='bobs', image='redis', port=40010, container_port=6379, created_by=self.bob)
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get('/api/containers/').json(), [])
+        self.assertEqual(self.client.delete(f'/api/containers/{bobs.pk}/').status_code, 404)
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.delete(f'/api/containers/{bobs.pk}/').status_code, 204)
+        self.assertFalse(Container.objects.filter(pk=bobs.pk).exists())
+
+    def test_only_admins_mount_volumes(self):
+        self.client.force_login(self.alice)
+        self.client.post('/api/containers/', {
+            'name': 'sneaky', 'image': 'alpine', 'container_port': 80, 'volumes': {'root': {'host': '/', 'container': '/host'}},
+        }, content_type='application/json')
+        self.assertEqual(Container.objects.get(name='sneaky').volumes, {})
+
+    def test_name_cannot_take_an_instance_subdomain(self):
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/containers/', {'name': self.alice_instance.subdomain, 'image': 'nginx',
+                                                         'container_port': 80}, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+    def test_build_task_builds_and_starts(self):
+        from .task_models import Task
+        from .tasks import run_task
+        container = Container.objects.create(name='erpsqlite', image='', port=40020, container_port=8169,
+                                             git_repo='https://github.com/acme/erp.git', created_by=self.alice)
+        self.service.return_value.build_image.return_value = container.built_image
+        self.service.return_value.restart_container.return_value = (True, 'arrancado')
+        task = Task.objects.create(kind=Task.Kind.BUILD_CONTAINER, created_by=self.alice, params={'container': container.pk})
+        run_task(task)
+        task.refresh_from_db()
+        container.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.DONE, task.result)
+        self.assertEqual(container.image, 'csh-build/erpsqlite:latest')
+
+
+class InstanceApiDeployTests(BaseTestCase):
+    def test_created_instance_is_deployed(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/instances/', {'name': 'alice-new', 'project': self.alice_project.pk})
+        self.assertEqual(response.status_code, 201)
+        task = Task.objects.get(pk=response.json()['task_id'])
+        self.assertEqual((task.kind, task.instance.name), (Task.Kind.DEPLOY, 'alice-new'))
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
+class ContainerRouteTests(TestCase):
+    def setUp(self):
+        import tempfile
+        from .services.domains import clear_cache
+        clear_cache()
+        self.addCleanup(clear_cache)
+        self.base_dir = tempfile.mkdtemp()
+        base_dir = override_settings(BASE_DIR=self.base_dir)
+        base_dir.enable()
+        self.addCleanup(base_dir.disable)
+        user = User.objects.create_user('carol', password='pass-12345')
+        self.container = Container.objects.create(name='erpsqlite', image='x', port=40030, container_port=8169,
+                                                  created_by=user)
+
+    def routes(self):
+        import yaml
+        from .traefik_service import TraefikService
+        TraefikService.generate_container_config(self.container)
+        path = os.path.join(self.base_dir, 'traefik', 'container-erpsqlite.yml')
+        return yaml.safe_load(open(path)) if os.path.exists(path) else None
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_running_container_gets_https_subdomain(self):
+        self.container.status = 'running'
+        routes = self.routes()
+        secure = routes['http']['routers']['container-erpsqlite-0-secure']
+        self.assertEqual(secure['rule'], 'Host(`erpsqlite.hosting.example.com`)')
+        service = routes['http']['services']['container-erpsqlite-service']
+        self.assertEqual(service['loadBalancer']['servers'], [{'url': 'http://erpsqlite:8169'}])
+        self.assertEqual(self.container.url, 'https://erpsqlite.hosting.example.com')
+
+    @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
+    def test_stopped_container_has_no_route(self):
+        self.container.status = 'running'
+        self.assertIsNotNone(self.routes())
+        self.container.status = 'stopped'
+        self.assertIsNone(self.routes())
+

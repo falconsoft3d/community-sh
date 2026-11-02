@@ -92,7 +92,8 @@ class TraefikService:
         try:
             name = f'instance-{instance.name}.yml'
             hosts = instance_hosts(instance)
-            if not hosts:
+            # A stopped instance serves nothing: without a route no certificate is requested for it
+            if not hosts or instance.status == instance.Status.STOPPED:
                 TraefikService._write(name, None)
                 return True, "Configuración de instancia eliminada"
             certificate = None
@@ -104,6 +105,34 @@ class TraefikService:
             return True, f"Configuración de Traefik generada para instancia {instance.name}"
         except Exception as e:
             return False, f"Error al generar configuración de instancia: {str(e)}"
+
+    @staticmethod
+    def generate_container_config(container):
+        """
+        Route a generic container's hosts to it, with HTTPS like the instances (Traefik shares
+        the community-sh_web network with it). A stopped or deleted container has no route.
+        Returns (success, message).
+        """
+        from .services.domains import container_hosts
+        try:
+            name = f'container-{container.name}.yml'
+            hosts = container_hosts(container)
+            if not hosts or container.status != 'running' or not container.pk:
+                TraefikService._write(name, None)
+                return True, "Configuración del contenedor eliminada"
+            certificate = None
+            if container.ssl_enabled:
+                certificate = TraefikService._certbot_certificate(container.ssl_certificate_path, container.ssl_key_path)
+            config = TraefikService._routes(f'container-{container.name}', hosts,
+                                            f'http://{container.name}:{container.container_port}', certificate)
+            TraefikService._write(name, config)
+            return True, f"Configuración de Traefik generada para el contenedor {container.name}"
+        except Exception as e:
+            return False, f"Error al generar configuración del contenedor: {str(e)}"
+
+    @staticmethod
+    def remove_container_config(name):
+        TraefikService._write(f'container-{name}.yml', None)
 
     @staticmethod
     def configure_all():
@@ -122,6 +151,11 @@ class TraefikService:
         )[1]]
         for instance in Instance.objects.all():
             ok, message = TraefikService.generate_instance_config(instance)
+            if not ok:
+                messages.append(message)
+        from .container_models import Container
+        for container in Container.objects.all():
+            ok, message = TraefikService.generate_container_config(container)
             if not ok:
                 messages.append(message)
         return messages

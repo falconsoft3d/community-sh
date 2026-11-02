@@ -1,11 +1,47 @@
 """Odoo instance lifecycle on Docker: deploy, copy, rename, backup and restore."""
 import docker
 import os
+import re
 import git
 from django.conf import settings
 from ..models import Instance
+from ..task_log import progress
 
 ODOO_DATA_DIR = '/var/lib/odoo'
+
+# Google Chrome in an Odoo container (Debian or Ubuntu): Ubuntu's own chromium is a snap, which Docker cannot run
+BROWSER_SCRIPT = r'''set -e
+if command -v google-chrome >/dev/null 2>&1; then google-chrome --version; exit 0; fi
+arch=$(dpkg --print-architecture)
+if [ "$arch" != amd64 ]; then echo "Google Chrome solo existe para amd64 y este servidor es $arch"; exit 3; fi
+export DEBIAN_FRONTEND=noninteractive
+echo "Descargando Google Chrome..."
+url=https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+if command -v curl >/dev/null 2>&1; then curl -fsSL -o /tmp/google-chrome.deb "$url"
+else python3 -c "import urllib.request, sys; urllib.request.urlretrieve(sys.argv[1], '/tmp/google-chrome.deb')" "$url"; fi
+echo "Instalando Google Chrome y sus dependencias..."
+apt-get update -qq
+apt-get install -y -qq --no-install-recommends /tmp/google-chrome.deb fonts-liberation
+rm -f /tmp/google-chrome.deb
+rm -rf /var/lib/apt/lists/*
+google-chrome --version
+'''
+
+# Instances come back after a reboot of the server, and stay down when stopped from the panel
+RESTART_POLICY = {'Name': 'unless-stopped'}
+
+PIP_INSTALL = re.compile(r'^\s*(pip3?|python3?\s+-m\s+pip)\s+install(\s.*)?$', re.S)
+
+
+def pip_user_command(command):
+    """`pip install x` -> `pip install --user --break-system-packages x`: see DockerService.pip_install."""
+    match = PIP_INSTALL.match(command)
+    if not match:
+        return command
+    args = match.group(2) or ''
+    if any(flag in args.split() for flag in ('--user', '-t', '--target', '--prefix', '--root')):
+        return command
+    return f'{match.group(1)} install --user --break-system-packages{args}'
 
 
 def host_path(path):
@@ -38,6 +74,7 @@ def odoo_command(odoo_version):
 
 
 PANEL_ADDONS_DIR = '/mnt/community-sh-addons'
+DEMO_MIN_VERSION = 18
 # How Odoo containers reach the panel (they share the community-sh_web network)
 PANEL_INTERNAL_URL = 'http://app:8000'
 
@@ -132,7 +169,11 @@ class DockerService:
         server_wide = 'base,web,web_kanban' if odoo_major(instance.odoo_version) <= 10 else 'base,web'
         # community_sh_ai: "/ia ..." in a chatter asks the panel's AI assistant (controllers load server-wide,
         # the chatter hook once the module is installed in the database)
-        panel_login = (f"server_wide_modules = {server_wide},community_sh_login,community_sh_ai\n"
+        # Demos: /?name opens the database name; without it, the default one, and the list of databases stays hidden
+        demo = bool(instance.demo_default_db) and odoo_major(instance.odoo_version) >= DEMO_MIN_VERSION
+        demo_lines = f"community_sh_demo_default = {instance.demo_default_db}\nlist_db = False\n" if demo else ''
+        panel_login = (f"server_wide_modules = {server_wide},community_sh_login,community_sh_ai"
+                       f"{',community_sh_demo' if demo else ''}\n{demo_lines}"
                        f"community_sh_secret = {admin_login_secret(instance)}\n"
                        f"community_sh_panel_url = {PANEL_INTERNAL_URL}\n"
                        f"community_sh_instance = {instance.name}\n")
@@ -216,6 +257,9 @@ class DockerService:
         image = postgres_image(instance.odoo_version)
         existing = self._get_container(name)
         if existing is not None:
+            if existing.attrs.get('HostConfig', {}).get('RestartPolicy', {}).get('Name') != RESTART_POLICY['Name']:
+                # Databases created before the restart policy: they come back after a reboot too
+                existing.update(restart_policy=RESTART_POLICY)
             current = existing.attrs['Config'].get('Image', '')
             if current == image:
                 return existing
@@ -239,7 +283,8 @@ class DockerService:
                 "POSTGRES_USER": "odoo",
             },
             network=network_name,
-            detach=True
+            detach=True,
+            restart_policy=RESTART_POLICY,
         )
 
     def _ensure_image(self, image):
@@ -412,10 +457,12 @@ class DockerService:
         
         try:
             # 1. Prepare workspace
+            progress(5, 'Preparando el espacio de trabajo')
             workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
             os.makedirs(workspace_path, exist_ok=True)
             
             # 2. Clone Repository if exists
+            progress(10, 'Sincronizando el repositorio de GitHub')
             self._clone_repo(instance, workspace_path)
 
             # 3. Create network
@@ -426,6 +473,7 @@ class DockerService:
                 self.client.networks.create(network_name, driver="bridge")
 
             # 4. Start Postgres
+            progress(25, 'Base de datos PostgreSQL')
             db_container_name = f"db_{instance.name}"
             self._ensure_db_container(instance, network_name, self.deploy_notes)
 
@@ -440,6 +488,7 @@ class DockerService:
             # Addons: the GitHub checkout or an empty folder (the AI assistant writes modules there)
             addons_path = os.path.join(workspace_path, 'addons')
             os.makedirs(addons_path, exist_ok=True)
+            progress(35, 'Repositorios de módulos')
             extra_repos = self._sync_extra_repos(instance, workspace_path)
             volumes = {
                 data_volume: {'bind': ODOO_DATA_DIR, 'mode': 'rw'},
@@ -478,10 +527,12 @@ class DockerService:
                 start_network, extra_network = network_name, None
             
             odoo_image = f"odoo:{instance.odoo_version}"
+            progress(50, f'Imagen {odoo_image}')
             platform = self._ensure_image(odoo_image)
             run_options = {'platform': platform} if platform else {}
             
             # Create the container
+            progress(60, 'Arrancando el contenedor de Odoo')
             odoo_container, host_port = self._run_on_fixed_port(odoo_container_name, instance.port, lambda port: self.client.containers.run(
                 odoo_image,
                 **run_options,
@@ -495,6 +546,7 @@ class DockerService:
                 volumes=volumes,
                 ports={'8069/tcp': port},
                 detach=True,
+                restart_policy=RESTART_POLICY,
                 labels={
                     "traefik.enable": "true",
                     "traefik.docker.network": "community-sh_web",
@@ -511,6 +563,7 @@ class DockerService:
             
             # If this is a redeploy, update all modules
             if is_redeploy:
+                progress(70, 'Actualizando los módulos')
                 print("Redeploy detected. Running module update...")
                 try:
                     db_container = self.client.containers.get(db_container_name)
@@ -532,6 +585,14 @@ class DockerService:
 
             self._install_ai_module(instance, odoo_container, db_container_name)
 
+            if instance.browser:
+                # The container is new on every deploy: Chrome is installed again
+                progress(85, 'Instalando Google Chrome (WhatsApp Web)')
+                try:
+                    self.deploy_notes.append(self.install_browser(instance, odoo_container))
+                except Exception as e:
+                    self.deploy_notes.append(f'No se pudo instalar Google Chrome: {e}')
+
             if host_port:
                 instance.port = host_port
             
@@ -548,66 +609,57 @@ class DockerService:
         return instance
 
     def _clone_repo(self, instance, workspace_path):
+        """The main repository of the instance in <workspace>/addons, with the token of its owner (it may be
+        private). A failed update keeps the code there; without any code the deploy fails instead of going on empty."""
         if not instance.github_repo:
             return
-        
+        import shutil
+        from .github import authed_url as with_token
+        token = self._github_token(instance)
+        authed_url = with_token(instance.github_repo, token)
+        clean = lambda error: str(error).replace(token, '***')[-300:] if token else str(error)[-300:]  # noqa: E731
         addons_path = os.path.join(workspace_path, 'addons')
-        
-        # If the directory exists, try to pull changes
-        if os.path.exists(addons_path):
+        has_code = os.path.isdir(os.path.join(addons_path, '.git'))
+        error = ''
+        if has_code:
             try:
-                print(f"Addons path already exists: {addons_path}. Pulling latest changes...")
                 repo = git.Repo(addons_path)
-                
-                # Get the current branch name
-                current_branch = repo.active_branch.name
-                print(f"Current branch: {current_branch}")
-                
-                # Pull latest changes
-                origin = repo.remotes.origin
-                origin.pull(current_branch)
-                print(f"Successfully pulled latest changes from {current_branch}")
+                branch = repo.active_branch.name
+                repo.remotes.origin.set_url(authed_url)
+                try:
+                    repo.remotes.origin.pull(branch)
+                finally:
+                    # Don't leave the token in .git/config (the AI assistant can read files here)
+                    repo.remotes.origin.set_url(instance.github_repo)
+                print(f"Successfully pulled latest changes from {branch}")
                 return
-            except git.exc.InvalidGitRepositoryError:
-                print(f"Directory exists but is not a git repository. Removing and cloning fresh...")
-                import shutil
-                shutil.rmtree(addons_path)
             except Exception as e:
-                print(f"Error pulling changes: {str(e)}. Will try to clone fresh...")
-                import shutil
-                shutil.rmtree(addons_path)
-        
-        # Try to clone the repository with error handling
+                error = clean(e)
+                print(f"Error pulling changes: {error}. Will try to clone fresh...")
+
         branch = instance.github_branch or 'main'
-        branches_to_try = [branch]
-        
-        # If the specified branch is 'main', also try 'master'
-        if branch == 'main':
-            branches_to_try.append('master')
-        elif branch == 'master':
-            branches_to_try.append('main')
-        
+        branches_to_try = [branch] + ({'main': ['master'], 'master': ['main']}.get(branch) or [])
+        # Into another folder: the code in place is only replaced by a clone that worked
+        fresh_path = f'{addons_path}.new'
         for branch_name in branches_to_try:
+            shutil.rmtree(fresh_path, ignore_errors=True)
             try:
                 print(f"Attempting to clone {instance.github_repo} (branch: {branch_name})")
-                git.Repo.clone_from(
-                    instance.github_repo, 
-                    addons_path, 
-                    branch=branch_name,
-                    depth=1  # Shallow clone for faster performance
-                )
+                repo = git.Repo.clone_from(authed_url, fresh_path, branch=branch_name, depth=1)
+                repo.remotes.origin.set_url(instance.github_repo)
+                shutil.rmtree(addons_path, ignore_errors=True)
+                os.rename(fresh_path, addons_path)
                 print(f"Successfully cloned repository on branch {branch_name}")
                 return
             except git.exc.GitCommandError as e:
-                print(f"Failed to clone branch '{branch_name}': {str(e)}")
-                # Try next branch
-                continue
-            except Exception as e:
-                print(f"Unexpected error cloning repository: {str(e)}")
-                break
-        
-        # If we get here, all attempts failed
-        print(f"Warning: Could not clone repository {instance.github_repo}. Continuing without custom addons.")
+                error = clean(e)
+                print(f"Failed to clone branch '{branch_name}': {error}")
+        shutil.rmtree(fresh_path, ignore_errors=True)
+        message = f'No se pudo obtener {instance.github_repo} ({branch}): {error}'
+        if has_code:
+            self.deploy_notes.append(f'{message}. Sigue el código anterior.')
+            return
+        raise Exception(message)
 
 
     def stop_instance(self, instance):
@@ -618,19 +670,43 @@ class DockerService:
             container.stop()
             instance.status = Instance.Status.STOPPED
             instance.save()
+            self._refresh_routes(instance)
         except docker.errors.NotFound:
             pass
+
+    @staticmethod
+    def _refresh_routes(instance):
+        """The Traefik routes follow the state of the instance (a stopped one has none)."""
+        from ..traefik_service import TraefikService
+        TraefikService.generate_instance_config(instance)
     
+    def _start_db_container(self, instance):
+        """The instance's Postgres, started if it was stopped (a reboot without restart policy), and kept up from now on."""
+        db_container = self._get_container(f'db_{instance.name}')
+        if db_container is None:
+            return None
+        if db_container.attrs.get('HostConfig', {}).get('RestartPolicy', {}).get('Name') != RESTART_POLICY['Name']:
+            db_container.update(restart_policy=RESTART_POLICY)
+        if db_container.status != 'running':
+            print(f"Starting database container {db_container.name}...")
+            db_container.start()
+            self._wait_for_postgres(db_container)
+        return db_container
+
     def restart_instance(self, instance):
-        """Restart the Odoo container"""
+        """Restart the Odoo container, starting its database first if it was stopped"""
         if not instance.container_id:
             return
         try:
+            self._start_db_container(instance)
             container = self.client.containers.get(instance.container_id)
+            if container.attrs.get('HostConfig', {}).get('RestartPolicy', {}).get('Name') != RESTART_POLICY['Name']:
+                container.update(restart_policy=RESTART_POLICY)
             print(f"Restarting container {container.name}...")
             container.restart()
             instance.status = Instance.Status.RUNNING
             instance.save()
+            self._refresh_routes(instance)
             print(f"Container {container.name} restarted successfully")
         except docker.errors.NotFound:
             print(f"Container not found for instance {instance.name}")
@@ -745,6 +821,7 @@ class DockerService:
         
         try:
             # 1. Copy the database
+            progress(5, 'Copiando la base de datos')
             print("Step 1: Copying database...")
             db_source = f"db_{instance.name}"
             db_target = f"db_{new_name}"
@@ -788,7 +865,8 @@ class DockerService:
                         "POSTGRES_USER": "odoo",
                     },
                     network=network_name,
-                    detach=True
+                    detach=True,
+                    restart_policy=RESTART_POLICY,
                 )
                 
                 print("Waiting for new database to be ready...")
@@ -816,6 +894,7 @@ class DockerService:
                 raise
             
             # 2. Copy the workspace (addons checkout)
+            progress(40, 'Copiando el espacio de trabajo')
             print("Step 2: Copying workspace...")
             source_workspace = os.path.join(settings.BASE_DIR, 'instances', instance.name)
             target_workspace = os.path.join(settings.BASE_DIR, 'instances', new_name)
@@ -828,6 +907,7 @@ class DockerService:
             
             # 3. Create new Git branch if repo exists
             if instance.github_repo:
+                progress(45, 'Creando la rama de Git')
                 print("Step 3: Creating Git branch...")
                 source_addons = os.path.join(source_workspace, 'addons')
                 target_addons = os.path.join(target_workspace, 'addons')
@@ -852,10 +932,12 @@ class DockerService:
                         print(f"Warning: Error creating Git branch: {e}")
             
             # 4. Deploy the new instance
+            progress(50, 'Desplegando la nueva instancia')
             print("Step 4: Deploying new instance...")
             self.deploy_instance(new_instance)
             
             # 5. Copy the filestore (attachments) between the Odoo containers
+            progress(85, 'Copiando los adjuntos (filestore)')
             print("Step 5: Copying filestore...")
             self._copy_filestore(f"odoo_{instance.name}", f"odoo_{new_name}")
             
@@ -972,7 +1054,72 @@ class DockerService:
         except Exception as e:
             return f"Error executing command: {str(e)}"
     
-    def backup_instance(self, instance, include_filestore=True, user=None):
+    def pull_repositories(self, instance):
+        """The instance's repositories brought to the last commit of their branch, and Odoo restarted to load the
+        code: what a deploy does with them, without recreating the container nor updating every module."""
+        workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
+        os.makedirs(workspace_path, exist_ok=True)
+        self.deploy_notes = []
+        progress(10, 'Actualizando el repositorio principal')
+        self._clone_repo(instance, workspace_path)
+        progress(40, 'Actualizando los repositorios de módulos')
+        extra_repos = self._sync_extra_repos(instance, workspace_path)
+        self._write_odoo_config(instance, workspace_path, extra_repos)
+        notes = list(self.deploy_notes)
+        folders = [('principal', os.path.join(workspace_path, 'addons'))] if instance.github_repo else []
+        folders += [(slug, os.path.join(workspace_path, 'repos', slug)) for slug in extra_repos]
+        for label, folder in folders:
+            try:
+                commit = git.Repo(folder).head.commit
+                notes.append(f'{label}: {commit.hexsha[:7]} {commit.summary}')
+            except Exception:
+                pass
+        progress(85, 'Reiniciando Odoo para cargar el código')
+        self.restart_instance(instance)
+        return notes
+
+    def install_browser(self, instance, container=None):
+        """Google Chrome in the Odoo container, as root (WhatsApp Web runs it). What it prints goes to the task log."""
+        container = container or self.client.containers.get(f'odoo_{instance.name}')
+        api = self.client.api
+        exec_id = api.exec_create(container.id, ['sh', '-c', BROWSER_SCRIPT], user='root')['Id']
+        tail = ''
+        for chunk in api.exec_start(exec_id, stream=True):
+            text = chunk.decode('utf-8', errors='replace')
+            print(text, end='')
+            tail = (tail + text)[-3000:]
+        exit_code = api.exec_inspect(exec_id)['ExitCode']
+        if exit_code != 0:
+            raise Exception(f'la instalación terminó con el código {exit_code}:\n{tail[-1500:]}')
+        version = [line for line in tail.splitlines() if line.startswith('Google Chrome')]
+        return f'Navegador: {version[-1] if version else "Google Chrome instalado"}'
+
+    def pip_install(self, instance, command):
+        """Run a `pip install` in the Odoo container so that it works and lasts.
+
+        The Debian of the Odoo 17+ images refuses pip on the system Python (PEP 668), and what root installs lives in
+        the container, which every redeploy recreates. So the packages go to the site-packages of the odoo user,
+        under /var/lib/odoo: the data volume, kept across redeploys. Returns (ok, output).
+        """
+        command = pip_user_command(command)
+        output = self.execute_command(instance, command)
+        if 'no such option: --break-system-packages' in output:
+            # pip older than 23 (Odoo up to 16) has no such flag, nor the restriction
+            output = self.execute_command(instance, command.replace(' --break-system-packages', ''))
+        ok = not output.startswith('[Exit Code:') and not output.startswith(('No container', 'Container not found', 'Docker API Error', 'Error executing'))
+        return ok, output
+
+    def backup_all_databases(self, instance, include_filestore=True, user=None):
+        """The backups of the instance: one file per database when it has several (a file restores one database)."""
+        databases = []
+        db_container = None if instance.database_name else self._get_container(f'db_{instance.name}')
+        if db_container is not None:
+            databases = self._list_user_databases(db_container)
+        if len(databases) < 2:
+            return [self.backup_instance(instance, include_filestore, user)]
+        return [self.backup_instance(instance, include_filestore, user, database=database) for database in databases]
+
+    def backup_instance(self, instance, include_filestore=True, user=None, database=None):
         """
         Creates a backup of the instance (database + optionally filestore)
         Returns the Backup model instance
@@ -981,7 +1128,7 @@ class DockerService:
         from datetime import datetime
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_filename = f"{instance.name}_backup_{timestamp}.zip"
+        backup_filename = f"{instance.name}{f'_{database}' if database else ''}_backup_{timestamp}.zip"
         
         # Create backups directory if it doesn't exist
         backups_dir = os.path.join(settings.BASE_DIR, 'backups')
@@ -994,11 +1141,14 @@ class DockerService:
         try:
             with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # 1. Backup Odoo database
+                progress(10, 'Copiando la base de datos')
                 print(f"Backing up database for {instance.name}...")
                 db_container = self.client.containers.get(f"db_{instance.name}")
                 
                 # Check if database_name is specified in instance
-                if instance.database_name:
+                if database:
+                    odoo_db_name = database
+                elif instance.database_name:
                     odoo_db_name = instance.database_name
                     print(f"Using specified database name: {odoo_db_name}")
                 else:
@@ -1057,6 +1207,7 @@ class DockerService:
                 
                 # 2. Backup filestore if requested
                 if include_filestore:
+                    progress(55, 'Copiando los adjuntos (filestore)')
                     print("Backing up filestore from Odoo container...")
                     try:
                         odoo_container = self.client.containers.get(f"odoo_{instance.name}")
@@ -1103,6 +1254,7 @@ class DockerService:
                 else:
                     print("Skipping filestore backup (not requested)")
                 
+                progress(90, 'Guardando el archivo del respaldo')
                 # 3. Add metadata
                 metadata = {
                     'instance_name': instance.name,
@@ -1186,6 +1338,7 @@ class DockerService:
                 print(f"Backup metadata: {metadata}")
                 
                 # 1. Restore database
+                progress(15, 'Restaurando la base de datos')
                 print("Restoring database...")
                 db_container = self.client.containers.get(f"db_{instance.name}")
                 
@@ -1271,6 +1424,7 @@ class DockerService:
                 print(f"Filestore exists: {os.path.exists(filestore_dir)}")
                 
                 if os.path.exists(filestore_dir):
+                    progress(60, 'Restaurando los adjuntos (filestore)')
                     print("Restoring filestore to Odoo container...")
                     try:
                         odoo_container = self.client.containers.get(f"odoo_{instance.name}")

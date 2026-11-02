@@ -145,29 +145,14 @@
             <i data-lucide="list-checks" class="h-4 w-4"></i>
             <h3 class="text-sm font-semibold">Tareas recientes</h3>
             {% if has_active_tasks %}
-            <span class="text-xs text-muted-foreground">· la página se actualizará al terminar</span>
+            <span class="text-xs text-muted-foreground">· en directo; la página se actualizará al terminar</span>
             {% endif %}
+            <a href="{% url 'activity' %}?q={{ object.name|urlencode }}" class="ml-auto text-xs text-primary hover:underline">Toda la actividad</a>
         </div>
         {% if tasks %}
         <ul class="divide-y">
             {% for task in tasks %}
-            <li class="px-4 py-2 flex items-start gap-3 text-sm">
-                <span class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium
-                    {% if task.status == 'done' %}bg-green-100 text-green-800
-                    {% elif task.status == 'failed' %}bg-red-100 text-red-800
-                    {% elif task.status == 'running' %}bg-blue-100 text-blue-800
-                    {% else %}bg-muted text-muted-foreground{% endif %}">
-                    {{ task.get_status_display }}
-                </span>
-                <div class="min-w-0 flex-1">
-                    <div class="font-medium">{{ task.get_kind_display }}
-                        <span class="text-xs font-normal text-muted-foreground">· {{ task.created_at|timesince }}</span>
-                    </div>
-                    {% if task.result %}
-                    <pre class="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">{{ task.result|truncatechars:500 }}</pre>
-                    {% endif %}
-                </div>
-            </li>
+            {% include "orchestrator/includes/task_row.html" %}
             {% endfor %}
         </ul>
         {% else %}
@@ -176,16 +161,7 @@
     </div>
     </div>
     {% if has_active_tasks %}
-    <script>
-        (function () {
-            const url = "{% url 'instance-tasks-api' object.pk %}";
-            const poll = () => fetch(url, { headers: { 'Accept': 'application/json' } })
-                .then(response => response.json())
-                .then(data => data.active ? setTimeout(poll, 4000) : window.location.reload())
-                .catch(() => setTimeout(poll, 8000));
-            setTimeout(poll, 4000);
-        })();
-    </script>
+    {% include "orchestrator/includes/task_live.html" with reload_when_done=True %}
     {% endif %}
 
     <!-- Information Tab -->
@@ -345,6 +321,27 @@
             </div>
             <div class="p-6 pt-4 space-y-4"
                 x-data="{ showDomainForm: {% if not object.custom_domain %}true{% else %}false{% endif %} }">
+                {% if certificate_problem %}
+                <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm space-y-1">
+                    <div class="flex items-center gap-2 font-medium">
+                        <i data-lucide="shield-alert" class="h-4 w-4"></i>
+                        <span>Certificado pendiente</span>
+                    </div>
+                    <p class="text-muted-foreground">
+                        {% if certificate_problem.kind == 'rate_limit' %}
+                        Let's Encrypt ha alcanzado su límite semanal de certificados para este dominio. Se reintenta solo{% if certificate_problem.retry_after %}, no antes de {{ certificate_problem.retry_after }} UTC{% endif %}.
+                        {% elif certificate_problem.kind == 'failed' %}
+                        Let's Encrypt no pudo comprobar el dominio: revisa que su DNS apunte a este servidor.
+                        {% elif certificate_problem.kind == 'error' %}
+                        Let's Encrypt no pudo emitir el certificado: revisa el DNS del dominio y los registros de Traefik.
+                        {% else %}
+                        El certificado se está solicitando.
+                        {% endif %}
+                        Mientras tanto la instancia funciona, pero el navegador mostrará un aviso de seguridad.
+                    </p>
+                    <p class="text-xs text-muted-foreground">{{ certificate_problem.hosts|join:", " }}</p>
+                </div>
+                {% endif %}
                 {% if object.custom_domain %}
                 <div class="space-y-3">
                     <div class="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
@@ -433,11 +430,48 @@
 
     <!-- Modules Tab -->
     <div x-show="activeTab === 'modules'" class="space-y-6">
+        <!-- Browser in the Odoo container (WhatsApp Web) -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-wrap items-center gap-4 p-6">
+                <i data-lucide="chrome" class="h-6 w-6 shrink-0 text-muted-foreground"></i>
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-semibold leading-none tracking-tight">Navegador (WhatsApp Web)</h3>
+                    <p class="mt-1.5 text-sm text-muted-foreground">
+                        Google Chrome dentro del contenedor de Odoo, para los módulos que lo necesitan, como WhatsApp Web. Ocupa unos 450 MB y se reinstala solo en cada despliegue (menos de un minuto más).
+                    </p>
+                </div>
+                <form method="post" action="{% url 'instance-browser' object.pk %}">
+                    {% csrf_token %}
+                    {% if object.browser %}
+                    <span class="mr-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Instalado</span>
+                    <input type="hidden" name="enable" value="0">
+                    <button type="submit" class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent"
+                        onclick="return confirm('¿Dejar de instalar Google Chrome? Desaparece en el próximo despliegue.');">Quitar</button>
+                    {% else %}
+                    <input type="hidden" name="enable" value="1">
+                    <button type="submit" class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="download" class="mr-2 h-4 w-4"></i> Instalar Google Chrome
+                    </button>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
         <!-- Addons repositories -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Repositorios de addons</h3>
-                <p class="text-sm text-muted-foreground">Cada repositorio se clona y se añade al addons_path de Odoo. Los cambios se aplican al desplegar.</p>
+            <div class="flex flex-wrap items-start gap-3 p-6 pb-2">
+                <div class="min-w-0 flex-1 space-y-1.5">
+                    <h3 class="font-semibold leading-none tracking-tight">Repositorios de addons</h3>
+                    <p class="text-sm text-muted-foreground">Cada repositorio se clona y se añade al addons_path de Odoo. «Pull» trae los últimos cambios de todos y reinicia Odoo, sin redesplegar.</p>
+                </div>
+                {% if object.github_repo or object.repositories.exists %}
+                <form method="post" action="{% url 'instance-pull' object.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" title="Descarga los últimos commits de cada repositorio y reinicia Odoo. Si cambian vistas o datos, actualiza el módulo en Odoo."
+                        class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="git-pull-request-arrow" class="mr-2 h-4 w-4"></i> Pull
+                    </button>
+                </form>
+                {% endif %}
             </div>
             <div class="p-6 pt-4 space-y-4">
                 <ul class="divide-y rounded-lg border text-sm">

@@ -1,0 +1,43 @@
+{# One task with its progress bar, step and log; live-updated by includes/task_live.html. show_instance: link the instance #}
+<li class="px-4 py-3 text-sm" data-task-id="{{ task.id }}" {% if task.is_active %}data-task-active{% endif %}>
+    <div class="flex items-start gap-3">
+        <span data-task-status class="inline-flex w-24 shrink-0 items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium
+            {% if task.status == 'done' %}bg-green-100 text-green-800
+            {% elif task.status == 'failed' %}bg-red-100 text-red-800
+            {% elif task.status == 'running' %}bg-blue-100 text-blue-800
+            {% else %}bg-muted text-muted-foreground{% endif %}">
+            {{ task.get_status_display }}
+        </span>
+        <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-baseline gap-x-2 font-medium">
+                <span>{{ task.get_kind_display }}</span>
+                {% if show_instance and task.instance %}
+                <a href="{% url 'instance-detail' task.instance.pk %}" class="text-xs font-normal text-primary hover:underline">{{ task.instance.name }}</a>
+                {% endif %}
+                <span class="text-xs font-normal text-muted-foreground">
+                    · {{ task.created_at|timesince }}{% if task.created_by %} · {{ task.created_by.username }}{% endif %}
+                    {% if task.duration is not None %} · <span data-task-duration>{{ task.duration_display }}</span>{% endif %}
+                </span>
+            </div>
+            <div class="mt-2 flex items-center gap-3">
+                <div class="h-2 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ task.bar_percent }}">
+                    <div data-task-bar class="h-full rounded-full transition-all duration-500
+                        {% if task.status == 'done' %}bg-green-500{% elif task.status == 'failed' %}bg-red-500{% elif task.status == 'running' %}bg-blue-500 animate-pulse{% else %}bg-muted-foreground/40{% endif %}"
+                        style="width: {{ task.bar_percent }}%"></div>
+                </div>
+                <span data-task-percent class="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{{ task.bar_percent }}%</span>
+            </div>
+            <div data-task-step class="mt-1 truncate text-xs text-muted-foreground">{% if task.step %}{{ task.step }}{% elif task.status == 'pending' %}En cola: empieza cuando el worker quede libre{% endif %}</div>
+            {% if task.result and not task.is_active %}
+            <pre class="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground">{{ task.result|truncatechars:500 }}</pre>
+            {% endif %}
+            <details class="mt-2" {% if task.status == 'running' %}open{% endif %}>
+                <summary class="cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-foreground">
+                    <i data-lucide="scroll-text" class="mr-1 inline h-3.5 w-3.5"></i>Log
+                </summary>
+                <pre data-task-log class="mt-1 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed">{{ task.log|default:"Sin líneas todavía." }}</pre>
+                <a href="{% url 'activity-detail' task.pk %}" class="mt-1 inline-block text-xs text-primary hover:underline">Ver el log completo</a>
+            </details>
+        </div>
+    </div>
+</li>

@@ -1,7 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views.activity import activity_detail, activity_list, task_live
 from .views.odoo_ai import instance_migrate, odoo_ai_request
-from .views.api import BackupViewSet, InstanceAPIViewSet, ProjectViewSet, TaskViewSet, TodoViewSet
+from .views.api import BackupViewSet, ContainerViewSet, InstanceAPIViewSet, ProjectViewSet, TaskViewSet, TodoViewSet
 from .views import (
     todo_list,
     todo_create,
@@ -33,6 +34,8 @@ from .views import (
     instance_restart,
     instance_logs_api,
     instance_tasks_api,
+    instance_browser,
+    instance_pull,
     instance_repo_add,
     instance_repo_remove,
     instance_ai_chat,
@@ -97,6 +100,7 @@ router.register(r'api/projects', ProjectViewSet, basename='api-project')
 router.register(r'api/backups', BackupViewSet, basename='api-backup')
 router.register(r'api/tasks', TaskViewSet, basename='api-task')
 router.register(r'api/todos', TodoViewSet, basename='api-todo')
+router.register(r'api/containers', ContainerViewSet, basename='api-container')
 
 urlpatterns = [
     path('accounts/register/', register, name='register'),
@@ -142,6 +146,9 @@ urlpatterns = [
     path('instance/<int:pk>/backups/', instance_backups_list, name='instance-backups'),
     path('instance/<int:pk>/restore/', instance_restore, name='instance-restore'),
     path('backups/', backup_list, name='backup-list'),
+    path('activity/', activity_list, name='activity'),
+    path('activity/<int:pk>/', activity_detail, name='activity-detail'),
+    path('tasks/live/', task_live, name='task-live'),
     path('backups/import/', backup_import, name='backup-import'),
     path('backup/<int:backup_id>/download/', backup_download, name='backup-download'),
     path('backup/<int:backup_id>/delete/', backup_delete, name='backup-delete'),
@@ -150,6 +157,8 @@ urlpatterns = [
     path('instance/<int:pk>/logs/', instance_logs_api, name='instance-logs-api'),
     path('instance/<int:pk>/tasks/', instance_tasks_api, name='instance-tasks-api'),
     path('instance/<int:pk>/repos/add/', instance_repo_add, name='instance-repo-add'),
+    path('instance/<int:pk>/browser/', instance_browser, name='instance-browser'),
+    path('instance/<int:pk>/pull/', instance_pull, name='instance-pull'),
     path('instance/<int:pk>/repos/<int:repo_id>/remove/', instance_repo_remove, name='instance-repo-remove'),
     path('instance/<int:pk>/ai/', instance_ai_chat, name='instance-ai-chat'),
     path('instance/<int:pk>/ai/reset/', instance_ai_reset, name='instance-ai-reset'),

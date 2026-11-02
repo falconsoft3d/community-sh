@@ -1,6 +1,53 @@
 # Changelog
 
-Versión actual: **1.0.34**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.44**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.44 — 2026-11-02
+
+- API: contenedores Docker en `/api/containers/` (crear, arrancar, detener, recrear, logs y eliminar), con los mismos límites que el formulario para quien no es administrador.
+- Contenedores construidos desde un repositorio (también privado, con el token del propietario) y un Dockerfile, como tarea con su log en un worker propio (`build-worker`) para no frenar despliegues ni backups.
+- Cada contenedor tiene `https://nombre.dominio` con certificado, como las instancias; parado deja de tener ruta.
+- API: crear una instancia también la despliega y devuelve el `task_id` (antes quedaba en «deploying» sin desplegarse hasta llamar a `/deploy/`).
+- API: `/api/tasks/` muestra también tus tareas sin instancia, como construir un contenedor.
+
+## 1.0.43 — 2026-10-30
+
+- Demos: varias bases en una instancia y un certificado, abiertas con `https://dominio/?nombre` (Odoo 18 a 20). Se activa con «Base por defecto de las demos».
+- Copias de seguridad: una instancia con varias bases guarda una copia de cada una.
+
+## 1.0.42 — 2026-10-30
+
+- Repositorio principal: se clona y actualiza con el token del propietario, así que los repositorios privados ya funcionan.
+- Si no se puede obtener el código, el despliegue falla en lugar de terminar con los módulos vacíos; un fallo al actualizar conserva el código que había.
+
+## 1.0.41 — 2026-10-30
+
+- Dominios: una instancia parada deja de tener ruta en Traefik y no gasta certificados; la recupera al reiniciarla.
+- La ficha de la instancia avisa cuando falta el certificado y explica por qué (límite semanal de Let's Encrypt, DNS...).
+
+## 1.0.40 — 2026-10-30
+
+- Módulos: botón «Pull» que trae los últimos commits del repositorio principal y de los de módulos y reinicia Odoo, como tarea con su log y barra, sin redesplegar ni actualizar todos los módulos
+
+## 1.0.39 — 2026-10-30
+
+- Módulos: opción «Navegador (WhatsApp Web)» por instancia: instala Google Chrome en el contenedor de Odoo (como root, con su log y barra de progreso) y lo reinstala solo en cada despliegue, porque el contenedor se recrea; la imagen de Odoo no trae navegador y el chromium de Ubuntu es un snap que Docker no puede ejecutar
+
+## 1.0.38 — 2026-10-30
+
+- Restart de una instancia: si su base de datos estaba parada (por ejemplo tras reiniciar el servidor), la arranca antes que Odoo y deja las dos con reinicio automático; «Entrar como admin» dice que la base de datos está parada en vez de «todavía no tiene base de datos»
+
+## 1.0.37 — 2026-10-30
+
+- Reinicios del servidor: la base de datos del panel, las instancias de Odoo y su PostgreSQL vuelven a arrancar solas (antes quedaban paradas y el panel respondía Server Error 500); una instancia parada desde el panel sigue parada
+
+## 1.0.36 — 2026-10-29
+
+- Consola e «Instalar desde requirements.txt»: pip instala los paquetes para el usuario odoo en el volumen de datos (/var/lib/odoo/.local), así funciona en Odoo 17-20 (antes Debian lo rechazaba: «externally-managed-environment») y el paquete se conserva al redesplegar
+
+## 1.0.35 — 2026-10-29
+
+- Actividad: cada tarea (desplegar, respaldar, restaurar, duplicar, instalar módulos, migrar…) guarda su log completo con la hora —lo que imprime el servidor y sus avisos— y una barra de progreso con el paso en curso, que avanzan en directo en la pestaña «Tareas recientes» y en la nueva página «Actividad» del menú (todas las tareas, con filtros por estado, tipo e instancia y el log completo de cada una)
 
 ## 1.0.34 — 2026-10-29
 

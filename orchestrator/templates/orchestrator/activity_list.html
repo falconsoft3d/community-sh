@@ -1,0 +1,44 @@
+{% extends "orchestrator/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+        <h1 class="text-lg font-semibold md:text-2xl">{% translate "Actividad" %}</h1>
+        <p class="text-sm text-muted-foreground">
+            Todo lo que hace el servidor: despliegues, respaldos, restauraciones, instalaciones y migraciones, con su log.
+            {% if active_count %}<span class="font-medium text-blue-600">{{ active_count }} en curso.</span>{% endif %}
+            {% if failed_count %}<a href="?status=failed" class="font-medium text-red-600 hover:underline">{{ failed_count }} fallida{{ failed_count|pluralize }}.</a>{% endif %}
+        </p>
+    </div>
+    <form method="get" class="ml-auto flex flex-wrap items-center gap-2">
+        <input type="search" name="q" value="{{ search }}" placeholder="Instancia, usuario o texto…" aria-label="Buscar"
+            class="h-10 w-56 rounded-md border border-input bg-background px-3 text-sm">
+        <select name="status" onchange="this.form.submit()" aria-label="Estado" class="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">Todos los estados</option>
+            {% for value, label in statuses %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <select name="kind" onchange="this.form.submit()" aria-label="Tipo" class="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">Todos los tipos</option>
+            {% for value, label in kinds %}<option value="{{ value }}" {% if selected_kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="inline-flex h-10 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+            <i data-lucide="search" class="h-4 w-4"></i>
+        </button>
+    </form>
+</div>
+
+<div class="mt-4 rounded-xl border bg-card text-card-foreground shadow-sm">
+    {% if tasks %}
+    <ul class="divide-y">
+        {% for task in tasks %}
+        {% include "orchestrator/includes/task_row.html" with show_instance=True %}
+        {% endfor %}
+    </ul>
+    {% include "orchestrator/includes/pagination.html" with page=tasks %}
+    {% else %}
+    <p class="px-4 py-10 text-center text-sm text-muted-foreground">No hay tareas{% if search or selected_status or selected_kind %} con estos filtros{% endif %}.</p>
+    {% endif %}
+</div>
+{% include "orchestrator/includes/task_live.html" with reload_when_done=False %}
+{% endblock %}

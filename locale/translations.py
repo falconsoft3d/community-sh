@@ -89,6 +89,7 @@ ES_TO_EN = {
     'Licencia': 'License',
     'Instancias': 'Instances',
     'Tareas recientes': 'Recent tasks',
+    'Actividad': 'Activity',
     'Todo lo que necesitas para operar Odoo': 'Everything you need to run Odoo',
     'Del primer despliegue a los backups diarios, sin entrar al servidor.': 'From the first deploy to daily backups, without logging into the server.',
     'Instancias aisladas': 'Isolated instances',
