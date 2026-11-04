@@ -4,10 +4,20 @@ from django.db import models
 
 class Contact(models.Model):
     """
-    Someone who asked for a demo (public page or API): one per email and panel user (the owner of the
-    project). Kept with their latest details even after their demos expire and are deleted.
+    Someone who asked for a demo (public page or API), or added by hand: one per email and panel user (the
+    owner of the project). Kept with their latest details even after their demos expire and are deleted.
+    The CRM board moves them through the stages of a sale.
     """
+    class Stage(models.TextChoices):
+        CONTACTED = 'contacted', 'Contactado'
+        DEMO = 'demo', 'Demo'
+        PROPOSAL = 'proposal', 'Propuesta'
+        WAITING = 'waiting', 'A la espera'
+        WON = 'won', 'Ganado'
+        LOST = 'lost', 'Perdido'
+
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contacts')
+    stage = models.CharField(max_length=20, choices=Stage.choices, default=Stage.CONTACTED)
     email = models.EmailField()
     name = models.CharField(max_length=150)
     company = models.CharField(max_length=150, blank=True)
@@ -18,6 +28,7 @@ class Contact(models.Model):
     first_project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
                                       help_text="Project of the first demo they asked for")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     last_request_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -34,7 +45,10 @@ def save_contact(trial):
     project = trial.project
     contact, created = Contact.objects.get_or_create(
         owner=project.owner, email=trial.email.lower(),
-        defaults={'name': trial.name, 'first_project': project})
+        defaults={'name': trial.name, 'first_project': project, 'stage': Contact.Stage.DEMO})
+    # Someone only contacted so far now has a demo; later stages (proposal, won...) are kept
+    if contact.stage == Contact.Stage.CONTACTED:
+        contact.stage = Contact.Stage.DEMO
     for field in ('name', 'company', 'job_title', 'phone', 'country'):
         value = getattr(trial, field)
         if value:

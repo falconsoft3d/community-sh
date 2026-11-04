@@ -9,10 +9,23 @@
                 <a href="{% url 'contact-list' %}" class="hover:text-foreground">{% translate "Contactos" %}</a>
                 <span class="mx-1">/</span><span class="font-medium text-foreground">{{ contact.name }}</span>
             </nav>
-            <h1 class="text-3xl font-bold tracking-tight">{{ contact.name }}</h1>
+            <h1 class="flex flex-wrap items-center gap-3 text-3xl font-bold tracking-tight">{{ contact.name }}
+                <span class="rounded-full px-3 py-1 text-sm font-semibold
+                    {% if contact.stage == 'won' %}bg-green-100 text-green-800{% elif contact.stage == 'lost' %}bg-red-100 text-red-800{% elif contact.stage == 'waiting' %}bg-amber-100 text-amber-800{% elif contact.stage == 'proposal' %}bg-violet-100 text-violet-800{% elif contact.stage == 'demo' %}bg-blue-100 text-blue-800{% else %}bg-muted text-muted-foreground{% endif %}">{{ contact.get_stage_display }}</span>
+            </h1>
             <p class="mt-1 text-muted-foreground">{% if contact.company %}{{ contact.company }}{% endif %}{% if contact.job_title %} · {{ contact.job_title }}{% endif %}</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
+            <form method="post" action="{% url 'contact-stage' contact.pk %}" class="flex items-center gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'contact-detail' contact.pk %}">
+                <select name="stage" onchange="this.form.submit()" aria-label="{% translate 'Etapa' %}" class="h-10 rounded-md border border-input bg-background px-3 text-sm">
+                    {% for value, label in stages %}<option value="{{ value }}" {% if value == contact.stage %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+            </form>
+            <a href="{% url 'contact-edit' contact.pk %}" class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">
+                <i data-lucide="pencil" class="mr-2 h-4 w-4"></i> {% translate "Editar" %}
+            </a>
             <a href="mailto:{{ contact.email }}" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                 <i data-lucide="mail" class="mr-2 h-4 w-4"></i> {% translate "Escribir" %}
             </a>

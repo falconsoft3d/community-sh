@@ -204,3 +204,30 @@ class ProjectForm(forms.ModelForm):
             if field not in self.errors:
                 self.add_error(field, message)
         return data
+
+
+class ContactForm(forms.ModelForm):
+    """A CRM contact, created by hand or edited (its demos come from the demo requests)."""
+
+    class Meta:
+        from .contact_models import Contact
+        model = Contact
+        fields = ['name', 'email', 'company', 'job_title', 'phone', 'country', 'stage', 'notes']
+        labels = {'name': 'Nombre y apellidos', 'email': 'Email', 'company': 'Empresa', 'job_title': 'Cargo',
+                  'phone': 'Teléfono', 'country': 'País', 'stage': 'Etapa', 'notes': 'Notas'}
+        widgets = {'notes': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Llamadas, interés, próximo paso…'})}
+
+    def __init__(self, *args, owner=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.owner = owner or getattr(self.instance, 'owner', None)
+        for field in self.fields.values():
+            field.widget.attrs['class'] = (
+                'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
+                + ('' if isinstance(field.widget, forms.Textarea) else ' h-10'))
+
+    def clean_email(self):
+        from .contact_models import Contact
+        email = self.cleaned_data['email'].strip().lower()
+        if Contact.objects.filter(owner=self.owner, email=email).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError('Ya tienes un contacto con ese email.')
+        return email

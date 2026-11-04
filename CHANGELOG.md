@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.58**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.59**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.59 — 2026-11-04
+
+- Contactos como CRM: tablero Kanban con las columnas Contactado, Demo, Propuesta, A la espera, Ganado y Perdido; los contactos se arrastran de columna (o se mueven con el selector de su tarjeta). Quien pide una demo entra en «Demo». Se pueden crear contactos a mano y editar todos sus datos; la vista de lista y el CSV incluyen la etapa.
 
 ## 1.0.58 — 2026-11-04
 

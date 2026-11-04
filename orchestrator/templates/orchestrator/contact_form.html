@@ -1,0 +1,34 @@
+{% extends "orchestrator/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="mx-auto w-full max-w-2xl">
+    <nav class="mb-1 text-sm text-muted-foreground">
+        <a href="{% url 'contact-list' %}" class="hover:text-foreground">{% translate "Contactos" %}</a>
+        <span class="mx-1">/</span>
+        {% if contact %}<a href="{% url 'contact-detail' contact.pk %}" class="hover:text-foreground">{{ contact.name }}</a><span class="mx-1">/</span><span class="font-medium text-foreground">{% translate "Editar" %}</span>
+        {% else %}<span class="font-medium text-foreground">{% translate "Nuevo" %}</span>{% endif %}
+    </nav>
+    <h1 class="text-2xl font-bold tracking-tight">{% if contact %}{% translate "Editar contacto" %}{% else %}{% translate "Nuevo contacto" %}{% endif %}</h1>
+
+    <form method="post" class="mt-6 grid gap-5 rounded-xl border bg-card p-6 text-card-foreground shadow-sm sm:grid-cols-2">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="space-y-2 {% if field.name == 'notes' or field.name == 'name' %}sm:col-span-2{% endif %}">
+            <label for="{{ field.id_for_label }}" class="text-sm font-medium leading-none">
+                {{ field.label }}{% if field.field.required %} <span class="text-destructive">*</span>{% endif %}
+            </label>
+            {{ field }}
+            {% if field.errors %}<p class="text-sm font-medium text-destructive">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="flex justify-end gap-2 pt-2 sm:col-span-2">
+            <a href="{% if contact %}{% url 'contact-detail' contact.pk %}{% else %}{% url 'contact-list' %}{% endif %}"
+                class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">{% translate "Cancelar" %}</a>
+            <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                {% if contact %}{% translate "Guardar cambios" %}{% else %}{% translate "Crear contacto" %}{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

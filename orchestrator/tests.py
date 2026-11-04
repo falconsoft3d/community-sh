@@ -3256,3 +3256,61 @@ class UsageColourTests(TestCase):
         from .services.dashboard import usage_tone
         self.assertEqual([usage_tone(v) for v in (95, 90.5, 90, 70, 50, 49.9, 10, None)],
                          ['red', 'red', 'orange', 'orange', 'orange', 'green', 'green', 'default'])
+
+
+class CrmBoardTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        from .contact_models import Contact
+        self.contact = Contact.objects.create(owner=self.alice, name='Ana', email='ana@example.com', company='Sol', stage='demo')
+
+    def test_board_has_the_six_stages_and_cards_move(self):
+        self.client.force_login(self.alice)
+        page = self.client.get('/contacts/').content.decode()
+        for label in ('Contactado', 'Demo', 'Propuesta', 'A la espera', 'Ganado', 'Perdido'):
+            self.assertIn(label, page)
+        self.assertIn(f'data-id="{self.contact.pk}"', page)
+        response = self.client.post(f'/contact/{self.contact.pk}/stage/', {'stage': 'proposal'}, HTTP_ACCEPT='application/json')
+        self.assertEqual(response.json(), {'ok': True, 'stage': 'proposal', 'label': 'Propuesta'})
+        self.contact.refresh_from_db()
+        self.assertEqual(self.contact.stage, 'proposal')
+        self.assertEqual(self.client.post(f'/contact/{self.contact.pk}/stage/', {'stage': 'nope'}).status_code, 400)
+        # The redirect after a form post stays inside the panel
+        response = self.client.post(f'/contact/{self.contact.pk}/stage/', {'stage': 'won', 'next': 'https://evil.example/'})
+        self.assertEqual(response['Location'], '/contacts/')
+        self.assertContains(self.client.get('/contacts/?view=list'), 'Ganado')
+
+    def test_contacts_are_created_and_edited_by_hand(self):
+        from .contact_models import Contact
+        self.client.force_login(self.alice)
+        self.client.post('/contacts/new/', {'name': 'Leo', 'email': 'LEO@example.com', 'stage': 'contacted', 'phone': '+34 611'})
+        leo = Contact.objects.get(email='leo@example.com')
+        self.assertEqual((leo.owner, leo.stage), (self.alice, 'contacted'))
+        self.client.post(f'/contact/{leo.pk}/edit/', {'name': 'Leo Gil', 'email': 'leo@example.com', 'company': 'Norte',
+                                                      'job_title': 'CEO', 'stage': 'waiting', 'country': 'México'})
+        leo.refresh_from_db()
+        self.assertEqual((leo.name, leo.company, leo.stage, leo.country), ('Leo Gil', 'Norte', 'waiting', 'México'))
+        # The email of another contact can't be taken
+        response = self.client.post(f'/contact/{leo.pk}/edit/', {'name': 'Leo', 'email': 'ana@example.com', 'stage': 'won'})
+        self.assertContains(response, 'Ya tienes un contacto con ese email')
+        self.assertContains(self.client.get(f'/contact/{leo.pk}/'), 'A la espera')
+        # Someone else's contact
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.get(f'/contact/{leo.pk}/edit/').status_code, 404)
+        self.assertEqual(self.client.post(f'/contact/{leo.pk}/stage/', {'stage': 'lost'}).status_code, 404)
+
+    def test_a_demo_request_moves_a_contacted_person_to_demo_but_keeps_later_stages(self):
+        from .contact_models import Contact
+        from .project_models import Project
+        from .services.trials import request_demo
+        demos = Project.objects.create(name='D', owner=self.alice)
+        self.alice_project.trial_enabled, self.alice_project.trial_slug, self.alice_project.trial_target_project = True, 'bim', demos
+        self.alice_project.save()
+        Contact.objects.create(owner=self.alice, name='Leo', email='leo@example.com', stage='contacted')
+        request_demo(self.alice_project, self.alice_instance, 'Leo', 'leo@example.com', ip='10.0.0.1')
+        self.assertEqual(Contact.objects.get(email='leo@example.com').stage, 'demo')
+        self.contact.stage = 'won'
+        self.contact.save()
+        request_demo(self.alice_project, self.alice_instance, 'Ana', 'ana@example.com', ip='10.0.0.2')
+        self.assertEqual(Contact.objects.get(email='ana@example.com').stage, 'won')
+        self.assertEqual(Contact.objects.create(owner=self.bob, name='X', email='x@example.com').stage, 'contacted')

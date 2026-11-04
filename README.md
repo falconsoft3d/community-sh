@@ -11,7 +11,7 @@
   - one demo per email a month, per-day and at-once limits for the whole server (Settings → Demos); stopped when it expires and deleted 7 days later (days left shown on the instance)
   - the copy is cleaned before it is handed over: other users' passwords, mail servers, API keys and the database secret; no AI assistant in demos
   - **public JSON API** with CORS to list the versions and ask for a demo from your own website
-  - **Contacts** menu: everyone who asked for a demo (name, email, company, job title, phone, country, their demos and your notes), with search, CSV export and `/api/contacts/`
+  - **Contacts** as a small CRM: a Kanban board (Contacted, Demo, Proposal, Waiting, Won, Lost) with drag and drop; everyone who asked for a demo lands in «Demo», contacts can be added and edited by hand, with search, CSV export and `/api/contacts/`
 - ✉️ **Outgoing mail server** (SMTP) in Settings → Email, with a test button
 - 📦 Docker **containers per project**: create them from the project page next to its Odoo instances
 - 🚀 Deploy **Odoo 8 to 20** in Docker — every version tested end to end (deploy, database, login, backups, chat); each gets a matching PostgreSQL

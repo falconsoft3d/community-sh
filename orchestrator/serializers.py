@@ -256,7 +256,7 @@ class ContactSerializer(serializers.ModelSerializer):
     class Meta:
         from .contact_models import Contact
         model = Contact
-        fields = ['id', 'name', 'email', 'company', 'job_title', 'phone', 'country', 'notes', 'demos',
+        fields = ['id', 'name', 'email', 'company', 'job_title', 'phone', 'country', 'stage', 'notes', 'demos',
                   'created_at', 'last_request_at']
         read_only_fields = fields
 

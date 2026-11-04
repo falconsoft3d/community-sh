@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.58'
+VERSION = '1.0.59'
 
 CHANGELOG = [
+    {
+        'version': '1.0.59',
+        'date': '2026-11-04',
+        'notes': [
+            'Contactos como CRM: tablero Kanban con las columnas Contactado, Demo, Propuesta, A la espera, Ganado y Perdido; los contactos se arrastran de columna (o se mueven con el selector de su tarjeta). Quien pide una demo entra en «Demo». Se pueden crear contactos a mano y editar todos sus datos; la vista de lista y el CSV incluyen la etapa.',
+        ],
+    },
     {
         'version': '1.0.58',
         'date': '2026-11-04',

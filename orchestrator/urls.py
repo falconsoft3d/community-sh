@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views.activity import activity_detail, activity_list, task_live
 from .views.trials import instance_update_description, project_trial_key, trial_api, trial_captcha, trial_page, trial_status
 from .views.webhooks import github_webhook, instance_auto_update, instance_webhook_github, instance_webhook_secret
-from .views.contacts import contact_delete, contact_detail, contact_export, contact_list
+from .views.contacts import contact_delete, contact_detail, contact_edit, contact_export, contact_list, contact_stage
 from .views.odoo_ai import instance_migrate, odoo_ai_request
 from .views.api import (BackupViewSet, ContainerViewSet, DemoViewSet, InstanceAPIViewSet, PlatformEmailTestView,
                         PlatformSettingsView, ProjectViewSet, TaskViewSet, TodoViewSet, ContactViewSet)
@@ -130,6 +130,9 @@ urlpatterns = [
     path('projects/', project_list, name='project-list'),
     path('contacts/', contact_list, name='contact-list'),
     path('contacts/export/', contact_export, name='contact-export'),
+    path('contacts/new/', contact_edit, name='contact-create'),
+    path('contact/<int:pk>/edit/', contact_edit, name='contact-edit'),
+    path('contact/<int:pk>/stage/', contact_stage, name='contact-stage'),
     path('contact/<int:pk>/', contact_detail, name='contact-detail'),
     path('contact/<int:pk>/delete/', contact_delete, name='contact-delete'),
     path('project/new/', project_create, name='project-create'),
