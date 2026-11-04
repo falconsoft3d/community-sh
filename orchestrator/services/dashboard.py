@@ -6,8 +6,20 @@ from django.utils import timezone
 from django.utils.timesince import timesince
 
 
-def _kpi(label, value, hint, icon, url, tone='default'):
-    return {'label': label, 'value': value, 'hint': hint, 'icon': icon, 'url': url, 'tone': tone}
+def _kpi(label, value, hint, icon, url, tone='default', fill=False):
+    """fill: the whole card takes the colour of its tone (server usage)."""
+    return {'label': label, 'value': value, 'hint': hint, 'icon': icon, 'url': url, 'tone': tone, 'fill': fill}
+
+
+def usage_tone(percent):
+    """Server usage: red above 90 %, orange from 50 % to 90 %, green below 50 %."""
+    if percent is None:
+        return 'default'
+    if percent > 90:
+        return 'red'
+    if percent >= 50:
+        return 'orange'
+    return 'green'
 
 
 def _plural(count, word, plural=None):
@@ -96,11 +108,11 @@ def platform_kpis(user):
         pending_todos = Todo.objects.exclude(status='done').count()
         groups.append({'title': 'Servidor y seguridad', 'kpis': [
             _kpi('CPU', f'{sample.cpu_percent:.0f}%' if sample else '—', 'Última muestra del worker', 'cpu',
-                 reverse('metrics'), 'red' if sample and sample.cpu_percent > 85 else 'default'),
+                 reverse('metrics'), usage_tone(sample.cpu_percent if sample else None), fill=bool(sample)),
             _kpi('Memoria', f'{memory.percent:.0f}%', f'{memory.available // 1024 ** 2} MB libres', 'memory-stick',
-                 reverse('metrics'), 'red' if memory.percent > 90 else ('amber' if memory.percent > 75 else 'default')),
+                 reverse('metrics'), usage_tone(memory.percent), fill=True),
             _kpi('Disco', f'{disk.percent:.0f}%', f'{disk.free // 1024 ** 3} GB libres', 'hard-drive',
-                 reverse('docker-overview'), 'red' if disk.percent > 90 else ('amber' if disk.percent > 80 else 'default')),
+                 reverse('docker-overview'), usage_tone(disk.percent), fill=True),
             _kpi('Usuarios sin 2FA', f'{without_2fa}/{users.count()}',
                  '2FA obligatorio' if config and config.two_factor_required else '2FA opcional', 'shield-alert',
                  reverse('user-list'), 'amber' if without_2fa and not (config and config.two_factor_required) else 'default'),

@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.57**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.58**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.58 — 2026-11-04
+
+- Dashboard: las tarjetas de CPU, memoria y disco se pintan enteras según el uso: rojo por encima del 90 %, naranja entre el 50 y el 90 % y verde por debajo del 50 %.
 
 ## 1.0.57 — 2026-11-04
 

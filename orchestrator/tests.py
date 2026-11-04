@@ -3249,3 +3249,10 @@ class DemoApiKeyTests(BaseTestCase):
         self.assertEqual(self.client.post(f'/project/{self.alice_project.pk}/demo-api-key/').status_code, 404)
         self.alice_project.refresh_from_db()
         self.assertEqual(self.alice_project.trial_api_key_hash, '')
+
+
+class UsageColourTests(TestCase):
+    def test_usage_tones(self):
+        from .services.dashboard import usage_tone
+        self.assertEqual([usage_tone(v) for v in (95, 90.5, 90, 70, 50, 49.9, 10, None)],
+                         ['red', 'red', 'orange', 'orange', 'orange', 'green', 'green', 'default'])

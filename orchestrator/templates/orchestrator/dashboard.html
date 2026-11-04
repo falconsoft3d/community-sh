@@ -21,11 +21,16 @@
         <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{{ group.title }}</h2>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-{% if group.kpis|length == 6 %}6{% else %}5{% endif %}">
             {% for kpi in group.kpis %}
-            <a href="{{ kpi.url }}" class="group rounded-xl border bg-card p-4 text-card-foreground shadow-sm transition hover:border-primary/50 hover:shadow-md">
+            <a href="{{ kpi.url }}" class="group rounded-xl border p-4 shadow-sm transition hover:shadow-md
+                {% if kpi.fill and kpi.tone == 'red' %}border-red-600 bg-red-600 text-white [&_.text-muted-foreground]:text-red-50
+                {% elif kpi.fill and kpi.tone == 'orange' %}border-orange-500 bg-orange-500 text-white [&_.text-muted-foreground]:text-orange-50
+                {% elif kpi.fill and kpi.tone == 'green' %}border-green-600 bg-green-600 text-white [&_.text-muted-foreground]:text-green-50
+                {% else %}bg-card text-card-foreground hover:border-primary/50{% endif %}">
                 <div class="flex items-center justify-between gap-2">
                     <p class="text-sm text-muted-foreground">{{ kpi.label }}</p>
                     <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
-                        {% if kpi.tone == 'green' %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
+                        {% if kpi.fill and kpi.tone != 'default' %}bg-white/20 text-white
+                        {% elif kpi.tone == 'green' %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
                         {% elif kpi.tone == 'amber' %}bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
                         {% elif kpi.tone == 'red' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
                         {% elif kpi.tone == 'blue' %}bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300
