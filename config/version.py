@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.49'
+VERSION = '1.0.50'
 
 CHANGELOG = [
+    {
+        'version': '1.0.50',
+        'date': '2026-11-04',
+        'notes': [
+            'Despliegue automático: los tests y el despliegue corren en Ubuntu 24.04 fijo (GitHub moverá ubuntu-latest a Ubuntu 26).',
+        ],
+    },
     {
         'version': '1.0.49',
         'date': '2026-11-04',

@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.49**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.50**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.50 — 2026-11-04
+
+- Despliegue automático: los tests y el despliegue corren en Ubuntu 24.04 fijo (GitHub moverá ubuntu-latest a Ubuntu 26).
 
 ## 1.0.49 — 2026-11-04
 
