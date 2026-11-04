@@ -3157,3 +3157,23 @@ class ContactTests(BaseTestCase):
         self.assertEqual(self.client.get('/contacts/').status_code, 403)
         self.client.force_login(self.admin)
         self.assertContains(self.client.get('/contacts/'), 'ana@example.com')
+
+
+class DockerDeleteAllUnusedTests(BaseTestCase):
+    def test_containers_tab_offers_deleting_everything_unused(self):
+        from .services import docker_admin
+        from .task_models import Task
+        plan = {kind: [] for kind in docker_admin.CLEANUP_KINDS}
+        plan['volumes'] = [('old_volume', 2048, None)]
+        data = {'version': '27', 'containers': [], 'images': [], 'volumes': [], 'networks': [],
+                'disk': {'containers': 0, 'images': 0, 'volumes': 0, 'build_cache': 0}, 'cleanup_plan': plan}
+        self.client.force_login(self.admin)
+        with mock.patch('orchestrator.services.docker_admin.overview', return_value=data):
+            page = self.client.get(reverse('docker-overview')).content.decode()
+        self.assertIn('Eliminar todo lo no en uso', page)
+        for kind in docker_admin.CLEANUP_KINDS:
+            self.assertIn(f'name="kinds" value="{kind}"', page)
+        # What the modal sends: every kind, with the typed confirmation
+        self.client.post(reverse('docker-cleanup'), {'kinds': list(docker_admin.CLEANUP_KINDS), 'confirm': 'BORRAR'})
+        task = Task.objects.get(kind=Task.Kind.DOCKER_CLEANUP)
+        self.assertEqual(task.params['kinds'], list(docker_admin.CLEANUP_KINDS))

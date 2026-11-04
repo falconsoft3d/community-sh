@@ -58,12 +58,44 @@
     <section x-show="tab === 'containers'" class="rounded-xl border bg-card text-card-foreground shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
             <h2 class="font-semibold">Contenedores</h2>
-            <form method="post" action="{% url 'docker-prune' 'containers' %}" onsubmit="return confirm('¿Eliminar todos los contenedores detenidos?');">
-                {% csrf_token %}
-                <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
-                    <i data-lucide="eraser" class="mr-2 h-4 w-4"></i> Eliminar detenidos
+            <div class="flex flex-wrap items-center gap-2" x-data="{ open: false, typed: '' }">
+                <form method="post" action="{% url 'docker-prune' 'containers' %}" onsubmit="return confirm('¿Eliminar todos los contenedores detenidos?');">
+                    {% csrf_token %}
+                    <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                        <i data-lucide="eraser" class="mr-2 h-4 w-4"></i> Eliminar detenidos
+                    </button>
+                </form>
+                <!-- Everything nothing uses, in one go: the same rules as the Cleanup tab -->
+                <button type="button" @click="open = true"
+                    class="inline-flex h-9 items-center rounded-md bg-destructive px-3 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
+                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Eliminar todo lo no en uso
                 </button>
-            </form>
+                <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="open = false" @keydown.escape.window="open = false">
+                    <form method="post" action="{% url 'docker-cleanup' %}" class="w-full max-w-lg space-y-4 rounded-xl border bg-card p-6 text-card-foreground shadow-xl">
+                        {% csrf_token %}
+                        <h3 class="text-lg font-semibold">Eliminar todo lo que no está en uso</h3>
+                        <ul class="divide-y rounded-md border text-sm">
+                            {% for item in docker.cleanup %}
+                            <li class="flex items-center justify-between gap-3 px-3 py-2">
+                                <span>{{ item.label }}</span>
+                                <span class="tabular-nums text-muted-foreground">{{ item.count }} · {{ item.size|filesizeformat }}</span>
+                                <input type="hidden" name="kinds" value="{{ item.kind }}">
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <p class="text-sm text-muted-foreground">Nunca se tocan el panel, las instancias (aunque estén paradas), sus filestores y redes, ni los contenedores del panel y sus volúmenes. Los volúmenes sin uso se borran para siempre: pueden guardar datos de instancias o aplicaciones antiguas.</p>
+                        <label class="block space-y-2 text-sm">
+                            <span>Escribe <strong>BORRAR</strong> para confirmar</span>
+                            <input name="confirm" x-model="typed" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        </label>
+                        <div class="flex justify-end gap-2">
+                            <button type="button" @click="open = false" class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm hover:bg-accent">Cancelar</button>
+                            <button type="submit" :disabled="typed !== 'BORRAR'"
+                                class="inline-flex h-10 items-center rounded-md bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">Eliminar todo</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">

@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.55'
+VERSION = '1.0.56'
 
 CHANGELOG = [
+    {
+        'version': '1.0.56',
+        'date': '2026-11-04',
+        'notes': [
+            'Docker → Contenedores: botón «Eliminar todo lo no en uso», que borra de una vez los contenedores detenidos, las imágenes (sin etiqueta y sin usar), la caché de build, las redes y los volúmenes sin uso. Muestra antes qué y cuánto se libera y se confirma escribiendo BORRAR; nunca toca el panel, las instancias (aunque estén paradas), sus filestores y redes, ni los contenedores del panel y sus volúmenes.',
+        ],
+    },
     {
         'version': '1.0.55',
         'date': '2026-11-04',

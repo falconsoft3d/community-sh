@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.55**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.56**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.56 — 2026-11-04
+
+- Docker → Contenedores: botón «Eliminar todo lo no en uso», que borra de una vez los contenedores detenidos, las imágenes (sin etiqueta y sin usar), la caché de build, las redes y los volúmenes sin uso. Muestra antes qué y cuánto se libera y se confirma escribiendo BORRAR; nunca toca el panel, las instancias (aunque estén paradas), sus filestores y redes, ni los contenedores del panel y sus volúmenes.
 
 ## 1.0.55 — 2026-11-04
 
