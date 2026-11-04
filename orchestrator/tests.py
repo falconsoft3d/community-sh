@@ -3421,3 +3421,60 @@ class ProjectColorTagsMoveTests(BaseTestCase):
         self.assertEqual(Instance.objects.get(pk=self.alice_instance.pk).project, target)
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(f'/instance/{self.alice_instance.pk}/move/', {'project': self.bob_project.pk}).status_code, 404)
+
+
+class InstanceEnvVarsTests(BaseTestCase):
+    def test_parse_env(self):
+        from .instance_env import parse_env
+        text = '# comment\n\nSPM_MY_SITES_TOKEN=abc-123\nexport QUOTED="a b=c"\nEMPTY=\n'
+        self.assertEqual(parse_env(text), {'SPM_MY_SITES_TOKEN': 'abc-123', 'QUOTED': 'a b=c', 'EMPTY': ''})
+        for bad in ('NOEQUALS', '1BAD=x', 'BAD-NAME=x', 'HOST=other', 'password=x'):
+            with self.assertRaises(ValueError):
+                parse_env(bad)
+
+    def test_save_from_the_modules_tab_and_redeploy(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        url = f'/instance/{self.alice_instance.pk}/env-vars/'
+        response = self.client.post(url, {'env_vars': 'SPM_MY_SITES_TOKEN=secret\r\nOTHER=1', 'redeploy': '1'})
+        self.assertEqual(response.status_code, 302)
+        self.alice_instance.refresh_from_db()
+        self.assertEqual(self.alice_instance.env_vars, 'SPM_MY_SITES_TOKEN=secret\nOTHER=1')
+        self.assertTrue(Task.objects.filter(instance=self.alice_instance, kind=Task.Kind.DEPLOY).exists())
+        detail = self.client.get(f'/instance/{self.alice_instance.pk}/').content.decode()
+        self.assertIn('SPM_MY_SITES_TOKEN', detail)
+        # A wrong line saves nothing
+        self.client.post(url, {'env_vars': 'USER=root'})
+        self.alice_instance.refresh_from_db()
+        self.assertIn('SPM_MY_SITES_TOKEN', self.alice_instance.env_vars)
+        # Neither someone else nor a client of the project can change or see them
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(url, {'env_vars': 'X=1'}).status_code, 403)
+        self.assertNotIn('secret', self.client.get(f'/instance/{self.alice_instance.pk}/').content.decode())
+
+    def test_api_writes_values_and_reads_back_only_the_names(self):
+        self.client.force_login(self.alice)
+        url = f'/api/instances/{self.alice_instance.pk}/'
+        response = self.client.patch(url, {'env_vars': 'B=2\nA=secret'}, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        data = self.client.get(url).json()
+        self.assertEqual(data['env_keys'], ['A', 'B'])
+        self.assertNotIn('env_vars', data)
+        self.assertEqual(self.client.patch(url, {'env_vars': 'PORT=1'}, content_type='application/json').status_code, 400)
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        response = self.client.patch(url, {'env_vars': 'A=hacked'}, content_type='application/json')
+        self.assertIn(response.status_code, (400, 403))
+        self.alice_instance.refresh_from_db()
+        self.assertIn('A=secret', self.alice_instance.env_vars)
+
+    def test_container_environment_keeps_the_database_connection(self):
+        from .instance_env import instance_environment
+        self.alice_instance.env_vars = 'TOKEN=x'
+        self.assertEqual({**instance_environment(self.alice_instance), 'HOST': 'db_alice-odoo'},
+                         {'TOKEN': 'x', 'HOST': 'db_alice-odoo'})
+        self.alice_instance.env_vars = 'not valid'
+        self.assertEqual(instance_environment(self.alice_instance), {})

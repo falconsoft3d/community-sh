@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views.activity import activity_detail, activity_list, task_live
 from .views.trials import instance_update_description, project_trial_key, trial_api, trial_captcha, trial_page, trial_status
+from .views.env_vars import instance_env_vars
 from .views.webhooks import github_webhook, instance_auto_update, instance_webhook_github, instance_webhook_secret
 from .views.contacts import contact_delete, contact_detail, contact_edit, contact_export, contact_list, contact_stage
 from .views.odoo_ai import instance_migrate, odoo_ai_request
@@ -179,6 +180,7 @@ urlpatterns = [
     path('instance/<int:pk>/browser/', instance_browser, name='instance-browser'),
     path('instance/<int:pk>/pull/', instance_pull, name='instance-pull'),
     path('instance/<int:pk>/auto-update/', instance_auto_update, name='instance-auto-update'),
+    path('instance/<int:pk>/env-vars/', instance_env_vars, name='instance-env-vars'),
     path('instance/<int:pk>/webhook/github/', instance_webhook_github, name='instance-webhook-github'),
     path('instance/<int:pk>/webhook/secret/', instance_webhook_secret, name='instance-webhook-secret'),
     path('webhooks/github/<int:pk>/', github_webhook, name='github-webhook'),

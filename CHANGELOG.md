@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.63**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.64**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.64 — 2026-11-04
+
+- Instancias → Modules: «Variables de entorno» del contenedor de Odoo (NOMBRE=valor, una por línea), aplicadas en cada despliegue con la opción de redesplegar al guardar; solo las ve quien gestiona la instancia, HOST/USER/PASSWORD/PORT los pone la plataforma, las copias las heredan y las demos de «Modo test» no. También por la API: PATCH /api/instances/{id}/ con env_vars (se escriben; al leer solo se devuelven sus nombres en env_keys).
 
 ## 1.0.63 — 2026-11-04
 

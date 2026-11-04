@@ -119,6 +119,8 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
             from .webhooks import hook_url
             context['webhook_url'] = hook_url(self.object)
             context['auto_update_choices'] = Instance.AutoUpdate.choices
+            from ..instance_env import instance_environment
+            context['env_keys'] = sorted(instance_environment(self.object))
         from ..services.domains import certificate_problem
         context['certificate_problem'] = certificate_problem(self.object)
         from ..services.odoo_migration import MIN_TARGET_VERSION, STEP_LABELS, STEPS

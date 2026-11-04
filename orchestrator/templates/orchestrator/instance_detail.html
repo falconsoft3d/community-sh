@@ -644,6 +644,38 @@
         {% endif %}
 
         {% if can_manage %}
+        <!-- Environment variables of the Odoo container (applied on deploy) -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm" x-data="{ editing: {{ env_keys|yesno:'false,true' }} }">
+            <div class="flex flex-wrap items-start gap-3 p-6 pb-2">
+                <div class="min-w-0 flex-1 space-y-1.5">
+                    <h3 class="flex items-center gap-2 font-semibold leading-none tracking-tight"><i data-lucide="variable" class="h-4 w-4"></i> Variables de entorno</h3>
+                    <p class="text-sm text-muted-foreground">Se pasan al contenedor de Odoo de esta instancia en cada despliegue (los módulos las leen con <code class="font-mono">os.environ</code>). Solo las ve quien gestiona la instancia.</p>
+                </div>
+                {% if env_keys %}<span class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold">{{ env_keys|length }}</span>{% endif %}
+            </div>
+            <div class="space-y-4 p-6 pt-4">
+                {% if env_keys %}
+                <div class="flex flex-wrap items-center gap-2" x-show="!editing">
+                    {% for key in env_keys %}<code class="rounded bg-muted px-2 py-1 font-mono text-xs">{{ key }}</code>{% endfor %}
+                    <button type="button" @click="editing = true" class="ml-auto inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"><i data-lucide="pencil" class="h-4 w-4"></i> Ver y editar</button>
+                </div>
+                {% endif %}
+                <form method="post" action="{% url 'instance-env-vars' object.pk %}" class="space-y-3" x-show="editing" {% if env_keys %}x-cloak{% endif %}>
+                    {% csrf_token %}
+                    <textarea name="env_vars" rows="5" spellcheck="false" autocomplete="off" aria-label="Variables de entorno"
+                        placeholder="NOMBRE=valor&#10;OTRA_VARIABLE=otro valor"
+                        class="flex w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm">{{ object.env_vars }}</textarea>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="redeploy" value="1" checked class="h-4 w-4 rounded border-input"> Redesplegar ahora para aplicarlas</label>
+                        <button type="submit" class="ml-auto inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">Guardar</button>
+                    </div>
+                </form>
+                <p class="text-xs text-muted-foreground">Una por línea, <code class="font-mono">NOMBRE=valor</code>; se ignoran las líneas vacías y las que empiezan por <code class="font-mono">#</code>. HOST, USER, PASSWORD y PORT los pone la plataforma. Las copias de la instancia las heredan; las demos de «Modo test» no.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if can_manage %}
         <!-- Install a module that is already available (theme, repos, Odoo's own) by its technical name -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-wrap items-start gap-3 p-6 pb-2">

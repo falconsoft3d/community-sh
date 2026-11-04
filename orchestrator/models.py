@@ -7,6 +7,7 @@ import socket
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .permissions import validate_resource_name, validate_domain, validate_database_name, validate_git_branch, validate_repo_url
+from .instance_env import validate_env_vars
 
 
 def generate_master_password():
@@ -82,6 +83,10 @@ class Instance(models.Model):
 
     # Shown next to the instance on the demo page of its project (test mode) and in the public API
     description = models.TextField(blank=True, default='', help_text="Public description for the demo page")
+
+    # Environment variables of the Odoo container (NAME=value per line), applied on every deploy
+    env_vars = models.TextField(blank=True, default='', validators=[validate_env_vars],
+                                help_text="Environment variables of the Odoo container: NAME=value, one per line")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

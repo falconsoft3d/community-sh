@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.63'
+VERSION = '1.0.64'
 
 CHANGELOG = [
+    {
+        'version': '1.0.64',
+        'date': '2026-11-04',
+        'notes': [
+            'Instancias → Modules: «Variables de entorno» del contenedor de Odoo (NOMBRE=valor, una por línea), aplicadas en cada despliegue con la opción de redesplegar al guardar; solo las ve quien gestiona la instancia, HOST/USER/PASSWORD/PORT los pone la plataforma, las copias las heredan y las demos de «Modo test» no. También por la API: PATCH /api/instances/{id}/ con env_vars (se escriben; al leer solo se devuelven sus nombres en env_keys).',
+        ],
+    },
     {
         'version': '1.0.63',
         'date': '2026-11-04',

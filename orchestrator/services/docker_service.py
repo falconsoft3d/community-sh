@@ -6,6 +6,7 @@ import git
 from django.conf import settings
 from ..models import Instance
 from ..task_log import progress
+from ..instance_env import instance_environment
 
 ODOO_DATA_DIR = '/var/lib/odoo'
 
@@ -569,6 +570,8 @@ class DockerService:
                 **run_options,
                 name=odoo_container_name,
                 environment={
+                    # The instance's own variables first: the database connection always wins
+                    **instance_environment(instance),
                     "HOST": db_container_name,
                     "USER": "odoo",
                     "PASSWORD": "odoo",
@@ -845,6 +848,8 @@ class DockerService:
             github_branch=new_name if create_branch else instance.github_branch,
             database_name=instance.database_name,
             demo_default_db=instance.demo_default_db,
+            # A copy runs the same code with the same configuration; a demo for a prospect doesn't get it
+            env_vars='' if origin == 'trial' else instance.env_vars,
             project=project or instance.project,
             status=Instance.Status.DEPLOYING,
             origin=origin,

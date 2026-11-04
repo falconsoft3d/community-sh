@@ -6,12 +6,18 @@ class InstanceSerializer(serializers.ModelSerializer):
     # Explicit list: internal fields (Docker volume, certificate paths, subdomain...) are never written
     # through the API, and the master password is only shown to who manages the instance
     url = serializers.CharField(read_only=True)
+    # Values may be secrets: written through the API, only their names are read back
+    env_vars = serializers.CharField(required=False, allow_blank=True, write_only=True, style={'base_template': 'textarea.html'},
+                                     help_text='Environment variables of the Odoo container: NAME=value, one per line. '
+                                               'Replaces the current ones; applied on the next deploy.')
+    env_keys = serializers.SerializerMethodField(help_text='Names of the environment variables of the instance')
 
     class Meta:
         model = Instance
         fields = ('id', 'name', 'project', 'owner', 'odoo_version', 'status', 'origin', 'github_repo', 'github_branch',
                   'database_name', 'demo_default_db', 'custom_domain', 'ssl_enabled', 'browser', 'subdomain', 'url',
-                  'port', 'container_id', 'master_password', 'description', 'auto_update', 'created_at', 'updated_at')
+                  'port', 'container_id', 'master_password', 'description', 'auto_update', 'env_vars', 'env_keys',
+                  'created_at', 'updated_at')
         read_only_fields = ('owner', 'status', 'origin', 'ssl_enabled', 'browser', 'subdomain', 'url', 'port',
                             'container_id', 'master_password', 'created_at', 'updated_at')
 
@@ -35,6 +41,23 @@ class InstanceSerializer(serializers.ModelSerializer):
         if request is not None and not can_manage(request.user, instance):
             data.pop('master_password', None)
         return data
+
+    def get_env_keys(self, instance):
+        from .instance_env import instance_environment
+        return sorted(instance_environment(instance))
+
+    def validate_env_vars(self, value):
+        from .instance_env import parse_env
+        from .permissions import can_manage
+        request = self.context.get('request')
+        current = getattr(self, 'instance', None)
+        if request is not None and hasattr(current, 'pk') and not can_manage(request.user, current):
+            raise serializers.ValidationError('Solo quien gestiona la instancia cambia sus variables de entorno.')
+        try:
+            parse_env(value)
+        except ValueError as error:
+            raise serializers.ValidationError(str(error))
+        return value
 
     def validate_custom_domain(self, value):
         if value and domain_in_use(value, exclude_instance=self.instance):
