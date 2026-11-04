@@ -27,6 +27,7 @@
 - 🔌 **MCP server for Claude** (Claude Code / Claude Desktop) and a full **REST API** with personal tokens
 - ⚙️ Long operations run in background **workers** (one for Docker jobs, one for AI and migrations), with live task status
 - 🔗 GitHub integration: main repo with a branch per instance, plus **extra addons repositories**
+  - **update on push**: a signed GitHub webhook pulls the code and restarts Odoo, or also runs `-u all`, whenever you push to one of the instance's repositories (Modules → «Actualización automática al hacer push»; the panel can create the webhook for you)
 - 📊 Live metrics and CPU/RAM history (24 h, 7 d, 30 d, 12 months); Docker management (containers, images, volumes, networks) with a safe «clean up unused» that never touches instances
 - ✅ **Todo** list for the team (Claude can complete items over MCP)
 - 🔐 2FA (optional or mandatory, also for API tokens), per-user permissions, login lockout per address and account, per-instance Odoo master password (hidden from clients) — see [Security](#-security)

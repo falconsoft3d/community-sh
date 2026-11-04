@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.53**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.54**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.54 — 2026-11-04
+
+- Instancias: actualización automática al hacer push. En Módulos se elige qué hacer cuando llega un push a la rama de uno de sus repositorios (el principal o los de addons): «Pull y reiniciar Odoo» o «Pull y actualizar todos los módulos (-u all)». Botón «Crear webhook en GitHub» (con el token del dueño) o URL y secreto para añadirlo a mano; los webhooks van firmados, se ignoran otros repositorios y ramas, y varios push seguidos se juntan en una sola actualización.
 
 ## 1.0.53 — 2026-11-04
 

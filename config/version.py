@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.53'
+VERSION = '1.0.54'
 
 CHANGELOG = [
+    {
+        'version': '1.0.54',
+        'date': '2026-11-04',
+        'notes': [
+            'Instancias: actualización automática al hacer push. En Módulos se elige qué hacer cuando llega un push a la rama de uno de sus repositorios (el principal o los de addons): «Pull y reiniciar Odoo» o «Pull y actualizar todos los módulos (-u all)». Botón «Crear webhook en GitHub» (con el token del dueño) o URL y secreto para añadirlo a mano; los webhooks van firmados, se ignoran otros repositorios y ramas, y varios push seguidos se juntan en una sola actualización.',
+        ],
+    },
     {
         'version': '1.0.53',
         'date': '2026-11-04',

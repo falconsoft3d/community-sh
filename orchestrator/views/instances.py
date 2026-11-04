@@ -113,6 +113,10 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         from ..services.ai import get_ai_config
         context['ai_enabled'] = context['can_manage'] and get_ai_config() is not None
         context['tasks'] = list(self.object.tasks.all()[:5])
+        if context['can_manage']:
+            from .webhooks import hook_url
+            context['webhook_url'] = hook_url(self.object)
+            context['auto_update_choices'] = Instance.AutoUpdate.choices
         from ..services.domains import certificate_problem
         context['certificate_problem'] = certificate_problem(self.object)
         from ..services.odoo_migration import MIN_TARGET_VERSION, STEP_LABELS, STEPS

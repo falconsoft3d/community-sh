@@ -12,6 +12,10 @@ from .permissions import validate_resource_name, validate_domain, validate_datab
 def generate_master_password():
     return secrets.token_urlsafe(18)
 
+
+def generate_webhook_secret():
+    return secrets.token_hex(24)
+
 class Instance(models.Model):
     class Status(models.TextChoices):
         DEPLOYING = 'deploying', _('Deploying')
@@ -65,6 +69,16 @@ class Instance(models.Model):
     # Demos: several databases in one instance (and one certificate), opened with https://host/?name
     demo_default_db = models.CharField(max_length=100, blank=True, default='', validators=[validate_database_name],
                                        help_text="Odoo 18+: database opened without ?name. Empty: a normal instance.")
+
+    # A push to one of its repositories (GitHub webhook) updates the instance on its own
+    class AutoUpdate(models.TextChoices):
+        OFF = '', 'Desactivada'
+        PULL = 'pull', 'Pull y reiniciar Odoo'
+        UPDATE_ALL = 'update', 'Pull y actualizar todos los módulos (-u all)'
+
+    auto_update = models.CharField(max_length=10, choices=AutoUpdate.choices, default='', blank=True)
+    webhook_secret = models.CharField(max_length=64, default=generate_webhook_secret,
+                                      help_text="Signs the GitHub webhook calls of this instance")
 
     # Shown next to the instance on the demo page of its project (test mode) and in the public API
     description = models.TextField(blank=True, default='', help_text="Public description for the demo page")

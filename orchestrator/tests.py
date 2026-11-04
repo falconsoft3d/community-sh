@@ -2992,3 +2992,92 @@ class BlogTests(TestCase):
         post = BlogPost.objects.create(title='Hola', slug='hola', content='# Hola', published=True, author=None)
         self.assertContains(self.client.get('/blog/'), 'Community SH')
         self.assertContains(self.client.get(f'/blog/{post.slug}/'), 'Community SH')
+
+
+class GitHubWebhookTests(BaseTestCase):
+    """A push to one of an instance's repositories updates it (Modules → automatic update)."""
+
+    def setUp(self):
+        super().setUp()
+        self.instance = self.alice_instance
+        self.instance.github_repo, self.instance.github_branch = 'https://github.com/falconsoft3d/bim20-19.git', 'main'
+        self.instance.auto_update = Instance.AutoUpdate.UPDATE_ALL
+        self.instance.save()
+        self.instance.repositories.create(url='https://github.com/falconsoft3d/module_to_sale_marlon', branch='19.0')
+
+    def push(self, repo='https://github.com/falconsoft3d/bim20-19.git', branch='main', event='push', secret=None, delivery='d1', **extra):
+        import hashlib, hmac, json
+        body = json.dumps({'ref': f'refs/heads/{branch}', 'after': 'abcdef1234567',
+                           'repository': {'clone_url': repo, 'html_url': repo.removesuffix('.git')}, **extra}).encode()
+        signature = 'sha256=' + hmac.new((secret or self.instance.webhook_secret).encode(), body, hashlib.sha256).hexdigest()
+        return self.client.post(f'/webhooks/github/{self.instance.pk}/', body, content_type='application/json',
+                                HTTP_X_HUB_SIGNATURE_256=signature, HTTP_X_GITHUB_EVENT=event, HTTP_X_GITHUB_DELIVERY=delivery)
+
+    def test_signed_push_to_its_branch_queues_pull_and_update_all(self):
+        from .task_models import Task
+        self.assertEqual(self.push(secret='wrong').status_code, 403)
+        self.assertEqual(self.push(event='ping', delivery='p').json()['detail'], 'pong')
+        response = self.push()
+        self.assertEqual(response.status_code, 202)
+        task = Task.objects.get(kind=Task.Kind.PULL_REPOS)
+        self.assertEqual((task.instance, task.params['update_all'], task.params['push']), (self.instance, True, 'bim20-19@main abcdef1'))
+        # The same delivery again, and another push while it waits: still one task
+        self.push()
+        self.push(repo='https://github.com/falconsoft3d/module_to_sale_marlon', branch='19.0', delivery='d2')
+        self.assertEqual(Task.objects.filter(kind=Task.Kind.PULL_REPOS).count(), 1)
+
+    def test_other_repos_branches_or_disabled_are_ignored(self):
+        from .task_models import Task
+        self.push(branch='develop', delivery='a')
+        self.push(repo='https://github.com/someone/else', delivery='b')
+        self.push(deleted=True, delivery='c')
+        self.instance.auto_update = ''
+        self.instance.save()
+        self.assertIn('desactivada', self.push(delivery='d').json()['detail'])
+        self.assertFalse(Task.objects.filter(kind=Task.Kind.PULL_REPOS).exists())
+
+    def test_unknown_instance_answers_like_a_bad_signature(self):
+        response = self.client.post('/webhooks/github/99999/', b'{}', content_type='application/json',
+                                    HTTP_X_HUB_SIGNATURE_256='sha256=00', HTTP_X_GITHUB_EVENT='push')
+        self.assertEqual(response.status_code, 403)
+
+    def test_update_all_runs_on_every_database_and_fails_loudly(self):
+        from .services.docker_service import DockerService
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        odoo = mock.Mock(status='running')
+        odoo.exec_run.return_value = mock.Mock(exit_code=0, output=b'done')
+        with mock.patch.object(service, '_get_container', return_value=odoo), \
+                mock.patch.object(service, '_start_db_container', return_value=mock.Mock()), \
+                mock.patch.object(service, '_wait_for_postgres'), \
+                mock.patch.object(service, '_list_user_databases', return_value=['shop', 'hotel']):
+            notes = service.update_all_modules(self.instance)
+            self.assertEqual(len(notes), 2)
+            self.assertEqual([c.kwargs['environment'] for c in odoo.exec_run.call_args_list], [{'DB': 'shop'}, {'DB': 'hotel'}])
+            self.assertIn('-u all', odoo.exec_run.call_args.args[0][2])
+            odoo.exec_run.return_value = mock.Mock(exit_code=1, output=b'ParseError in view')
+            with self.assertRaisesMessage(Exception, 'ParseError'):
+                service.update_all_modules(self.instance)
+
+    def test_settings_card_and_github_hook_creation(self):
+        self.client.force_login(self.alice)
+        self.client.post(f'/instance/{self.instance.pk}/auto-update/', {'auto_update': 'pull'})
+        self.instance.refresh_from_db()
+        self.assertEqual(self.instance.auto_update, 'pull')
+        page = self.client.get(f'/instance/{self.instance.pk}/')
+        self.assertContains(page, f'/webhooks/github/{self.instance.pk}/')
+        GitHubConfig.objects.create(user=self.alice, personal_access_token='ghp_x')
+        listing = mock.Mock(status_code=200, json=lambda: [])
+        created = mock.Mock(status_code=201)
+        with mock.patch('orchestrator.services.webhooks.requests.get', return_value=listing), \
+                mock.patch('orchestrator.services.webhooks.requests.post', return_value=created) as post:
+            self.client.post(f'/instance/{self.instance.pk}/webhook/github/')
+        self.assertEqual(post.call_count, 2)  # main repository and the addons one
+        self.assertEqual(post.call_args.kwargs['json']['config']['secret'], self.instance.webhook_secret)
+        self.assertIn('/repos/falconsoft3d/module_to_sale_marlon/hooks', post.call_args.args[0])
+        # Clients can't see or change it
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        self.assertNotContains(self.client.get(f'/instance/{self.instance.pk}/'), self.instance.webhook_secret)
+        self.assertEqual(self.client.post(f'/instance/{self.instance.pk}/auto-update/', {'auto_update': ''}).status_code, 403)

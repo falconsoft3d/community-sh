@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views.activity import activity_detail, activity_list, task_live
 from .views.trials import instance_update_description, trial_api, trial_captcha, trial_page, trial_status
+from .views.webhooks import github_webhook, instance_auto_update, instance_webhook_github, instance_webhook_secret
 from .views.odoo_ai import instance_migrate, odoo_ai_request
 from .views.api import (BackupViewSet, ContainerViewSet, DemoViewSet, InstanceAPIViewSet, PlatformEmailTestView,
                         PlatformSettingsView, ProjectViewSet, TaskViewSet, TodoViewSet)
@@ -165,6 +166,10 @@ urlpatterns = [
     path('instance/<int:pk>/repos/add/', instance_repo_add, name='instance-repo-add'),
     path('instance/<int:pk>/browser/', instance_browser, name='instance-browser'),
     path('instance/<int:pk>/pull/', instance_pull, name='instance-pull'),
+    path('instance/<int:pk>/auto-update/', instance_auto_update, name='instance-auto-update'),
+    path('instance/<int:pk>/webhook/github/', instance_webhook_github, name='instance-webhook-github'),
+    path('instance/<int:pk>/webhook/secret/', instance_webhook_secret, name='instance-webhook-secret'),
+    path('webhooks/github/<int:pk>/', github_webhook, name='github-webhook'),
     path('instance/<int:pk>/repos/<int:repo_id>/remove/', instance_repo_remove, name='instance-repo-remove'),
     path('instance/<int:pk>/ai/', instance_ai_chat, name='instance-ai-chat'),
     path('instance/<int:pk>/ai/reset/', instance_ai_reset, name='instance-ai-reset'),

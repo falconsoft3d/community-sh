@@ -11,7 +11,7 @@ class InstanceSerializer(serializers.ModelSerializer):
         model = Instance
         fields = ('id', 'name', 'project', 'owner', 'odoo_version', 'status', 'origin', 'github_repo', 'github_branch',
                   'database_name', 'demo_default_db', 'custom_domain', 'ssl_enabled', 'browser', 'subdomain', 'url',
-                  'port', 'container_id', 'master_password', 'description', 'created_at', 'updated_at')
+                  'port', 'container_id', 'master_password', 'description', 'auto_update', 'created_at', 'updated_at')
         read_only_fields = ('owner', 'status', 'origin', 'ssl_enabled', 'browser', 'subdomain', 'url', 'port',
                             'container_id', 'master_password', 'created_at', 'updated_at')
 

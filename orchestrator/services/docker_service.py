@@ -1166,9 +1166,10 @@ class DockerService:
         except Exception as e:
             return f"Error executing command: {str(e)}"
     
-    def pull_repositories(self, instance):
+    def pull_repositories(self, instance, update_all=False):
         """The instance's repositories brought to the last commit of their branch, and Odoo restarted to load the
-        code: what a deploy does with them, without recreating the container nor updating every module."""
+        code: what a deploy does with them, without recreating the container. update_all: also `-u all` on
+        every database (new fields, views and data of the modules), as a redeploy does."""
         workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
         os.makedirs(workspace_path, exist_ok=True)
         self.deploy_notes = []
@@ -1186,8 +1187,33 @@ class DockerService:
                 notes.append(f'{label}: {commit.hexsha[:7]} {commit.summary}')
             except Exception:
                 pass
-        progress(85, 'Reiniciando Odoo para cargar el código')
+        if update_all:
+            notes += self.update_all_modules(instance)
+        progress(90, 'Reiniciando Odoo para cargar el código')
         self.restart_instance(instance)
+        return notes
+
+    def update_all_modules(self, instance):
+        """`odoo -u all --stop-after-init` on each database of the instance. Returns notes for the task log."""
+        odoo_container = self._get_container(f'odoo_{instance.name}')
+        db_container = self._start_db_container(instance)
+        if odoo_container is None or db_container is None:
+            raise Exception('La instancia no está desplegada: despliégala antes de actualizar sus módulos')
+        if odoo_container.status != 'running':
+            odoo_container.start()
+        self._wait_for_postgres(db_container)
+        databases = [instance.database_name] if instance.database_name else self._list_user_databases(db_container)
+        notes = []
+        for index, database in enumerate(databases):
+            progress(55 + 30 * index // max(len(databases), 1), f'Actualizando todos los módulos de {database}')
+            result = odoo_container.exec_run(
+                ['sh', '-c', f'{odoo_command(instance.odoo_version)} -u all -d "$DB" --stop-after-init'],
+                environment={'DB': database})
+            output = result.output.decode('utf-8', errors='replace')
+            print(f"Module update for {database} (exit {result.exit_code}): {output[-3000:]}")
+            if result.exit_code != 0:
+                raise Exception(f'La actualización de módulos de {database} falló (código {result.exit_code}): {output[-600:]}')
+            notes.append(f'{database}: todos los módulos actualizados (-u all)')
         return notes
 
     def install_browser(self, instance, container=None):
