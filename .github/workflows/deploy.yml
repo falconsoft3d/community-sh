@@ -88,11 +88,17 @@ jobs:
           DIR: ${{ secrets.DEPLOY_PATH || vars.DEPLOY_PATH || '/opt/community-sh' }}
         # The script is taken from the commit being deployed, so changes to it apply right away
         run: |
-          ssh -i ~/.ssh/deploy_key -p "$PORT" -o BatchMode=yes -o ServerAliveInterval=30 "$USER@$HOST" \
+          set -o pipefail
+          # The output also goes to a file: when it fails, its last lines become the error shown in the run summary
+          if ! ssh -i ~/.ssh/deploy_key -p "$PORT" -o BatchMode=yes -o ServerAliveInterval=30 "$USER@$HOST" \
             "set -e; S=''; [ \"\$(id -u)\" = 0 ] || S='sudo -n'; \
-             \$S git -C '$DIR' fetch --quiet origin main; \
+             if ! \$S git -C '$DIR' rev-parse --git-dir >/dev/null 2>&1; then echo '$DIR is not a git checkout of community-sh'; exit 2; fi; \
+             \$S git -C '$DIR' fetch --quiet origin main 2>&1; \
              \$S git -C '$DIR' show '${{ github.sha }}:scripts/deploy.sh' > /tmp/community-sh-deploy.sh; \
-             \$S bash /tmp/community-sh-deploy.sh main '$DIR'"
+             \$S bash /tmp/community-sh-deploy.sh main '$DIR'" 2>&1 | tee deploy.log; then
+            echo "::error title=Deploy failed::$(tail -n 8 deploy.log | tr '\n' ' ' | cut -c1-900)"
+            exit 1
+          fi
 
       - name: Remove the key
         if: always()

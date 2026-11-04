@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.51'
+VERSION = '1.0.52'
 
 CHANGELOG = [
+    {
+        'version': '1.0.52',
+        'date': '2026-11-04',
+        'notes': [
+            'Despliegue automático: si falla, el resumen del run muestra el error real del servidor (por ejemplo, que la carpeta no es un repositorio git) en lugar de solo el código de salida.',
+        ],
+    },
     {
         'version': '1.0.51',
         'date': '2026-11-04',

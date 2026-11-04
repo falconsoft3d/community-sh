@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.51**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.52**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.52 — 2026-11-04
+
+- Despliegue automático: si falla, el resumen del run muestra el error real del servidor (por ejemplo, que la carpeta no es un repositorio git) en lugar de solo el código de salida.
 
 ## 1.0.51 — 2026-11-04
 
