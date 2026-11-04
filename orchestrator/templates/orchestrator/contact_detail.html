@@ -1,0 +1,71 @@
+{% extends "orchestrator/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <nav class="mb-1 text-sm text-muted-foreground">
+                <a href="{% url 'contact-list' %}" class="hover:text-foreground">{% translate "Contactos" %}</a>
+                <span class="mx-1">/</span><span class="font-medium text-foreground">{{ contact.name }}</span>
+            </nav>
+            <h1 class="text-3xl font-bold tracking-tight">{{ contact.name }}</h1>
+            <p class="mt-1 text-muted-foreground">{% if contact.company %}{{ contact.company }}{% endif %}{% if contact.job_title %} · {{ contact.job_title }}{% endif %}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="mailto:{{ contact.email }}" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                <i data-lucide="mail" class="mr-2 h-4 w-4"></i> {% translate "Escribir" %}
+            </a>
+            <form method="post" action="{% url 'contact-delete' contact.pk %}" onsubmit="return confirm('¿Eliminar el contacto {{ contact.name|escapejs }}? Sus demos se conservan.');">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium text-destructive hover:bg-accent">
+                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> {% translate "Eliminar" %}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-3">
+        <div class="space-y-4 rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+            <h2 class="font-semibold">{% translate "Datos" %}</h2>
+            <dl class="space-y-3 text-sm">
+                <div><dt class="text-muted-foreground">Email</dt><dd><a href="mailto:{{ contact.email }}" class="text-primary hover:underline">{{ contact.email }}</a></dd></div>
+                <div><dt class="text-muted-foreground">{% translate "Teléfono" %}</dt><dd>{% if contact.phone %}<a href="tel:{{ contact.phone }}" class="hover:underline">{{ contact.phone }}</a>{% else %}—{% endif %}</dd></div>
+                <div><dt class="text-muted-foreground">{% translate "Empresa" %}</dt><dd>{{ contact.company|default:"—" }}</dd></div>
+                <div><dt class="text-muted-foreground">{% translate "Cargo" %}</dt><dd>{{ contact.job_title|default:"—" }}</dd></div>
+                <div><dt class="text-muted-foreground">{% translate "País" %}</dt><dd>{{ contact.country|default:"—" }}</dd></div>
+                <div><dt class="text-muted-foreground">{% translate "Primera demo" %}</dt><dd>{{ contact.created_at|date:"d/m/Y H:i" }}{% if contact.first_project %} · {{ contact.first_project.name }}{% endif %}</dd></div>
+            </dl>
+        </div>
+
+        <div class="space-y-6 lg:col-span-2">
+            <form method="post" class="space-y-3 rounded-xl border bg-card p-6 text-card-foreground shadow-sm">
+                {% csrf_token %}
+                <h2 class="font-semibold">{% translate "Notas" %}</h2>
+                <textarea name="notes" rows="4" maxlength="5000" placeholder="{% translate 'Llamadas, interés, próximo paso…' %}"
+                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ contact.notes }}</textarea>
+                <div class="flex justify-end"><button type="submit" class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">{% translate "Guardar notas" %}</button></div>
+            </form>
+
+            <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+                <div class="border-b px-5 py-4"><h2 class="font-semibold">{% translate "Demos" %} ({{ trials|length }})</h2></div>
+                <ul class="divide-y text-sm">
+                    {% for trial in trials %}
+                    <li class="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                        <div>
+                            <span class="font-medium">{{ trial.project.name }}</span>
+                            <span class="text-muted-foreground">· {{ trial.source.name|default:"—" }} (Odoo {{ trial.version }}) · {{ trial.created_at|date:"d/m/Y" }}</span>
+                            {% if trial.instance %}<div class="text-xs"><a href="{% url 'instance-detail' trial.instance.pk %}" class="text-primary hover:underline">{{ trial.instance.name }}</a>{% if trial.status == 'ready' %} · {% translate "se detiene en" %} {{ trial.days_until_stop }} d{% endif %}</div>{% endif %}
+                        </div>
+                        <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold
+                            {% if trial.status == 'ready' %}bg-green-100 text-green-800{% elif trial.status == 'failed' %}bg-red-100 text-red-800{% elif trial.status == 'pending' %}bg-blue-100 text-blue-800{% else %}bg-muted text-muted-foreground{% endif %}">{{ trial.get_status_display }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="px-5 py-6 text-center text-muted-foreground">{% translate "Sus demos ya se eliminaron." %}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

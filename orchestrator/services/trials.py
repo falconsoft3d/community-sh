@@ -162,8 +162,11 @@ def request_demo(project, source, name, email, company='', phone='', ip=None, jo
         trial = TrialRequest.objects.create(project=project, source=source, name=name, email=email.lower(),
                                             company=company, job_title=job_title, phone=phone, country=country,
                                             ip=ip, version=source.odoo_version)
+        # Their details stay in Contacts, also after the demo is gone
+        from ..contact_models import save_contact
+        trial.contact = save_contact(trial)
         trial.task = enqueue(Task.Kind.TRIAL, trial=trial.pk)
-        trial.save(update_fields=['task'])
+        trial.save(update_fields=['task', 'contact'])
     return trial, ''
 
 

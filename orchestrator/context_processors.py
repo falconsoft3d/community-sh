@@ -7,7 +7,7 @@ SECTIONS = {
     'project': 'projects', 'instance': 'instances', 'container': 'containers', 'metrics': 'metrics',
     'backup': 'backups', 'client': 'clients', 'user': 'users', 'change': 'users', 'settings': 'settings',
     'generate': 'settings', 'run': 'settings', 'about': 'about', 'docker': 'docker', 'todo': 'todo',
-    'activity': 'activity', 'dashboard': 'dashboard',
+    'activity': 'activity', 'dashboard': 'dashboard', 'contact': 'contacts',
 }
 
 
@@ -44,6 +44,10 @@ def nav_counts(user):
         'containers': Container.objects.filter(created_by=user).count(),
         'todo': todos_for(user).exclude(status=Todo.Status.DONE).count(),
     }
+    from .permissions import is_client
+    if not is_client(user):
+        from .views.contacts import contacts_for
+        counts['contacts'] = contacts_for(user).count()
     from .task_models import Task
     from .views.activity import tasks_for
     # Activity: the tasks running or waiting now (no badge when there are none)

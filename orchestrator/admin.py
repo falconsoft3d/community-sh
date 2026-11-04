@@ -72,3 +72,12 @@ class TrialRequestAdmin(admin.ModelAdmin):
     list_display = ('email', 'name', 'company', 'job_title', 'country', 'project', 'version', 'status', 'created_at', 'expires_at')
     list_filter = ('status', 'project')
     search_fields = ('email', 'name', 'company')
+
+
+from .contact_models import Contact
+
+
+@admin.register(Contact)
+class ContactAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'company', 'job_title', 'country', 'owner', 'last_request_at')
+    search_fields = ('name', 'email', 'company')

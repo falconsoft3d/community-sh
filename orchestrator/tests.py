@@ -3081,3 +3081,79 @@ class GitHubWebhookTests(BaseTestCase):
         self.client.force_login(self.bob)
         self.assertNotContains(self.client.get(f'/instance/{self.instance.pk}/'), self.instance.webhook_secret)
         self.assertEqual(self.client.post(f'/instance/{self.instance.pk}/auto-update/', {'auto_update': ''}).status_code, 403)
+
+
+class ContactTests(BaseTestCase):
+    """Who asked for a demo stays in Contacts (one per email and owner, newest details win)."""
+
+    def setUp(self):
+        super().setUp()
+        from .project_models import Project
+        self.demos = Project.objects.create(name='BIM demos', owner=self.alice)
+        self.alice_project.trial_enabled, self.alice_project.trial_slug = True, 'bim'
+        self.alice_project.trial_target_project = self.demos
+        self.alice_project.save()
+
+    def ask(self, email='ana@example.com', **data):
+        from .services.trials import request_demo
+        values = {'company': 'Sol', 'phone': '+34 600', 'job_title': 'CEO', 'country': 'España', **data}
+        return request_demo(self.alice_project, self.alice_instance, data.pop('name', 'Ana'), email,
+                            values['company'], values['phone'], ip=data.pop('ip', '10.0.0.1'),
+                            job_title=values['job_title'], country=values['country'])
+
+    def test_a_demo_request_creates_or_updates_the_contact(self):
+        from .contact_models import Contact
+        from .trial_models import TrialRequest
+        trial, _ = self.ask()
+        contact = Contact.objects.get()
+        self.assertEqual((contact.owner, contact.email, contact.company, contact.country), (self.alice, 'ana@example.com', 'Sol', 'España'))
+        self.assertEqual(trial.contact, contact)
+        # A month later, same email (any case), new company: still one contact, with the newest details
+        TrialRequest.objects.update(created_at=trial.created_at - __import__('datetime').timedelta(days=40))
+        self.ask(email='ANA@example.com', company='Sol Group', ip='10.0.0.2')
+        self.assertEqual(Contact.objects.count(), 1)
+        contact.refresh_from_db()
+        self.assertEqual((contact.company, contact.trials.count()), ('Sol Group', 2))
+
+    def test_contacts_menu_list_search_export_notes_and_delete(self):
+        from .contact_models import Contact
+        self.ask()
+        self.ask(email='leo@example.com', company='Norte', country='México', ip='10.0.0.3')
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get('/dashboard/'), '/contacts/')
+        response = self.client.get('/contacts/')
+        self.assertContains(response, 'ana@example.com')
+        self.assertContains(response, 'leo@example.com')
+        response = self.client.get('/contacts/?q=norte')
+        self.assertNotContains(response, 'ana@example.com')
+        self.assertNotContains(self.client.get('/contacts/?country=México'), 'ana@example.com')
+        csv_body = self.client.get('/contacts/export/').content.decode('utf-8-sig')
+        self.assertIn('Nombre,Email,Empresa,Cargo', csv_body)
+        self.assertIn('leo@example.com,Norte,CEO', csv_body)
+        ana = Contact.objects.get(email='ana@example.com')
+        self.client.post(f'/contact/{ana.pk}/', {'notes': 'Llamar el lunes'})
+        ana.refresh_from_db()
+        self.assertEqual(ana.notes, 'Llamar el lunes')
+        self.assertContains(self.client.get(f'/contact/{ana.pk}/'), 'alice-odoo')
+        self.client.post(f'/contact/{ana.pk}/delete/')
+        self.assertFalse(Contact.objects.filter(pk=ana.pk).exists())
+        # API
+        data = self.client.get('/api/contacts/?q=leo').json()
+        self.assertEqual([c['email'] for c in data], ['leo@example.com'])
+        self.assertEqual(len(data[0]['demos']), 1)
+
+    def test_only_the_owner_sees_their_contacts(self):
+        self.ask()
+        self.client.force_login(self.bob)
+        self.assertNotContains(self.client.get('/contacts/'), 'ana@example.com')
+        self.assertEqual(self.client.get('/api/contacts/').json(), [])
+        from .contact_models import Contact
+        self.assertEqual(self.client.get(f'/contact/{Contact.objects.get().pk}/').status_code, 404)
+        # A client user has no Contacts at all
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.bob.profile.is_client = True
+        self.bob.profile.save()
+        self.assertEqual(self.client.get('/contacts/').status_code, 403)
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get('/contacts/'), 'ana@example.com')

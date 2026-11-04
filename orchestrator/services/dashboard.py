@@ -64,6 +64,8 @@ def platform_kpis(user):
                                 expires_at__lte=now + timedelta(days=3)).count()
         failed_demos = demos.filter(status=TrialRequest.Status.FAILED, created_at__gte=now - timedelta(days=30)).count()
         settings_demos = reverse('settings') + '#demos' if admin else reverse('project-list')
+        from ..views.contacts import contacts_for
+        contacts = contacts_for(user)
         today = demos_today()
         groups.append({'title': 'Demos', 'kpis': [
             _kpi('Demos activas', f'{active}/{at_once}', 'Funcionando ahora en el servidor', 'flask-conical',
@@ -72,6 +74,8 @@ def platform_kpis(user):
                  settings_demos, 'amber' if today >= per_day else 'default'),
             _kpi('Pedidas en 30 días', month.count(), _plural(month.exclude(emailed_at=None).count(), 'enviada') + ' por email',
                  'user-plus', reverse('activity') + '?kind=trial'),
+            _kpi('Contactos', contacts.count(), _plural(contacts.filter(created_at__gte=now - timedelta(days=30)).count(), 'nuevo') + ' en 30 días',
+                 'contact', reverse('contact-list'), 'blue'),
             _kpi('Vencen en 3 días', expiring, 'Se detienen al vencer y se eliminan 7 días después', 'hourglass',
                  reverse('project-list'), 'amber' if expiring else 'default'),
             _kpi('Demos fallidas (30 días)', failed_demos, 'Revisa su log en Actividad' if failed_demos else 'Ninguna',

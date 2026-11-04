@@ -23,6 +23,7 @@ class TrialRequest(models.Model):
     instance = models.OneToOneField('Instance', on_delete=models.SET_NULL, null=True, blank=True, related_name='trial',
                                     help_text="The copy, in the sibling project")
     task = models.ForeignKey('Task', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    contact = models.ForeignKey('Contact', on_delete=models.SET_NULL, null=True, blank=True, related_name='trials')
     # Secret part of the URL of its status page (whoever has it sees the credentials)
     token = models.CharField(max_length=64, unique=True, default=generate_trial_token)
 

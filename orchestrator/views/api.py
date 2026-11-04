@@ -376,3 +376,25 @@ class PlatformEmailTestView(PlatformSettingsView):
         if not sent:
             return Response({'ok': False, 'error': error}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'ok': True, 'message': f'Test email sent to {to}'})
+
+
+class ContactViewSet(viewsets.ReadOnlyModelViewSet):
+    """People who asked for a demo of your projects (?q= searches name, email and company)."""
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from ..serializers import ContactSerializer
+        return ContactSerializer
+
+    def get_queryset(self):
+        from django.db.models import Q
+        from ..permissions import is_client
+        from .contacts import contacts_for
+        if is_client(self.request.user):
+            from ..contact_models import Contact
+            return Contact.objects.none()
+        queryset = contacts_for(self.request.user).prefetch_related('trials')
+        search = self.request.query_params.get('q', '').strip()
+        if search:
+            queryset = queryset.filter(Q(name__icontains=search) | Q(email__icontains=search) | Q(company__icontains=search))
+        return queryset

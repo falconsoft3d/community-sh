@@ -248,3 +248,18 @@ class ContainerSerializer(serializers.ModelSerializer):
         if self.instance is None and not from_template and not attrs.get('image') and not attrs.get('git_repo'):
             raise serializers.ValidationError('Indica una imagen (image) o un repositorio para construirla (git_repo).')
         return attrs
+
+
+class ContactSerializer(serializers.ModelSerializer):
+    demos = serializers.SerializerMethodField()
+
+    class Meta:
+        from .contact_models import Contact
+        model = Contact
+        fields = ['id', 'name', 'email', 'company', 'job_title', 'phone', 'country', 'notes', 'demos',
+                  'created_at', 'last_request_at']
+        read_only_fields = fields
+
+    def get_demos(self, contact):
+        return [{'id': trial.pk, 'project': trial.project_id, 'version': trial.version, 'status': trial.status,
+                 'created_at': trial.created_at} for trial in contact.trials.all()]

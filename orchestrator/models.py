@@ -160,6 +160,7 @@ from .blog_models import BlogPost
 from .task_models import Task
 from .project_models import Project
 from .trial_models import TrialRequest
+from .contact_models import Contact
 from .ai_models import AIAttachment, AIFileChange, AIMessage
 from .repository_models import InstanceRepository
 from .mcp_models import MCPToken

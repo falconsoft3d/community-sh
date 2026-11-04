@@ -1,0 +1,77 @@
+{% extends "orchestrator/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">{% translate "Contactos" %}</h1>
+            <p class="mt-1 text-muted-foreground">{% translate "Las personas que han pedido una demo, con sus datos y sus demos." %} {{ total }} {% translate "en total" %}.</p>
+        </div>
+        <a href="{% url 'contact-export' %}?{{ request.GET.urlencode }}"
+            class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">
+            <i data-lucide="file-spreadsheet" class="mr-2 h-4 w-4"></i> {% translate "Exportar CSV" %}
+        </a>
+    </div>
+
+    <form method="get" class="flex flex-wrap gap-2">
+        <input type="search" name="q" value="{{ search }}" placeholder="{% translate 'Nombre, email, empresa, cargo o teléfono' %}"
+            class="h-10 min-w-64 flex-1 rounded-md border border-input bg-background px-3 text-sm">
+        <select name="country" onchange="this.form.submit()" class="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">{% translate "Todos los países" %}</option>
+            {% for country in countries %}<option value="{{ country }}" {% if country == selected_country %}selected{% endif %}>{{ country }}</option>{% endfor %}
+        </select>
+        <select name="project" onchange="this.form.submit()" class="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">{% translate "Todos los proyectos" %}</option>
+            {% for project in projects %}<option value="{{ project.pk }}" {% if selected_project == project.pk|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <i data-lucide="search" class="mr-2 h-4 w-4"></i> {% translate "Buscar" %}
+        </button>
+    </form>
+
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        {% if contacts %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-muted-foreground">
+                        <th class="h-11 px-5 font-medium">{% translate "Contacto" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Email y teléfono" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "País" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Demos" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Última petición" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contact in contacts %}
+                    <tr class="border-b last:border-0 hover:bg-muted/50">
+                        <td class="px-5 py-3">
+                            <a href="{% url 'contact-detail' contact.pk %}" class="font-medium hover:underline">{{ contact.name }}</a>
+                            <div class="text-xs text-muted-foreground">{% if contact.company %}{{ contact.company }}{% endif %}{% if contact.job_title %} · {{ contact.job_title }}{% endif %}</div>
+                        </td>
+                        <td class="px-5 py-3">
+                            <a href="mailto:{{ contact.email }}" class="text-primary hover:underline">{{ contact.email }}</a>
+                            {% if contact.phone %}<div class="text-xs text-muted-foreground">{{ contact.phone }}</div>{% endif %}
+                        </td>
+                        <td class="px-5 py-3">{{ contact.country|default:"—" }}</td>
+                        <td class="px-5 py-3 tabular-nums">{{ contact.demo_count }}</td>
+                        <td class="px-5 py-3 text-muted-foreground">{{ contact.last_request_at|date:"d/m/Y H:i"|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include "orchestrator/includes/pagination.html" with page=contacts %}
+        {% else %}
+        <div class="p-10 text-center">
+            <i data-lucide="contact" class="mx-auto h-8 w-8 text-muted-foreground"></i>
+            <p class="mt-2 text-sm text-muted-foreground">
+                {% if search or selected_country or selected_project %}{% translate "Ningún contacto coincide con la búsqueda." %}
+                {% else %}{% translate "Todavía no hay contactos: aparecen aquí cuando alguien pide una demo en la página de un proyecto en modo test." %}{% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

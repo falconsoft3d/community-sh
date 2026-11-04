@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.54'
+VERSION = '1.0.55'
 
 CHANGELOG = [
+    {
+        'version': '1.0.55',
+        'date': '2026-11-04',
+        'notes': [
+            'Contactos: nuevo menú con las personas que piden una demo (página pública o API): nombre, email, empresa, cargo, teléfono, país, sus demos y notas propias. Un contacto por email que se actualiza con los datos más nuevos y se conserva aunque la demo se elimine; búsqueda, filtros por país y proyecto, exportar a CSV, KPI en el Dashboard y API /api/contacts/. Los contactos de las demos ya pedidas se crean al actualizar.',
+        ],
+    },
     {
         'version': '1.0.54',
         'date': '2026-11-04',
