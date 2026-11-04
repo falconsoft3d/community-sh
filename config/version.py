@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.50'
+VERSION = '1.0.51'
 
 CHANGELOG = [
+    {
+        'version': '1.0.51',
+        'date': '2026-11-04',
+        'notes': [
+            'Despliegue automático: el host, el usuario, el puerto, la ruta y known_hosts valen como secretos o como variables del repositorio, y si falta algo el error dice exactamente qué.',
+        ],
+    },
     {
         'version': '1.0.50',
         'date': '2026-11-04',

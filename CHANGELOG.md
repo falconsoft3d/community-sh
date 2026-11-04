@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.50**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.51**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.51 — 2026-11-04
+
+- Despliegue automático: el host, el usuario, el puerto, la ruta y known_hosts valen como secretos o como variables del repositorio, y si falta algo el error dice exactamente qué.
 
 ## 1.0.50 — 2026-11-04
 

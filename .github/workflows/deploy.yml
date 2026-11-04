@@ -1,7 +1,8 @@
 # Every push to main: run the tests and, if they pass, deploy to the server over SSH
 # (scripts/deploy.sh). Also runnable by hand from the Actions tab.
 #
-# Repository secrets (Settings → Secrets and variables → Actions):
+# Repository secrets (Settings → Secrets and variables → Actions → Secrets); all but the key can
+# also be repository variables (same page, Variables tab):
 #   DEPLOY_HOST          server name or IP (e.g. communitysh.xyz)
 #   DEPLOY_USER          SSH user (root, or a user with passwordless sudo)
 #   DEPLOY_SSH_KEY       private key allowed in that user's ~/.ssh/authorized_keys
@@ -50,13 +51,24 @@ jobs:
       - name: Set up SSH
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          HOST: ${{ secrets.DEPLOY_HOST }}
-          PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          # Not sensitive: a repository secret or a repository variable, whichever is set
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS || vars.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DEPLOY_HOST || vars.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER || vars.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT || vars.DEPLOY_PORT || '22' }}
         run: |
-          if [ -z "$SSH_KEY" ] || [ -z "$HOST" ]; then
-            echo "::error::Add the DEPLOY_HOST, DEPLOY_USER and DEPLOY_SSH_KEY secrets"; exit 1
+          missing=""
+          [ -n "$HOST" ] || missing="$missing DEPLOY_HOST"
+          [ -n "$USER" ] || missing="$missing DEPLOY_USER"
+          [ -n "$SSH_KEY" ] || missing="$missing DEPLOY_SSH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing:$missing. Add them in Settings → Secrets and variables → Actions → Secrets → New repository secret (not Codespaces or Dependabot)."
+            exit 1
           fi
+          case "$SSH_KEY" in
+            *"PRIVATE KEY-----"*) ;;
+            *) echo "::error::DEPLOY_SSH_KEY must be the whole private key file, from -----BEGIN … PRIVATE KEY----- to -----END … PRIVATE KEY-----"; exit 1 ;;
+          esac
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           if [ -n "$KNOWN_HOSTS" ]; then
@@ -66,13 +78,14 @@ jobs:
             ssh-keyscan -p "$PORT" -H "$HOST" > ~/.ssh/known_hosts 2>/dev/null
           fi
           chmod 600 ~/.ssh/known_hosts
+          echo "Deploying to $USER@$HOST:$PORT"
 
       - name: Deploy
         env:
-          HOST: ${{ secrets.DEPLOY_HOST }}
-          USER: ${{ secrets.DEPLOY_USER }}
-          PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-          DIR: ${{ secrets.DEPLOY_PATH || '/opt/community-sh' }}
+          HOST: ${{ secrets.DEPLOY_HOST || vars.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER || vars.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT || vars.DEPLOY_PORT || '22' }}
+          DIR: ${{ secrets.DEPLOY_PATH || vars.DEPLOY_PATH || '/opt/community-sh' }}
         # The script is taken from the commit being deployed, so changes to it apply right away
         run: |
           ssh -i ~/.ssh/deploy_key -p "$PORT" -o BatchMode=yes -o ServerAliveInterval=30 "$USER@$HOST" \
