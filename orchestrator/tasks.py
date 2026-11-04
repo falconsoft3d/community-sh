@@ -176,6 +176,12 @@ def duplicate(task):
     return f'Instancia duplicada como "{new_name}"'
 
 
+@handler(Task.Kind.TRIAL)
+def trial(task):
+    from .services.trials import build_demo
+    return build_demo(task)
+
+
 @handler(Task.Kind.RENAME)
 def rename(task):
     instance = task.instance

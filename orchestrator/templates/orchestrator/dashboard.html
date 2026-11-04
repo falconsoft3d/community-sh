@@ -1,85 +1,94 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
-<div class="flex items-center justify-between">
-    <h1 class="text-lg font-semibold md:text-2xl">Dashboard</h1>
-    <a href="{% url 'instance-create' %}"
-        class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-        <i data-lucide="plus" class="mr-2 h-4 w-4"></i> New Instance
-    </a>
-</div>
-
-<!-- Instances Table -->
-<div class="rounded-md border bg-card text-card-foreground shadow-sm mt-6">
-    <div class="p-6 pb-2">
-        <h2 class="text-lg font-semibold">Your Instances</h2>
-        <p class="text-sm text-muted-foreground mt-1">Manage your Odoo instances</p>
+<div class="flex flex-col gap-8">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p class="mt-1 text-muted-foreground">{% if user.is_superuser %}{% translate "Todo Community SH de un vistazo: pulsa una cifra para ir a su página." %}{% else %}{% translate "Tus proyectos de un vistazo: pulsa una cifra para ir a su página." %}{% endif %}</p>
+        </div>
+        {% if not user_is_client %}
+        <a href="{% url 'instance-create' %}"
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+            <i data-lucide="plus" class="mr-2 h-4 w-4"></i> {% translate "Nueva instancia" %}
+        </a>
+        {% endif %}
     </div>
-    <div class="relative w-full overflow-auto">
-        <table class="w-full caption-bottom text-sm text-left">
-            <thead class="[&_tr]:border-b">
-                <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Version</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Link</th>
-                </tr>
-            </thead>
-            <tbody class="[&_tr:last-child]:border-0">
-                {% for instance in instances %}
-                <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer"
-                    onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
-                    <td class="p-4 align-middle font-medium">
-                        {{ instance.name }}
-                        {% if instance.github_repo %}
-                        <div class="text-xs text-muted-foreground mt-0.5">{{ instance.github_repo }}</div>
-                        {% endif %}
-                    </td>
-                    <td class="p-4 align-middle">
-                        <div
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
-                            {{ instance.odoo_version }}
-                        </div>
-                    </td>
-                    <td class="p-4 align-middle">
-                        {% if instance.status == 'running' %}
-                        <div
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-100 text-green-800">
-                            <i data-lucide="check-circle" class="h-3 w-3 mr-1"></i>
-                            Running</div>
-                        {% elif instance.status == 'deploying' %}
-                        <div
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-yellow-100 text-yellow-800">
-                            <i data-lucide="loader" class="h-3 w-3 mr-1 animate-spin"></i>
-                            Deploying</div>
-                        {% else %}
-                        <div
-                            class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">
-                            {{ instance.status|title }}</div>
-                        {% endif %}
-                    </td>
-                    <td class="p-4 align-middle">
-                        {% if instance.status == 'running' %}
-                        <a href="{{ instance.url }}" target="_blank"
-                            class="inline-flex items-center text-sm text-primary hover:underline">
-                            <i data-lucide="external-link" class="mr-1 h-3 w-3"></i>
-                            Open
-                        </a>
-                        {% else %}
-                        <span class="text-sm text-muted-foreground">-</span>
-                        {% endif %}
-                    </td>
-                </tr>
+
+    {% for group in groups %}
+    <section>
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{{ group.title }}</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-{% if group.kpis|length == 6 %}6{% else %}5{% endif %}">
+            {% for kpi in group.kpis %}
+            <a href="{{ kpi.url }}" class="group rounded-xl border bg-card p-4 text-card-foreground shadow-sm transition hover:border-primary/50 hover:shadow-md">
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-sm text-muted-foreground">{{ kpi.label }}</p>
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                        {% if kpi.tone == 'green' %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
+                        {% elif kpi.tone == 'amber' %}bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
+                        {% elif kpi.tone == 'red' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
+                        {% elif kpi.tone == 'blue' %}bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300
+                        {% else %}bg-muted text-muted-foreground{% endif %}"><i data-lucide="{{ kpi.icon }}" class="h-4 w-4"></i></span>
+                </div>
+                <p class="mt-2 text-2xl font-bold tabular-nums">{{ kpi.value }}</p>
+                <p class="mt-1 flex items-end justify-between gap-2 text-xs text-muted-foreground">
+                    <span class="line-clamp-2">{{ kpi.hint }}</span>
+                    <i data-lucide="arrow-right" class="h-3 w-3 shrink-0 opacity-0 transition group-hover:opacity-100"></i>
+                </p>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+
+    <div class="grid gap-6 lg:grid-cols-3">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="border-b px-5 py-4"><h2 class="flex items-center gap-2 font-semibold"><i data-lucide="hourglass" class="h-4 w-4"></i> {% translate "Demos que vencen antes" %}</h2></div>
+            <ul class="divide-y text-sm">
+                {% for trial in expiring_demos %}
+                <li class="flex items-center justify-between gap-3 px-5 py-3">
+                    <div class="min-w-0">
+                        <a href="{% url 'instance-detail' trial.instance.pk %}" class="block truncate font-medium hover:underline">{{ trial.instance.name }}</a>
+                        <span class="block truncate text-xs text-muted-foreground">{{ trial.name }}{% if trial.company %} · {{ trial.company }}{% endif %}</span>
+                    </div>
+                    <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold {% if trial.days_until_stop <= 3 %}bg-amber-100 text-amber-800{% else %}bg-muted text-muted-foreground{% endif %}">{{ trial.days_until_stop }} d</span>
+                </li>
                 {% empty %}
-                <tr>
-                    <td colspan="4" class="p-8 text-center text-muted-foreground">
-                        <i data-lucide="inbox" class="h-12 w-12 mx-auto mb-2 opacity-50"></i>
-                        <p>No instances yet. Create your first instance to get started!</p>
-                    </td>
-                </tr>
+                <li class="px-5 py-6 text-center text-muted-foreground">{% translate "No hay demos en marcha." %}</li>
                 {% endfor %}
-            </tbody>
-        </table>
+            </ul>
+        </div>
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="border-b px-5 py-4"><h2 class="flex items-center gap-2 font-semibold"><i data-lucide="circle-alert" class="h-4 w-4"></i> {% translate "Instancias con error" %}</h2></div>
+            <ul class="divide-y text-sm">
+                {% for instance in broken_instances %}
+                <li class="px-5 py-3">
+                    <a href="{% url 'instance-detail' instance.pk %}" class="font-medium hover:underline">{% if instance.project %}<span class="font-normal text-muted-foreground">{{ instance.project.name }} /</span> {% endif %}{{ instance.name }}</a>
+                    <span class="ml-1 text-xs text-muted-foreground">Odoo {{ instance.odoo_version }}</span>
+                </li>
+                {% empty %}
+                <li class="px-5 py-6 text-center text-muted-foreground">{% translate "Ninguna: todo en orden." %}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex items-center justify-between border-b px-5 py-4">
+                <h2 class="flex items-center gap-2 font-semibold"><i data-lucide="activity" class="h-4 w-4"></i> {% translate "Últimas tareas" %}</h2>
+                <a href="{% url 'activity' %}" class="text-xs text-primary hover:underline">{% translate "Ver todas" %}</a>
+            </div>
+            <ul class="divide-y text-sm">
+                {% for task in recent_tasks %}
+                <li class="flex items-center justify-between gap-3 px-5 py-3">
+                    <a href="{% url 'activity-detail' task.pk %}" class="min-w-0 truncate hover:underline">{{ task.get_kind_display }}{% if task.instance %} <span class="text-muted-foreground">· {{ task.instance.name }}</span>{% endif %}</a>
+                    <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold
+                        {% if task.status == 'done' %}bg-green-100 text-green-800{% elif task.status == 'failed' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">{{ task.get_status_display }}</span>
+                </li>
+                {% empty %}
+                <li class="px-5 py-6 text-center text-muted-foreground">{% translate "Todavía no hay tareas." %}</li>
+                {% endfor %}
+            </ul>
+        </div>
     </div>
 </div>
 {% endblock %}

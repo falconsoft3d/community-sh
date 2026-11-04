@@ -1,0 +1,140 @@
+{% extends "orchestrator/trial_base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="mx-auto max-w-xl">
+    <!-- Being built: loading with the progress bar -->
+    <div id="building" class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900" {% if status.status != 'pending' %}hidden{% endif %}>
+        <div class="flex items-center gap-4">
+            <span class="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-600/20">
+                <i data-lucide="loader-circle" class="h-6 w-6 animate-spin"></i>
+            </span>
+            <div class="min-w-0">
+                <h1 class="text-xl font-bold">{% translate "Estamos preparando tu demo" %}</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ trial.source.name|default:project.name }} · Odoo {{ trial.version }}</p>
+            </div>
+        </div>
+        <div class="mt-8">
+            <div class="flex items-baseline justify-between text-sm">
+                <span id="step" class="truncate pr-4 text-slate-600 dark:text-slate-300">{{ status.step|default:"Preparando tu demo" }}</span>
+                <span id="percent" class="font-semibold tabular-nums">{{ status.progress }}%</span>
+            </div>
+            <div class="mt-2 h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ status.progress }}" id="bar-track">
+                <div id="bar" class="relative h-full rounded-full bg-brand-600 transition-all duration-700 ease-out" style="width: {{ status.progress }}%">
+                    <div class="absolute inset-0 animate-pulse bg-white/20"></div>
+                </div>
+            </div>
+            <p class="mt-6 text-sm text-slate-500 dark:text-slate-400">
+                {% translate "Suele tardar unos minutos. Puedes dejar esta página abierta: cuando esté lista verás aquí la dirección, el usuario y la contraseña. Guarda este enlace para volver a ellos." %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Ready: the credentials -->
+    <div id="ready" class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900" {% if status.status != 'ready' %}hidden{% endif %}>
+        <div class="flex items-center gap-4">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                <i data-lucide="check" class="h-6 w-6"></i>
+            </span>
+            <div>
+                <h1 class="text-xl font-bold">{% translate "¡Tu demo está lista!" %}</h1>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{% translate "Disponible hasta el" %} <span data-field="expires_at">{{ status.expires_at }}</span></p>
+            </div>
+        </div>
+        <dl class="mt-8 space-y-4">
+            <div>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{% translate "Dirección" %}</dt>
+                <dd class="mt-1 flex items-center gap-2">
+                    <a data-field="url" data-href href="{{ status.url }}" target="_blank" rel="noopener" class="min-w-0 flex-1 truncate font-medium text-brand-600 hover:underline">{{ status.url }}</a>
+                    <button type="button" data-copy="url" class="copy inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800" title="{% translate 'Copiar' %}"><i data-lucide="copy" class="h-4 w-4"></i></button>
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{% translate "Usuario" %}</dt>
+                <dd class="mt-1 flex items-center gap-2">
+                    <code data-field="login" class="min-w-0 flex-1 truncate rounded bg-slate-100 px-2 py-1 text-sm dark:bg-slate-800">{{ status.login }}</code>
+                    <button type="button" data-copy="login" class="copy inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800" title="{% translate 'Copiar' %}"><i data-lucide="copy" class="h-4 w-4"></i></button>
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{% translate "Contraseña" %}</dt>
+                <dd class="mt-1 flex items-center gap-2">
+                    <code data-field="password" class="min-w-0 flex-1 truncate rounded bg-slate-100 px-2 py-1 text-sm dark:bg-slate-800">{{ status.password }}</code>
+                    <button type="button" data-copy="password" class="copy inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800" title="{% translate 'Copiar' %}"><i data-lucide="copy" class="h-4 w-4"></i></button>
+                </dd>
+            </div>
+        </dl>
+        <a data-field="url" data-href href="{{ status.url }}" target="_blank" rel="noopener"
+            class="mt-8 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
+            <i data-lucide="external-link" class="h-4 w-4"></i> {% translate "Abrir mi demo" %}
+        </a>
+        <p id="emailed" class="mt-4 flex items-center gap-2 text-sm text-green-700 dark:text-green-300" {% if not status.emailed %}hidden{% endif %}>
+            <i data-lucide="mail-check" class="h-4 w-4"></i> {% translate "También te hemos enviado estos datos por email." %}</p>
+        <p class="mt-4 text-xs text-slate-500 dark:text-slate-400">{% translate "Si el navegador avisa del certificado, espera un minuto y recarga: se está emitiendo." %}</p>
+    </div>
+
+    <!-- Failed or expired -->
+    <div id="ended" class="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900" {% if status.status != 'failed' and status.status != 'expired' %}hidden{% endif %}>
+        <i data-lucide="circle-alert" class="mx-auto h-10 w-10 text-amber-500"></i>
+        <h1 id="ended-title" class="mt-3 text-xl font-bold">{% if status.status == 'expired' %}{% translate "Esta demo ha vencido" %}{% else %}{% translate "No pudimos crear tu demo" %}{% endif %}</h1>
+        <p id="ended-text" class="mt-2 text-sm text-slate-500 dark:text-slate-400">{% if status.status == 'expired' %}{% translate "Escríbenos si quieres seguir usándola." %}{% else %}{% translate "Ha ocurrido un problema al prepararla. Puedes volver a intentarlo." %}{% endif %}</p>
+        <a href="{% url 'trial-page' project.trial_slug %}" class="mt-6 inline-flex h-10 items-center rounded-lg border border-slate-300 px-4 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">{% translate "Volver" %}</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const statusUrl = '{% url "trial-status" project.trial_slug trial.token %}?format=json';
+        let shown = {{ status.progress|default:0 }};
+
+        function render(data) {
+            document.getElementById('building').hidden = data.status !== 'pending';
+            document.getElementById('ready').hidden = data.status !== 'ready';
+            document.getElementById('ended').hidden = data.status !== 'failed' && data.status !== 'expired';
+            if (data.status === 'pending') {
+                // The copy redeploys, so its steps restart: the bar never goes back
+                shown = Math.max(shown, data.progress || 0);
+                document.getElementById('bar').style.width = shown + '%';
+                document.getElementById('bar-track').setAttribute('aria-valuenow', shown);
+                document.getElementById('percent').textContent = shown + '%';
+                if (data.step) document.getElementById('step').textContent = data.step;
+            } else if (data.status === 'ready') {
+                document.getElementById('emailed').hidden = !data.emailed;
+                document.querySelectorAll('#ready [data-field]').forEach(function (el) {
+                    const value = data[el.dataset.field] || '';
+                    if (el.hasAttribute('data-href')) el.href = value;
+                    if (!el.classList.contains('inline-flex')) el.textContent = value;
+                });
+            } else if (data.status === 'expired') {
+                document.getElementById('ended-title').textContent = '{% translate "Esta demo ha vencido" %}';
+                document.getElementById('ended-text').textContent = '{% translate "Escríbenos si quieres seguir usándola." %}';
+            }
+        }
+
+        function poll() {
+            fetch(statusUrl, { headers: { 'Accept': 'application/json' } })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    render(data);
+                    if (data.status === 'pending') setTimeout(poll, 2000);
+                })
+                .catch(function () { setTimeout(poll, 5000); });
+        }
+
+        document.querySelectorAll('[data-copy]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const field = document.querySelector('#ready [data-field="' + button.dataset.copy + '"]');
+                navigator.clipboard.writeText(field.textContent.trim()).then(function () {
+                    button.innerHTML = '<i data-lucide="check" class="h-4 w-4"></i>';
+                    lucide.createIcons();
+                    setTimeout(function () { button.innerHTML = '<i data-lucide="copy" class="h-4 w-4"></i>'; lucide.createIcons(); }, 2000);
+                });
+            });
+        });
+
+        {% if status.status == 'pending' %}poll();{% endif %}
+    })();
+</script>
+{% endblock %}

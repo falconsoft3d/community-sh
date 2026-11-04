@@ -9,9 +9,11 @@ from django.core.exceptions import ValidationError
 from .permissions import domain_in_use, management_required, validate_domain, validate_resource_name
 
 
-def _restricted_config_error(config, template_network):
-    """Non-superusers can't mount host paths or join other networks."""
+def _restricted_config_error(config, template_network, template_volumes=()):
+    """Non-superusers can't mount host paths, add volumes of their own or join other networks."""
     for volume_name, volume_config in (config.get('volumes') or {}).items():
+        if volume_name not in template_volumes:
+            return "Solo un administrador puede añadir volúmenes a una plantilla"
         host_path = volume_config.get('host', '') if isinstance(volume_config, dict) else volume_name
         if str(host_path).startswith('/'):
             return 'Solo un administrador puede montar rutas del host'
@@ -30,6 +32,10 @@ def container_list(request):
 @management_required
 def container_create(request):
     """Create a new container"""
+    from .permissions import managed_projects_for
+    projects = managed_projects_for(request.user).order_by('name')
+    selected_project = request.POST.get('project') or request.GET.get('project') or ''
+    project = projects.filter(pk=selected_project).first() if str(selected_project).isdigit() else None
     if request.method == 'POST':
         template_key = request.POST.get('template')
         name = (request.POST.get('name') or '').strip().lower()
@@ -38,6 +44,10 @@ def container_create(request):
             validate_resource_name(name)
         except ValidationError as e:
             messages.error(request, e.messages[0])
+            return redirect('container-create')
+        from .container_service import reserved_container_name
+        if reserved_container_name(name):
+            messages.error(request, reserved_container_name(name))
             return redirect('container-create')
 
         # Check if name already exists
@@ -50,7 +60,7 @@ def container_create(request):
                 templates_dict[tmpl_data['name']]['name'] = tmpl_data['display_name']
                 templates_dict[tmpl_data['name']]['description'] = tmpl_data['description']
             return render(request, 'orchestrator/container_create.html', {
-                'templates': templates_dict
+                'templates': templates_dict, 'projects': projects, 'selected_project': selected_project,
             })
         
         # Get template or custom config
@@ -58,6 +68,7 @@ def container_create(request):
             loader = get_template_loader()
             template_defaults = loader.get_template_defaults(template_key)
             template_network = template_defaults.get('network', 'bridge')
+            template_volumes = set((template_defaults.get('volumes') or {}).keys())
 
             # Check if raw YAML was provided
             yaml_config = request.POST.get('yaml_config')
@@ -69,7 +80,7 @@ def container_create(request):
                     messages.error(request, f"Error parsing YAML: {str(e)}")
 
             if not request.user.is_superuser:
-                error = _restricted_config_error(template_defaults, template_network)
+                error = _restricted_config_error(template_defaults, template_network, template_volumes)
                 if error:
                     messages.error(request, error)
                     return redirect('container-create')
@@ -96,7 +107,8 @@ def container_create(request):
                 git_repo=git_repo,
                 git_branch=template_defaults.get('git_branch', 'main'),
                 dockerfile=template_defaults.get('dockerfile', 'Dockerfile'),
-                created_by=request.user
+                created_by=request.user,
+                project=project,
             )
             if git_repo:
                 from .task_models import Task
@@ -117,7 +129,8 @@ def container_create(request):
                 volumes={},
                 network='bridge',
                 description=request.POST.get('description', ''),
-                created_by=request.user
+                created_by=request.user,
+                project=project,
             )
         
         # Create and start container
@@ -147,7 +160,8 @@ def container_create(request):
 
             return render(request, 'orchestrator/container_create.html', {
                 'templates': templates_dict,
-                'first_template': first_template
+                'first_template': first_template,
+                'projects': projects, 'selected_project': selected_project,
             })
     
     loader = get_template_loader()
@@ -168,7 +182,8 @@ def container_create(request):
 
     return render(request, 'orchestrator/container_create.html', {
         'templates': templates_dict,
-        'first_template': first_template
+        'first_template': first_template,
+        'projects': projects, 'selected_project': selected_project,
     })
 
 @login_required

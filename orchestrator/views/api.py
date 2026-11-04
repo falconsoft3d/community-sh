@@ -3,6 +3,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 from ..serializers import InstanceSerializer
 from ..services import DockerService
 from ..task_models import Task
@@ -288,3 +289,90 @@ class ContainerViewSet(viewsets.ModelViewSet):
     def logs(self, request, pk=None):
         tail = min(int(request.query_params.get('tail', 200)), 5000)
         return Response({'logs': self._service().get_container_logs(self.get_object(), tail=tail)})
+
+
+class DemoViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Demos (test mode) of your projects. POST asks for one, as the public page does (same limits,
+    no captcha: the token already says who calls), e.g. from your website's backend.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from ..serializers import TrialRequestCreateSerializer, TrialRequestSerializer
+        return TrialRequestCreateSerializer if self.action == 'create' else TrialRequestSerializer
+
+    def get_queryset(self):
+        from ..permissions import managed_projects_for
+        from ..trial_models import TrialRequest
+        queryset = TrialRequest.objects.filter(project__in=managed_projects_for(self.request.user)) \
+            .select_related('project', 'source', 'instance', 'task')
+        if self.request.query_params.get('project'):
+            queryset = queryset.filter(project_id=self.request.query_params['project'])
+        if self.request.query_params.get('status'):
+            queryset = queryset.filter(status=self.request.query_params['status'])
+        return queryset.order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        from ..permissions import client_ip, managed_projects_for
+        from ..serializers import TrialRequestSerializer
+        from ..services.trials import demo_instances, request_demo
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        project = managed_projects_for(request.user).filter(pk=data['project'], trial_enabled=True).first()
+        if project is None or project.trial_target_project_id is None:
+            return Response({'project': ['Not one of your projects in test mode (with a project for the demos)']},
+                            status=status.HTTP_400_BAD_REQUEST)
+        source = next((instance for instance in demo_instances(project) if instance.pk == data['instance']), None)
+        if source is None:
+            return Response({'instance': ['Not a running instance of the project']}, status=status.HTTP_400_BAD_REQUEST)
+        trial, error = request_demo(project, source, data['name'], data['email'], data['company'], data['phone'],
+                                    client_ip(request), job_title=data['job_title'], country=data['country'])
+        if trial is None:
+            return Response({'detail': error}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        return Response(TrialRequestSerializer(trial, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+
+class PlatformSettingsView(APIView):
+    """Settings → Email and Demos (superusers): GET, PATCH, and POST test-email/ to try the SMTP server."""
+    permission_classes = [IsAuthenticated]
+
+    def _config(self, request):
+        from rest_framework.exceptions import PermissionDenied
+        from ..config_models import GitHubConfig
+        from ..permissions import get_global_config
+        if not request.user.is_superuser:
+            raise PermissionDenied('Only administrators')
+        return get_global_config() or GitHubConfig.objects.get_or_create(user=request.user)[0]
+
+    def get(self, request):
+        from ..serializers import PlatformSettingsSerializer
+        return Response(PlatformSettingsSerializer(self._config(request)).data)
+
+    def patch(self, request):
+        from ..serializers import PlatformSettingsSerializer
+        serializer = PlatformSettingsSerializer(self._config(request), data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class PlatformEmailTestView(PlatformSettingsView):
+    def post(self, request):
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError
+        from ..services import mail
+        config = self._config(request)
+        to = str(request.data.get('to') or request.user.email)
+        try:
+            validate_email(to)
+        except ValidationError:
+            return Response({'ok': False, 'error': 'A valid "to" address is needed'}, status=status.HTTP_400_BAD_REQUEST)
+        if not (config.smtp_host and config.smtp_from_email):
+            return Response({'ok': False, 'error': 'Set smtp_host and smtp_from_email first'}, status=status.HTTP_400_BAD_REQUEST)
+        sent, error = mail.send('Prueba de correo de Community SH',
+                                'Si lees esto, el servidor de correo saliente de Community SH funciona.', to, config=config)
+        if not sent:
+            return Response({'ok': False, 'error': error}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'ok': True, 'message': f'Test email sent to {to}'})

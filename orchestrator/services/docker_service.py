@@ -86,6 +86,33 @@ def admin_login_secret(instance):
 
 
 
+def published_ip():
+    """
+    Where Odoo's port is published on the host. With a domain and HTTPS (Traefik) Odoo is reached
+    through it, so the port only listens on the host itself: nobody can skip HTTPS or Traefik.
+    Without a domain the port is the way in (http://IP:port). ODOO_PUBLISH_IP in .env overrides it.
+    """
+    from .domains import acme_enabled, main_domain
+    configured = os.environ.get('ODOO_PUBLISH_IP', '').strip()
+    if configured:
+        return configured
+    return '127.0.0.1' if main_domain() and acme_enabled() else '0.0.0.0'
+
+
+def odoo_password_hash(password, rounds=600_000):
+    """The pbkdf2-sha512 hash in the passlib format Odoo checks: $pbkdf2-sha512$rounds$salt$checksum (adapted base64)."""
+    import base64
+    import hashlib
+    import secrets
+
+    def ab64(data):
+        return base64.b64encode(data).decode().rstrip('=').replace('+', '.')
+
+    salt = secrets.token_bytes(16)
+    checksum = hashlib.pbkdf2_hmac('sha512', password.encode(), salt, rounds)
+    return f'$pbkdf2-sha512${rounds}${ab64(salt)}${ab64(checksum)}'
+
+
 def read_backup_metadata(path):
     """
     Describe a backup file. Formats: the panel's ZIP (database.dump + metadata.json), Odoo's own
@@ -364,7 +391,7 @@ class DockerService:
         shell (and its old mail API isn't hooked), so it's skipped there.
         """
         from .ai import get_ai_config
-        if odoo_major(instance.odoo_version) < 9 or get_ai_config() is None:
+        if odoo_major(instance.odoo_version) < 9 or get_ai_config() is None or instance.origin == 'trial':
             return
         db_container = self._get_container(db_container_name)
         if db_container is None:
@@ -434,7 +461,11 @@ class DockerService:
         if result.exit_code != 0:
             raise Exception(f"No se pudo listar las bases de datos: {result.output.decode('utf-8')}")
         databases = [db.strip() for db in result.output.decode('utf-8').split('\n') if db.strip()]
-        return [db for db in databases if db not in ('postgres', 'template0', 'template1')]
+        from ..permissions import DATABASE_NAME_RE
+        skipped = [db for db in databases if not DATABASE_NAME_RE.match(db)]
+        if skipped:
+            print(f"Skipping databases with unsupported names: {skipped!r}")
+        return [db for db in databases if db not in ('postgres', 'template0', 'template1') and DATABASE_NAME_RE.match(db)]
 
     def _wait_for_postgres(self, db_container, timeout=180):
         import time
@@ -544,7 +575,7 @@ class DockerService:
                 },
                 network=start_network,
                 volumes=volumes,
-                ports={'8069/tcp': port},
+                ports={'8069/tcp': (published_ip(), port)},
                 detach=True,
                 restart_policy=RESTART_POLICY,
                 labels={
@@ -796,12 +827,13 @@ class DockerService:
             import shutil
             shutil.rmtree(workspace_path)
             
-    def copy_instance(self, instance, new_name):
+    def copy_instance(self, instance, new_name, project=None, create_branch=True, origin='duplicate'):
         """
         Creates a complete copy of an instance including:
         - Database dump and restore
         - Filestore copy
-        - Git branch creation
+        - Git branch creation (create_branch=False keeps the branch of the source: demos)
+        project: where the copy goes (default: the project of the source).
         """
         print(f"Starting full copy of instance {instance.name} to {new_name}")
         
@@ -810,11 +842,12 @@ class DockerService:
             name=new_name,
             odoo_version=instance.odoo_version,
             github_repo=instance.github_repo,
-            github_branch=new_name,  # Use new name as branch name
+            github_branch=new_name if create_branch else instance.github_branch,
             database_name=instance.database_name,
-            project=instance.project,
+            demo_default_db=instance.demo_default_db,
+            project=project or instance.project,
             status=Instance.Status.DEPLOYING,
-            origin='duplicate'
+            origin=origin,
         )
         for repository in instance.repositories.all():
             new_instance.repositories.create(url=repository.url, branch=repository.branch)
@@ -906,7 +939,7 @@ class DockerService:
                 print(f"Workspace copied from {source_workspace} to {target_workspace}")
             
             # 3. Create new Git branch if repo exists
-            if instance.github_repo:
+            if instance.github_repo and create_branch:
                 progress(45, 'Creando la rama de Git')
                 print("Step 3: Creating Git branch...")
                 source_addons = os.path.join(source_workspace, 'addons')
@@ -949,6 +982,85 @@ class DockerService:
             new_instance.status = Instance.Status.ERROR
             new_instance.save()
             raise e
+
+    def set_admin_password(self, instance, password):
+        """
+        New password for the administrator of every database of the instance (a demo copy).
+        Written as the pbkdf2-sha512 hash Odoo checks (12+: res_users.password; 8-11: password_crypt
+        when auth_crypt is there, else the plain column). Returns the login of the administrator.
+        """
+        db_container = self._start_db_container(instance)
+        if db_container is None:
+            raise Exception('La base de datos de la instancia no existe')
+        databases = self._list_user_databases(db_container)
+        if not databases:
+            raise Exception('La instancia no tiene ninguna base de datos de Odoo')
+        major = odoo_major(instance.odoo_version)
+        admin_id = 2 if major >= 12 else 1  # base.user_admin (12+) / base.user_root, the admin (8-11)
+        # Goes into SQL: only the characters of secrets.token_urlsafe
+        if not re.match(r'^[A-Za-z0-9_-]{8,64}$', password):
+            raise ValueError('Contraseña con caracteres no admitidos')
+        hashed = odoo_password_hash(password)
+        login = ''
+
+        def psql(database, sql):
+            return self._psql(db_container, database, sql)
+
+        for database in databases:
+            if major >= 12:
+                psql(database, f"UPDATE res_users SET password = '{hashed}' WHERE id = {admin_id}")
+            elif psql(database, "SELECT count(*) FROM information_schema.columns "
+                                "WHERE table_name = 'res_users' AND column_name = 'password_crypt'") == '1':
+                psql(database, f"UPDATE res_users SET password = NULL, password_crypt = '{hashed}' WHERE id = {admin_id}")
+            else:
+                psql(database, f"UPDATE res_users SET password = '{password}' WHERE id = {admin_id}")
+            if not login or database in (instance.demo_default_db, instance.database_name):
+                login = psql(database, f"SELECT login FROM res_users WHERE id = {admin_id}") or login
+        return login or 'admin'
+
+    @staticmethod
+    def _psql(db_container, database, sql, check=True):
+        result = db_container.exec_run(['psql', '-U', 'odoo', '-d', database, '-qAtc', sql],
+                                       environment={"PGPASSWORD": "odoo"})
+        if check and result.exit_code != 0:
+            raise Exception(f"{database}: {result.output.decode(errors='replace')[-300:]}")
+        return result.output.decode(errors='replace').strip()
+
+    def sanitize_demo(self, instance):
+        """
+        A demo is a full copy of its template, handed to a visitor as administrator. Before that:
+        every other user gets an unknown password (known template passwords stop working), outgoing
+        and incoming mail servers are switched off (a demo must not mail real customers), API keys
+        are dropped and the database secret and uuid are regenerated. Returns notes for the log.
+        """
+        import secrets
+        db_container = self._start_db_container(instance)
+        if db_container is None:
+            raise Exception('La base de datos de la instancia no existe')
+        major = odoo_major(instance.odoo_version)
+        admin_id = 2 if major >= 12 else 1
+        unknown = odoo_password_hash(secrets.token_urlsafe(32))
+        notes = []
+        for database in self._list_user_databases(db_container):
+            if major >= 12:
+                users = f"UPDATE res_users SET password = '{unknown}' WHERE id <> {admin_id} AND password IS NOT NULL"
+            elif self._psql(db_container, database, "SELECT count(*) FROM information_schema.columns "
+                            "WHERE table_name = 'res_users' AND column_name = 'password_crypt'") == '1':
+                users = f"UPDATE res_users SET password = NULL, password_crypt = '{unknown}' WHERE id <> {admin_id}"
+            else:
+                users = f"UPDATE res_users SET password = '{secrets.token_urlsafe(32)}' WHERE id <> {admin_id}"
+            self._psql(db_container, database, users)
+            # Tables that only some versions (or installed modules) have: missing ones are skipped
+            for sql in ("UPDATE ir_mail_server SET active = false",
+                        "UPDATE fetchmail_server SET active = false",
+                        "DELETE FROM res_users_apikeys",
+                        "UPDATE ir_config_parameter SET value = md5(random()::text || clock_timestamp()::text) "
+                        "WHERE key = 'database.secret'",
+                        "UPDATE ir_config_parameter SET value = md5(random()::text || clock_timestamp()::text)::uuid::text "
+                        "WHERE key = 'database.uuid'"):
+                self._psql(db_container, database, sql, check=False)
+            notes.append(f'{database}: otros usuarios sin contraseña conocida, correo desactivado, claves API borradas')
+        return notes
 
     def rename_instance(self, instance, old_name):
         """
@@ -1324,7 +1436,10 @@ class DockerService:
                 
                 # Extract to temp directory
                 temp_dir = tempfile.mkdtemp()
-                zipf.extractall(temp_dir)
+                from .archives import GB, safe_extractall
+                # Filestores compress little: far more than 100x the archive is a zip bomb
+                limit = min(100 * GB, max(2 * GB, 100 * os.path.getsize(backup_file_path)))
+                safe_extractall(zipf, temp_dir, max_bytes=limit, max_files=2_000_000)
                 
                 # Read metadata (Odoo's own backups carry manifest.json instead)
                 metadata_path = os.path.join(temp_dir, 'metadata.json')

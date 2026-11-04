@@ -30,9 +30,9 @@ from ..permissions import (
 
 @login_required
 def dashboard(request):
-    """Dashboard view for logged in users"""
-    instances = instances_for(request.user).order_by('-created_at')
-    return render(request, 'orchestrator/dashboard.html', {'instances': instances})
+    """The most important figures of the platform (all of it for an administrator), each one linked to its page."""
+    from ..services.dashboard import dashboard_lists, platform_kpis
+    return render(request, 'orchestrator/dashboard.html', {'groups': platform_kpis(request.user), **dashboard_lists(request.user)})
 
 
 # Web Views
@@ -664,14 +664,18 @@ def instance_browser(request, pk):
 @login_required
 @require_POST
 def instance_repo_add(request, pk):
-    from ..repository_models import REPO_URL_RE
+    from ..permissions import validate_git_branch, validate_repo_url
     instance = get_instance_for_user(request.user, pk, manage=True)
     url = request.POST.get('url', '').strip()
     branch = request.POST.get('branch', '').strip() or 'main'
-    if not REPO_URL_RE.match(url):
-        messages.error(request, 'URL inválida: usa la URL HTTPS de clonado (p. ej. https://github.com/OCA/web.git)')
-    elif not re.match(r'^[A-Za-z0-9._/-]+$', branch):
-        messages.error(request, 'Rama inválida')
+    error = ''
+    for validate, value in ((validate_repo_url, url), (validate_git_branch, branch)):
+        try:
+            validate(value or '-')
+        except ValidationError as e:
+            error = error or e.messages[0]
+    if error:
+        messages.error(request, error)
     elif instance.repositories.filter(url=url).exists() or url == instance.github_repo:
         messages.error(request, 'Ese repositorio ya está en la instancia')
     else:

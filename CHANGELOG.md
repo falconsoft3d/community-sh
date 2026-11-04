@@ -1,6 +1,32 @@
 # Changelog
 
-Versión actual: **1.0.46**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.48**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.48 — 2026-11-04
+
+- Seguridad (revisión completa): los contenedores genéricos ya no pueden llamarse como los del panel (app, db, traefik…) ni sustituir un contenedor de Docker ajeno; quien no es administrador no puede añadir volúmenes a una plantilla ni montar el de otro recurso (la base del panel, el filestore de una instancia).
+- API: las instancias exponen una lista fija de campos; el volumen de datos, el subdominio, las rutas de certificados y la contraseña maestra ya no se pueden escribir, y el nombre se cambia solo con «Renombrar». Los clientes ya no ven la contraseña maestra (ni en la ficha ni en la API).
+- Repositorios y ramas: solo URLs HTTPS y ramas que no empiezan por guion, en el formulario, la API y los repositorios extra; git solo usa HTTPS.
+- Demos: sin asistente de IA (su visitante es administrador de Odoo); la copia se entrega con el correo desactivado, sin claves API, con contraseñas desconocidas para los demás usuarios y con el secreto de la base regenerado. Las plazas se comprueban de forma atómica, hay un máximo para todo el servidor (TRIAL_MAX_ACTIVE_TOTAL, 4) y no se crea una demo si falta memoria. La IP del visitante es la que añade Traefik y la página de credenciales no se guarda en caché.
+- Acceso: el bloqueo por intentos fallidos cuenta por usuario normalizado y dirección (5) y por cuenta (20); /admin/login/ pasa por el login del panel (con 2FA); desactivar o cambiar el 2FA pide un código actual; los tokens de la API y de MCP exigen 2FA cuando es obligatorio.
+- Con dominio y HTTPS: cookies solo por HTTPS, HSTS, el panel solo responde a su dominio y su IP, y el puerto de Odoo y el 8000 del panel escuchan solo en el propio servidor (todo pasa por Traefik). El instalador crea el administrador con una contraseña aleatoria.
+- Un dominio propio no puede tomar el subdominio de otra instancia o contenedor; Traefik solo recibe nombres de host válidos. Los ZIP subidos (módulos y backups) se comprueban antes de descomprimir (rutas, número de archivos y tamaño). Los iconos (lucide) se cargan en una versión fija.
+- Manual de usuario en PDF, en español e inglés, con capturas, descargable desde la página principal.
+- Correo saliente: Configuración → Email (servidor SMTP, seguridad, usuario, remitente) con botón «Enviar prueba». Con él activo, las notificaciones salen por ese servidor y, al crear una demo, el cliente recibe por email su dirección, usuario y contraseña.
+- Demos: el formulario pide también empresa, cargo, teléfono y país, y tiene un captcha propio (una suma firmada por el servidor, de un solo uso). Configuración → Demos: límite de demos al día (10) y de demos a la vez en todo el servidor (4).
+- Demos: la ficha de una demo muestra los días que le quedan para detenerse y para eliminarse; también en la ficha del proyecto.
+- API: pedir una demo desde otra web (POST /api/public/demos/{url}/ con el captcha, o /api/demos/ con token), seguir su estado, configurar el modo test de un proyecto y, para administradores, el correo y los límites (/api/settings/).
+- Dashboard: nuevo menú con las cifras principales de Community SH (instancias, contenedores, backups, tareas, demos, servidor y seguridad), cada una enlazada a su página. La ficha del proyecto tiene sus propios KPIs.
+- Proyectos: botón «Nuevo contenedor»; los contenedores pueden pertenecer a un proyecto y aparecen en su ficha.
+- Arreglo: el blog daba Server Error (500) con artículos cuyo autor se había borrado.
+
+## 1.0.47 — 2026-11-04
+
+- Proyectos: casilla «Modo test». Pide la URL de la página de demos (p. ej. `/bim`), los días de prueba (15 por defecto), el proyecto hermano donde se crean las demos, el texto para el usuario y cuántas demos puede haber a la vez.
+- Página pública `/url`: el visitante elige la versión entre las instancias en marcha del proyecto (con su descripción), deja sus datos y recibe una copia propia en el proyecto hermano con una contraseña nueva para el administrador.
+- Mientras se crea, la página muestra una barra de progreso con el paso en curso; al terminar, la dirección, el usuario y la contraseña.
+- Una demo por email al mes (y como mucho 3 al mes desde la misma conexión). Al vencer se detiene y 7 días después se elimina.
+- Instancias: «Descripción (demos)», editable en su ficha. API pública `/api/public/demos/{url}/` (sin token, con CORS) para mostrar las versiones en tu web.
 
 ## 1.0.46 — 2026-11-02
 

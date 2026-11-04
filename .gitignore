@@ -59,3 +59,6 @@ docker-compose.override.yml
 # Temporary uploads (restores, module ZIPs)
 /backups/uploads/
 ai_attachments/
+
+# Traefik writes the private keys of the certificates here
+letsencrypt/acme.json

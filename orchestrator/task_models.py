@@ -23,6 +23,7 @@ class Task(models.Model):
         PULL_REPOS = 'pull_repos', 'Actualizar repositorios (pull)'
         BUILD_CONTAINER = 'build_container', 'Construir contenedor'
         DOCKER_CLEANUP = 'docker_cleanup', 'Limpiar Docker'
+        TRIAL = 'trial', 'Crear demo'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

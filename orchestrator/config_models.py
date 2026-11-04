@@ -40,6 +40,21 @@ class GitHubConfig(models.Model):
     openai_model = models.CharField(max_length=100, blank=True, help_text="OpenAI model used by the assistant")
     ai_instructions = models.TextField(blank=True, help_text="Extra instructions added to the assistant's system prompt")
     
+    # Outgoing mail server (SMTP): notifications and the credentials of the demos
+    smtp_enabled = models.BooleanField(default=False, help_text="Send emails through this SMTP server")
+    smtp_host = models.CharField(max_length=255, blank=True)
+    smtp_port = models.PositiveIntegerField(default=587)
+    smtp_security = models.CharField(max_length=10, default='starttls',
+                                     choices=[('starttls', 'STARTTLS'), ('ssl', 'SSL/TLS'), ('none', 'Ninguna')])
+    smtp_username = models.CharField(max_length=255, blank=True)
+    smtp_password = models.CharField(max_length=255, blank=True)
+    smtp_from_email = models.EmailField(blank=True, help_text="Sender address")
+    smtp_from_name = models.CharField(max_length=100, blank=True, default='Community SH')
+
+    # Demos (test mode of the projects), for the whole server: a cap against abuse and memory use
+    trial_max_per_day = models.PositiveIntegerField(default=10, help_text="Demos that can be created per day (all projects)")
+    trial_max_active_total = models.PositiveIntegerField(default=4, help_text="Demos running at once on the server")
+
     last_auto_backup_at = models.DateTimeField(null=True, blank=True, help_text="When the last automatic backup run started")
     
     created_at = models.DateTimeField(auto_now_add=True)

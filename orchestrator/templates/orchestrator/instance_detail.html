@@ -71,6 +71,24 @@
         </div>
     </div>
 
+    {% if object.trial %}{% with trial=object.trial %}
+    <!-- A demo: how long it has left -->
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+        <span class="flex items-center gap-2 font-semibold"><i data-lucide="flask-conical" class="h-4 w-4"></i> Demo de {{ trial.name }}{% if trial.company %} · {{ trial.company }}{% endif %}</span>
+        {% if trial.status == 'ready' and trial.expires_at %}
+        <span><i data-lucide="pause-circle" class="inline h-4 w-4 align-text-bottom"></i>
+            Se detiene en <strong>{{ trial.days_until_stop }} día{{ trial.days_until_stop|pluralize }}</strong> ({{ trial.expires_at|date:"d/m/Y" }})</span>
+        {% elif trial.status == 'expired' %}
+        <span><i data-lucide="pause-circle" class="inline h-4 w-4 align-text-bottom"></i> Vencida y detenida</span>
+        {% endif %}
+        {% if trial.delete_at %}
+        <span><i data-lucide="trash-2" class="inline h-4 w-4 align-text-bottom"></i>
+            Se elimina en <strong>{{ trial.days_until_delete }} día{{ trial.days_until_delete|pluralize }}</strong> ({{ trial.delete_at|date:"d/m/Y" }})</span>
+        {% endif %}
+        {% if trial.emailed_at %}<span><i data-lucide="mail-check" class="inline h-4 w-4 align-text-bottom"></i> Datos enviados por email</span>{% endif %}
+    </div>
+    {% endwith %}{% endif %}
+
     <!-- Tabs Navigation -->
     <div class="border-b border-border">
         <nav class="flex space-x-8" aria-label="Tabs">
@@ -245,7 +263,7 @@
                 <div class="space-y-1">
                     <label class="text-sm font-medium leading-none">URL Alternativa</label>
                     <div>
-                        {% if object.status == 'running' and object.port %}
+                        {% if object.status == 'running' and object.port and object.port_is_public %}
                         <div class="flex items-center gap-2">
                             <a href="{{ object.url_with_port }}" target="_blank"
                                 class="text-sm text-primary hover:underline flex items-center gap-1 flex-1">
@@ -270,6 +288,42 @@
                     <div class="text-sm text-muted-foreground">{{ object.odoo_version }}</div>
                 </div>
 
+                {% if object.trial %}
+                <div class="space-y-1">
+                    <label class="text-sm font-medium leading-none">Demo</label>
+                    <div class="text-sm text-muted-foreground">
+                        {{ object.trial.name }} · {{ object.trial.email }}{% if object.trial.phone %} · {{ object.trial.phone }}{% endif %}<br>
+                        {% if object.trial.company %}{{ object.trial.company }}{% endif %}{% if object.trial.job_title %} · {{ object.trial.job_title }}{% endif %}{% if object.trial.country %} · {{ object.trial.country }}{% endif %}<br>
+                        {% if object.trial.expires_at %}Se detiene el {{ object.trial.expires_at|date:"d/m/Y" }} y se elimina el {{ object.trial.delete_at|date:"d/m/Y" }} (en {{ object.trial.days_until_delete }} día{{ object.trial.days_until_delete|pluralize }}).{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="space-y-1" x-data="{ editingDescription: false }">
+                    <label class="text-sm font-medium leading-none">Descripción (demos)</label>
+                    <div x-show="!editingDescription" class="flex items-start gap-2">
+                        <span class="text-sm text-muted-foreground whitespace-pre-line">{{ object.description|default:"—" }}</span>
+                        {% if can_manage %}
+                        <button @click="editingDescription = true" class="text-xs text-primary hover:underline flex shrink-0 items-center gap-1">
+                            <i data-lucide="pencil" class="h-3 w-3"></i> Editar
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% if can_manage %}
+                    <form x-show="editingDescription" x-cloak action="{% url 'instance-update-description' object.pk %}" method="post" class="space-y-2">
+                        {% csrf_token %}
+                        <textarea name="description" rows="3" maxlength="2000" placeholder="Qué incluye esta versión"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ object.description }}</textarea>
+                        <div class="flex gap-2">
+                            <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">Guardar</button>
+                            <button type="button" @click="editingDescription = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">Cancelar</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                    <p class="text-xs text-muted-foreground">Se muestra junto a la instancia en la página de demos de su proyecto (modo test) y en su API pública.</p>
+                </div>
+
+                {% if can_manage %}
                 <div class="space-y-1" x-data="{ show: false }">
                     <label class="text-sm font-medium leading-none">Master Password</label>
                     <div class="flex items-center gap-2">
@@ -288,6 +342,7 @@
                     </div>
                     <p class="text-xs text-muted-foreground mt-1">Para el gestor de bases de datos de Odoo (/web/database/manager). Se aplica al redesplegar.</p>
                 </div>
+                {% endif %}
 
                 <div class="space-y-1">
                     <label class="text-sm font-medium leading-none">Source</label>

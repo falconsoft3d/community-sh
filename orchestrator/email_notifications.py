@@ -66,13 +66,20 @@ Este es un mensaje automático de Community SH
             return
         
         # Send email
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=recipient_list,
-            fail_silently=True,  # Don't raise errors if email fails
-        )
+        # Through the SMTP server of Settings → Email when there is one (else the default backend)
+        from .services import mail
+        if mail.smtp_config() is not None:
+            sent, error = mail.send(subject, message, recipient_list)
+            if not sent:
+                raise Exception(error)
+        else:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=recipient_list,
+                fail_silently=True,  # Don't raise errors if email fails
+            )
         
         print(f"Email notification sent to {', '.join(recipient_list)}")
         

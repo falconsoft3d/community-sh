@@ -22,6 +22,9 @@ class TraefikService:
         config = {'http': {'routers': {}, 'services': {service: {'loadBalancer': {'servers': [{'url': backend}]}}}}}
         https = bool(certificate) or acme_enabled()
         redirect = f'{prefix}-redirect-https'
+        # Only real host names reach a rule: a backtick or a space would let a value rewrite the rule itself
+        import re
+        hosts = [host for host in hosts if re.fullmatch(r'[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?', str(host).lower())]
         for index, host in enumerate(hosts):
             router = f'{prefix}-{index}'
             config['http']['routers'][router] = {

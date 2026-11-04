@@ -82,8 +82,14 @@ class DynamicAllowedHostsMiddleware(MiddlewareMixin):
             # Si hay algún error (por ejemplo, la DB no está lista), continuar
             pass
         
-        # Verificar si el host actual está en la lista de hosts permitidos
-        if host not in allowed_hosts and settings.ALLOWED_HOSTS != ['*']:
+        # With ALLOWED_HOSTS=* (the installer's default) every host is accepted until a domain is set;
+        # from then on only the panel's own names (a forged Host can't poison links or caches)
+        import os
+        server_ip = os.environ.get('SERVER_IP', '').strip()
+        if server_ip:
+            allowed_hosts.append(server_ip.strip('[]'))
+        enforce = settings.ALLOWED_HOSTS != ['*'] or any(h for h in allowed_hosts if h not in default_hosts and h != server_ip.strip('[]'))
+        if host not in allowed_hosts and enforce:
             return HttpResponseForbidden(f'Host "{host}" no permitido. Configure el dominio en Settings.')
         
         return None

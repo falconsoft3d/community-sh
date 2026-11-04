@@ -16,11 +16,19 @@ def two_factor_setup(request):
     if request.method == 'POST':
         action = request.POST.get('action')
         
+        def current_code_ok():
+            """Changing or removing an active 2FA needs a code of the current one."""
+            if not (profile.two_factor_enabled and profile.two_factor_secret):
+                return True
+            return pyotp.TOTP(profile.two_factor_secret).verify(request.POST.get('current_code', '').strip(), valid_window=1)
+
         if action == 'enable':
-            # Generate new secret
+            if not current_code_ok():
+                messages.error(request, 'Escribe un código válido de tu app actual para cambiar el 2FA')
+                return redirect('two-factor-setup')
+            # The new secret only replaces the active one once a code of it is verified
             secret = pyotp.random_base32()
-            profile.two_factor_secret = secret
-            profile.save()
+            request.session['2fa_pending_secret'] = secret
             
             # Generate QR code
             totp = pyotp.TOTP(secret)
@@ -48,10 +56,14 @@ def two_factor_setup(request):
         
         elif action == 'verify':
             code = request.POST.get('code', '').strip()
-            secret = request.POST.get('secret')
-            
+            secret = request.session.get('2fa_pending_secret')
+            if not secret:
+                messages.error(request, 'Vuelve a empezar la activación del 2FA')
+                return redirect('two-factor-setup')
+
             totp = pyotp.TOTP(secret)
             if totp.verify(code, valid_window=1):
+                request.session.pop('2fa_pending_secret', None)
                 profile.two_factor_secret = secret
                 profile.two_factor_enabled = True
                 profile.save()
@@ -70,6 +82,9 @@ def two_factor_setup(request):
             if is_two_factor_required():
                 messages.error(request, 'La autenticación de dos factores es obligatoria en esta plataforma')
                 return redirect('user-profile')
+            if not current_code_ok():
+                messages.error(request, 'Escribe un código válido de tu app para desactivar el 2FA')
+                return redirect('two-factor-setup')
             profile.two_factor_enabled = False
             profile.two_factor_secret = ''
             profile.save()

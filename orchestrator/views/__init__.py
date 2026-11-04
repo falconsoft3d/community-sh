@@ -84,6 +84,7 @@ from .platform import (
     metrics_history_data,
     settings_view,
     settings_ai_test,
+    settings_email_test,
     run_auto_backups_view,
     generate_ssl_certificate,
 )
@@ -165,6 +166,7 @@ __all__ = [
     'metrics_history_data',
     'settings_view',
     'settings_ai_test',
+    'settings_email_test',
     'run_auto_backups_view',
     'generate_ssl_certificate',
     'user_list',

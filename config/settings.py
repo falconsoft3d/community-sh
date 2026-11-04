@@ -47,6 +47,18 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 # Traefik terminates HTTPS and says so in X-Forwarded-Proto; without this Django sees
 # http:// requests and rejects the https:// Origin of every form (CSRF)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# git (repositories of instances and containers) only over HTTPS: no file://, ssh:// or ext:: transports
+os.environ.setdefault('GIT_ALLOW_PROTOCOL', 'https')
+
+# Session cookies: not readable from JavaScript, and not sent on cross-site requests
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'same-origin'
+# Uploaded backups and modules can be large, but form fields can't be endless
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
 MAIN_DOMAIN = os.environ.get('MAIN_DOMAIN', '').strip().lower()
 
 # The author's other projects on the landing page (TicketPro dynamic table); hidden without a token
@@ -224,6 +236,14 @@ if not DEBUG:
         SECURE_HSTS_SECONDS = 31536000  # 1 year
         SECURE_HSTS_INCLUDE_SUBDOMAINS = True
         SECURE_HSTS_PRELOAD = True
+    elif MAIN_DOMAIN and os.environ.get('LETSENCRYPT_EMAIL', '').strip():
+        # The installer's setup: Traefik serves the domain over HTTPS with Let's Encrypt. Cookies only
+        # travel over HTTPS and browsers remember to use it (HSTS, not for the instances' subdomains).
+        # No redirect here: Traefik already sends http:// to https://, and Odoo calls the panel at http://app:8000
+        SECURE_SSL_REDIRECT = False
+        SESSION_COOKIE_SECURE = True
+        CSRF_COOKIE_SECURE = True
+        SECURE_HSTS_SECONDS = int(os.environ.get('HSTS_SECONDS', 30 * 24 * 3600))
     else:
         # Explicitly disable SSL redirect when SSL is not enabled
         SECURE_SSL_REDIRECT = False

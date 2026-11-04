@@ -92,6 +92,9 @@ fi
 # Generate secrets
 SECRET_KEY=$(openssl rand -base64 50 | tr -d '\n/')
 DB_PASSWORD=$(openssl rand -hex 24)
+ADMIN_PASSWORD=$(openssl rand -base64 24 | tr -d '\n/+=' | cut -c1-20)
+# With a domain the panel and Odoo are only reached through Traefik (HTTPS)
+if [ "$MAIN_DOMAIN" != "localhost" ]; then PANEL_BIND=127.0.0.1; else PANEL_BIND=0.0.0.0; fi
 
 # Create .env file with default configuration
 cat > .env <<EOL
@@ -113,6 +116,9 @@ MAIN_DOMAIN=${MAIN_DOMAIN}
 
 # HTTPS: Traefik requests the Let's Encrypt certificates (empty = HTTP only)
 LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+
+# Where the panel's port 8000 listens: 127.0.0.1 = only through Traefik (HTTPS)
+PANEL_BIND=${PANEL_BIND}
 
 # Server IP: ${PUBLIC_IP}
 # Main Domain: ${MAIN_DOMAIN}
@@ -140,29 +146,48 @@ sudo docker compose up -d --build
 echo -e "${YELLOW}Waiting for services to start...${NC}"
 sleep 10
 
+# The administrator, created here with a random password: otherwise the first person to open the
+# sign-up page would become the administrator of the server
+ADMIN_CREATED=""
+for attempt in $(seq 1 30); do
+    if sudo docker compose exec -T -e CSH_ADMIN_PASSWORD="$ADMIN_PASSWORD" app python manage.py shell -c \
+        "import os; from django.contrib.auth.models import User; print('exists' if User.objects.exists() else User.objects.create_superuser('admin', '', os.environ['CSH_ADMIN_PASSWORD']) and 'created')" \
+        2>/dev/null | grep -q -E "created|exists"; then
+        ADMIN_CREATED=1
+        break
+    fi
+    sleep 5
+done
+
 echo -e "\n${BLUE}==================================================${NC}"
 echo -e "${GREEN}   ✨ Installation Complete! ✨   ${NC}"
 echo -e "${BLUE}==================================================${NC}"
 echo -e "\n${GREEN}Access your application:${NC}"
 if [ "$MAIN_DOMAIN" != "localhost" ]; then
     echo -e "  → https://${MAIN_DOMAIN}  (the certificate is issued on the first minute)"
-    echo -e "  → http://${PUBLIC_IP}:8000"
     echo -e "  Instances: https://<client>-<version>-<name>.${MAIN_DOMAIN}"
 else
     echo -e "  → http://${PUBLIC_IP}:8000"
 fi
 echo -e "\n${YELLOW}Configuration:${NC}"
 echo -e "  → Main Domain: ${MAIN_DOMAIN}"
-echo -e "  → ALLOWED_HOSTS: * (all IPs allowed)"
+echo -e "  → Allowed hosts: the domain and the server IP once a domain is set"
 echo -e "  → DEBUG: False"
 echo -e "  → Database: PostgreSQL"
 echo -e "  → DB Password: (random, stored in .env)"
 echo -e "\n${YELLOW}Configuration file:${NC}"
 echo -e "  ${INSTALL_DIR}/.env"
 echo -e "  Edit with: ${GREEN}nano ${INSTALL_DIR}/.env${NC}"
+echo -e "\n${YELLOW}Administrator:${NC}"
+if [ -n "$ADMIN_CREATED" ]; then
+    echo -e "  → User: ${GREEN}admin${NC}   Password: ${GREEN}${ADMIN_PASSWORD}${NC}"
+    echo -e "  Change it and enable 2FA in your profile after signing in (it is not shown again)."
+else
+    echo -e "  ${RED}Could not create it yet.${NC} Create it before opening the panel to anyone:"
+    echo -e "     ${GREEN}cd ${INSTALL_DIR} && sudo docker compose exec app python manage.py createsuperuser${NC}"
+fi
 echo -e "\n${YELLOW}Next steps:${NC}"
-echo -e "  1. Create admin user:"
-echo -e "     ${GREEN}cd ${INSTALL_DIR} && sudo docker compose exec app python manage.py createsuperuser${NC}"
+echo -e "  1. Sign in and enable 2FA in your profile"
 echo -e "\n  2. View logs:"
 echo -e "     ${GREEN}cd ${INSTALL_DIR} && sudo docker compose logs -f app${NC}"
 echo -e "\n  3. Customize settings (optional):"

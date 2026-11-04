@@ -2,14 +2,14 @@ import re
 
 from django.db import models
 
-REPO_URL_RE = re.compile(r'^https://[A-Za-z0-9.-]+/[A-Za-z0-9._/-]+?(\.git)?$')
+from .permissions import REPO_URL_RE, validate_git_branch, validate_repo_url  # noqa: F401 (REPO_URL_RE re-exported)
 
 
 class InstanceRepository(models.Model):
     """Extra addons repository of an instance, cloned next to the main one and added to addons_path."""
     instance = models.ForeignKey('Instance', on_delete=models.CASCADE, related_name='repositories')
-    url = models.CharField(max_length=300, help_text="HTTPS clone URL, e.g. https://github.com/OCA/web.git")
-    branch = models.CharField(max_length=100, default='main')
+    url = models.CharField(max_length=300, validators=[validate_repo_url], help_text="HTTPS clone URL, e.g. https://github.com/OCA/web.git")
+    branch = models.CharField(max_length=100, default='main', validators=[validate_git_branch])
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

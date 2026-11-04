@@ -1,0 +1,99 @@
+{% extends "orchestrator/trial_base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="max-w-3xl">
+    <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{% translate "Prueba" %} {{ project.name }}</h1>
+    {% if project.trial_message %}
+    <div class="mt-4 text-base leading-relaxed text-slate-600 dark:text-slate-300">{{ project.trial_message|linebreaks }}</div>
+    {% endif %}
+</div>
+
+{% if not instances %}
+<div class="mt-10 rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+    <i data-lucide="clock" class="mx-auto h-8 w-8 text-slate-400"></i>
+    <p class="mt-3 font-medium">{% translate "Ahora mismo no hay ninguna versión disponible para probar." %}</p>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{% translate "Vuelve a intentarlo más tarde." %}</p>
+</div>
+{% else %}
+<form method="post" action="{% url 'trial-page' project.trial_slug %}" id="demo-form" class="mt-10 grid gap-8 lg:grid-cols-5">
+    {% csrf_token %}
+    <section class="lg:col-span-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">1 · {% translate "Elige la versión" %}</h2>
+        <div class="mt-3 space-y-3">
+            {% for instance in instances %}
+            <label class="group relative flex cursor-pointer gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-brand-500 has-[:checked]:border-brand-600 has-[:checked]:ring-2 has-[:checked]:ring-brand-500/30 dark:border-slate-800 dark:bg-slate-900">
+                <input type="radio" name="instance" value="{{ instance.pk }}" class="mt-1 h-4 w-4 accent-blue-600" required
+                    {% if selected|stringformat:"s" == instance.pk|stringformat:"s" or instances|length == 1 %}checked{% endif %}>
+                <span class="min-w-0 flex-1">
+                    <span class="flex flex-wrap items-center gap-2">
+                        <span class="font-semibold">{{ instance.name }}</span>
+                        <span class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-600/20 dark:text-brand-100">Odoo {{ instance.odoo_version }}</span>
+                    </span>
+                    {% if instance.description %}
+                    <span class="mt-1.5 block text-sm leading-relaxed text-slate-600 dark:text-slate-300">{{ instance.description|linebreaksbr }}</span>
+                    {% endif %}
+                </span>
+            </label>
+            {% endfor %}
+            {% if form.instance.errors %}<p class="text-sm font-medium text-red-600">{{ form.instance.errors.0 }}</p>{% endif %}
+        </div>
+    </section>
+
+    <section class="lg:col-span-2">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">2 · {% translate "Tus datos" %}</h2>
+        <div class="mt-3 space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            {% if error %}
+            <div class="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+                <i data-lucide="info" class="mt-0.5 h-4 w-4 shrink-0"></i><span>{{ error }}</span>
+            </div>
+            {% endif %}
+            {% for field in form.visible_fields_list %}
+            <div class="space-y-1.5">
+                <label for="{{ field.id_for_label }}" class="text-sm font-medium">{{ field.label }}{% if field.field.required %} <span class="text-red-600">*</span>{% endif %}</label>
+                {{ field }}
+                {% if field.errors %}<p class="text-sm font-medium text-red-600">{{ field.errors.0 }}</p>{% endif %}
+            </div>
+            {% endfor %}
+            <datalist id="countries">{% for country in countries %}<option value="{{ country }}">{% endfor %}</datalist>
+
+            <!-- Our own captcha: a sum, signed by the server (each question is used once) -->
+            <div class="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                <label for="id_captcha_answer" class="flex items-center gap-2 text-sm font-medium">
+                    <i data-lucide="shield-check" class="h-4 w-4 text-brand-600"></i>
+                    {% translate "Comprobación: ¿cuánto es" %} <span class="font-mono text-base font-bold">{{ form.captcha_question }}</span>? <span class="text-red-600">*</span>
+                </label>
+                <input type="hidden" name="captcha_token" value="{{ form.captcha_signed }}">
+                <input type="text" name="captcha_answer" id="id_captcha_answer" required maxlength="4" inputmode="numeric" pattern="[0-9]{1,3}" autocomplete="off"
+                    class="{{ form.captcha_answer.field.widget.attrs.class }}">
+                {% if form.captcha_answer.errors %}<p class="text-sm font-medium text-red-600">{{ form.captcha_answer.errors.0 }}</p>{% endif %}
+            </div>
+            <!-- Left empty by people (hidden), filled by bots -->
+            <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden">
+                <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+            </div>
+            <button type="submit" id="demo-submit"
+                class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-60">
+                <i data-lucide="rocket" class="h-4 w-4"></i> <span>{% translate "Crear mi demo" %}</span>
+            </button>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                {% blocktranslate with days=project.trial_days %}Tendrás tu propia copia durante {{ days }} días, con un usuario administrador y una contraseña solo para ti. Una demo por email al mes.{% endblocktranslate %}
+            </p>
+        </div>
+    </section>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const demoForm = document.getElementById('demo-form');
+    if (demoForm) {
+        demoForm.addEventListener('submit', function () {
+            const button = document.getElementById('demo-submit');
+            button.disabled = true;
+            button.querySelector('span').textContent = '{% translate "Enviando…" %}';
+        });
+    }
+</script>
+{% endblock %}

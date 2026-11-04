@@ -20,10 +20,23 @@ def odoo_ai_request(request, name):
     from ..services.ai_assistant import start_turn
     from ..services.odoo_bridge import verify
     from ..tasks import enqueue
-    instance = get_object_or_404(Instance, name=name)
-    if not verify(instance, request.body, request.headers.get('X-CSH-Timestamp'), request.headers.get('X-CSH-Signature')):
+    from django.core.cache import cache
+    from ..services.odoo_bridge import MAX_AGE
+    instance = Instance.objects.filter(name=name).first()
+    signature = request.headers.get('X-CSH-Signature') or ''
+    # Same answer for an unknown instance and a bad signature: instance names can't be probed
+    if instance is None or not verify(instance, request.body, request.headers.get('X-CSH-Timestamp'), signature):
         return JsonResponse({'message': 'Firma no válida'}, status=403)
-    data = json.loads(request.body)
+    # Each signed request is used once (replays inside its 5 minutes are refused)
+    if not cache.add(f'odoo-ai-signature:{signature}', 1, MAX_AGE * 2):
+        return JsonResponse({'message': 'Petición repetida'}, status=403)
+    # A demo is handed to a visitor as Odoo admin: the assistant (which acts as the project owner) stays off
+    if instance.origin == 'trial':
+        return JsonResponse({'message': 'El asistente de IA no está disponible en las demos.'}, status=403)
+    try:
+        data = json.loads(request.body)
+    except ValueError:
+        return JsonResponse({'message': 'Petición no válida'}, status=400)
     if get_ai_config() is None:
         return JsonResponse({'message': 'El asistente de IA no está configurado en Community SH (Settings → IA).'})
     if instance.tasks.filter(kind=Task.Kind.AI_CHAT, status__in=[Task.Status.PENDING, Task.Status.RUNNING]).exists():

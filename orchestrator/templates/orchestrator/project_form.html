@@ -18,7 +18,7 @@
 
     <form method="post" class="mt-6 space-y-5 rounded-xl border bg-card text-card-foreground shadow-sm p-6">
         {% csrf_token %}
-        {% for field in form %}
+        {% for field in form.main_fields %}
         <div class="space-y-2">
             <label for="{{ field.id_for_label }}" class="text-sm font-medium leading-none">
                 {{ field.label }}{% if field.field.required %} <span class="text-destructive">*</span>{% endif %}
@@ -28,6 +28,38 @@
             {% if field.errors %}<p class="text-sm font-medium text-destructive">{{ field.errors.0 }}</p>{% endif %}
         </div>
         {% endfor %}
+
+        <!-- Test mode: public demo page -->
+        <div class="rounded-lg border bg-muted/30 p-4 space-y-4" x-data="{ trial: {{ form.trial_enabled.value|yesno:'true,false' }} }">
+            <label class="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" name="{{ form.trial_enabled.html_name }}" id="{{ form.trial_enabled.id_for_label }}"
+                    x-model="trial" class="mt-0.5 h-4 w-4 rounded border-input accent-primary" {% if form.trial_enabled.value %}checked{% endif %}>
+                <span>
+                    <span class="flex items-center gap-2 text-sm font-medium"><i data-lucide="flask-conical" class="h-4 w-4"></i> {% translate "Modo test" %}</span>
+                    <span class="block text-sm text-muted-foreground">{{ form.trial_enabled.help_text }}</span>
+                </span>
+            </label>
+            <div x-show="trial" x-cloak class="space-y-4 border-t pt-4">
+                {% for field in form.trial_fields %}
+                <div class="space-y-2">
+                    <label for="{{ field.id_for_label }}" class="text-sm font-medium leading-none">
+                        {{ field.label }}{% if field.name == 'trial_slug' or field.name == 'trial_target_project' %} <span class="text-destructive">*</span>{% endif %}
+                    </label>
+                    {% if field.name == 'trial_slug' %}
+                    <div class="flex items-center gap-1">
+                        <span class="text-sm text-muted-foreground">{{ request.scheme }}://{{ request.get_host }}/</span>
+                        {{ field }}
+                    </div>
+                    {% else %}
+                    {{ field }}
+                    {% endif %}
+                    {% if field.help_text %}<p class="text-sm text-muted-foreground">{{ field.help_text }}</p>{% endif %}
+                    {% if field.errors %}<p class="text-sm font-medium text-destructive">{{ field.errors.0 }}</p>{% endif %}
+                </div>
+                {% endfor %}
+                {% if form.non_field_errors %}<p class="text-sm font-medium text-destructive">{{ form.non_field_errors.0 }}</p>{% endif %}
+            </div>
+        </div>
         <div class="flex justify-end gap-2 pt-2">
             <a href="{% if project %}{% url 'project-detail' project.pk %}{% else %}{% url 'project-list' %}{% endif %}"
                 class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">

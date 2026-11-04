@@ -66,12 +66,35 @@
                 </div>
             </div>
             {% endif %}
+            <a href="{% url 'container-create' %}?project={{ project.pk }}"
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                <i data-lucide="box" class="mr-2 h-4 w-4"></i> {% translate "Nuevo contenedor" %}
+            </a>
             <a href="{% url 'instance-create' %}?project={{ project.pk }}"
                 class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
                 <i data-lucide="plus" class="mr-2 h-4 w-4"></i> {% translate "Nueva instancia" %}
             </a>
         </div>
         {% endif %}
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {% for kpi in kpis %}
+        <div class="rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+            <div class="flex items-center justify-between gap-2">
+                <p class="text-sm text-muted-foreground">{{ kpi.label }}</p>
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg
+                    {% if kpi.tone == 'green' %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
+                    {% elif kpi.tone == 'amber' %}bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300
+                    {% elif kpi.tone == 'red' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
+                    {% elif kpi.tone == 'blue' %}bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300
+                    {% else %}bg-muted text-muted-foreground{% endif %}"><i data-lucide="{{ kpi.icon }}" class="h-4 w-4"></i></span>
+            </div>
+            <p class="mt-2 text-2xl font-bold tabular-nums">{{ kpi.value }}</p>
+            <p class="mt-1 text-xs text-muted-foreground">{{ kpi.hint }}</p>
+        </div>
+        {% endfor %}
     </div>
 
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -98,6 +121,12 @@
                             </a>
                             {% if instance.custom_domain %}
                             <div class="text-xs text-muted-foreground">{{ instance.custom_domain }}</div>
+                            {% endif %}
+                            {% if instance.trial %}
+                            <div class="mt-0.5 text-xs text-muted-foreground"><i data-lucide="flask-conical" class="inline h-3 w-3"></i>
+                                {% translate "Demo de" %} {{ instance.trial.email }}{% if instance.trial.delete_at %} · {% if instance.trial.status == 'ready' %}{% translate "se detiene en" %} {{ instance.trial.days_until_stop }} d · {% endif %}{% translate "se elimina en" %} {{ instance.trial.days_until_delete }} d{% endif %}</div>
+                            {% elif instance.description %}
+                            <div class="mt-0.5 max-w-md truncate text-xs text-muted-foreground">{{ instance.description }}</div>
                             {% endif %}
                         </td>
                         <td class="px-5 py-3">{{ instance.odoo_version }}</td>
@@ -146,5 +175,140 @@
         </div>
         {% endif %}
     </div>
+
+    {% if containers %}
+    <!-- Docker containers of the project -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="border-b px-5 py-4"><h2 class="font-semibold">{% translate "Contenedores" %}</h2></div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-muted-foreground">
+                        <th class="h-11 px-5 font-medium">{% translate "Contenedor" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Imagen" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Estado" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Acceso" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for container in containers %}
+                    <tr class="border-b last:border-0 hover:bg-muted/50">
+                        <td class="px-5 py-3"><a href="{% url 'container-detail' container.pk %}" class="font-medium hover:underline">{{ container.name }}</a>
+                            {% if container.description %}<div class="max-w-md truncate text-xs text-muted-foreground">{{ container.description }}</div>{% endif %}</td>
+                        <td class="px-5 py-3 font-mono text-xs">{{ container.image|default:container.git_repo }}</td>
+                        <td class="px-5 py-3">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold
+                                {% if container.status == 'running' %}bg-green-100 text-green-800{% elif container.status == 'error' %}bg-red-100 text-red-800{% else %}bg-muted text-muted-foreground{% endif %}">
+                                {{ container.get_status_display }}</span>
+                        </td>
+                        <td class="px-5 py-3">
+                            {% if container.status == 'running' and container.url %}
+                            <a href="{{ container.url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline">{% translate "Abrir" %} <i data-lucide="external-link" class="h-3 w-3"></i></a>
+                            {% else %}<span class="text-muted-foreground">—</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if trial_page_url and can_manage %}
+    <!-- Test mode: public demo page, its API and the demos asked for -->
+    <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-4">
+            <h2 class="flex items-center gap-2 font-semibold"><i data-lucide="flask-conical" class="h-4 w-4"></i> {% translate "Modo test" %}</h2>
+            <span class="text-sm text-muted-foreground">
+                {{ project.trial_days }} {% translate "días" %} ·
+                {% translate "demos activas" %} {{ trial_active }}/{{ project.trial_max_active }} ·
+                {% translate "se crean en" %}
+                {% if project.trial_target_project %}<a href="{% url 'project-detail' project.trial_target_project.pk %}" class="text-primary hover:underline">{{ project.trial_target_project.name }}</a>{% else %}<span class="text-destructive">{% translate "sin proyecto" %}</span>{% endif %}
+            </span>
+        </div>
+        <div class="grid gap-5 p-5 md:grid-cols-2">
+            <div class="space-y-2">
+                <p class="text-sm font-medium">{% translate "Página pública" %}</p>
+                <div class="flex items-center gap-2">
+                    <a href="{{ trial_page_url }}" target="_blank" rel="noopener" class="min-w-0 flex-1 truncate text-sm text-primary hover:underline">{{ trial_page_url }}</a>
+                    <button type="button" onclick="navigator.clipboard.writeText('{{ trial_page_url|escapejs }}')" title="{% translate 'Copiar' %}"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent"><i data-lucide="copy" class="h-3 w-3"></i></button>
+                </div>
+                <p class="text-xs text-muted-foreground">
+                    {% blocktranslate count counter=trial_offered|length %}Ofrece {{ counter }} instancia en marcha{% plural %}Ofrece {{ counter }} instancias en marcha{% endblocktranslate %}{% if trial_offered %}: {% for instance in trial_offered %}{{ instance.name }} ({{ instance.odoo_version }}){% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}.
+                    {% translate "Solo se listan las instancias en marcha; su descripción se edita en la ficha de cada instancia." %}
+                </p>
+            </div>
+            <div class="space-y-2">
+                <p class="text-sm font-medium">{% translate "API pública (para tu web)" %}</p>
+                <div class="flex items-center gap-2">
+                    <code class="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1 text-xs">GET {{ trial_api_url }}</code>
+                    <button type="button" onclick="navigator.clipboard.writeText('{{ trial_api_url|escapejs }}')" title="{% translate 'Copiar' %}"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent"><i data-lucide="copy" class="h-3 w-3"></i></button>
+                </div>
+                <p class="text-xs text-muted-foreground">{% translate "Sin autenticación y con CORS abierto: se puede llamar con fetch() desde cualquier web. Devuelve:" %}</p>
+                <pre class="overflow-x-auto rounded-md bg-muted p-3 text-xs leading-relaxed">{
+  "name": "{{ project.name|escapejs }}",
+  "slug": "{{ project.trial_slug }}",
+  "url": "{{ trial_page_url }}",
+  "message": "…",
+  "days": {{ project.trial_days }},
+  "available": true,
+  "instances": [
+    {"id": 12, "name": "bim18", "version": "18.0", "description": "…"}
+  ]
+}</pre>
+            </div>
+        </div>
+        {% if trials %}
+        <div class="overflow-x-auto border-t">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-muted-foreground">
+                        <th class="h-11 px-5 font-medium">{% translate "Solicitante" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Versión" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Demo" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Estado" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Pedida" %}</th>
+                        <th class="h-11 px-5 font-medium">{% translate "Vence" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trial in trials %}
+                    <tr class="border-b last:border-0 hover:bg-muted/50">
+                        <td class="px-5 py-3">
+                            <div class="font-medium">{{ trial.name }}{% if trial.company %} <span class="font-normal text-muted-foreground">· {{ trial.company }}</span>{% endif %}</div>
+                            <div class="text-xs text-muted-foreground">{% if trial.job_title %}{{ trial.job_title }} · {% endif %}{% if trial.country %}{{ trial.country }}{% endif %}</div>
+                            <div class="text-xs text-muted-foreground">{{ trial.email }}{% if trial.phone %} · {{ trial.phone }}{% endif %}</div>
+                        </td>
+                        <td class="px-5 py-3">{{ trial.source.name|default:"—" }} <span class="text-muted-foreground">({{ trial.version }})</span></td>
+                        <td class="px-5 py-3">
+                            {% if trial.instance %}<a href="{% url 'instance-detail' trial.instance.pk %}" class="text-primary hover:underline">{{ trial.instance.name }}</a>
+                            {% elif trial.task_id %}<a href="{% url 'activity-detail' trial.task_id %}" class="text-muted-foreground hover:underline">{% translate "ver tarea" %}</a>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="px-5 py-3">
+                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold
+                                {% if trial.status == 'ready' %}bg-green-100 text-green-800
+                                {% elif trial.status == 'failed' %}bg-red-100 text-red-800
+                                {% elif trial.status == 'pending' %}bg-blue-100 text-blue-800
+                                {% else %}bg-muted text-muted-foreground{% endif %}" {% if trial.error %}title="{{ trial.error }}"{% endif %}>
+                                {{ trial.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-muted-foreground">{{ trial.created_at|date:"d/m/Y H:i" }}</td>
+                        <td class="px-5 py-3 text-muted-foreground">
+                            {{ trial.expires_at|date:"d/m/Y"|default:"—" }}
+                            {% if trial.instance and trial.delete_at %}<div class="text-xs">{% if trial.status == 'ready' %}{% translate "se detiene en" %} {{ trial.days_until_stop }} d · {% endif %}{% translate "se elimina en" %} {{ trial.days_until_delete }} d</div>{% endif %}
+                            {% if trial.emailed_at %}<div class="text-xs" title="{% translate 'Datos enviados por email' %}"><i data-lucide="mail-check" class="inline h-3 w-3"></i> email</div>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -18,6 +18,10 @@ RESOURCE_NAME_RE = re.compile(r'^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')
 # Same rule Odoo's database manager enforces
 DATABASE_NAME_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$')
 DOMAIN_RE = re.compile(r'^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$')
+# Git branches: never starting with "-" (git would read it as an option) and without ".."
+GIT_BRANCH_RE = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9._/-]{0,99}$')
+# Only HTTPS clone URLs (no ssh://, file://, ext:: or values that look like options)
+REPO_URL_RE = re.compile(r'^https://[A-Za-z0-9.-]+(:[0-9]+)?/[A-Za-z0-9._/-]+?(\.git)?$')
 
 
 def validate_resource_name(value):
@@ -25,6 +29,39 @@ def validate_resource_name(value):
         raise ValidationError(
             'Solo se permiten letras minúsculas, números y guiones (sin empezar ni terminar en guion, máx. 63).'
         )
+
+
+def validate_git_branch(value):
+    if value and (not GIT_BRANCH_RE.match(value) or '..' in value or value.endswith(('/', '.lock'))):
+        raise ValidationError('Rama inválida: letras, números, «.», «_», «-» y «/», sin empezar por guion.')
+
+
+def validate_repo_url(value):
+    if value and (not REPO_URL_RE.match(value) or '..' in value):
+        raise ValidationError('URL inválida: usa la URL HTTPS de clonado (p. ej. https://github.com/OCA/web.git).')
+
+
+def client_ip(request):
+    """
+    The address of the visitor. Behind Traefik the connection comes from a private (Docker)
+    address and Traefik appends the real one as the LAST X-Forwarded-For entry; the entries
+    before it are whatever the client sent, so they are never trusted. A direct connection
+    (public address) is taken as is, whatever headers it carries.
+    """
+    import ipaddress
+    remote = request.META.get('REMOTE_ADDR', '')
+    try:
+        proxied = ipaddress.ip_address(remote).is_private or ipaddress.ip_address(remote).is_loopback
+    except ValueError:
+        proxied = False
+    if proxied:
+        forwarded = [part.strip() for part in request.META.get('HTTP_X_FORWARDED_FOR', '').split(',') if part.strip()]
+        if forwarded:
+            try:
+                return str(ipaddress.ip_address(forwarded[-1]))
+            except ValueError:
+                pass
+    return remote or None
 
 
 def validate_database_name(value):
@@ -64,10 +101,25 @@ def domain_in_use(domain, exclude_instance=None, exclude_container=None):
 
     if not domain:
         return False
-    domain = domain.lower()
+    domain = domain.lower().rstrip('.')
     config = get_global_config()
     if config and config.main_domain and domain in (config.main_domain.lower(), f'www.{config.main_domain.lower()}'):
         return True
+    # The automatic subdomains of the platform (<subdomain>.<domain>) belong to their instance or container
+    from .services.domains import main_domain
+    platform = main_domain()
+    if platform and domain in (platform, f'www.{platform}'):
+        return True
+    if platform and domain.endswith(f'.{platform}'):
+        label = domain[:-len(platform) - 1].removeprefix('www.')
+        owners = Instance.objects.filter(subdomain=label)
+        if exclude_instance is not None:
+            owners = owners.exclude(pk=exclude_instance.pk)
+        named = Container.objects.filter(name=label)
+        if exclude_container is not None:
+            named = named.exclude(pk=exclude_container.pk)
+        if owners.exists() or named.exists():
+            return True
 
     instances = Instance.objects.filter(custom_domain__iexact=domain)
     if exclude_instance is not None:
@@ -147,15 +199,31 @@ def management_required(view_func):
     return _wrapped
 
 
-# Brute-force protection for login and 2FA. Keyed by account, not IP: behind
-# Traefik every request comes from the proxy address.
+# Brute-force protection for login and 2FA: 5 failures from one address lock that address out of
+# the account; 20 from anywhere lock the account itself (so one attacker can't lock its owner out).
 MAX_ATTEMPTS = 5
+MAX_ACCOUNT_ATTEMPTS = 20
 LOCKOUT_SECONDS = 15 * 60
 
 
-def is_locked_out(key):
+def is_locked_out(key, limit=MAX_ATTEMPTS):
     from django.core.cache import cache
-    return cache.get(key, 0) >= MAX_ATTEMPTS
+    return cache.get(key, 0) >= limit
+
+
+def login_lockout_keys(request, username):
+    """(per address, per account) keys. The username as Django authenticates it (NFKC, any case)."""
+    import unicodedata
+    account = unicodedata.normalize('NFKC', username or '').strip().casefold()
+    return f'login-fail:{account}:{client_ip(request)}', f'login-fail:{account}'
+
+
+def missing_required_2fa(user):
+    """2FA is mandatory on the platform and this user hasn't set it up."""
+    if not is_two_factor_required():
+        return False
+    profile = getattr(user, 'profile', None)
+    return not (profile and profile.two_factor_enabled and profile.two_factor_secret)
 
 
 def register_failure(key):

@@ -14,6 +14,9 @@ class PersonalTokenAuthentication(authentication.BaseAuthentication):
         token = MCPToken.objects.select_related('user').filter(token_hash=hash_token(header[7:].strip())).first()
         if token is None or not token.user.is_active:
             raise exceptions.AuthenticationFailed('Invalid token')
+        from .permissions import missing_required_2fa
+        if missing_required_2fa(token.user):
+            raise exceptions.AuthenticationFailed('Two-factor authentication setup required.')
         MCPToken.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
         return token.user, token
 
