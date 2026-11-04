@@ -3314,3 +3314,23 @@ class CrmBoardTests(BaseTestCase):
         request_demo(self.alice_project, self.alice_instance, 'Ana', 'ana@example.com', ip='10.0.0.2')
         self.assertEqual(Contact.objects.get(email='ana@example.com').stage, 'won')
         self.assertEqual(Contact.objects.create(owner=self.bob, name='X', email='x@example.com').stage, 'contacted')
+
+
+class InstallNamedModuleTests(BaseTestCase):
+    def test_theme_button_and_named_module_queue_the_install(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        page = self.client.get(f'/instance/{self.alice_instance.pk}/')
+        self.assertContains(page, 'Instalar el tema Community SH')
+        self.client.post(f'/instance/{self.alice_instance.pk}/install-named-module/', {'module': 'community_sh_theme'})
+        task = Task.objects.get(kind=Task.Kind.AI_MODULE)
+        self.assertEqual((task.instance, task.params['module'], task.params['upgrade']), (self.alice_instance, 'community_sh_theme', False))
+        self.client.post(f'/instance/{self.alice_instance.pk}/install-named-module/', {'module': 'sale; rm -rf /'})
+        self.client.post(f'/instance/{self.alice_instance.pk}/install-named-module/', {'module': 'sale_management', 'upgrade': '1'})
+        self.assertEqual([t.params['module'] for t in Task.objects.order_by('pk')], ['community_sh_theme', 'sale_management'])
+        self.assertTrue(Task.objects.order_by('pk').last().params['upgrade'])
+        # Clients can't
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(f'/instance/{self.alice_instance.pk}/install-named-module/', {'module': 'x_y'}).status_code, 403)

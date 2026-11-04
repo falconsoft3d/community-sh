@@ -629,6 +629,35 @@
         </div>
         {% endif %}
 
+        {% if can_manage %}
+        <!-- Install a module that is already available (theme, repos, Odoo's own) by its technical name -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-wrap items-start gap-3 p-6 pb-2">
+                <div class="min-w-0 flex-1 space-y-1.5">
+                    <h3 class="font-semibold leading-none tracking-tight">Instalar un módulo disponible</h3>
+                    <p class="text-sm text-muted-foreground">Instala o actualiza en todas las bases de datos de la instancia un módulo que ya está en sus addons (el tema, los de tus repositorios o los de Odoo). La instancia necesita tener al menos una base de datos.</p>
+                </div>
+                <form method="post" action="{% url 'instance-install-named-module' object.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="module" value="community_sh_theme">
+                    <button type="submit" class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="palette" class="h-4 w-4"></i> Instalar el tema Community SH
+                    </button>
+                </form>
+            </div>
+            <form method="post" action="{% url 'instance-install-named-module' object.pk %}" class="flex flex-wrap items-end gap-2 p-6 pt-4">
+                {% csrf_token %}
+                <div class="min-w-56 flex-1 space-y-1.5">
+                    <label for="named_module" class="text-sm font-medium">Nombre técnico</label>
+                    <input type="text" id="named_module" name="module" required pattern="[a-z0-9_]{2,64}" placeholder="sale_management"
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm">
+                </div>
+                <label class="flex h-10 items-center gap-2 text-sm"><input type="checkbox" name="upgrade" value="1" class="h-4 w-4 rounded border-input"> Actualizar (-u) en vez de instalar</label>
+                <button type="submit" class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">Instalar</button>
+            </form>
+        </div>
+        {% endif %}
+
         <!-- Install Module from ZIP Card -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 pb-2">

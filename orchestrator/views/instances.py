@@ -740,3 +740,21 @@ def instance_admin_login(request, pk):
     signature = hmac.new(admin_login_secret(instance).encode(), f'{database}:{expires}:{nonce}'.encode(), hashlib.sha256).hexdigest()
     query = urlencode({'db': database, 'exp': expires, 'nonce': nonce, 'sig': signature})
     return HttpResponseRedirect(f'{instance.url.rstrip("/")}/community_sh/login?{query}')
+
+
+@login_required
+@require_POST
+def instance_install_named_module(request, pk):
+    """Install (or update) a module that is already in the addons path, by its technical name, in every database."""
+    import re as _re
+    from django.urls import reverse
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    module = request.POST.get('module', '').strip()
+    if not _re.fullmatch(r'[a-z0-9_]{2,64}', module):
+        messages.error(request, 'Nombre técnico no válido: minúsculas, números y guiones bajos (p. ej. community_sh_theme)')
+        return redirect(reverse('instance-detail', args=[pk]) + '#modules')
+    upgrade = request.POST.get('upgrade') == '1'
+    enqueue(Task.Kind.AI_MODULE, instance, request.user, module=module, upgrade=upgrade, label=module)
+    messages.success(request, f'{"Actualizando" if upgrade else "Instalando"} {module} en todas las bases de la instancia: '
+                              'sigue el progreso en «Tareas recientes»')
+    return redirect(reverse('instance-detail', args=[pk]) + '#tasks')

@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.60**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.61**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.61 — 2026-11-04
+
+- Instancias → Modules: botón «Instalar el tema Community SH» y campo para instalar o actualizar (-u) cualquier módulo disponible por su nombre técnico en todas las bases de la instancia, como tarea con su log (si falla, la base queda como estaba).
 
 ## 1.0.60 — 2026-11-04
 

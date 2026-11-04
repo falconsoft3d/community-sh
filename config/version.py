@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.60'
+VERSION = '1.0.61'
 
 CHANGELOG = [
+    {
+        'version': '1.0.61',
+        'date': '2026-11-04',
+        'notes': [
+            'Instancias → Modules: botón «Instalar el tema Community SH» y campo para instalar o actualizar (-u) cualquier módulo disponible por su nombre técnico en todas las bases de la instancia, como tarea con su log (si falla, la base queda como estaba).',
+        ],
+    },
     {
         'version': '1.0.60',
         'date': '2026-11-04',
