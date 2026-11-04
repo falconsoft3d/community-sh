@@ -56,6 +56,9 @@ def project_detail(request, pk):
             trial_active=active_demos(project).count(),
             trials=project.trial_requests.select_related('instance', 'source')[:50],
         )
+        new_key = request.session.pop('new_trial_api_key', None)
+        if new_key and new_key.get('project') == project.pk:
+            context['new_trial_api_key'] = new_key['key']
     return render(request, 'orchestrator/project_detail.html', context)
 
 

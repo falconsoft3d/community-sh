@@ -46,8 +46,11 @@ class DemoForm(forms.Form):
 
     VISIBLE = ('name', 'email', 'company', 'job_title', 'phone', 'country')
 
-    def __init__(self, *args, instances=(), **kwargs):
+    def __init__(self, *args, instances=(), captcha=True, **kwargs):
         super().__init__(*args, **kwargs)
+        if not captcha:
+            # Asked with the project's API key: the key already says who calls
+            del self.fields['captcha_answer'], self.fields['captcha_token']
         self.instances = {str(instance.pk): instance for instance in instances}
         self.fields['instance'].choices = [(pk, instance.name) for pk, instance in self.instances.items()]
         if len(self.instances) == 1:
@@ -61,8 +64,9 @@ class DemoForm(forms.Form):
         self.fields['phone'].widget.input_type = 'tel'
         self.fields['phone'].widget.attrs.update({'inputmode': 'tel', 'placeholder': '+34 600 000 000'})
         self.fields['country'].widget.attrs['list'] = 'countries'
-        self.fields['captcha_answer'].widget.attrs.update({
-            'class': INPUT.replace('w-full', 'w-24'), 'inputmode': 'numeric', 'autocomplete': 'off', 'pattern': '[0-9]{1,3}'})
+        if 'captcha_answer' in self.fields:
+            self.fields['captcha_answer'].widget.attrs.update({
+                'class': INPUT.replace('w-full', 'w-24'), 'inputmode': 'numeric', 'autocomplete': 'off', 'pattern': '[0-9]{1,3}'})
         self.new_captcha()
 
     def new_captcha(self):
@@ -80,7 +84,8 @@ class DemoForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        if 'captcha_answer' in data and not check_captcha(data.get('captcha_token'), data['captcha_answer']):
+        if 'captcha_answer' in self.fields and 'captcha_answer' in data \
+                and not check_captcha(data.get('captcha_token'), data['captcha_answer']):
             self.add_error('captcha_answer', 'La suma no es correcta (o caducó): prueba con la nueva.')
         return data
 
@@ -157,7 +162,7 @@ def _cors(response, methods='GET, OPTIONS'):
     """Any website can call the public demo API from the browser (no cookies are involved)."""
     response['Access-Control-Allow-Origin'] = '*'
     response['Access-Control-Allow-Methods'] = methods
-    response['Access-Control-Allow-Headers'] = 'Content-Type'
+    response['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Demo-Key'
     response['Access-Control-Max-Age'] = '3600'
     return response
 
@@ -194,19 +199,29 @@ def trial_api(request, slug):
     except ValueError:
         return _cors(JsonResponse({'detail': 'JSON no válido'}, status=400), methods)
     data = {key: str(value) for key, value in data.items() if value is not None}
-    form = DemoForm(data, instances=demo_instances(project))
+    # With the project's API key (a website's backend): no captcha and no per-address limit
+    authorization = request.headers.get('Authorization', '')
+    key = authorization[7:].strip() if authorization.startswith('Bearer ') else request.headers.get('X-Demo-Key', '').strip()
+    if key and not project.trial_api_key_ok(key):
+        return _cors(JsonResponse({'detail': 'Clave de API no válida'}, status=401), methods)
+    with_key = bool(key)
+    form = DemoForm(data, instances=demo_instances(project), captcha=not with_key)
     if not form.is_valid():
-        return _cors(JsonResponse({'errors': {field: [str(message) for message in messages_]
-                                              for field, messages_ in form.errors.items()},
-                                   'captcha': _captcha_json(form)}, status=400), methods)
+        body = {'errors': {field: [str(message) for message in messages_] for field, messages_ in form.errors.items()}}
+        if not with_key:
+            body['captcha'] = _captcha_json(form)
+        return _cors(JsonResponse(body, status=400), methods)
     if project.trial_target_project is None:
         return _cors(JsonResponse({'detail': 'Las demos no están disponibles ahora mismo.'}, status=503), methods)
     cleaned = form.cleaned_data
     trial, error = request_demo(project, form.instances[cleaned['instance']], cleaned['name'], cleaned['email'],
                                 cleaned['company'], cleaned['phone'], client_ip(request),
-                                job_title=cleaned['job_title'], country=cleaned['country'])
+                                job_title=cleaned['job_title'], country=cleaned['country'], check_ip=not with_key)
     if trial is None:
-        return _cors(JsonResponse({'detail': error, 'captcha': _captcha_json(form)}, status=429), methods)
+        body = {'detail': error}
+        if not with_key:
+            body['captcha'] = _captcha_json(form)
+        return _cors(JsonResponse(body, status=429), methods)
     from django.urls import reverse
     page = request.build_absolute_uri(reverse('trial-status', args=[slug, trial.token]))
     return _cors(JsonResponse({'status': trial.status, 'status_page': page, 'status_api': f'{page}?format=json'},
@@ -232,3 +247,15 @@ def instance_update_description(request, pk):
     instance.save(update_fields=['description'])
     messages.success(request, 'Descripción actualizada')
     return redirect('instance-detail', pk=pk)
+
+
+@login_required
+@require_POST
+def project_trial_key(request, pk):
+    """A new demo API key for the project, shown once on its page (the previous one stops working)."""
+    from ..permissions import get_project_for_user
+    project = get_project_for_user(request.user, pk, manage=True)
+    request.session['new_trial_api_key'] = {'project': project.pk, 'key': project.new_trial_api_key()}
+    messages.success(request, 'Clave de API nueva: cópiala ahora, no se vuelve a mostrar. La anterior ya no funciona.')
+    from django.urls import reverse
+    return redirect(reverse('project-detail', args=[project.pk]) + '#demo-api')

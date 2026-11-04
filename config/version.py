@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.56'
+VERSION = '1.0.57'
 
 CHANGELOG = [
+    {
+        'version': '1.0.57',
+        'date': '2026-11-04',
+        'notes': [
+            'Demos: clave de API por proyecto (tarjeta «Modo test» → Generar clave), para que el servidor de tu web pida demos sin captcha con Authorization: Bearer csh_demo_… en POST /api/public/demos/{url}/. Solo sirve para las demos de ese proyecto, se guarda cifrada, se muestra una vez y se puede regenerar (la anterior deja de funcionar). Se mantienen el límite por email al mes, el diario y el de demos a la vez.',
+        ],
+    },
     {
         'version': '1.0.56',
         'date': '2026-11-04',

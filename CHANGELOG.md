@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.56**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.57**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.57 — 2026-11-04
+
+- Demos: clave de API por proyecto (tarjeta «Modo test» → Generar clave), para que el servidor de tu web pida demos sin captcha con Authorization: Bearer csh_demo_… en POST /api/public/demos/{url}/. Solo sirve para las demos de ese proyecto, se guarda cifrada, se muestra una vez y se puede regenerar (la anterior deja de funcionar). Se mantienen el límite por email al mes, el diario y el de demos a la vez.
 
 ## 1.0.56 — 2026-11-04
 

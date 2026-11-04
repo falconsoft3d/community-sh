@@ -23,6 +23,9 @@ class Project(models.Model):
     trial_target_project = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True,
                                              related_name='trial_sources', help_text="Sibling project that holds the demos")
     trial_message = models.TextField(blank=True, help_text="Text shown on the demo page")
+    # Key for a website's backend to ask for demos of this project through the API, without the captcha
+    trial_api_key_hash = models.CharField(max_length=64, blank=True, help_text="SHA-256 of the demo API key")
+    trial_api_key_hint = models.CharField(max_length=8, blank=True, help_text="Last characters, to recognise it")
     trial_max_active = models.PositiveSmallIntegerField(default=3, validators=[MinValueValidator(1), MaxValueValidator(50)], help_text="Demos running at the same time (each one is an Odoo and a PostgreSQL)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -35,6 +38,23 @@ class Project(models.Model):
 
     def __str__(self):
         return self.name
+
+    def new_trial_api_key(self):
+        """A new demo API key (the previous one stops working). Returned once: only its hash is stored."""
+        import hashlib
+        import secrets
+        key = f'csh_demo_{secrets.token_urlsafe(32)}'
+        self.trial_api_key_hash = hashlib.sha256(key.encode()).hexdigest()
+        self.trial_api_key_hint = key[-4:]
+        self.save(update_fields=['trial_api_key_hash', 'trial_api_key_hint'])
+        return key
+
+    def trial_api_key_ok(self, key):
+        import hashlib
+        import hmac
+        if not self.trial_api_key_hash or not key:
+            return False
+        return hmac.compare_digest(self.trial_api_key_hash, hashlib.sha256(key.encode()).hexdigest())
 
     @property
     def client_display(self):

@@ -260,6 +260,43 @@
 }</pre>
             </div>
         </div>
+        <!-- Demo API key: a website's backend asks for demos without the captcha -->
+        <div id="demo-api" class="space-y-3 border-t p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="text-sm font-medium">{% translate "Clave de API para pedir demos desde tu web" %}</p>
+                    <p class="text-xs text-muted-foreground">
+                        {% if project.trial_api_key_hash %}{% translate "Activa" %}: <code class="font-mono">csh_demo_…{{ project.trial_api_key_hint }}</code>.
+                        {% else %}{% translate "Sin clave: la API pública pide resolver la suma (captcha)." %}{% endif %}
+                        {% translate "Con ella, tu servidor pide demos de este proyecto sin captcha (se mantienen una por email al mes, el límite diario y las demos a la vez). Úsala solo desde tu servidor, nunca en el JavaScript de una página." %}
+                    </p>
+                </div>
+                <form method="post" action="{% url 'project-trial-key' project.pk %}"
+                    {% if project.trial_api_key_hash %}onsubmit="return confirm('¿Generar una clave nueva? La actual dejará de funcionar.');"{% endif %}>
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
+                        <i data-lucide="key-round" class="mr-2 h-4 w-4"></i> {% if project.trial_api_key_hash %}{% translate "Regenerar clave" %}{% else %}{% translate "Generar clave" %}{% endif %}
+                    </button>
+                </form>
+            </div>
+            {% if new_trial_api_key %}
+            <div class="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+                <p class="font-medium">{% translate "Copia la clave ahora: no se vuelve a mostrar." %}</p>
+                <div class="flex items-center gap-2">
+                    <code class="min-w-0 flex-1 truncate rounded bg-background px-2 py-1 font-mono text-xs text-foreground">{{ new_trial_api_key }}</code>
+                    <button type="button" onclick="navigator.clipboard.writeText('{{ new_trial_api_key|escapejs }}')" title="{% translate 'Copiar' %}"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent"><i data-lucide="copy" class="h-3 w-3"></i></button>
+                </div>
+            </div>
+            {% endif %}
+            <pre class="overflow-x-auto rounded-md bg-muted p-3 text-xs leading-relaxed">curl -X POST {{ trial_api_url }} \
+  -H 'Authorization: Bearer {% if new_trial_api_key %}{{ new_trial_api_key }}{% else %}csh_demo_…{% endif %}' \
+  -H 'Content-Type: application/json' \
+  -d '{"instance": {% if trial_offered %}{{ trial_offered.0.pk }}{% else %}12{% endif %}, "name": "Ana Pérez", "email": "ana@example.com", "company": "Constructora Sol",
+       "job_title": "CEO", "phone": "+34 600 111 222", "country": "España"}'
+# → 201 {"status_page": "…", "status_api": "…?format=json"}</pre>
+        </div>
+
         {% if trials %}
         <div class="overflow-x-auto border-t">
             <table class="w-full text-sm">

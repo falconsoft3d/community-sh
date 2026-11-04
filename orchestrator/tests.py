@@ -3177,3 +3177,75 @@ class DockerDeleteAllUnusedTests(BaseTestCase):
         self.client.post(reverse('docker-cleanup'), {'kinds': list(docker_admin.CLEANUP_KINDS), 'confirm': 'BORRAR'})
         task = Task.objects.get(kind=Task.Kind.DOCKER_CLEANUP)
         self.assertEqual(task.params['kinds'], list(docker_admin.CLEANUP_KINDS))
+
+
+class DemoApiKeyTests(BaseTestCase):
+    """A project's own API key lets a website's backend ask for demos without the captcha."""
+
+    def setUp(self):
+        super().setUp()
+        from .project_models import Project
+        self.demos = Project.objects.create(name='BIM demos', owner=self.alice)
+        self.alice_project.trial_enabled, self.alice_project.trial_slug = True, 'bim'
+        self.alice_project.trial_target_project = self.demos
+        self.alice_project.save()
+        self.alice_instance.status = Instance.Status.RUNNING
+        self.alice_instance.save()
+
+    def ask(self, key=None, email='ana@example.com', **headers):
+        import json
+        body = {'instance': self.alice_instance.pk, 'name': 'Ana', 'email': email, 'company': 'Sol', 'job_title': 'CEO',
+                'phone': '+34 600 111 222', 'country': 'España'}
+        if key:
+            headers['HTTP_AUTHORIZATION'] = f'Bearer {key}'
+        return self.client.post('/api/public/demos/bim/', json.dumps(body), content_type='application/json', **headers)
+
+    def generate(self):
+        self.client.force_login(self.alice)
+        self.client.post(f'/project/{self.alice_project.pk}/demo-api-key/')
+        page = self.client.get(f'/project/{self.alice_project.pk}/').content.decode()
+        import re
+        key = re.search(r'csh_demo_[A-Za-z0-9_-]{20,}', page).group(0)
+        self.client.logout()
+        return key, page
+
+    def test_key_is_shown_once_and_skips_the_captcha(self):
+        from .trial_models import TrialRequest
+        key, page = self.generate()
+        self.assertIn('no se vuelve a mostrar', page)
+        self.client.force_login(self.alice)
+        self.assertNotIn(key, self.client.get(f'/project/{self.alice_project.pk}/').content.decode())
+        self.client.logout()
+        # Without key or captcha: refused; with the key: created
+        self.assertEqual(self.ask().status_code, 400)
+        self.assertEqual(self.ask(key='csh_demo_wrong').status_code, 401)
+        response = self.ask(key=key)
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual(TrialRequest.objects.get().job_title, 'CEO')
+        # X-Demo-Key works too; the per-address limit doesn't apply (a backend is always one address)
+        self.alice_project.refresh_from_db()
+        self.alice_project.trial_max_active = 10
+        self.alice_project.save()
+        self.config.trial_max_active_total = 10
+        self.config.save()
+        for i in range(4):
+            response = self.ask(email=f'p{i}@example.com', HTTP_X_DEMO_KEY=key)
+            self.assertEqual(response.status_code, 201, response.content.decode())
+        # The monthly limit per email still does
+        self.assertEqual(self.ask(key=key).status_code, 429)
+
+    def test_regenerating_invalidates_the_previous_key(self):
+        old, _ = self.generate()
+        new, _ = self.generate()
+        self.assertNotEqual(old, new)
+        self.assertEqual(self.ask(key=old).status_code, 401)
+        self.assertEqual(self.ask(key=new).status_code, 201)
+        self.alice_project.refresh_from_db()
+        self.assertEqual(self.alice_project.trial_api_key_hint, new[-4:])
+        self.assertNotIn(new, self.alice_project.trial_api_key_hash)
+
+    def test_only_the_owner_manages_the_key(self):
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(f'/project/{self.alice_project.pk}/demo-api-key/').status_code, 404)
+        self.alice_project.refresh_from_db()
+        self.assertEqual(self.alice_project.trial_api_key_hash, '')

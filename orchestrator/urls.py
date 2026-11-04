@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views.activity import activity_detail, activity_list, task_live
-from .views.trials import instance_update_description, trial_api, trial_captcha, trial_page, trial_status
+from .views.trials import instance_update_description, project_trial_key, trial_api, trial_captcha, trial_page, trial_status
 from .views.webhooks import github_webhook, instance_auto_update, instance_webhook_github, instance_webhook_secret
 from .views.contacts import contact_delete, contact_detail, contact_export, contact_list
 from .views.odoo_ai import instance_migrate, odoo_ai_request
@@ -136,6 +136,7 @@ urlpatterns = [
     path('project/<int:pk>/', project_detail, name='project-detail'),
     path('project/<int:pk>/edit/', project_edit, name='project-edit'),
     path('project/<int:pk>/delete/', project_delete, name='project-delete'),
+    path('project/<int:pk>/demo-api-key/', project_trial_key, name='project-trial-key'),
     path('instances/', InstanceListView.as_view(), name='instance-list'),
     path('instance/new/', InstanceCreateView.as_view(), name='instance-create'),
     path('instance/<int:pk>/', InstanceDetailView.as_view(), name='instance-detail'),

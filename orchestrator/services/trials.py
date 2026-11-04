@@ -144,7 +144,7 @@ def demo_name(project, trial):
             return name
 
 
-def request_demo(project, source, name, email, company='', phone='', ip=None, job_title='', country=''):
+def request_demo(project, source, name, email, company='', phone='', ip=None, job_title='', country='', check_ip=True):
     """
     Store the request and queue its build. Returns (TrialRequest, '') or (None, why not).
     The limits are checked and the request stored in one transaction, with the project locked:
@@ -156,7 +156,7 @@ def request_demo(project, source, name, email, company='', phone='', ip=None, jo
     from ..tasks import enqueue
     with transaction.atomic():
         project = Project.objects.select_for_update().get(pk=project.pk)
-        error = refusal(project, email, ip)
+        error = refusal(project, email, ip if check_ip else None)
         if error:
             return None, error
         trial = TrialRequest.objects.create(project=project, source=source, name=name, email=email.lower(),

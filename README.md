@@ -189,7 +189,12 @@ curl -X POST https://yourdomain/api/public/demos/bim/ -H 'Content-Type: applicat
   "job_title": "CEO", "phone": "+34 600 111 222", "country": "España",
   "captcha_token": "...", "captcha_answer": 11}'
 # → 201 {"status_page": "...", "status_api": "...?format=json"}: follow the progress and get the credentials
-# From your backend, with a personal token (no captcha, same limits)
+# From your website's backend, with the project's demo API key (project page → «Modo test» → Generar clave):
+# no captcha, same limits; it only asks for demos of that project and can be regenerated at any time
+curl -X POST https://yourdomain/api/public/demos/bim/ -H 'Authorization: Bearer csh_demo_...' -H 'Content-Type: application/json' -d '{
+  "instance": 12, "name": "Ana Pérez", "email": "ana@example.com", "company": "Constructora Sol",
+  "job_title": "CEO", "phone": "+34 600 111 222", "country": "España"}'
+# Or with a personal token (whole account: avoid it on a website)
 curl -X POST https://yourdomain/api/demos/ -H 'Authorization: Bearer csh_...' -H 'Content-Type: application/json' \
   -d '{"project": 3, "instance": 12, "name": "Ana", "email": "ana@example.com", "company": "Sol", "job_title": "CEO", "phone": "+34 600", "country": "España"}'
 ```
