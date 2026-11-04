@@ -62,3 +62,13 @@ class TodoAdmin(admin.ModelAdmin):
     list_display = ['title', 'status', 'created_by', 'completed_by', 'completed_in_version', 'created_at']
     list_filter = ['status']
     search_fields = ['title', 'description']
+
+
+from .trial_models import TrialRequest
+
+
+@admin.register(TrialRequest)
+class TrialRequestAdmin(admin.ModelAdmin):
+    list_display = ('email', 'name', 'company', 'job_title', 'country', 'project', 'version', 'status', 'created_at', 'expires_at')
+    list_filter = ('status', 'project')
+    search_fields = ('email', 'name', 'company')

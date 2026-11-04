@@ -121,6 +121,10 @@ class ContainerTemplateLoader:
             'labels': template.get('labels', {}),
             'description': template.get('description', ''),
             'command': template.get('command', ''),
+            # Built from a repository instead of pulled (see Container.git_repo)
+            'git_repo': template.get('git_repo', ''),
+            'git_branch': template.get('git_branch', 'main'),
+            'dockerfile': template.get('dockerfile', 'Dockerfile'),
         }
 
     def get_template_raw(self, template_name):

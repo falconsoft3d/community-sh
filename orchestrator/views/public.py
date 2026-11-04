@@ -48,6 +48,10 @@ def home(request):
         'apps': apps,
         'odoo_versions': odoo_versions,
         'registration_enabled': is_registration_enabled(),
+        'manual_topics': [
+            ('folder-kanban', 'Proyectos'), ('server', 'Instancias de Odoo'), ('archive', 'Copias de seguridad'),
+            ('flask-conical', 'Demos para clientes'), ('code', 'API pública'), ('shield-check', 'Seguridad'),
+        ],
     })
 
 

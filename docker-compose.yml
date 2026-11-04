@@ -50,7 +50,9 @@ services:
     # Deploys/backups run in the worker; the timeout covers certbot and instance deletion
     command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 4 --timeout 300
     ports:
-      - "8000:8000"
+      # With a domain the panel is reached through Traefik (HTTPS): PANEL_BIND=127.0.0.1 keeps the
+      # plain-HTTP port off the internet. Without a domain http://IP:8000 is the way in.
+      - "${PANEL_BIND:-0.0.0.0}:8000:8000"
     environment:
       - DATABASE_URL=${DATABASE_URL:-}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}

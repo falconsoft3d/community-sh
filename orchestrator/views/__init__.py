@@ -29,6 +29,7 @@ from .docker import (
     docker_volume_remove,
     docker_network_remove,
     docker_prune,
+    docker_cleanup,
 )
 from .projects import (
     project_list,
@@ -83,6 +84,7 @@ from .platform import (
     metrics_history_data,
     settings_view,
     settings_ai_test,
+    settings_email_test,
     run_auto_backups_view,
     generate_ssl_certificate,
 )
@@ -112,6 +114,7 @@ __all__ = [
     'docker_volume_remove',
     'docker_network_remove',
     'docker_prune',
+    'docker_cleanup',
     'project_list',
     'project_create',
     'project_detail',
@@ -163,6 +166,7 @@ __all__ = [
     'metrics_history_data',
     'settings_view',
     'settings_ai_test',
+    'settings_email_test',
     'run_auto_backups_view',
     'generate_ssl_certificate',
     'user_list',

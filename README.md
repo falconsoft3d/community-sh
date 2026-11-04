@@ -2,7 +2,17 @@
 
 🐳 Django-based orchestration platform for deploying and managing Odoo instances using Docker.
 
+📘 **User manual (PDF, with screenshots):** [Español](orchestrator/static/manual/community-sh-manual-es.pdf) · [English](orchestrator/static/manual/community-sh-manual-en.pdf) — also on the home page of your panel (`/static/manual/…`).
+
 ## ✨ Features
+- 📈 **Dashboard** with the key figures of the whole platform (instances, containers, backups, tasks, demos, server and security), each one linked to its page; every project has its own KPIs
+- 🧪 **Demos for your clients (test mode)**: a project publishes a page (`https://yourdomain/bim`) where anyone picks a version, fills in name, email, company, job title, phone and country, solves a sum (own captcha) and gets **their own copy** in a sibling project, with an admin password just for them
+  - live progress bar while it is built; credentials on the page and **by email** when an SMTP server is set
+  - one demo per email a month, per-day and at-once limits for the whole server (Settings → Demos); stopped when it expires and deleted 7 days later (days left shown on the instance)
+  - the copy is cleaned before it is handed over: other users' passwords, mail servers, API keys and the database secret; no AI assistant in demos
+  - **public JSON API** with CORS to list the versions and ask for a demo from your own website
+- ✉️ **Outgoing mail server** (SMTP) in Settings → Email, with a test button
+- 📦 Docker **containers per project**: create them from the project page next to its Odoo instances
 - 🚀 Deploy **Odoo 8 to 20** in Docker — every version tested end to end (deploy, database, login, backups, chat); each gets a matching PostgreSQL
 - 🔒 **Automatic HTTPS**: the installer asks for your domain and an email, and Traefik issues and renews Let's Encrypt certificates for the panel and every instance
 - 🌐 Each instance gets its own subdomain, `client-version-name.yourdomain.com`, covered by a single `*.yourdomain.com` DNS record; custom domains too
@@ -17,9 +27,9 @@
 - 🔌 **MCP server for Claude** (Claude Code / Claude Desktop) and a full **REST API** with personal tokens
 - ⚙️ Long operations run in background **workers** (one for Docker jobs, one for AI and migrations), with live task status
 - 🔗 GitHub integration: main repo with a branch per instance, plus **extra addons repositories**
-- 📊 Live metrics and CPU/RAM history (24 h, 7 d, 30 d, 12 months); Docker management (containers, images, volumes, networks)
+- 📊 Live metrics and CPU/RAM history (24 h, 7 d, 30 d, 12 months); Docker management (containers, images, volumes, networks) with a safe «clean up unused» that never touches instances
 - ✅ **Todo** list for the team (Claude can complete items over MCP)
-- 🔐 2FA (optional or mandatory), per-user permissions, login lockout, per-instance Odoo master password
+- 🔐 2FA (optional or mandatory, also for API tokens), per-user permissions, login lockout per address and account, per-instance Odoo master password (hidden from clients) — see [Security](#-security)
 - 🌓 Light/dark theme, 🇪🇸/🇬🇧 Spanish and English
 
 ## 📸 Screenshots
@@ -28,6 +38,10 @@
 |---|---|
 | ![Landing](docs/screenshots/landing.png) | ![Landing (dark)](docs/screenshots/landing-dark.png) |
 | **Landing** | **Landing — dark mode** |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Test mode](docs/screenshots/project-test-mode.png) |
+| **Dashboard** | **Project in test mode: public page, API and demos** |
+| ![Demo page](docs/screenshots/demo-page.png) | |
+| **Public demo page (with captcha)** | |
 | ![Projects](docs/screenshots/projects.png) | ![Instances](docs/screenshots/instances.png) |
 | **Projects** | **Instances** |
 | ![Instance](docs/screenshots/instance-detail.png) | ![Metrics](docs/screenshots/metrics.png) |
@@ -94,6 +108,32 @@ by `worker`; remove the old container with `docker-compose up -d --remove-orphan
 > `DJANGO_SECRET_KEY`. Each Odoo instance now has its own master password (shown on the
 > instance page); it is applied on the next redeploy.
 
+**Option 4: Automatic deploy on every push to `main` (GitHub Actions)**
+
+`.github/workflows/deploy.yml` runs the tests and, if they pass, connects to the server over SSH and runs
+[`scripts/deploy.sh`](scripts/deploy.sh), which:
+
+1. waits for running tasks (deploys, backups, demos) to finish;
+2. saves a copy of the panel database in `backups/panel-db/` (the last 15) — **if the copy fails, nothing is deployed**;
+3. moves the code to `origin/main` keeping `.env`, `instances/`, `backups/`, `media/` and the certificates (`letsencrypt/acme.json`);
+4. rebuilds the panel and restarts it (Odoo instances and user containers keep running);
+5. checks that the panel answers and, if it doesn't, goes back to the previous version.
+
+Set it up once — in GitHub → *Settings → Secrets and variables → Actions*, add:
+
+| Secret | Value |
+|---|---|
+| `DEPLOY_HOST` | `communitysh.xyz` (or the server IP) |
+| `DEPLOY_USER` | `root`, or a user with passwordless `sudo` |
+| `DEPLOY_SSH_KEY` | the **private** key whose public key is in that user's `~/.ssh/authorized_keys` |
+| `DEPLOY_KNOWN_HOSTS` | output of `ssh-keyscan -H communitysh.xyz` (recommended) |
+| `DEPLOY_PORT`, `DEPLOY_PATH` | only if they aren't `22` and `/opt/community-sh` |
+
+Then every merge or push to `main` is deployed (Actions tab shows the log; *Run workflow* deploys by hand).
+To deploy by hand on the server: `sudo bash /opt/community-sh/scripts/deploy.sh`.
+To restore a database copy: `gunzip -c backups/panel-db/panel-<date>.sql.gz | sudo docker compose exec -T db psql -U postgres community_sh`
+(on an empty database).
+
 **Docker Compose Commands Local**
 ```bash
 docker-compose up -d --build app
@@ -134,6 +174,33 @@ curl -fsSL https://raw.githubusercontent.com/falconsoft3d/community-sh/main/easy
 chmod +x easy-install.sh
 sudo ./easy-install.sh
 ```
+
+## 🧪 Demos API (for your website)
+
+```bash
+# What can be tried (public, CORS)
+curl https://yourdomain/api/public/demos/bim/
+# Ask for a demo from the browser: get a sum, then POST with its answer
+curl https://yourdomain/api/public/demos/bim/captcha/        # {"question": "7 + 4", "token": "..."}
+curl -X POST https://yourdomain/api/public/demos/bim/ -H 'Content-Type: application/json' -d '{
+  "instance": 12, "name": "Ana Pérez", "email": "ana@example.com", "company": "Constructora Sol",
+  "job_title": "CEO", "phone": "+34 600 111 222", "country": "España",
+  "captcha_token": "...", "captcha_answer": 11}'
+# → 201 {"status_page": "...", "status_api": "...?format=json"}: follow the progress and get the credentials
+# From your backend, with a personal token (no captcha, same limits)
+curl -X POST https://yourdomain/api/demos/ -H 'Authorization: Bearer csh_...' -H 'Content-Type: application/json' \
+  -d '{"project": 3, "instance": 12, "name": "Ana", "email": "ana@example.com", "company": "Sol", "job_title": "CEO", "phone": "+34 600", "country": "España"}'
+```
+Settings → API lists every endpoint (also `/api/settings/` for the mail server and the demo limits).
+
+## 🔒 Security
+
+- With a domain and HTTPS everything goes through Traefik: keep `PANEL_BIND=127.0.0.1` in `.env` (the installer sets it) so port 8000 is not public; Odoo ports then listen on `127.0.0.1` too (applied on the next deploy of each instance; `ODOO_PUBLISH_IP` overrides it). Cookies are HTTPS-only with HSTS, and the panel only answers its domain and the server IP.
+- The installer creates the `admin` user with a random password (printed once): change it and enable 2FA.
+- The REST API never writes internal fields (volumes, subdomain, certificates, master password); repositories are cloned over HTTPS only and branches are validated.
+- User containers can't take the panel's names nor mount other volumes; uploaded ZIPs are checked before being unpacked.
+- Demo templates are copied in full: use instances without real customer data.
+- Not changed yet (recommended): the Docker socket is still mounted in the `app` container, and Traefik is v2.5 (upgrade to v2.11+).
 
 ## 🔒 SSL/HTTPS Configuration
 

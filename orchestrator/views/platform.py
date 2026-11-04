@@ -99,6 +99,40 @@ def settings_view(request):
             elif 'remove_openai_api_key' in request.POST:
                 config.openai_api_key = ''
         
+        if section == 'email':
+            config.smtp_enabled = 'smtp_enabled' in request.POST
+            config.smtp_host = request.POST.get('smtp_host', '').strip()
+            config.smtp_security = request.POST.get('smtp_security', 'starttls')
+            if config.smtp_security not in ('starttls', 'ssl', 'none'):
+                config.smtp_security = 'starttls'
+            config.smtp_username = request.POST.get('smtp_username', '').strip()
+            config.smtp_from_email = request.POST.get('smtp_from_email', '').strip()
+            config.smtp_from_name = request.POST.get('smtp_from_name', '').strip()
+            try:
+                config.smtp_port = int(request.POST.get('smtp_port') or 587)
+                from django.core.validators import validate_email
+                if config.smtp_from_email:
+                    validate_email(config.smtp_from_email)
+            except (ValueError, ValidationError):
+                messages.error(request, 'Revisa el puerto y el remitente del correo')
+                return redirect(reverse('settings') + '#email')
+            # Empty field keeps the stored password; the checkbox removes it
+            new_password = request.POST.get('smtp_password', '')
+            if new_password:
+                config.smtp_password = new_password
+            elif 'remove_smtp_password' in request.POST:
+                config.smtp_password = ''
+            if config.smtp_enabled and not (config.smtp_host and config.smtp_from_email):
+                messages.warning(request, 'Para enviar correos faltan el servidor y el remitente')
+
+        if section == 'demos':
+            try:
+                config.trial_max_per_day = max(0, min(int(request.POST.get('trial_max_per_day', 10)), 1000))
+                config.trial_max_active_total = max(0, min(int(request.POST.get('trial_max_active_total', 4)), 100))
+            except ValueError:
+                messages.error(request, 'Los límites de demos deben ser números')
+                return redirect(reverse('settings') + '#demos')
+
         if section == 'domain':
             # Update domain and SSL when saving Domain & SSL section
             config.main_domain = request.POST.get('main_domain', '').strip().lower()
@@ -220,6 +254,42 @@ def generate_ssl_certificate(request):
             messages.error(request, message)
     
     return redirect('settings')
+
+
+@login_required
+@superuser_required
+@require_POST
+def settings_email_test(request):
+    """Send a test email with the server typed in the form (an empty password uses the stored one)."""
+    from django.core.validators import validate_email
+    from django.http import JsonResponse
+    from ..config_models import GitHubConfig
+    from ..services import mail
+
+    config = GitHubConfig.objects.filter(user=request.user).first()
+    to = request.POST.get('to', '').strip() or request.user.email
+    sender_email = request.POST.get('smtp_from_email', '').strip()
+    try:
+        validate_email(to)
+        validate_email(sender_email)
+        port = int(request.POST.get('smtp_port') or 587)
+    except (ValidationError, ValueError):
+        return JsonResponse({'ok': False, 'error': 'Indica un remitente, un destinatario válido y el puerto'}, status=400)
+    host = request.POST.get('smtp_host', '').strip()
+    if not host:
+        return JsonResponse({'ok': False, 'error': 'Indica el servidor SMTP'}, status=400)
+    password = request.POST.get('smtp_password', '') or (config.smtp_password if config else '')
+    name = request.POST.get('smtp_from_name', '').strip()
+    try:
+        from django.core.mail import EmailMessage
+        EmailMessage('Prueba de correo de Community SH',
+                     'Si lees esto, el servidor de correo saliente de Community SH funciona.',
+                     f'{name} <{sender_email}>' if name else sender_email, [to],
+                     connection=mail.connection(host, port, request.POST.get('smtp_security', 'starttls'),
+                                                request.POST.get('smtp_username', '').strip(), password)).send()
+    except Exception as e:
+        return JsonResponse({'ok': False, 'error': f'No se pudo enviar: {e}'}, status=400)
+    return JsonResponse({'ok': True, 'message': f'Correo de prueba enviado a {to}'})
 
 
 @login_required

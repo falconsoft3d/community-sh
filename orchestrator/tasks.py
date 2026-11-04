@@ -176,6 +176,12 @@ def duplicate(task):
     return f'Instancia duplicada como "{new_name}"'
 
 
+@handler(Task.Kind.TRIAL)
+def trial(task):
+    from .services.trials import build_demo
+    return build_demo(task)
+
+
 @handler(Task.Kind.RENAME)
 def rename(task):
     instance = task.instance
@@ -341,6 +347,19 @@ def pull_image(task):
     from .services import docker_admin
     task_log.progress(10, f"Descargando {task.params['image']}")
     return f"Imagen descargada: {docker_admin.pull_image(task.params['image'])}"
+
+
+@handler(Task.Kind.DOCKER_CLEANUP)
+def docker_cleanup(task):
+    from django.template.defaultfilters import filesizeformat
+    from .services import docker_admin
+    # A build in the build-worker uses stopped intermediate containers and the build cache
+    if Task.objects.filter(kind=Task.Kind.BUILD_CONTAINER, status=Task.Status.RUNNING).exists():
+        raise Exception('Hay un contenedor construyéndose: limpia cuando termine')
+    results = docker_admin.cleanup(task.params.get('kinds', []), progress=task_log.progress)
+    lines = [f'{docker_admin.CLEANUP_KINDS[kind]}: {count} · {filesizeformat(size)}' for kind, (count, size) in results.items()]
+    total = sum(size for _, size in results.values())
+    return '\n'.join(lines + [f'Liberado: {filesizeformat(total)}'])
 
 
 @handler(Task.Kind.AI_MODULE)

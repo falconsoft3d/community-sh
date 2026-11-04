@@ -18,7 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@1.58.0"></script>
 
     <!-- Alpine.js for interactivity -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -205,6 +205,10 @@
                 </div>
                 <div class="flex-1">
                     <nav class="grid items-start px-2 text-sm font-medium lg:px-4">
+                        <a href="{% url 'dashboard' %}" title="Dashboard"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'dashboard' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="layout-dashboard" class="h-4 w-4 shrink-0"></i><span class="nav-label">Dashboard</span>
+                        </a>
                         <a href="{% url 'project-list' %}" title="{% translate "Proyectos" %}"
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'projects' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="folder-kanban" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Proyectos" %}</span>{% if nav_counts.projects != None and nav_counts.projects != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.projects }}</span>{% endif %}

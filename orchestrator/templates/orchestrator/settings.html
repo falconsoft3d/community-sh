@@ -44,6 +44,18 @@
                 <i data-lucide="sparkles" class="inline-block h-4 w-4 mr-2"></i>
                 IA
             </button>
+            <button type="button" @click="activeTab = 'email'; window.location.hash = 'email'"
+                :class="activeTab === 'email' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="mail" class="inline-block h-4 w-4 mr-2"></i>
+                Email
+            </button>
+            <button type="button" @click="activeTab = 'demos'; window.location.hash = 'demos'"
+                :class="activeTab === 'demos' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="flask-conical" class="inline-block h-4 w-4 mr-2"></i>
+                Demos
+            </button>
             {% endif %}
             <button type="button" @click="activeTab = 'mcp'; window.location.hash = 'mcp'"
                 :class="activeTab === 'mcp' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
@@ -619,6 +631,150 @@
             </div>
         </div>
     </div>
+    <!-- Email Tab: outgoing mail server -->
+    <div x-show="activeTab === 'email'" x-cloak class="space-y-6" x-data="emailSettings()">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="mail" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Servidor de correo saliente (SMTP)</h3>
+                </div>
+                <p class="text-sm text-muted-foreground">Con él activo, el panel envía las notificaciones y, al crear una demo, sus datos de acceso al cliente.</p>
+            </div>
+            <div class="p-6 space-y-5">
+                <label class="flex items-start gap-3">
+                    <input type="checkbox" name="smtp_enabled" {% if config.smtp_enabled %}checked{% endif %} class="mt-1 h-4 w-4 rounded border-input">
+                    <span>
+                        <span class="text-sm font-medium">Enviar correos con este servidor</span>
+                        <span class="block text-sm text-muted-foreground">Desactivado, no se envía ningún correo.</span>
+                    </span>
+                </label>
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="space-y-2 sm:col-span-2">
+                        <label for="smtp_host" class="text-sm font-medium">Servidor</label>
+                        <input type="text" id="smtp_host" name="smtp_host" x-ref="host" value="{{ config.smtp_host }}" placeholder="smtp.gmail.com" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="smtp_port" class="text-sm font-medium">Puerto</label>
+                        <input type="number" id="smtp_port" name="smtp_port" x-ref="port" value="{{ config.smtp_port }}" min="1" max="65535" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label for="smtp_security" class="text-sm font-medium">Seguridad</label>
+                    <select id="smtp_security" name="smtp_security" x-ref="security" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <option value="starttls" {% if config.smtp_security == 'starttls' %}selected{% endif %}>STARTTLS (puerto 587)</option>
+                        <option value="ssl" {% if config.smtp_security == 'ssl' %}selected{% endif %}>SSL/TLS (puerto 465)</option>
+                        <option value="none" {% if config.smtp_security == 'none' %}selected{% endif %}>Ninguna (puerto 25, solo en redes de confianza)</option>
+                    </select>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="space-y-2">
+                        <label for="smtp_username" class="text-sm font-medium">Usuario</label>
+                        <input type="text" id="smtp_username" name="smtp_username" x-ref="username" value="{{ config.smtp_username }}" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="smtp_password" class="text-sm font-medium">Contraseña</label>
+                        <input type="password" id="smtp_password" name="smtp_password" x-ref="password" autocomplete="new-password"
+                            placeholder="{% if config.smtp_password %}Guardada. Déjala vacía para mantenerla{% else %}Contraseña o clave de aplicación{% endif %}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        {% if config.smtp_password %}
+                        <label class="flex items-center gap-2 text-sm text-muted-foreground">
+                            <input type="checkbox" name="remove_smtp_password" class="h-4 w-4 rounded border-input"> Borrar la contraseña guardada
+                        </label>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="space-y-2">
+                        <label for="smtp_from_email" class="text-sm font-medium">Remitente (email)</label>
+                        <input type="email" id="smtp_from_email" name="smtp_from_email" x-ref="fromEmail" value="{{ config.smtp_from_email }}" placeholder="demos@tudominio.com" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="smtp_from_name" class="text-sm font-medium">Remitente (nombre)</label>
+                        <input type="text" id="smtp_from_name" name="smtp_from_name" x-ref="fromName" value="{{ config.smtp_from_name }}" placeholder="Community SH" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="space-y-2 rounded-lg border bg-muted/30 p-4">
+                    <label for="smtp_test_to" class="text-sm font-medium">Probar: enviar un correo a</label>
+                    <div class="flex gap-2">
+                        <input type="email" id="smtp_test_to" x-ref="to" value="{{ user.email }}" placeholder="tu@email.com" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <button type="button" @click="test()" :disabled="testing"
+                            class="inline-flex shrink-0 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent disabled:opacity-50">
+                            <i data-lucide="send" class="mr-2 h-4 w-4"></i>
+                            <span x-text="testing ? 'Enviando…' : 'Enviar prueba'"></span>
+                        </button>
+                    </div>
+                    <p class="text-sm" :class="error ? 'text-red-600' : 'text-green-600'" x-show="message" x-text="message"></p>
+                    <p class="text-sm text-muted-foreground">Usa lo que hay escrito en el formulario, aunque no esté guardado. Gmail y Microsoft 365 piden una «contraseña de aplicación».</p>
+                </div>
+                <div class="flex justify-end pt-4 border-t">
+                    <button type="submit" name="section" value="email"
+                        class="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="save" class="h-4 w-4 mr-2"></i>
+                        Guardar email
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demos Tab: limits for the whole server -->
+    <div x-show="activeTab === 'demos'" x-cloak class="space-y-6">
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-col space-y-1.5 p-6 border-b">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="flask-conical" class="h-5 w-5"></i>
+                    <h3 class="font-semibold leading-none tracking-tight">Límites de las demos</h3>
+                </div>
+                <p class="text-sm text-muted-foreground">Para todo el servidor, sumando los proyectos en modo test. Frenan a quien pide demos sin parar y protegen la memoria.</p>
+            </div>
+            <div class="p-6 space-y-5">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="space-y-2">
+                        <label for="trial_max_per_day" class="text-sm font-medium">Demos por día</label>
+                        <input type="number" id="trial_max_per_day" name="trial_max_per_day" value="{{ config.trial_max_per_day }}" min="0" max="1000" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <p class="text-sm text-muted-foreground">Cuántas se pueden pedir cada día (desde las 00:00). 0 = ninguna.</p>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="trial_max_active_total" class="text-sm font-medium">Demos a la vez</label>
+                        <input type="number" id="trial_max_active_total" name="trial_max_active_total" value="{{ config.trial_max_active_total }}" min="0" max="100" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                        <p class="text-sm text-muted-foreground">Funcionando al mismo tiempo. Cada una es un Odoo con su PostgreSQL (unos 700 MB).</p>
+                    </div>
+                </div>
+                <p class="text-sm text-muted-foreground">Además, cada proyecto tiene su propio «Demos a la vez» y cada email puede pedir una demo al mes.</p>
+                <div class="flex justify-end pt-4 border-t">
+                    <button type="submit" name="section" value="demos"
+                        class="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="save" class="h-4 w-4 mr-2"></i>
+                        Guardar límites
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function emailSettings() {
+            return {
+                testing: false, message: '', error: false,
+                async test() {
+                    this.testing = true; this.message = '';
+                    const body = new FormData();
+                    const fields = { smtp_host: 'host', smtp_port: 'port', smtp_security: 'security', smtp_username: 'username',
+                                     smtp_password: 'password', smtp_from_email: 'fromEmail', smtp_from_name: 'fromName', to: 'to' };
+                    for (const [name, ref] of Object.entries(fields)) body.append(name, this.$refs[ref].value);
+                    body.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+                    try {
+                        const data = await (await fetch("{% url 'settings-email-test' %}", { method: 'POST', body })).json();
+                        this.error = !data.ok;
+                        this.message = data.ok ? data.message : data.error;
+                    } catch (e) {
+                        this.error = true; this.message = 'No se pudo enviar la prueba';
+                    }
+                    this.testing = false;
+                },
+            };
+        }
+    </script>
     <script>
         function aiSettings() {
             return {
@@ -776,6 +932,15 @@ curl -H "Authorization: Bearer {{ example_token }}" {{ api_url }}tasks/345/</pre
                         <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/containers/{id}/logs/?tail=200</td><td class="px-3 py-2 text-muted-foreground">Logs del contenedor</td></tr>
                         <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">DELETE</td><td class="px-3 py-2 font-mono text-xs">/api/containers/{id}/</td><td class="px-3 py-2 text-muted-foreground">Eliminar contenedor</td></tr>
                         <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/tasks/{id}/</td><td class="px-3 py-2 text-muted-foreground">Estado de una tarea en segundo plano</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/public/demos/{url}/</td><td class="px-3 py-2 text-muted-foreground">Pública, sin token y con CORS: instancias que se pueden probar en un proyecto en modo test (nombre, versión, descripción), su texto y sus días</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/public/demos/{url}/captcha/</td><td class="px-3 py-2 text-muted-foreground">Pública: una suma nueva para pedir una demo ({question, token})</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/public/demos/{url}/</td><td class="px-3 py-2 text-muted-foreground">Pública (CORS): pedir una demo desde tu web: instance, name, email, company, job_title, phone, country, captcha_token y captcha_answer. Devuelve status_page y status_api</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/{url}/demo/{token}/?format=json</td><td class="px-3 py-2 text-muted-foreground">Estado de una demo: progreso, paso y, al terminar, dirección, usuario, contraseña y días que le quedan</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET · POST</td><td class="px-3 py-2 font-mono text-xs">/api/demos/</td><td class="px-3 py-2 text-muted-foreground">Demos de tus proyectos; POST pide una (project, instance, name, email, company, job_title, phone, country) con los mismos límites, sin captcha</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET</td><td class="px-3 py-2 font-mono text-xs">/api/demos/{id}/</td><td class="px-3 py-2 text-muted-foreground">Una demo: estado, progreso, credenciales, vencimiento y días hasta detenerse y eliminarse</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">PATCH</td><td class="px-3 py-2 font-mono text-xs">/api/projects/{id}/</td><td class="px-3 py-2 text-muted-foreground">También el modo test: trial_enabled, trial_slug, trial_days, trial_target_project, trial_message, trial_max_active</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET · PATCH</td><td class="px-3 py-2 font-mono text-xs">/api/settings/</td><td class="px-3 py-2 text-muted-foreground">Administradores: correo saliente (smtp_*; la contraseña solo se escribe) y límites de demos (trial_max_per_day, trial_max_active_total)</td></tr>
+                        <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">POST</td><td class="px-3 py-2 font-mono text-xs">/api/settings/test-email/</td><td class="px-3 py-2 text-muted-foreground">Administradores: enviar un correo de prueba ({to})</td></tr>
                         <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">GET/POST</td><td class="px-3 py-2 font-mono text-xs">/api/todos/</td><td class="px-3 py-2 text-muted-foreground">Tareas del menú Todo</td></tr>
                         <tr class="border-b last:border-0"><td class="px-3 py-2 font-mono text-xs font-semibold">PATCH</td><td class="px-3 py-2 font-mono text-xs">/api/todos/{id}/</td><td class="px-3 py-2 text-muted-foreground">Cambiar estado (status, completion_note)</td></tr>
                         </tbody>

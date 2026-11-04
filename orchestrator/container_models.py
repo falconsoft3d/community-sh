@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 import os
 import socket
-from .permissions import validate_resource_name, validate_domain
+from .permissions import validate_git_branch, validate_repo_url, validate_resource_name, validate_domain
 
 def get_template_choices():
     """Get template choices from YAML files"""
@@ -44,8 +44,8 @@ class Container(models.Model):
     command = models.CharField(max_length=255, blank=True, null=True, help_text="Custom command to run")
 
     # Build the image from a repository instead of pulling it (private repos use the owner's GitHub token)
-    git_repo = models.CharField(max_length=500, blank=True, default='', help_text="Repository to build the image from")
-    git_branch = models.CharField(max_length=255, blank=True, default='main')
+    git_repo = models.CharField(max_length=500, blank=True, default='', validators=[validate_repo_url], help_text="Repository to build the image from")
+    git_branch = models.CharField(max_length=255, blank=True, default='main', validators=[validate_git_branch])
     dockerfile = models.CharField(max_length=255, blank=True, default='Dockerfile', help_text="Dockerfile path inside the repository")
     
     # Domain and SSL
@@ -62,6 +62,8 @@ class Container(models.Model):
     # Metadata
     description = models.TextField(blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='containers')
+    # Optional: the project it belongs to, next to its Odoo instances
+    project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='containers')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

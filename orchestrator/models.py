@@ -6,7 +6,7 @@ import secrets
 import socket
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .permissions import validate_resource_name, validate_domain, validate_database_name
+from .permissions import validate_resource_name, validate_domain, validate_database_name, validate_git_branch, validate_repo_url
 
 
 def generate_master_password():
@@ -41,8 +41,8 @@ class Instance(models.Model):
     origin = models.CharField(max_length=50, blank=True, null=True, help_text="Origin of instance creation (manual, backup, duplicate)")
     
     # Github Integration
-    github_repo = models.CharField(max_length=255, blank=True, null=True)
-    github_branch = models.CharField(max_length=100, default='main')
+    github_repo = models.CharField(max_length=255, blank=True, null=True, validators=[validate_repo_url])
+    github_branch = models.CharField(max_length=100, default='main', validators=[validate_git_branch])
     
     # Docker info
     container_id = models.CharField(max_length=100, blank=True, null=True)
@@ -57,7 +57,7 @@ class Instance(models.Model):
     ssl_certificate_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_key_path = models.CharField(max_length=500, blank=True, null=True)
     ssl_email = models.EmailField(blank=True, null=True, help_text="Email for Let's Encrypt notifications")
-    subdomain = models.CharField(max_length=63, blank=True, default='', help_text="Subdomain under the platform domain (client-version-name)")
+    subdomain = models.CharField(max_length=63, blank=True, default='', validators=[validate_resource_name], help_text="Subdomain under the platform domain (client-version-name)")
     
     # Database
     database_name = models.CharField(max_length=100, blank=True, null=True, validators=[validate_database_name], help_text="Nombre de la base de datos de Odoo (dejar vacío para auto-detección)")
@@ -65,6 +65,9 @@ class Instance(models.Model):
     # Demos: several databases in one instance (and one certificate), opened with https://host/?name
     demo_default_db = models.CharField(max_length=100, blank=True, default='', validators=[validate_database_name],
                                        help_text="Odoo 18+: database opened without ?name. Empty: a normal instance.")
+
+    # Shown next to the instance on the demo page of its project (test mode) and in the public API
+    description = models.TextField(blank=True, default='', help_text="Public description for the demo page")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -112,6 +115,12 @@ class Instance(models.Model):
         return uri
     
     @property
+    def port_is_public(self):
+        """Its port answers from outside (no domain with HTTPS): the IP:port address works."""
+        from .services.docker_service import published_ip
+        return published_ip() != '127.0.0.1'
+
+    @property
     def url_with_port(self):
         """Get the URL with IP and port (used as alternative URL)"""
         server_ip = os.environ.get('SERVER_IP', '127.0.0.1')
@@ -136,6 +145,7 @@ from .backup_models import Backup
 from .blog_models import BlogPost
 from .task_models import Task
 from .project_models import Project
+from .trial_models import TrialRequest
 from .ai_models import AIAttachment, AIFileChange, AIMessage
 from .repository_models import InstanceRepository
 from .mcp_models import MCPToken

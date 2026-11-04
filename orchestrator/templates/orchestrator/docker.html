@@ -7,6 +7,13 @@
             <h1 class="text-3xl font-bold tracking-tight">Docker</h1>
             <p class="text-muted-foreground mt-1">Contenedores, imágenes, volúmenes y redes del servidor{% if docker %} · Docker {{ docker.version }}{% endif %}</p>
         </div>
+        {% if docker %}
+        <button type="button" @click="setTab('cleanup')"
+            class="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+            <i data-lucide="sparkles" class="mr-2 h-4 w-4"></i> Limpiar lo no utilizado
+            {% if docker.cleanup_total %}<span class="ml-2 rounded-full bg-primary-foreground/20 px-2 py-0.5 text-xs">{{ docker.cleanup_total|filesizeformat }}</span>{% endif %}
+        </button>
+        {% endif %}
     </div>
 
     {% if docker %}
@@ -276,6 +283,67 @@
         {% include "orchestrator/includes/pagination.html" with page=docker.networks anchor="#networks" %}
     </section>
 
+    <!-- Cleanup -->
+    <section x-show="tab === 'cleanup'" class="rounded-xl border bg-card text-card-foreground shadow-sm">
+        <div class="border-b px-5 py-4">
+            <h2 class="font-semibold">Limpieza</h2>
+            <p class="text-xs text-muted-foreground">Elimina lo que no usa ningún contenedor. Nunca toca el panel, las instancias (aunque estén paradas: su base de datos vive en su contenedor), sus filestores ni los contenedores del panel y sus volúmenes. Se ejecuta como tarea, con su log en Actividad.</p>
+        </div>
+        <form method="post" action="{% url 'docker-cleanup' %}"
+            onsubmit="return confirm(this.querySelector('[value=volumes]').checked ? 'Se eliminarán también los volúmenes sin uso y sus datos. No se puede deshacer.' : '¿Limpiar lo seleccionado?');">
+            {% csrf_token %}
+            <ul class="divide-y">
+                {% for item in docker.cleanup %}
+                <li class="px-5 py-3">
+                    <label class="flex cursor-pointer items-start gap-3">
+                        <input type="checkbox" name="kinds" value="{{ item.kind }}" class="mt-1 h-4 w-4 rounded border-input"
+                            {% if item.kind in cleanup_defaults and item.count %}checked{% endif %}
+                            {% if item.kind == 'volumes' %}x-model="cleanVolumes"{% endif %}>
+                        <span class="flex-1">
+                            <span class="flex flex-wrap items-baseline justify-between gap-2">
+                                <span class="font-medium {% if item.kind == 'volumes' %}text-red-700{% endif %}">{{ item.label }}</span>
+                                <span class="text-sm {% if item.count %}font-semibold{% else %}text-muted-foreground{% endif %}">
+                                    {{ item.count }}{% if item.size %} · {{ item.size|filesizeformat }}{% endif %}
+                                </span>
+                            </span>
+                            <span class="block text-xs text-muted-foreground">
+                                {% if item.kind == 'containers' %}Contenedores parados que no son de una instancia ni del panel.
+                                {% elif item.kind == 'images' %}Capas «&lt;none&gt;» que dejan los builds y las imágenes actualizadas.
+                                {% elif item.kind == 'unused_images' %}Imágenes con etiqueta que no usa ningún contenedor (p. ej. una versión de Odoo sin instancias): se vuelven a descargar si hacen falta.
+                                {% elif item.kind == 'build_cache' %}Caché de las construcciones de contenedores desde un repositorio; el próximo build tardará más.
+                                {% elif item.kind == 'networks' %}Redes sin contenedores que no son de una instancia.
+                                {% else %}Volúmenes que no usa ningún contenedor ni son el filestore de una instancia: pueden guardar datos de algo borrado.{% endif %}
+                            </span>
+                            {% if item.items %}
+                            <span class="mt-1 block truncate font-mono text-[11px] text-muted-foreground" title="{{ item.items|join:', ' }}">{{ item.items|join:", " }}{% if item.count > item.items|length %} …{% endif %}</span>
+                            {% endif %}
+                        </span>
+                    </label>
+                </li>
+                {% endfor %}
+            </ul>
+            <div class="flex flex-wrap items-center justify-end gap-2 border-t px-5 py-4">
+                <input x-show="cleanVolumes" x-cloak name="confirm" placeholder="Escribe BORRAR" aria-label="Confirmación"
+                    class="h-9 w-36 rounded-md border border-red-200 bg-background px-3 text-sm">
+                <button class="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                    <i data-lucide="sparkles" class="mr-2 h-4 w-4"></i> Limpiar lo no utilizado
+                </button>
+            </div>
+        </form>
+        {% if cleanups %}
+        <ul class="border-t px-5 py-3 text-sm space-y-1">
+            {% for task in cleanups %}
+            <li class="flex items-center gap-2">
+                <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold
+                    {% if task.status == 'done' %}bg-green-100 text-green-800{% elif task.status == 'failed' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">{{ task.get_status_display }}</span>
+                <a href="{% url 'activity-detail' task.pk %}" class="text-xs text-primary hover:underline">{{ task.created_at|date:"d/m H:i" }}</a>
+                <span class="truncate text-xs text-muted-foreground">{{ task.result|default:task.step|truncatechars:140 }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </section>
+
     <!-- Logs modal -->
     <div x-show="logs.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="logs.open = false" @keydown.escape.window="logs.open = false">
         <div class="flex max-h-[85vh] w-full max-w-5xl flex-col rounded-xl border bg-card text-card-foreground shadow-xl">
@@ -296,12 +364,14 @@
             { key: 'images', label: 'Imágenes' },
             { key: 'volumes', label: 'Volúmenes' },
             { key: 'networks', label: 'Redes' },
+            { key: 'cleanup', label: 'Limpieza' },
         ];
         const fromHash = window.location.hash.slice(1);
         return {
             tabs,
             tab: tabs.some(t => t.key === fromHash) ? fromHash : 'containers',
             logs: { open: false, name: '', text: '' },
+            cleanVolumes: false,
             setTab(key) {
                 this.tab = key;
                 history.replaceState(null, '', '#' + key);

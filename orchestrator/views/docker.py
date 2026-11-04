@@ -16,6 +16,9 @@ from ..task_models import Task
 from ..tasks import enqueue
 
 IMAGE_REFERENCE_RE = re.compile(r'^[a-z0-9][a-z0-9._/-]*(:[A-Za-z0-9._-]+)?$')
+# Checked when the cleanup opens. Unused tagged images (odoo:16.0...) would be downloaded again, and an
+# unused volume can hold the filestore of a deleted instance: both are chosen by hand
+CLEANUP_DEFAULTS = ('containers', 'images', 'build_cache', 'networks')
 
 
 def _back(request, tab):
@@ -43,11 +46,16 @@ def docker_overview(request):
         messages.error(request, f'No se pudo conectar con Docker: {e}')
         data = None
     if data:
+        data['cleanup'] = docker_admin.cleanup_summary(data.pop('cleanup_plan'))
+        data['cleanup_total'] = sum(item['size'] for item in data['cleanup'] if item['kind'] in CLEANUP_DEFAULTS)
         for key in ('containers', 'images', 'volumes', 'networks'):
             data[f'{key}_total'] = len(data[key])
             data[key] = paginate(request, data[key], param=f'{key}_page')
     pulls = Task.objects.filter(kind=Task.Kind.PULL_IMAGE).order_by('-created_at')[:5]
-    return render(request, 'orchestrator/docker.html', {'docker': data, 'pulls': pulls})
+    cleanups = Task.objects.filter(kind=Task.Kind.DOCKER_CLEANUP).order_by('-created_at')[:5]
+    return render(request, 'orchestrator/docker.html', {
+        'docker': data, 'pulls': pulls, 'cleanups': cleanups, 'cleanup_defaults': CLEANUP_DEFAULTS,
+    })
 
 
 @login_required
@@ -110,7 +118,7 @@ def docker_network_remove(request, network_id):
 @require_POST
 def docker_prune(request, kind):
     if kind not in ('containers', 'images', 'volumes', 'networks'):
-        return _back(request, 'overview')
+        return _back(request, 'containers')
     # Unused volumes can hold the filestore of a deleted or old instance
     if kind == 'volumes' and request.POST.get('confirm') != 'BORRAR':
         messages.error(request, 'Para eliminar volúmenes sin uso escribe BORRAR en la confirmación')
@@ -118,3 +126,19 @@ def docker_prune(request, kind):
     names = {'containers': 'contenedores', 'images': 'imágenes', 'volumes': 'volúmenes', 'networks': 'redes'}
     return _run(request, kind, lambda: docker_admin.prune(kind),
                 lambda result: f'{result[0]} {names[kind]} eliminados · {filesizeformat(result[1])} liberados')
+
+
+@login_required
+@superuser_required
+@require_POST
+def docker_cleanup(request):
+    kinds = [kind for kind in request.POST.getlist('kinds') if kind in docker_admin.CLEANUP_KINDS]
+    if not kinds:
+        messages.error(request, 'Elige qué limpiar')
+        return _back(request, 'cleanup')
+    if 'volumes' in kinds and request.POST.get('confirm') != 'BORRAR':
+        messages.error(request, 'Para eliminar volúmenes sin uso escribe BORRAR en la confirmación')
+        return _back(request, 'cleanup')
+    task = enqueue(Task.Kind.DOCKER_CLEANUP, user=request.user, kinds=kinds)
+    messages.info(request, f'Limpieza en cola (tarea #{task.pk}); su log está en Actividad')
+    return _back(request, 'cleanup')

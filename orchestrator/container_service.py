@@ -3,6 +3,19 @@ from django.conf import settings
 import os
 from .template_services import get_template_loader
 
+# Docker names a user container must never take: the panel's own services (Docker DNS on the
+# shared "web" network would send them part of the panel's traffic) and its compose project
+RESERVED_CONTAINER_NAMES = {'app', 'db', 'traefik', 'worker', 'build-worker', 'ai-worker', 'postgres', 'localhost', 'web'}
+OWNER_LABEL = 'community-sh.container'
+
+
+def reserved_container_name(name):
+    """Why a user container can't be called like this ('' when it can)."""
+    if name in RESERVED_CONTAINER_NAMES or name.startswith(('community-sh', 'odoo', 'db-')):
+        return f'«{name}» está reservado para el panel: elige otro nombre.'
+    return ''
+
+
 class ContainerService:
     """Service for managing generic Docker containers"""
     
@@ -36,9 +49,11 @@ class ContainerService:
                     # Create a named Docker volume
                     docker_volume_name = f"{container.name}_{volume_name}"
                     try:
-                        self.client.volumes.get(docker_volume_name)
+                        existing_volume = self.client.volumes.get(docker_volume_name)
+                        if not self._volume_is_ours(existing_volume, container):
+                            raise PermissionError(f"El volumen {docker_volume_name} pertenece a otro recurso")
                     except docker.errors.NotFound:
-                        self.client.volumes.create(name=docker_volume_name)
+                        self.client.volumes.create(name=docker_volume_name, labels={OWNER_LABEL: str(container.pk)})
                     volumes[docker_volume_name] = {'bind': container_path, 'mode': 'rw'}
                 else:
                     # Absolute bind mounts expose the host: admins only
@@ -50,7 +65,10 @@ class ContainerService:
             # Use custom domain if set, otherwise use container.name.localhost
             domain = container.custom_domain if container.custom_domain else f"{container.name}.localhost"
             
+            if reserved_container_name(container.name):
+                raise PermissionError(reserved_container_name(container.name))
             labels = {
+                OWNER_LABEL: str(container.pk),
                 'traefik.enable': 'true',
                 'traefik.docker.network': 'community-sh_web',
                 f'traefik.http.routers.{container.name}.rule': f'Host(`{domain}`)',
@@ -59,9 +77,11 @@ class ContainerService:
                 f'traefik.http.services.{container.name}.loadbalancer.server.port': str(container.container_port),
             }
             
-            # Remove existing container with same name if it exists
+            # Remove an old copy of this same container (never someone else's: the panel, an instance...)
             try:
                 existing = self.client.containers.get(container.name)
+                if not self._container_is_ours(existing, container):
+                    raise PermissionError(f"Ya hay otro contenedor de Docker llamado {container.name}: elige otro nombre")
                 existing.stop()
                 existing.remove()
                 print(f"Removed existing container: {container.name}")
@@ -121,6 +141,26 @@ class ContainerService:
             container.save()
             return False, f"Error creating container: {str(e)}"
     
+    @staticmethod
+    def _container_is_ours(docker_container, container):
+        labels = (docker_container.attrs.get('Config') or {}).get('Labels') or {}
+        if OWNER_LABEL in labels:
+            return labels[OWNER_LABEL] == str(container.pk)
+        # Created before the label existed: only the one the panel recorded for it
+        return bool(container.container_id) and docker_container.id == container.container_id \
+            and 'com.docker.compose.project' not in labels
+
+    @staticmethod
+    def _volume_is_ours(volume, container):
+        """A volume of this container, never one of the panel (compose), an instance or another container."""
+        labels = (volume.attrs.get('Labels') or {}) if isinstance(volume.attrs, dict) else {}
+        if OWNER_LABEL in labels:
+            return labels[OWNER_LABEL] == str(container.pk)
+        if 'com.docker.compose.project' in labels or volume.name.startswith('odoo_data_'):
+            return False
+        from .models import Instance
+        return not Instance.objects.filter(data_volume=volume.name).exists()
+
     def stop_container(self, container):
         """Stop a running container"""
         try:
@@ -191,6 +231,8 @@ class ContainerService:
                     docker_volume_name = f"{container.name}_{volume_name}"
                     try:
                         volume = self.client.volumes.get(docker_volume_name)
+                        if not self._volume_is_ours(volume, container):
+                            continue
                         volume.remove()
                     except docker.errors.NotFound:
                         pass

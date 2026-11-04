@@ -157,6 +157,18 @@
                             placeholder="my-container">
                     </div>
 
+                    <div class="space-y-2 md:col-span-2">
+                        <label for="project" class="text-sm font-medium">Proyecto (opcional)</label>
+                        <select id="project" name="project"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <option value="">-- Sin proyecto --</option>
+                            {% for project in projects %}
+                            <option value="{{ project.pk }}" {% if selected_project|stringformat:"s" == project.pk|stringformat:"s" %}selected{% endif %}>{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="text-xs text-muted-foreground">El contenedor aparece en la ficha del proyecto, junto a sus instancias.</p>
+                    </div>
+
                     <div class="space-y-2">
                         <label for="image" class="text-sm font-medium">Docker Image <span
                                 class="text-destructive">*</span></label>

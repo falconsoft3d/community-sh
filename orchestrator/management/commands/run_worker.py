@@ -50,6 +50,12 @@ class Command(BaseCommand):
                         self.stdout.write(f"Updated the published port of: {', '.join(changed)}")
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Port sync failed: {e}'))
+                try:
+                    from orchestrator.services.trials import expire_demos
+                    for line in expire_demos():
+                        self.stdout.write(line)
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Demo expiry failed: {e}'))
 
             task = claim_next_task(only, exclude)
             if task is not None:

@@ -19,7 +19,11 @@ from django.urls import path, include, re_path
 from django.conf import settings
 from django.views.static import serve
 
+from django.views.generic import RedirectView
+
 urlpatterns = [
+    # Django's admin login skips 2FA and the lockout: sign in through the panel instead
+    path('admin/login/', RedirectView.as_view(pattern_name='login', query_string=False)),
     path('admin/', admin.site.urls),
     path('i18n/', include('django.conf.urls.i18n')),
     path('', include('orchestrator.urls')),

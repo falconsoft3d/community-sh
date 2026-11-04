@@ -1,8 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views.activity import activity_detail, activity_list, task_live
+from .views.trials import instance_update_description, trial_api, trial_captcha, trial_page, trial_status
 from .views.odoo_ai import instance_migrate, odoo_ai_request
-from .views.api import BackupViewSet, ContainerViewSet, InstanceAPIViewSet, ProjectViewSet, TaskViewSet, TodoViewSet
+from .views.api import (BackupViewSet, ContainerViewSet, DemoViewSet, InstanceAPIViewSet, PlatformEmailTestView,
+                        PlatformSettingsView, ProjectViewSet, TaskViewSet, TodoViewSet)
 from .views import (
     todo_list,
     todo_create,
@@ -20,6 +22,7 @@ from .views import (
     docker_volume_remove,
     docker_network_remove,
     docker_prune,
+    docker_cleanup,
     project_list,
     project_create,
     project_detail,
@@ -57,6 +60,7 @@ from .views import (
     metrics_history_data,
     settings_view,
     settings_ai_test,
+    settings_email_test,
     run_auto_backups_view,
     about,
     generate_ssl_certificate,
@@ -101,6 +105,7 @@ router.register(r'api/backups', BackupViewSet, basename='api-backup')
 router.register(r'api/tasks', TaskViewSet, basename='api-task')
 router.register(r'api/todos', TodoViewSet, basename='api-todo')
 router.register(r'api/containers', ContainerViewSet, basename='api-container')
+router.register(r'api/demos', DemoViewSet, basename='api-demo')
 
 urlpatterns = [
     path('accounts/register/', register, name='register'),
@@ -118,6 +123,7 @@ urlpatterns = [
     path('todo/<int:pk>/status/', todo_status, name='todo-status'),
     path('todo/<int:pk>/delete/', todo_delete, name='todo-delete'),
     path('todo/<int:pk>/edit/', todo_edit, name='todo-edit'),
+    path('dashboard/', dashboard, name='dashboard'),
     path('projects/', project_list, name='project-list'),
     path('project/new/', project_create, name='project-create'),
     path('project/<int:pk>/', project_detail, name='project-detail'),
@@ -174,6 +180,7 @@ urlpatterns = [
     path('instance/<int:pk>/generate-ssl/', instance_generate_ssl, name='instance-generate-ssl'),
     path('instance/<int:pk>/install-module/', instance_install_module, name='instance-install-module'),
     path('instance/<int:pk>/update-name/', instance_update_name, name='instance-update-name'),
+    path('instance/<int:pk>/update-description/', instance_update_description, name='instance-update-description'),
     path('metrics/', metrics_view, name='metrics'),
     path('docker/', docker_overview, name='docker-overview'),
     path('docker/containers/<str:container_id>/logs/', docker_container_logs, name='docker-container-logs'),
@@ -183,6 +190,7 @@ urlpatterns = [
     path('docker/volumes/<str:name>/remove/', docker_volume_remove, name='docker-volume-remove'),
     path('docker/networks/<str:network_id>/remove/', docker_network_remove, name='docker-network-remove'),
     path('docker/prune/<str:kind>/', docker_prune, name='docker-prune'),
+    path('docker/cleanup/', docker_cleanup, name='docker-cleanup'),
     path('metrics/data/', metrics_data, name='metrics-data'),
     path('metrics/history/', metrics_history_data, name='metrics-history'),
     path('settings/', settings_view, name='settings'),
@@ -190,6 +198,7 @@ urlpatterns = [
     path('settings/mcp/tokens/<int:token_id>/revoke/', mcp_token_revoke, name='mcp-token-revoke'),
     path('mcp/', mcp_endpoint, name='mcp'),
     path('settings/ai/test/', settings_ai_test, name='settings-ai-test'),
+    path('settings/email/test/', settings_email_test, name='settings-email-test'),
     path('settings/generate-ssl/', generate_ssl_certificate, name='generate-ssl'),
     path('settings/run-auto-backups/', run_auto_backups_view, name='run-auto-backups'),
     path('about/', about, name='about'),
@@ -200,5 +209,15 @@ urlpatterns = [
     path('profile/', user_profile, name='user-profile'),
     path('profile/change-password/', user_change_password, name='change-password'),
     
+    # Public demos of the projects in test mode
+    path('api/public/demos/<slug:slug>/', trial_api, name='trial-api'),
+    path('api/public/demos/<slug:slug>/captcha/', trial_captcha, name='trial-captcha'),
+    path('api/settings/', PlatformSettingsView.as_view(), name='api-settings'),
+    path('api/settings/test-email/', PlatformEmailTestView.as_view(), name='api-settings-test-email'),
+
     path('', include(router.urls)),
+
+    # Last: /<slug>/ of a project in test mode (any other page of the panel wins)
+    path('<slug:slug>/', trial_page, name='trial-page'),
+    path('<slug:slug>/demo/<str:token>/', trial_status, name='trial-status'),
 ]

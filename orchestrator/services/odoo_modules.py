@@ -39,8 +39,9 @@ class OdooModuleService:
             temp_extract_path = tempfile.mkdtemp()
             print(f"Extrayendo módulo temporalmente en: {temp_extract_path}")
             
+            from .archives import safe_extractall
             with zipfile.ZipFile(tmp_zip_path, 'r') as zip_ref:
-                zip_ref.extractall(temp_extract_path)
+                safe_extractall(zip_ref, temp_extract_path, max_bytes=500 * 1024 ** 2, max_files=20_000)
             
             # Clean up zip file
             os.unlink(tmp_zip_path)

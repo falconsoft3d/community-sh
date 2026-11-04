@@ -306,7 +306,7 @@ class DockerServiceTests(TestCase):
         self.instance.refresh_from_db()
         self.assertEqual(self.instance.data_volume, 'odoo_data_acme')
         # Published on an explicit port (kept across restarts), stored on the instance
-        self.assertEqual(odoo_call.kwargs['ports'], {'8069/tcp': self.instance.port})
+        self.assertEqual(odoo_call.kwargs['ports'], {'8069/tcp': ('0.0.0.0', self.instance.port)})
         self.assertTrue(20000 <= self.instance.port < 40000)
 
     def test_rename_moves_resources_and_keeps_data(self):
@@ -913,6 +913,74 @@ class DockerAdminTests(BaseTestCase):
             prune.return_value = (2, 1024)
             self.client.post(reverse('docker-prune', args=['volumes']), {'confirm': 'BORRAR'})
             prune.assert_called_once_with('volumes')
+
+    def test_cleanup_keeps_stopped_instances_and_app_containers(self):
+        from .services import docker_admin
+        Container.objects.create(name='redis1', image='redis', port=40020, container_port=6379, created_by=self.admin)
+
+        def named(name, attrs=None, **fields):
+            obj = mock.Mock(attrs=attrs or {}, **fields)
+            obj.name = name
+            return obj
+
+        def container(name, status, image, volumes=(), networks=(), labels=None):
+            return named(name, id=name, status=status, labels=labels or {}, attrs={
+                'Image': image, 'HostConfig': {'NetworkMode': 'default'},
+                'NetworkSettings': {'Networks': {n: {} for n in networks}},
+                'Mounts': [{'Type': 'volume', 'Name': v} for v in volumes],
+            })
+
+        client = mock.Mock()
+        client.containers.list.return_value = [
+            container('odoo_alice-odoo', 'exited', 'sha-odoo', ['odoo_data_alice-odoo'], ['net_alice-odoo']),
+            container('db_alice-odoo', 'exited', 'sha-pg', ['anon-pg'], ['net_alice-odoo']),
+            container('redis1', 'exited', 'sha-redis'),
+            container('community-sh-db-1', 'exited', 'sha-pg', labels={'com.docker.compose.project': 'community-sh'}),
+            container('leftover', 'exited', 'sha-old', ['anon-leftover'], ['net_gone']),
+        ]
+        client.images.list.return_value = [
+            mock.Mock(id=i, short_id=i, tags=tags, attrs={'Size': 100})
+            for i, tags in [('sha-odoo', ['odoo:18.0']), ('sha-pg', ['postgres:16']), ('sha-redis', ['redis:7']),
+                            ('sha-old', ['old:1']), ('sha-dangling', []), ('sha-spare', ['odoo:16.0'])]
+        ]
+        client.networks.list.return_value = [named(n) for n in ('bridge', 'net_alice-odoo', 'net_gone', 'community-sh_default')]
+        client.volumes.list.return_value = [named(v) for v in (
+            'odoo_data_alice-odoo', 'anon-pg', 'anon-leftover', 'redis1_data', 'community-sh_pgdata', 'odoo_data_deleted')]
+        df = {'Containers': [{'Id': 'leftover', 'SizeRw': 5}], 'Volumes': [{'Name': 'odoo_data_deleted', 'UsageData': {'Size': 7}}],
+              'BuildCache': [{'ID': 'b1', 'Size': 9, 'InUse': False}, {'ID': 'b2', 'Size': 9, 'InUse': True}]}
+
+        plan = docker_admin.cleanup_plan(client, df)
+        names = {kind: [name for name, _, _ in items] for kind, items in plan.items()}
+        self.assertEqual(names['containers'], ['leftover'])
+        self.assertEqual(names['images'], ['sha-dangling'])
+        self.assertEqual(names['unused_images'], ['old:1', 'odoo:16.0'])
+        self.assertEqual(names['build_cache'], ['b1'])
+        self.assertEqual(names['networks'], ['net_gone'])
+        self.assertEqual(names['volumes'], ['anon-leftover', 'odoo_data_deleted'])
+
+        # Without removing the stopped containers, what the leftover one uses stays
+        names = {kind: [n for n, _, _ in items] for kind, items in docker_admin.cleanup_plan(client, df, remove_stopped=False).items()}
+        self.assertEqual(names['unused_images'], ['odoo:16.0'])
+        self.assertEqual(names['volumes'], ['odoo_data_deleted'])
+
+    def test_cleanup_is_queued_and_volumes_need_confirmation(self):
+        from .task_models import Task
+        self.client.force_login(self.admin)
+        self.client.post(reverse('docker-cleanup'), {'kinds': ['containers', 'volumes']})
+        self.assertFalse(Task.objects.exists())
+        self.client.post(reverse('docker-cleanup'), {'kinds': ['containers', 'volumes', 'everything'], 'confirm': 'BORRAR'})
+        self.assertEqual(Task.objects.get().params['kinds'], ['containers', 'volumes'])
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.post(reverse('docker-cleanup'), {'kinds': ['images']}).status_code, 403)
+
+    def test_cleanup_waits_for_a_running_build(self):
+        from .task_models import Task
+        from .tasks import enqueue, run_task
+        Task.objects.create(kind=Task.Kind.BUILD_CONTAINER, status=Task.Status.RUNNING)
+        with mock.patch('orchestrator.services.docker_admin.cleanup') as cleanup:
+            task = run_task(enqueue(Task.Kind.DOCKER_CLEANUP, user=self.admin, kinds=['images']))
+            cleanup.assert_not_called()
+        self.assertEqual(task.status, Task.Status.FAILED)
 
     def test_pull_is_queued_and_validated(self):
         from .task_models import Task
@@ -1937,8 +2005,10 @@ class OdooChatterAITests(AIAssistantTests):
         turn = self.alice_instance.ai_messages.get(pk=task.params['turn'])
         self.assertIn('sale.order #7', turn.content)
         self.assertEqual(turn.user, self.alice)  # the instance owner
+        # The same signed request can't be sent again
+        self.assertEqual(self.signed_post(request).json()['message'], 'Petición repetida')
         # A second request while the first runs is turned away with a message
-        self.assertIn('trabajando', self.signed_post(request).json()['message'])
+        self.assertIn('trabajando', self.signed_post({**request, 'text': 'y otra cosa'}).json()['message'])
 
         with mock.patch('orchestrator.services.ai_assistant.chat', return_value={'content': 'Columna añadida.'}), \
                 mock.patch('orchestrator.services.odoo_bridge.post_reply') as post_reply:
@@ -2160,6 +2230,44 @@ class ContainerApiTests(BaseTestCase):
         self.assertEqual(container.image, 'csh-build/erpsqlite:latest')
 
 
+class ContainerTemplateBuildTests(BaseTestCase):
+    """Templates built from a repository, such as ERPSqlite."""
+
+    def setUp(self):
+        super().setUp()
+        service = mock.patch('orchestrator.container_views.ContainerService')
+        self.service = service.start()
+        self.addCleanup(service.stop)
+
+    def test_form_queues_the_build_and_generates_keys(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        response = self.client.post(reverse('container-create'), {
+            'template': 'erpsqlite', 'name': 'erp', 'image': 'github.com/falconsoft3d/erp-sqlite (Dockerfile.server)',
+            'port': 8169, 'container_port': 8169,
+        })
+        container = Container.objects.get(name='erp')
+        self.assertRedirects(response, reverse('container-detail', args=[container.pk]), fetch_redirect_response=False)
+        self.assertEqual((container.image, container.dockerfile), ('', 'Dockerfile.server'))
+        self.assertEqual(container.git_repo, 'https://github.com/falconsoft3d/erp-sqlite.git')
+        keys = container.environment['ERPSQLITE_ADMIN_KEY'], container.environment['ERPSQLITE_SELLER_KEY']
+        self.assertTrue(all(len(key) == 40 for key in keys))
+        self.assertNotEqual(*keys)
+        task = Task.objects.get(kind=Task.Kind.BUILD_CONTAINER)
+        self.assertEqual(task.params['container'], container.pk)
+        self.service.return_value.create_container.assert_not_called()
+
+    def test_api_template_brings_the_repository(self):
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.container_service.ContainerService'):
+            response = self.client.post('/api/containers/', {'name': 'erp2', 'template': 'erpsqlite'},
+                                        content_type='application/json')
+        self.assertEqual(response.status_code, 202, response.content)
+        container = Container.objects.get(name='erp2')
+        self.assertEqual((container.dockerfile, container.container_port), ('Dockerfile.server', 8169))
+        self.assertNotEqual(container.environment['ERPSQLITE_ADMIN_KEY'], '{secret}')
+
+
 class InstanceApiDeployTests(BaseTestCase):
     def test_created_instance_is_deployed(self):
         from .task_models import Task
@@ -2209,3 +2317,678 @@ class ContainerRouteTests(TestCase):
         self.container.status = 'stopped'
         self.assertIsNone(self.routes())
 
+
+
+class TrialTests(BaseTestCase):
+    """Test mode of a project: public demo page, its limits, the build and the expiry."""
+
+    def setUp(self):
+        super().setUp()
+        from .project_models import Project
+        self.demos = Project.objects.create(name='BIM demos', owner=self.alice)
+        self.alice_project.trial_enabled = True
+        self.alice_project.trial_slug = 'bim'
+        self.alice_project.trial_target_project = self.demos
+        self.alice_project.trial_message = 'Prueba BIM'
+        self.alice_project.save()
+        self.alice_instance.status = Instance.Status.RUNNING
+        self.alice_instance.odoo_version = '18.0'
+        self.alice_instance.description = 'Odoo 18 con BIM'
+        self.alice_instance.save()
+        Instance.objects.create(name='alice-stopped', owner=self.alice, project=self.alice_project, status=Instance.Status.STOPPED)
+
+    @staticmethod
+    def captcha(right=True):
+        from django.core import signing
+        from .services.trials import make_captcha
+        _question, token = make_captcha()
+        numbers = signing.loads(token, salt='trial-captcha')
+        return token, str(numbers['a'] + numbers['b'] + (0 if right else 1))
+
+    def ask(self, email='ana@example.com', **extra):
+        token, answer = self.captcha()
+        data = {'name': 'Ana', 'email': email, 'company': 'Constructora Sol', 'job_title': 'Jefa de obra',
+                'phone': '+34 600 111 222', 'country': 'España', 'instance': self.alice_instance.pk,
+                'captcha_token': token, 'captcha_answer': answer, **extra}
+        return self.client.post('/bim/', data, REMOTE_ADDR=data.pop('ip', '10.0.0.1'))
+
+    def test_the_form_asks_for_job_title_phone_country_and_a_sum(self):
+        from .trial_models import TrialRequest
+        response = self.client.get('/bim/')
+        self.assertContains(response, 'name="job_title"')
+        self.assertContains(response, 'name="country"')
+        self.assertContains(response, 'name="captcha_token"')
+        self.assertContains(response, 'cuánto es')
+        # Missing data or a wrong sum: no demo
+        self.assertContains(self.ask(country=''), 'id_country_error')
+        token, wrong = self.captcha(right=False)
+        self.assertContains(self.ask(captcha_token=token, captcha_answer=wrong), 'La suma no es correcta')
+        self.assertContains(self.ask(captcha_token='forged', captcha_answer='4'), 'La suma no es correcta')
+        self.assertFalse(TrialRequest.objects.exists())
+        # Right: stored with the new data; the same question can't be used twice
+        token, answer = self.captcha()
+        self.ask(captcha_token=token, captcha_answer=answer)
+        trial = TrialRequest.objects.get()
+        self.assertEqual((trial.job_title, trial.phone, trial.country), ('Jefa de obra', '+34 600 111 222', 'España'))
+        self.assertContains(self.ask(email='otra@example.com', ip='10.0.0.9', captcha_token=token, captcha_answer=answer),
+                            'La suma no es correcta')
+
+    def project_form(self, **data):
+        from .forms import ProjectForm
+        values = {'name': 'Nuevo', 'description': '', 'trial_days': 15, 'trial_max_active': 3, **data}
+        return ProjectForm(values, owner=self.alice, user=self.alice)
+
+    def test_form_requires_url_and_sibling_project_in_test_mode(self):
+        form = self.project_form(trial_enabled='on')
+        self.assertFalse(form.is_valid())
+        self.assertIn('trial_slug', form.errors)
+        self.assertIn('trial_target_project', form.errors)
+        self.assertTrue(self.project_form(trial_enabled='on', trial_slug='erp', trial_target_project=self.demos.pk).is_valid())
+        # Only projects of the same owner, and the URL can't be a page of the panel or taken
+        self.assertIn('trial_target_project', self.project_form(trial_enabled='on', trial_slug='erp',
+                                                                trial_target_project=self.bob_project.pk).errors)
+        for slug in ('projects', 'admin', 'static', 'bim'):
+            self.assertIn('trial_slug', self.project_form(trial_enabled='on', trial_slug=slug, trial_target_project=self.demos.pk).errors, slug)
+
+    def test_page_lists_running_instances_with_their_description(self):
+        response = self.client.get('/bim/')
+        self.assertContains(response, 'Prueba BIM')
+        self.assertContains(response, 'alice-odoo')
+        self.assertContains(response, 'Odoo 18 con BIM')
+        self.assertNotContains(response, 'alice-stopped')
+        self.assertEqual(self.client.get('/bim').status_code, 301)
+        self.alice_project.trial_enabled = False
+        self.alice_project.save()
+        self.assertEqual(self.client.get('/bim/').status_code, 404)
+        self.assertEqual(self.client.get('/nothing-here/').status_code, 404)
+
+    def test_request_queues_the_demo_and_one_per_email_a_month(self):
+        from .task_models import Task
+        from .trial_models import TrialRequest
+        response = self.ask()
+        trial = TrialRequest.objects.get()
+        self.assertRedirects(response, f'/bim/demo/{trial.token}/', fetch_redirect_response=False)
+        self.assertEqual((trial.source, trial.email, trial.version), (self.alice_instance, 'ana@example.com', '18.0'))
+        self.assertEqual(trial.task.kind, Task.Kind.TRIAL)
+        self.assertEqual(trial.task.params, {'trial': trial.pk})
+
+        response = self.ask(email='ANA@example.com')
+        self.assertContains(response, 'Ya pediste una demo este mes')
+        self.assertEqual(TrialRequest.objects.count(), 1)
+        # A failed one doesn't count
+        trial.status = TrialRequest.Status.FAILED
+        trial.save()
+        self.ask()
+        self.assertEqual(TrialRequest.objects.count(), 2)
+
+    def test_no_more_demos_than_the_limit_at_the_same_time(self):
+        from .trial_models import TrialRequest
+        self.alice_project.trial_max_active = 1
+        self.alice_project.save()
+        self.ask()
+        self.assertContains(self.ask(email='otro@example.com', ip='10.0.0.2'), 'no quedan plazas')
+        self.assertEqual(TrialRequest.objects.count(), 1)
+
+    def test_bots_filling_the_hidden_field_are_ignored(self):
+        from .trial_models import TrialRequest
+        self.ask(website='http://spam')
+        self.assertFalse(TrialRequest.objects.exists())
+
+    def test_public_api_lists_the_demos_with_cors(self):
+        response = self.client.get('/api/public/demos/bim/')
+        self.assertEqual(response['Access-Control-Allow-Origin'], '*')
+        data = response.json()
+        self.assertEqual((data['slug'], data['days'], data['message'], data['available']), ('bim', 15, 'Prueba BIM', True))
+        self.assertTrue(data['url'].endswith('/bim/'))
+        self.assertEqual(data['instances'], [{'id': self.alice_instance.pk, 'name': 'alice-odoo', 'version': '18.0',
+                                              'description': 'Odoo 18 con BIM'}])
+        self.assertEqual(self.client.get('/api/public/demos/nope/').status_code, 404)
+
+    def test_status_shows_progress_and_the_credentials_once_ready(self):
+        from .trial_models import TrialRequest
+        self.ask()
+        trial = TrialRequest.objects.get()
+        url = f'/bim/demo/{trial.token}/?format=json'
+        trial.task.status, trial.task.progress, trial.task.step = 'running', 0, 'Crear demo · alice-odoo · alice'
+        trial.task.save()
+        data = self.client.get(url).json()
+        self.assertEqual((data['status'], data['step']), ('pending', 'Preparando tu demo'))
+        self.assertNotIn('password', data)
+        trial.task.progress, trial.task.step = 40, 'Copiando el espacio de trabajo'
+        trial.task.save()
+        self.assertEqual(self.client.get(url).json()['progress'], 40)
+        self.assertContains(self.client.get(f'/bim/demo/{trial.token}/'), 'role="progressbar"')
+
+        from django.utils import timezone
+        demo = Instance.objects.create(name='bim-demo', project=self.demos)
+        trial.instance, trial.status, trial.admin_login, trial.admin_password = demo, 'ready', 'admin', 's3cret'
+        trial.expires_at = timezone.now()
+        trial.save()
+        data = self.client.get(url).json()
+        self.assertEqual((data['status'], data['login'], data['password'], data['url']), ('ready', 'admin', 's3cret', demo.url))
+        self.assertEqual(self.client.get('/bim/demo/wrong-token/').status_code, 404)
+
+    def test_build_copies_into_the_sibling_project_with_a_new_admin_password(self):
+        from .services.trials import build_demo, request_demo
+        trial, _ = request_demo(self.alice_project, self.alice_instance, 'Ana', 'ana@example.com', 'Constructora Sol')
+        service = mock.MagicMock()
+        service.sanitize_demo.return_value = ['shop: limpia']
+        service.copy_instance.side_effect = lambda source, name, **kwargs: Instance.objects.create(name=name, project=kwargs['project'])
+        service.set_admin_password.return_value = 'admin'
+        with mock.patch('orchestrator.services.DockerService', return_value=service), \
+                mock.patch('orchestrator.traefik_service.TraefikService.generate_instance_config', return_value=(True, '')) as routes:
+            build_demo(trial.task)
+        trial.refresh_from_db()
+        self.assertEqual(trial.status, 'ready')
+        self.assertTrue(trial.instance.name.startswith('bim-constructora-sol-'))
+        self.assertEqual((trial.instance.project, trial.instance.owner), (self.demos, self.alice))
+        self.assertEqual(service.copy_instance.call_args.kwargs, {'project': self.demos, 'create_branch': False, 'origin': 'trial'})
+        self.assertEqual(service.set_admin_password.call_args.args, (trial.instance, trial.admin_password))
+        self.assertGreaterEqual(len(trial.admin_password), 12)
+        self.assertAlmostEqual((trial.expires_at - trial.created_at).total_seconds(), 15 * 86400, delta=60)
+        routes.assert_called_once_with(trial.instance)
+        service.sanitize_demo.assert_called_once_with(trial.instance)
+        service.restart_instance.assert_called_once_with(trial.instance)
+        trial.task.refresh_from_db()
+        self.assertEqual(trial.task.instance, trial.instance)
+
+    def test_a_failed_build_removes_the_half_built_copy(self):
+        from .services.trials import build_demo, request_demo
+        trial, _ = request_demo(self.alice_project, self.alice_instance, 'Ana', 'ana@example.com')
+        service = mock.MagicMock()
+
+        def copy(source, name, **kwargs):
+            Instance.objects.create(name=name, project=kwargs['project'])
+            raise Exception('pg_dumpall failed')
+        service.copy_instance.side_effect = copy
+        with mock.patch('orchestrator.services.DockerService', return_value=service), self.assertRaises(Exception):
+            build_demo(trial.task)
+        trial.refresh_from_db()
+        self.assertEqual((trial.status, trial.error), ('failed', 'pg_dumpall failed'))
+        self.assertFalse(self.demos.instances.exists())
+
+    def test_expired_demos_stop_and_are_deleted_a_week_later(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .services.trials import expire_demos
+        from .trial_models import TrialRequest
+        demo = Instance.objects.create(name='bim-demo', project=self.demos, status=Instance.Status.RUNNING)
+        trial = TrialRequest.objects.create(project=self.alice_project, email='a@example.com', name='A', instance=demo,
+                                            status='ready', expires_at=timezone.now() + timedelta(days=1))
+        service = mock.MagicMock()
+        with mock.patch('orchestrator.services.DockerService', return_value=service):
+            self.assertEqual(expire_demos(), [])
+            expire_demos(timezone.now() + timedelta(days=2))
+            service.stop_instance.assert_called_once_with(demo)
+            trial.refresh_from_db()
+            self.assertEqual(trial.status, 'expired')
+            # Expired demos don't take a place any more, and the page says it's over
+            self.assertEqual(self.client.get(f'/bim/demo/{trial.token}/?format=json').json()['status'], 'expired')
+            expire_demos(timezone.now() + timedelta(days=10))
+        self.assertFalse(Instance.objects.filter(pk=demo.pk).exists())
+        self.docker.return_value.delete_instance.assert_called_once()
+
+    def test_instance_description_is_editable_by_its_owner(self):
+        self.client.force_login(self.bob)
+        self.client.post(f'/instance/{self.alice_instance.pk}/update-description/', {'description': 'hack'})
+        self.client.force_login(self.alice)
+        self.client.post(f'/instance/{self.alice_instance.pk}/update-description/', {'description': ' Nueva '})
+        self.alice_instance.refresh_from_db()
+        self.assertEqual(self.alice_instance.description, 'Nueva')
+
+    def test_project_page_shows_the_public_url_and_api(self):
+        self.client.force_login(self.alice)
+        response = self.client.get(f'/project/{self.alice_project.pk}/')
+        self.assertContains(response, 'http://testserver/bim/')
+        self.assertContains(response, 'http://testserver/api/public/demos/bim/')
+
+
+class AdminPasswordTests(TestCase):
+    def test_hash_is_the_pbkdf2_sha512_odoo_checks(self):
+        import base64
+        import hashlib
+        from .services.docker_service import odoo_password_hash
+        scheme, rounds, salt, checksum = odoo_password_hash('s3cret', rounds=1000).split('$')[1:]
+        self.assertEqual((scheme, rounds), ('pbkdf2-sha512', '1000'))
+
+        def unab64(text):
+            text = text.replace('.', '+')
+            return base64.b64decode(text + '=' * (-len(text) % 4))
+        self.assertEqual(unab64(checksum), hashlib.pbkdf2_hmac('sha512', b's3cret', unab64(salt), 1000))
+
+    def sql(self, version, has_password_crypt=False):
+        from .services.docker_service import DockerService
+        instance = Instance(name='demo', odoo_version=version)
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        container = mock.Mock()
+
+        def run(command, environment=None):
+            sql = command[-1]
+            output = b'admin' if sql.startswith('SELECT login') else (b'1' if has_password_crypt and 'information_schema' in sql else b'0')
+            return mock.Mock(exit_code=0, output=output)
+        container.exec_run.side_effect = run
+        with mock.patch.object(service, '_start_db_container', return_value=container), \
+                mock.patch.object(service, '_list_user_databases', return_value=['shop']):
+            self.assertEqual(service.set_admin_password(instance, 'pw123456'), 'admin')
+        return [call.args[0][-1] for call in container.exec_run.call_args_list if call.args[0][-1].startswith('UPDATE')]
+
+    def test_admin_password_by_version(self):
+        [sql] = self.sql('18.0')
+        self.assertRegex(sql, r"^UPDATE res_users SET password = '\$pbkdf2-sha512\$600000\$[^']+' WHERE id = 2$")
+        [sql] = self.sql('11.0', has_password_crypt=True)
+        self.assertRegex(sql, r"SET password = NULL, password_crypt = '\$pbkdf2-sha512\$.+' WHERE id = 1$")
+        self.assertEqual(self.sql('8.0'), ["UPDATE res_users SET password = 'pw123456' WHERE id = 1"])
+
+
+class SecurityHardeningTests(BaseTestCase):
+    """The fixes of the security review (v1.0.47)."""
+
+    def test_api_cannot_write_internal_instance_fields(self):
+        self.client.force_login(self.alice)
+        url = f'/api/instances/{self.alice_instance.pk}/'
+        before = Instance.objects.get(pk=self.alice_instance.pk)
+        response = self.client.patch(url, {'data_volume': 'odoo_data_bob-odoo', 'subdomain': 'x`)||Host(`evil',
+                                           'master_password': 'mine', 'name': 'renamed', 'ssl_certificate_path': '/etc/shadow',
+                                           'description': 'ok'}, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        after = Instance.objects.get(pk=self.alice_instance.pk)
+        self.assertEqual((after.data_volume, after.subdomain, after.master_password, after.name, after.ssl_certificate_path),
+                         (before.data_volume, before.subdomain, before.master_password, before.name, before.ssl_certificate_path))
+        self.assertEqual(after.description, 'ok')
+        self.assertNotIn('data_volume', response.json())
+
+    def test_api_rejects_unsafe_repositories_and_branches(self):
+        self.client.force_login(self.alice)
+        for repo, branch in (('file:///etc', 'main'), ('ext::sh -c id', 'main'), ('https://github.com/a/b.git', '--upload-pack=id'),
+                             ('-uhttps://github.com/a/b', 'main'), ('https://github.com/a/b.git', '../x')):
+            response = self.client.post('/api/instances/', {'name': 'repo-test', 'project': self.alice_project.pk,
+                                                            'github_repo': repo, 'github_branch': branch}, content_type='application/json')
+            self.assertEqual(response.status_code, 400, (repo, branch))
+        self.assertFalse(Instance.objects.filter(name='repo-test').exists())
+
+    def test_clients_never_see_the_master_password(self):
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        data = self.client.get(f'/api/instances/{self.alice_instance.pk}/').json()
+        self.assertNotIn('master_password', data)
+        self.assertNotContains(self.client.get(f'/instance/{self.alice_instance.pk}/'), self.alice_instance.master_password)
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(f'/api/instances/{self.alice_instance.pk}/').json()['master_password'],
+                         self.alice_instance.master_password)
+
+    def test_containers_cannot_take_panel_names_or_foreign_volumes(self):
+        from .container_service import ContainerService, reserved_container_name
+        from .container_models import Container
+        for name in ('app', 'db', 'traefik', 'community-sh-app-1', 'odoo-x'):
+            self.assertTrue(reserved_container_name(name), name)
+        self.assertFalse(reserved_container_name('n8n-acme'))
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/containers/', {'name': 'app', 'image': 'alpine'}, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+        container = Container.objects.create(name='mine', image='alpine', created_by=self.alice, port=31000, container_port=80)
+        volume = mock.Mock(attrs={'Labels': {'com.docker.compose.project': 'community-sh'}})
+        volume.name = 'mine_x'
+        self.assertFalse(ContainerService._volume_is_ours(volume, container))
+        volume.attrs, volume.name = {'Labels': {}}, 'odoo_data_bob-odoo'
+        self.assertFalse(ContainerService._volume_is_ours(volume, container))
+        volume.attrs, volume.name = {'Labels': {'community-sh.container': str(container.pk)}}, 'mine_x'
+        self.assertTrue(ContainerService._volume_is_ours(volume, container))
+        panel = mock.Mock(id='abc', attrs={'Config': {'Labels': {'com.docker.compose.project': 'community-sh'}}})
+        self.assertFalse(ContainerService._container_is_ours(panel, container))
+
+    def test_non_admins_cannot_add_volumes_to_a_template(self):
+        from .container_views import _restricted_config_error
+        config = {'volumes': {'data': {'host': 'x', 'container': '/data'}, 'postgres_data': {'host': 'y', 'container': '/pg'}}, 'network': 'bridge'}
+        self.assertIn('volúmenes', _restricted_config_error(config, 'bridge', {'data'}))
+        self.assertIsNone(_restricted_config_error({'volumes': {'data': {'host': 'x', 'container': '/d'}}}, 'bridge', {'data'}))
+
+    def test_demos_get_no_ai_assistant(self):
+        import hashlib, hmac, json, time
+        from .services.docker_service import admin_login_secret
+        self.alice_instance.origin = 'trial'
+        self.alice_instance.save()
+        body = json.dumps({'db': 'acme', 'model': 'res.partner', 'res_id': 1, 'text': 'hola'}).encode()
+        timestamp = str(int(time.time()))
+        signature = hmac.new(admin_login_secret(self.alice_instance).encode(), timestamp.encode() + b'.' + body, hashlib.sha256).hexdigest()
+        with mock.patch('orchestrator.services.ai.get_ai_config', return_value={'key': 'x'}):
+            response = self.client.post(f'/odoo-ai/{self.alice_instance.name}/', body, content_type='application/json',
+                                        HTTP_X_CSH_TIMESTAMP=timestamp, HTTP_X_CSH_SIGNATURE=signature)
+        self.assertEqual(response.status_code, 403)
+        # An unknown instance answers like a bad signature
+        response = self.client.post('/odoo-ai/does-not-exist/', body, content_type='application/json',
+                                    HTTP_X_CSH_TIMESTAMP=timestamp, HTTP_X_CSH_SIGNATURE=signature)
+        self.assertEqual((response.status_code, response.json()['message']), (403, 'Firma no válida'))
+
+    def test_client_ip_only_trusts_the_proxy_entry(self):
+        from django.test import RequestFactory
+        from .permissions import client_ip
+        factory = RequestFactory()
+        proxied = factory.get('/', REMOTE_ADDR='172.18.0.5', HTTP_X_FORWARDED_FOR='1.2.3.4, 9.9.9.9')
+        self.assertEqual(client_ip(proxied), '9.9.9.9')  # Traefik's entry is the last one
+        direct = factory.get('/', REMOTE_ADDR='8.8.4.4', HTTP_X_FORWARDED_FOR='1.2.3.4')
+        self.assertEqual(client_ip(direct), '8.8.4.4')
+
+    def test_login_lockout_covers_unicode_variants_of_the_username(self):
+        for name in ('ａlice', 'ALICE', 'alice', 'aｌice', 'Alice'):
+            self.client.post(reverse('login'), {'username': name, 'password': 'wrong'})
+        self.client.post(reverse('login'), {'username': 'alice', 'password': 'pass-12345'})
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_django_admin_login_goes_through_the_panel_login(self):
+        response = self.client.get('/admin/login/')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], reverse('login'))
+
+    def test_tokens_need_2fa_when_it_is_mandatory(self):
+        from .mcp_models import MCPToken, hash_token
+        MCPToken.objects.create(user=self.alice, name='t', token_hash=hash_token('csh_secret'))
+        self.assertEqual(self.client.get('/api/instances/', HTTP_AUTHORIZATION='Bearer csh_secret').status_code, 200)
+        self.config.two_factor_required = True
+        self.config.save()
+        self.assertEqual(self.client.get('/api/instances/', HTTP_AUTHORIZATION='Bearer csh_secret').status_code, 401)
+
+    def test_disabling_2fa_needs_a_current_code(self):
+        import pyotp
+        profile = self.alice.profile
+        profile.two_factor_enabled, profile.two_factor_secret = True, 'JBSWY3DPEHPK3PXP'
+        profile.save()
+        self.client.force_login(self.alice)
+        self.client.post(reverse('two-factor-setup'), {'action': 'disable'})
+        profile.refresh_from_db()
+        self.assertTrue(profile.two_factor_enabled)
+        # Starting a new setup doesn't replace the active secret until a code of the new one is verified
+        self.client.post(reverse('two-factor-setup'), {'action': 'enable', 'current_code': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
+        profile.refresh_from_db()
+        self.assertEqual(profile.two_factor_secret, 'JBSWY3DPEHPK3PXP')
+        self.client.post(reverse('two-factor-setup'), {'action': 'disable', 'current_code': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
+        profile.refresh_from_db()
+        self.assertFalse(profile.two_factor_enabled)
+
+    def test_custom_domain_cannot_take_another_resource_subdomain(self):
+        from .permissions import domain_in_use
+        from .services import domains
+        self.config.main_domain = 'example.com'
+        self.config.save()
+        domains.clear_cache()
+        self.addCleanup(domains.clear_cache)
+        bob_host = f'{self.bob_instance.subdomain}.example.com'
+        self.assertTrue(domain_in_use(bob_host, exclude_instance=self.alice_instance))
+        self.assertFalse(domain_in_use(bob_host, exclude_instance=self.bob_instance))
+        self.assertFalse(domain_in_use('shop.alice.com'))
+
+    def test_traefik_rules_only_take_host_names(self):
+        from .traefik_service import TraefikService
+        config = TraefikService._routes('x', ['ok.example.com', 'x`)||Host(`evil.com', 'a b'], 'http://x:1', None)
+        rules = [router['rule'] for router in config['http']['routers'].values()]
+        self.assertTrue(rules)
+        self.assertEqual(set(rules), {'Host(`ok.example.com`)'})
+
+    def test_zip_bombs_and_paths_out_of_the_folder_are_refused(self):
+        import io, tempfile, zipfile
+        from .services.archives import safe_extractall
+        for name, size in (('../evil.py', 10), ('/etc/x', 10), ('big.bin', 3 * 1024 * 1024)):
+            data = io.BytesIO()
+            with zipfile.ZipFile(data, 'w', zipfile.ZIP_DEFLATED) as zf:
+                zf.writestr(name, b'0' * size)
+            with zipfile.ZipFile(data) as zf, self.assertRaises(ValueError):
+                safe_extractall(zf, tempfile.mkdtemp(), max_bytes=1024 * 1024)
+
+    def test_odoo_listens_only_on_the_host_with_a_domain_and_https(self):
+        from .services.docker_service import published_ip
+        with mock.patch('orchestrator.services.domains.main_domain', return_value='example.com'), \
+                mock.patch.dict('os.environ', {'LETSENCRYPT_EMAIL': 'a@b.c', 'ODOO_PUBLISH_IP': ''}):
+            self.assertEqual(published_ip(), '127.0.0.1')
+        with mock.patch('orchestrator.services.domains.main_domain', return_value=''):
+            self.assertEqual(published_ip(), '0.0.0.0')
+
+    def test_panel_only_answers_its_own_hosts_once_a_domain_is_set(self):
+        from .services import domains
+        self.assertEqual(self.client.get('/accounts/login/', HTTP_HOST='anything.test').status_code, 200)
+        self.config.main_domain = 'example.com'
+        self.config.save()
+        domains.clear_cache()
+        self.addCleanup(domains.clear_cache)
+        self.assertEqual(self.client.get('/accounts/login/', HTTP_HOST='evil.test').status_code, 403)
+        self.assertEqual(self.client.get('/accounts/login/', HTTP_HOST='example.com').status_code, 200)
+
+    def test_demo_copy_is_cleaned_before_it_is_handed_over(self):
+        from .services.docker_service import DockerService
+        instance = Instance(name='demo', odoo_version='18.0')
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        container = mock.Mock()
+        container.exec_run.return_value = mock.Mock(exit_code=0, output=b'')
+        with mock.patch.object(service, '_start_db_container', return_value=container), \
+                mock.patch.object(service, '_list_user_databases', return_value=['shop']):
+            service.sanitize_demo(instance)
+        sql = [call.args[0][-1] for call in container.exec_run.call_args_list]
+        self.assertRegex(sql[0], r"^UPDATE res_users SET password = '\$pbkdf2-sha512\$.+' WHERE id <> 2")
+        self.assertIn('UPDATE ir_mail_server SET active = false', sql)
+        self.assertIn('DELETE FROM res_users_apikeys', sql)
+        self.assertTrue(any("'database.secret'" in line for line in sql))
+
+    def test_demo_limits_hold_for_the_whole_server(self):
+        from .project_models import Project
+        from .services.trials import request_demo
+        demos = Project.objects.create(name='demos', owner=self.alice)
+        self.alice_project.trial_enabled, self.alice_project.trial_slug = True, 'bim'
+        self.alice_project.trial_target_project, self.alice_project.trial_max_active = demos, 10
+        self.alice_project.save()
+        self.config.trial_max_active_total = 2
+        self.config.save()
+        results = [request_demo(self.alice_project, self.alice_instance, 'X', f'x{i}@example.com', ip=f'10.0.0.{i}') for i in range(4)]
+        self.assertEqual([trial is not None for trial, _ in results], [True, True, False, False])
+
+    def test_demo_status_is_never_cached(self):
+        from .project_models import Project
+        from .services.trials import request_demo
+        demos = Project.objects.create(name='demos', owner=self.alice)
+        self.alice_project.trial_enabled, self.alice_project.trial_slug, self.alice_project.trial_target_project = True, 'bim', demos
+        self.alice_project.save()
+        trial, _ = request_demo(self.alice_project, self.alice_instance, 'X', 'x@example.com')
+        response = self.client.get(f'/bim/demo/{trial.token}/?format=json')
+        self.assertIn('no-store', response['Cache-Control'])
+        self.assertEqual(response['Referrer-Policy'], 'no-referrer')
+
+
+class DemoExtrasTests(BaseTestCase):
+    """Email of the credentials, days left, daily limit, the demo APIs, settings API, KPIs and the dashboard."""
+
+    def setUp(self):
+        super().setUp()
+        from .project_models import Project
+        self.demos = Project.objects.create(name='BIM demos', owner=self.alice)
+        self.alice_project.trial_enabled, self.alice_project.trial_slug = True, 'bim'
+        self.alice_project.trial_target_project = self.demos
+        self.alice_project.save()
+        self.alice_instance.status, self.alice_instance.odoo_version = Instance.Status.RUNNING, '18.0'
+        self.alice_instance.save()
+
+    def smtp_on(self):
+        self.config.smtp_enabled, self.config.smtp_host, self.config.smtp_from_email = True, 'smtp.example.com', 'demos@example.com'
+        self.config.save()
+
+    def build(self, trial):
+        from .services.trials import build_demo
+        service = mock.MagicMock()
+        service.copy_instance.side_effect = lambda source, name, **kw: Instance.objects.create(name=name, project=kw['project'])
+        service.set_admin_password.return_value = 'admin'
+        service.sanitize_demo.return_value = []
+        with mock.patch('orchestrator.services.DockerService', return_value=service), \
+                mock.patch('orchestrator.traefik_service.TraefikService.generate_instance_config', return_value=(True, '')):
+            build_demo(trial.task)
+        trial.refresh_from_db()
+        return trial
+
+    def test_ready_demo_is_emailed_when_smtp_is_on(self):
+        from django.core import mail as outbox
+        from .services.trials import request_demo
+        trial, _ = request_demo(self.alice_project, self.alice_instance, 'Ana', 'ana@example.com', 'Sol', '+34 600')
+        with self.settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend'), \
+                mock.patch('orchestrator.services.mail.connection', side_effect=lambda *a, **k: __import__('django.core.mail', fromlist=['get_connection']).get_connection()):
+            self.assertIsNone(self.build(trial).emailed_at)  # no SMTP server: nothing sent
+            self.assertEqual(len(outbox.outbox), 0)
+            self.smtp_on()
+            trial2, _ = request_demo(self.alice_project, self.alice_instance, 'Leo', 'leo@example.com', 'Sol', '+34 600', ip='10.0.0.7')
+            trial2 = self.build(trial2)
+        self.assertIsNotNone(trial2.emailed_at)
+        self.assertEqual(outbox.outbox[0].to, ['leo@example.com'])
+        self.assertIn(trial2.admin_password, outbox.outbox[0].body)
+        self.assertEqual(outbox.outbox[0].from_email, 'Community SH <demos@example.com>')
+
+    def test_days_left_until_stop_and_delete(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .trial_models import TrialRequest
+        demo = Instance.objects.create(name='bim-x', project=self.demos, owner=self.alice)
+        trial = TrialRequest.objects.create(project=self.alice_project, name='A', email='a@example.com', instance=demo,
+                                            status='ready', expires_at=timezone.now() + timedelta(days=5, hours=1))
+        self.assertEqual((trial.days_until_stop, trial.days_until_delete), (6, 13))
+        self.client.force_login(self.alice)
+        response = self.client.get(f'/instance/{demo.pk}/')
+        self.assertContains(response, 'Se detiene en <strong>6 días</strong>')
+        self.assertContains(response, 'Se elimina en <strong>13 días</strong>')
+
+    def test_daily_limit_comes_from_settings(self):
+        from .services.trials import request_demo
+        self.config.trial_max_per_day = 2
+        self.config.save()
+        results = [request_demo(self.alice_project, self.alice_instance, 'X', f'x{i}@example.com', ip=f'10.1.0.{i}')
+                   for i in range(3)]
+        self.assertEqual([error for _, error in results][:2], ['', ''])
+        self.assertIn('Hoy ya no', results[2][1])
+
+    def test_public_api_asks_for_a_demo_with_the_captcha(self):
+        import json
+        from django.core import signing
+        from .trial_models import TrialRequest
+        captcha = self.client.get('/api/public/demos/bim/captcha/').json()
+        numbers = signing.loads(captcha['token'], salt='trial-captcha')
+        body = {'name': 'Ana', 'email': 'ana@example.com', 'company': 'Sol', 'job_title': 'CEO', 'phone': '+34 600 111 222',
+                'country': 'España', 'instance': self.alice_instance.pk, 'captcha_token': captcha['token'],
+                'captcha_answer': numbers['a'] + numbers['b']}
+        self.assertEqual(self.client.options('/api/public/demos/bim/')['Access-Control-Allow-Methods'], 'GET, POST, OPTIONS')
+        response = self.client.post('/api/public/demos/bim/', json.dumps({**body, 'captcha_answer': 0}), content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('captcha_answer', response.json()['errors'])
+        self.assertIn('question', response.json()['captcha'])
+        response = self.client.post('/api/public/demos/bim/', json.dumps(body), content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response['Access-Control-Allow-Origin'], '*')
+        trial = TrialRequest.objects.get()
+        self.assertTrue(response.json()['status_api'].endswith(f'/bim/demo/{trial.token}/?format=json'))
+        self.assertEqual(self.client.get(response.json()['status_api'])['Access-Control-Allow-Origin'], '*')
+
+    def test_token_api_asks_for_and_follows_demos(self):
+        self.client.force_login(self.alice)
+        body = {'project': self.alice_project.pk, 'instance': self.alice_instance.pk, 'name': 'Ana', 'email': 'ana@example.com',
+                'company': 'Sol', 'job_title': 'CEO', 'phone': '+34 600 111 222', 'country': 'España'}
+        response = self.client.post('/api/demos/', body, content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        demo = response.json()
+        self.assertEqual((demo['status'], demo['source'], demo['job_title']), ('pending', 'alice-odoo', 'CEO'))
+        self.assertEqual(self.client.get(f"/api/demos/{demo['id']}/").json()['email'], 'ana@example.com')
+        # Again with the same email: refused by the monthly limit
+        self.assertEqual(self.client.post('/api/demos/', body, content_type='application/json').status_code, 429)
+        # Someone else's project
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post('/api/demos/', body, content_type='application/json').status_code, 400)
+        self.assertEqual(self.client.get('/api/demos/').json(), [])
+
+    def test_projects_api_configures_test_mode(self):
+        self.client.force_login(self.alice)
+        url = f'/api/projects/{self.demos.pk}/'
+        response = self.client.patch(url, {'trial_enabled': True, 'trial_slug': 'erp', 'trial_target_project': self.bob_project.pk},
+                                     content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        response = self.client.patch(url, {'trial_enabled': True, 'trial_slug': 'projects', 'trial_target_project': self.alice_project.pk},
+                                     content_type='application/json')
+        self.assertIn('trial_slug', response.json())
+        response = self.client.patch(url, {'trial_enabled': True, 'trial_slug': 'erp', 'trial_target_project': self.alice_project.pk,
+                                           'trial_days': 7}, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['trial_url'].endswith('/erp/'))
+
+    def test_settings_api_is_for_administrators_and_hides_the_password(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get('/api/settings/').status_code, 403)
+        self.client.force_login(self.admin)
+        response = self.client.patch('/api/settings/', {'smtp_enabled': True, 'smtp_host': 'smtp.example.com', 'smtp_password': 's3cret',
+                                                        'smtp_from_email': 'a@example.com', 'trial_max_per_day': 5}, content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        data = self.client.get('/api/settings/').json()
+        self.assertNotIn('smtp_password', data)
+        self.assertTrue(data['smtp_password_set'])
+        self.assertEqual(data['trial_max_per_day'], 5)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.smtp_password, 's3cret')
+        # An empty password keeps it
+        self.client.patch('/api/settings/', {'smtp_password': ''}, content_type='application/json')
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.smtp_password, 's3cret')
+
+    def test_settings_page_saves_email_and_limits_and_tests_the_server(self):
+        self.client.force_login(self.admin)
+        self.client.post('/settings/', {'section': 'email', 'smtp_enabled': 'on', 'smtp_host': 'smtp.example.com', 'smtp_port': '465',
+                                        'smtp_security': 'ssl', 'smtp_from_email': 'demos@example.com', 'smtp_password': 'pw'})
+        self.client.post('/settings/', {'section': 'demos', 'trial_max_per_day': '7', 'trial_max_active_total': '2'})
+        self.config.refresh_from_db()
+        self.assertEqual((self.config.smtp_port, self.config.smtp_security, self.config.smtp_password,
+                          self.config.trial_max_per_day, self.config.trial_max_active_total), (465, 'ssl', 'pw', 7, 2))
+        with mock.patch('django.core.mail.EmailMessage.send', side_effect=OSError('connection refused')):
+            response = self.client.post('/settings/email/test/', {'smtp_host': 'smtp.example.com', 'smtp_port': '465',
+                                                                 'smtp_from_email': 'demos@example.com', 'to': 'me@example.com'})
+        self.assertIn('connection refused', response.json()['error'])
+        with mock.patch('django.core.mail.EmailMessage.send', return_value=1):
+            response = self.client.post('/settings/email/test/', {'smtp_host': 'smtp.example.com', 'smtp_port': '465',
+                                                                 'smtp_from_email': 'demos@example.com', 'to': 'me@example.com'})
+        self.assertTrue(response.json()['ok'])
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.post('/settings/email/test/', {}).status_code, 403)
+
+    def test_project_kpis_and_dashboard(self):
+        self.client.force_login(self.alice)
+        response = self.client.get(f'/project/{self.alice_project.pk}/')
+        self.assertContains(response, 'Demos activas')
+        self.assertContains(response, 'Instancias en marcha')
+        response = self.client.get('/dashboard/')
+        self.assertContains(response, 'Instancias en marcha')
+        self.assertContains(response, 'Pedidas hoy')
+        self.assertNotContains(response, 'Usuarios sin 2FA')  # server KPIs: administrators only
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get('/dashboard/'), 'Usuarios sin 2FA')
+
+
+class ProjectContainerTests(BaseTestCase):
+    def test_containers_are_created_from_the_project(self):
+        from .container_models import Container
+        self.client.force_login(self.alice)
+        page = self.client.get(f'/project/{self.alice_project.pk}/')
+        self.assertContains(page, f'/container/new/?project={self.alice_project.pk}')
+        form = self.client.get(f'/container/new/?project={self.alice_project.pk}')
+        self.assertContains(form, f'<option value="{self.alice_project.pk}" selected>')
+        with mock.patch('orchestrator.container_views.ContainerService') as service:
+            service.return_value.create_container.return_value = (True, 'ok')
+            self.client.post('/container/new/', {'template': 'custom', 'name': 'web-acme', 'image': 'nginx:alpine',
+                                                 'port': '31080', 'container_port': '80', 'project': self.alice_project.pk})
+            # Someone else's project is ignored
+            self.client.post('/container/new/', {'template': 'custom', 'name': 'web-other', 'image': 'nginx:alpine',
+                                                 'port': '31081', 'container_port': '80', 'project': self.bob_project.pk})
+        self.assertEqual(Container.objects.get(name='web-acme').project, self.alice_project)
+        self.assertIsNone(Container.objects.get(name='web-other').project)
+        self.assertContains(self.client.get(f'/project/{self.alice_project.pk}/'), 'web-acme')
+        # API: only your own projects
+        response = self.client.patch(f"/api/containers/{Container.objects.get(name='web-other').pk}/",
+                                     {'project': self.bob_project.pk}, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+
+class BlogTests(TestCase):
+    def test_posts_without_author_render(self):
+        from .blog_models import BlogPost
+        post = BlogPost.objects.create(title='Hola', slug='hola', content='# Hola', published=True, author=None)
+        self.assertContains(self.client.get('/blog/'), 'Community SH')
+        self.assertContains(self.client.get(f'/blog/{post.slug}/'), 'Community SH')

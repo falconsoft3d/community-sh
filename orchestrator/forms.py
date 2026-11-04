@@ -21,16 +21,18 @@ class InstanceForm(forms.ModelForm):
     
     class Meta:
         model = Instance
-        fields = ['project', 'name', 'odoo_version', 'github_repo', 'github_branch', 'database_name', 'demo_default_db', 'custom_domain']
+        fields = ['project', 'name', 'odoo_version', 'github_repo', 'github_branch', 'database_name', 'demo_default_db', 'custom_domain', 'description']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'mi-empresa'}),
             'github_branch': forms.TextInput(attrs={'placeholder': 'main'}),
             'database_name': forms.TextInput(attrs={'placeholder': 'Dejar vacío para auto-detección'}),
             'demo_default_db': forms.TextInput(attrs={'placeholder': 'Dejar vacío si no es una instancia de demos'}),
             'custom_domain': forms.TextInput(attrs={'placeholder': 'ejemplo.midominio.com'}),
+            'description': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Qué incluye esta versión (se muestra en la página de demos)'}),
         }
         labels = {
             'project': 'Proyecto',
+            'description': 'Descripción para las demos (opcional)',
             'demo_default_db': 'Base por defecto de las demos (opcional)',
             'custom_domain': 'Dominio Personalizado (opcional)',
         }
@@ -84,6 +86,10 @@ class InstanceForm(forms.ModelForm):
                 field.widget.attrs.update({
                     'class': 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
                 })
+            elif isinstance(field.widget, forms.Textarea):
+                field.widget.attrs.update({
+                    'class': 'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                })
             elif isinstance(field.widget, forms.TextInput):
                 field.widget.attrs.update({
                     'class': 'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
@@ -100,13 +106,34 @@ class InstanceForm(forms.ModelForm):
 
 
 class ProjectForm(forms.ModelForm):
+    TRIAL_FIELDS = ('trial_slug', 'trial_days', 'trial_target_project', 'trial_message', 'trial_max_active')
+
     class Meta:
         model = Project
-        fields = ['name', 'client', 'description']
-        labels = {'name': 'Nombre', 'client': 'Cliente (usuario)', 'description': 'Descripción'}
+        fields = ['name', 'client', 'description', 'trial_enabled', 'trial_slug', 'trial_days',
+                  'trial_target_project', 'trial_message', 'trial_max_active']
+        labels = {
+            'name': 'Nombre', 'client': 'Cliente (usuario)', 'description': 'Descripción',
+            'trial_enabled': 'Modo test',
+            'trial_slug': 'URL de la página de demos',
+            'trial_days': 'Días de prueba',
+            'trial_target_project': 'Proyecto donde se crean las demos',
+            'trial_message': 'Texto para el usuario',
+            'trial_max_active': 'Demos a la vez',
+        }
+        help_texts = {
+            'trial_enabled': 'Página pública donde cualquiera pide una demo de las instancias de este proyecto. Cada demo es una copia completa de la instancia elegida: usa plantillas sin datos reales de clientes. Al copiarla se desactivan el correo, las claves API y las contraseñas de los demás usuarios, y el asistente de IA no funciona en las demos.',
+            'trial_slug': 'Por ejemplo bim: la página queda en https://tudominio/bim',
+            'trial_days': 'Al vencer la demo se detiene, y se elimina 7 días después',
+            'trial_target_project': 'Un proyecto hermano (tuyo): ahí se crea la copia de la instancia elegida',
+            'trial_message': 'Se muestra arriba de la página de demos',
+            'trial_max_active': 'Máximo de demos funcionando al mismo tiempo: cada una es un Odoo con su PostgreSQL',
+        }
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'Implantación ACME'}),
             'description': forms.Textarea(attrs={'rows': 3}),
+            'trial_slug': forms.TextInput(attrs={'placeholder': 'bim'}),
+            'trial_message': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Prueba gratis nuestro Odoo para la construcción durante 15 días...'}),
         }
 
     def __init__(self, *args, owner=None, user=None, **kwargs):
@@ -120,12 +147,34 @@ class ProjectForm(forms.ModelForm):
             self.fields['client'].label_from_instance = lambda u: f"{u.profile.company or u.get_full_name() or u.username} ({u.username})"
         else:
             del self.fields['client']
-        for field in self.fields.values():
+        # The demos go to another project of the same owner
+        siblings = Project.objects.filter(owner=self.owner) if self.owner else Project.objects.none()
+        if self.instance.pk:
+            siblings = siblings.exclude(pk=self.instance.pk)
+        self.fields['trial_target_project'].queryset = siblings.order_by('name')
+        self.fields['trial_target_project'].empty_label = '-- Selecciona un proyecto --'
+        # Empty (or not sent): the default of the model
+        for name in ('trial_days', 'trial_max_active'):
+            self.fields[name].required = False
+        self.fields['trial_days'].widget.attrs.update({'min': 1, 'max': 365})
+        self.fields['trial_max_active'].widget.attrs.update({'min': 1, 'max': 50})
+        for name, field in self.fields.items():
+            if isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs['class'] = 'h-4 w-4 rounded border-input accent-primary'
+                continue
             field.widget.attrs['class'] = (
                 'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background '
                 'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring '
                 'focus-visible:ring-offset-2' + (' h-10' if not isinstance(field.widget, forms.Textarea) else '')
             )
+
+    @property
+    def main_fields(self):
+        return [self[name] for name in self.fields if not name.startswith('trial_')]
+
+    @property
+    def trial_fields(self):
+        return [self[name] for name in self.TRIAL_FIELDS]
 
     def clean_name(self):
         name = self.cleaned_data['name'].strip()
@@ -134,3 +183,24 @@ class ProjectForm(forms.ModelForm):
             raise forms.ValidationError('Ya tienes un proyecto con ese nombre.')
         return name
 
+    def clean_trial_slug(self):
+        from .services.trials import trial_slug_problem
+        slug = (self.cleaned_data.get('trial_slug') or '').strip().lower()
+        if not slug:
+            return None
+        # /<slug>/ must not be a page of the panel (projects, instances, admin...)
+        problem = trial_slug_problem(slug, self.instance)
+        if problem:
+            raise forms.ValidationError(problem)
+        return slug
+
+    def clean(self):
+        data = super().clean()
+        for name in ('trial_days', 'trial_max_active'):
+            if name not in self.errors and not data.get(name):
+                data[name] = Project._meta.get_field(name).default
+        from .services.trials import trial_settings_problems
+        for field, message in trial_settings_problems(data, self.owner, self.instance).items():
+            if field not in self.errors:
+                self.add_error(field, message)
+        return data

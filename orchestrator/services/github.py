@@ -16,19 +16,27 @@ def authed_url(repo_url, token):
 
 def create_branch(repo_url, base_branch, new_branch, token):
     """Create new_branch from base_branch on the remote. Returns (ok, message)."""
+    from django.core.exceptions import ValidationError
+    from ..permissions import validate_git_branch, validate_repo_url
+    try:
+        validate_repo_url(repo_url)
+        validate_git_branch(base_branch)
+        validate_git_branch(new_branch)
+    except ValidationError as e:
+        return False, f'No se pudo crear la rama "{new_branch}" en GitHub: {e.messages[0]}'
     clone_url = authed_url(repo_url, token)
     temp_git_dir = tempfile.mkdtemp()
     try:
         subprocess.run(
-            ['git', 'clone', '--branch', base_branch, '--single-branch', clone_url, temp_git_dir],
+            ['git', 'clone', '--branch', base_branch, '--single-branch', '--', clone_url, temp_git_dir],
             check=True, capture_output=True, text=True
         )
         subprocess.run(
-            ['git', 'checkout', '-b', new_branch],
+            ['git', 'checkout', '-b', new_branch, '--'],
             check=True, capture_output=True, text=True, cwd=temp_git_dir
         )
         subprocess.run(
-            ['git', 'push', 'origin', new_branch],
+            ['git', 'push', '--', 'origin', new_branch],
             check=True, capture_output=True, text=True, cwd=temp_git_dir
         )
         return True, f'Rama de GitHub "{new_branch}" creada'

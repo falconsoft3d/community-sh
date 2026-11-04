@@ -25,9 +25,12 @@
                 </div>
             </div>
 
-            <form method="post">
+            <form method="post" class="space-y-3">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="disable">
+                <label for="current_code_disable" class="block text-sm font-medium">Código actual de tu app</label>
+                <input type="text" id="current_code_disable" name="current_code" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code"
+                    class="flex h-10 w-40 rounded-md border border-input bg-background px-3 py-2 text-sm tracking-widest" placeholder="000000">
                 <button type="submit" onclick="return confirm('¿Estás seguro de desactivar la autenticación de dos factores?')"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
                     <i data-lucide="shield-off" class="mr-2 h-4 w-4"></i>
