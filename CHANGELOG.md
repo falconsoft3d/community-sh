@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.61**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.62**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.62 — 2026-11-04
+
+- API: crear una base de datos en una instancia (POST /api/instances/{id}/create-database/: nombre, idioma, sin datos de demostración y con contraseña de admin generada o dada) e instalar o actualizar un módulo en todas sus bases (POST /api/instances/{id}/install-module/), por ejemplo el tema Community SH. Así una instancia se crea, despliega, recibe su base y su tema solo con la API.
 
 ## 1.0.61 — 2026-11-04
 

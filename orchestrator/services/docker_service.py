@@ -983,7 +983,41 @@ class DockerService:
             new_instance.save()
             raise e
 
-    def set_admin_password(self, instance, password):
+    def create_database(self, instance, name, password, lang='', demo=False):
+        """
+        A new Odoo database in the instance (`odoo -d name -i base`), without demo data unless asked, and
+        with this password for its administrator. Returns the administrator's login.
+        """
+        from ..permissions import DATABASE_NAME_RE
+        if not DATABASE_NAME_RE.match(name or ''):
+            raise ValueError('Nombre de base de datos no válido')
+        if lang and not re.fullmatch(r'[a-z]{2,3}(_[A-Z]{2})?(@[a-z]+)?', lang):
+            raise ValueError('Idioma no válido (por ejemplo es_ES)')
+        odoo_container = self._get_container(f'odoo_{instance.name}')
+        db_container = self._start_db_container(instance)
+        if odoo_container is None or db_container is None:
+            raise Exception('La instancia no está desplegada: despliégala antes de crear una base de datos')
+        self._wait_for_postgres(db_container)
+        if name in self._list_user_databases(db_container):
+            raise Exception(f'La base de datos {name} ya existe')
+        progress(15, f'Creando la base de datos {name}')
+        options = '' if demo else ' --without-demo=all'
+        if lang:
+            options += f' --load-language={lang}'
+        result = odoo_container.exec_run(
+            ['sh', '-c', f'{odoo_command(instance.odoo_version)} -d "$DB" -i base{options} --stop-after-init'],
+            environment={'DB': name})
+        output = result.output.decode('utf-8', errors='replace')
+        print(output[-3000:])
+        if result.exit_code != 0 or name not in self._list_user_databases(db_container):
+            raise Exception(f'Odoo no pudo crear la base de datos {name}: {output[-800:]}')
+        progress(80, 'Contraseña del administrador')
+        login = self.set_admin_password(instance, password, databases=[name])
+        progress(90, 'Reiniciando Odoo')
+        self.restart_instance(instance)
+        return login
+
+    def set_admin_password(self, instance, password, databases=None):
         """
         New password for the administrator of every database of the instance (a demo copy).
         Written as the pbkdf2-sha512 hash Odoo checks (12+: res_users.password; 8-11: password_crypt
@@ -992,7 +1026,7 @@ class DockerService:
         db_container = self._start_db_container(instance)
         if db_container is None:
             raise Exception('La base de datos de la instancia no existe')
-        databases = self._list_user_databases(db_container)
+        databases = databases or self._list_user_databases(db_container)
         if not databases:
             raise Exception('La instancia no tiene ninguna base de datos de Odoo')
         major = odoo_major(instance.odoo_version)

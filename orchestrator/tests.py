@@ -3334,3 +3334,45 @@ class InstallNamedModuleTests(BaseTestCase):
         self.alice_project.save()
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(f'/instance/{self.alice_instance.pk}/install-named-module/', {'module': 'x_y'}).status_code, 403)
+
+
+class ApiDatabaseAndModuleTests(BaseTestCase):
+    def test_create_database_and_install_module_through_the_api(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        url = f'/api/instances/{self.alice_instance.pk}/'
+        response = self.client.post(url + 'create-database/', {'name': 'bim18', 'lang': 'es_ES'}, content_type='application/json')
+        self.assertEqual(response.status_code, 202)
+        data = response.json()
+        self.assertEqual((data['database'], data['login']), ('bim18', 'admin'))
+        task = Task.objects.get(pk=data['task_id'])
+        self.assertEqual((task.kind, task.params['name'], task.params['password'], task.params['demo']),
+                         (Task.Kind.CREATE_DATABASE, 'bim18', data['password'], False))
+        self.assertEqual(self.client.post(url + 'create-database/', {'name': 'bad name;'}, content_type='application/json').status_code, 400)
+        response = self.client.post(url + 'install-module/', {'module': 'community_sh_theme'}, content_type='application/json')
+        self.assertEqual(Task.objects.get(pk=response.json()['task_id']).params['module'], 'community_sh_theme')
+        self.assertEqual(self.client.post(url + 'install-module/', {'module': 'x; rm'}, content_type='application/json').status_code, 400)
+        # Clients of the project can't
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(url + 'install-module/', {'module': 'sale'}, content_type='application/json').status_code, 403)
+
+    def test_create_database_runs_odoo_init_and_sets_the_admin_password(self):
+        from .services.docker_service import DockerService
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        odoo = mock.Mock()
+        odoo.exec_run.return_value = mock.Mock(exit_code=0, output=b'ok')
+        listing = iter([['other'], ['other', 'bim18']])
+        with mock.patch.object(service, '_get_container', return_value=odoo), \
+                mock.patch.object(service, '_start_db_container', return_value=mock.Mock()), \
+                mock.patch.object(service, '_wait_for_postgres'), \
+                mock.patch.object(service, '_list_user_databases', side_effect=lambda *_: next(listing)), \
+                mock.patch.object(service, 'set_admin_password', return_value='admin') as set_password, \
+                mock.patch.object(service, 'restart_instance'):
+            self.assertEqual(service.create_database(self.alice_instance, 'bim18', 'Secret-123', 'es_ES'), 'admin')
+        command = odoo.exec_run.call_args.args[0][2]
+        self.assertIn('-i base --without-demo=all --load-language=es_ES --stop-after-init', command)
+        self.assertEqual(odoo.exec_run.call_args.kwargs['environment'], {'DB': 'bim18'})
+        set_password.assert_called_once_with(self.alice_instance, 'Secret-123', databases=['bim18'])

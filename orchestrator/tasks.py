@@ -182,6 +182,14 @@ def trial(task):
     return build_demo(task)
 
 
+@handler(Task.Kind.CREATE_DATABASE)
+def create_database(task):
+    params = task.params
+    login = DockerService().create_database(task.instance, params['name'], params['password'],
+                                            params.get('lang', ''), params.get('demo', False))
+    return f"Base de datos {params['name']} creada · usuario {login} · la contraseña está en los parámetros de la tarea"
+
+
 @handler(Task.Kind.RENAME)
 def rename(task):
     instance = task.instance

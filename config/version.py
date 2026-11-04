@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.61'
+VERSION = '1.0.62'
 
 CHANGELOG = [
+    {
+        'version': '1.0.62',
+        'date': '2026-11-04',
+        'notes': [
+            'API: crear una base de datos en una instancia (POST /api/instances/{id}/create-database/: nombre, idioma, sin datos de demostración y con contraseña de admin generada o dada) e instalar o actualizar un módulo en todas sus bases (POST /api/instances/{id}/install-module/), por ejemplo el tema Community SH. Así una instancia se crea, despliega, recibe su base y su tema solo con la API.',
+        ],
+    },
     {
         'version': '1.0.61',
         'date': '2026-11-04',

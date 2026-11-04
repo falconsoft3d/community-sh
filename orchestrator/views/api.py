@@ -80,7 +80,48 @@ class InstanceActionsMixin:
         return Response({'task_id': task.pk, 'status': task.status}, status=status.HTTP_202_ACCEPTED)
 
 
-class InstanceAPIViewSet(InstanceActionsMixin, InstanceViewSet):
+class InstanceDatabaseMixin:
+    """Create a database and install modules (owners and administrators, not clients)."""
+
+    def _managed(self, request):
+        from rest_framework.exceptions import PermissionDenied
+        from ..permissions import can_manage
+        instance = self.get_object()
+        if not can_manage(request.user, instance):
+            raise PermissionDenied('Only who manages the instance')
+        return instance
+
+    @action(detail=True, methods=['post'], url_path='create-database')
+    def create_database(self, request, pk=None):
+        import secrets
+        from ..permissions import DATABASE_NAME_RE
+        instance = self._managed(request)
+        name = str(request.data.get('name') or instance.name).strip()
+        if not DATABASE_NAME_RE.match(name):
+            return Response({'name': ['Invalid database name']}, status=status.HTTP_400_BAD_REQUEST)
+        password = str(request.data.get('password') or secrets.token_urlsafe(12))
+        import re as _re
+        if not _re.fullmatch(r'[A-Za-z0-9_-]{8,64}', password):
+            return Response({'password': ['8-64 letters, digits, "_" or "-"']}, status=status.HTTP_400_BAD_REQUEST)
+        lang = str(request.data.get('lang') or '')
+        demo = str(request.data.get('demo', 'false')).lower() in ('1', 'true', 'yes')
+        task = enqueue(Task.Kind.CREATE_DATABASE, instance, request.user, name=name, password=password, lang=lang, demo=demo)
+        return Response({'task_id': task.pk, 'status': task.status, 'database': name, 'login': 'admin',
+                         'password': password}, status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=True, methods=['post'], url_path='install-module')
+    def install_module(self, request, pk=None):
+        import re as _re
+        instance = self._managed(request)
+        module = str(request.data.get('module', '')).strip()
+        if not _re.fullmatch(r'[a-z0-9_]{2,64}', module):
+            return Response({'module': ['Technical name: lowercase letters, digits and "_"']}, status=status.HTTP_400_BAD_REQUEST)
+        upgrade = str(request.data.get('upgrade', 'false')).lower() in ('1', 'true', 'yes')
+        task = enqueue(Task.Kind.AI_MODULE, instance, request.user, module=module, upgrade=upgrade, label=module)
+        return Response({'task_id': task.pk, 'status': task.status}, status=status.HTTP_202_ACCEPTED)
+
+
+class InstanceAPIViewSet(InstanceDatabaseMixin, InstanceActionsMixin, InstanceViewSet):
     pass
 
 

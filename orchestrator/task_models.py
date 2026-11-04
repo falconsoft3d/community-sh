@@ -24,6 +24,7 @@ class Task(models.Model):
         BUILD_CONTAINER = 'build_container', 'Construir contenedor'
         DOCKER_CLEANUP = 'docker_cleanup', 'Limpiar Docker'
         TRIAL = 'trial', 'Crear demo'
+        CREATE_DATABASE = 'create_database', 'Crear base de datos'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'
