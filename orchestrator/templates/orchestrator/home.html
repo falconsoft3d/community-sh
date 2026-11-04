@@ -42,6 +42,8 @@
             }
         }
     </script>
+    <!-- Section links land below the two-row sticky header -->
+    <style>html { scroll-padding-top: 7.5rem; scroll-behavior: smooth; }</style>
 </head>
 
 <body class="bg-white text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
@@ -53,17 +55,8 @@
             <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white">
                 <i data-lucide="container" class="h-5 w-5"></i>
             </span>
-            <span class="text-lg font-bold">Community SH</span>
+            <span class="whitespace-nowrap text-lg font-bold">Community SH</span>
         </a>
-
-        <nav class="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex dark:text-slate-400">
-            <a href="#funcionalidades" class="hover:text-brand-600">{% translate "Funcionalidades" %}</a>
-            <a href="#arquitectura" class="hover:text-brand-600">{% translate "Cómo funciona" %}</a>
-            <a href="#instalacion" class="hover:text-brand-600">{% translate "Instalación" %}</a>
-            <a href="#manual" class="hover:text-brand-600">{% translate "Manual" %}</a>
-            <a href="#novedades" class="hover:text-brand-600">{% translate "Novedades" %}</a>
-            <a href="{% url 'blog-list' %}" class="hover:text-brand-600">Blog</a>
-        </nav>
 
         <div class="flex items-center gap-3">
             {% get_current_language as LANGUAGE_CODE %}{% get_available_languages as LANGUAGES %}
@@ -88,10 +81,10 @@
             {% if user.is_authenticated %}
             <form method="post" action="{% url 'logout' %}" class="hidden sm:block">
                 {% csrf_token %}
-                <button type="submit" class="text-sm font-medium text-slate-600 hover:text-brand-600 dark:text-slate-400">{% translate "Cerrar sesión" %}</button>
+                <button type="submit" class="whitespace-nowrap text-sm font-medium text-slate-600 hover:text-brand-600 dark:text-slate-400">{% translate "Cerrar sesión" %}</button>
             </form>
             <a href="{% url 'instance-list' %}" title="{{ user.get_full_name|default:user.username }}"
-                class="inline-flex h-9 items-center gap-2 rounded-md bg-brand-600 pl-1 pr-4 text-sm font-semibold text-white shadow-sm shadow-brand-600/30 hover:bg-brand-700">
+                class="inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-md bg-brand-600 pl-1 pr-4 text-sm font-semibold text-white shadow-sm shadow-brand-600/30 hover:bg-brand-700">
                 <span class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-white/20 ring-2 ring-white/40">
                     {% if user.profile.avatar %}
                     <img src="{{ user.profile.avatar.url }}" alt="" class="h-full w-full object-cover">
@@ -109,6 +102,17 @@
             {% endif %}
         </div>
     </div>
+    <!-- Second row: the sections of the page (scrolls sideways on small screens) -->
+    <nav class="border-t border-slate-200/70 dark:border-slate-800/70" aria-label="{% translate 'Secciones' %}">
+        <div class="mx-auto flex h-11 max-w-6xl items-center gap-6 overflow-x-auto whitespace-nowrap px-4 text-sm font-medium text-slate-600 sm:gap-8 sm:px-6 dark:text-slate-400">
+            <a href="#funcionalidades" class="hover:text-brand-600">{% translate "Funcionalidades" %}</a>
+            <a href="#arquitectura" class="hover:text-brand-600">{% translate "Cómo funciona" %}</a>
+            <a href="#instalacion" class="hover:text-brand-600">{% translate "Instalación" %}</a>
+            <a href="#manual" class="hover:text-brand-600">{% translate "Manual" %}</a>
+            <a href="#novedades" class="hover:text-brand-600">{% translate "Novedades" %}</a>
+            <a href="{% url 'blog-list' %}" class="hover:text-brand-600">Blog</a>
+        </div>
+    </nav>
 </header>
 
 <main>
