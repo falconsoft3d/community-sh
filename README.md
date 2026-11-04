@@ -108,6 +108,32 @@ by `worker`; remove the old container with `docker-compose up -d --remove-orphan
 > `DJANGO_SECRET_KEY`. Each Odoo instance now has its own master password (shown on the
 > instance page); it is applied on the next redeploy.
 
+**Option 4: Automatic deploy on every push to `main` (GitHub Actions)**
+
+`.github/workflows/deploy.yml` runs the tests and, if they pass, connects to the server over SSH and runs
+[`scripts/deploy.sh`](scripts/deploy.sh), which:
+
+1. waits for running tasks (deploys, backups, demos) to finish;
+2. saves a copy of the panel database in `backups/panel-db/` (the last 15) — **if the copy fails, nothing is deployed**;
+3. moves the code to `origin/main` keeping `.env`, `instances/`, `backups/`, `media/` and the certificates (`letsencrypt/acme.json`);
+4. rebuilds the panel and restarts it (Odoo instances and user containers keep running);
+5. checks that the panel answers and, if it doesn't, goes back to the previous version.
+
+Set it up once — in GitHub → *Settings → Secrets and variables → Actions*, add:
+
+| Secret | Value |
+|---|---|
+| `DEPLOY_HOST` | `communitysh.xyz` (or the server IP) |
+| `DEPLOY_USER` | `root`, or a user with passwordless `sudo` |
+| `DEPLOY_SSH_KEY` | the **private** key whose public key is in that user's `~/.ssh/authorized_keys` |
+| `DEPLOY_KNOWN_HOSTS` | output of `ssh-keyscan -H communitysh.xyz` (recommended) |
+| `DEPLOY_PORT`, `DEPLOY_PATH` | only if they aren't `22` and `/opt/community-sh` |
+
+Then every merge or push to `main` is deployed (Actions tab shows the log; *Run workflow* deploys by hand).
+To deploy by hand on the server: `sudo bash /opt/community-sh/scripts/deploy.sh`.
+To restore a database copy: `gunzip -c backups/panel-db/panel-<date>.sql.gz | sudo docker compose exec -T db psql -U postgres community_sh`
+(on an empty database).
+
 **Docker Compose Commands Local**
 ```bash
 docker-compose up -d --build app

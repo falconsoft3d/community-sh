@@ -61,4 +61,6 @@ docker-compose.override.yml
 ai_attachments/
 
 # Traefik writes the private keys of the certificates here
-letsencrypt/acme.json
+letsencrypt/acme.json*
+# Copies of the panel database made by scripts/deploy.sh
+backups/panel-db/

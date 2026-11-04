@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.48'
+VERSION = '1.0.49'
 
 CHANGELOG = [
+    {
+        'version': '1.0.49',
+        'date': '2026-11-04',
+        'notes': [
+            'Despliegue automático: cada push a main pasa los tests en GitHub Actions y, si van bien, despliega en el servidor por SSH (scripts/deploy.sh): espera a las tareas en curso, guarda una copia de la base del panel (si falla, no despliega), conserva .env, instancias, backups y certificados, reconstruye el panel y vuelve a la versión anterior si no responde.',
+        ],
+    },
     {
         'version': '1.0.48',
         'date': '2026-11-04',

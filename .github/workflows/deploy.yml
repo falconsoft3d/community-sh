@@ -1,0 +1,86 @@
+# Every push to main: run the tests and, if they pass, deploy to the server over SSH
+# (scripts/deploy.sh). Also runnable by hand from the Actions tab.
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST          server name or IP (e.g. communitysh.xyz)
+#   DEPLOY_USER          SSH user (root, or a user with passwordless sudo)
+#   DEPLOY_SSH_KEY       private key allowed in that user's ~/.ssh/authorized_keys
+#   DEPLOY_PORT          optional, SSH port (22)
+#   DEPLOY_PATH          optional, install folder (/opt/community-sh)
+#   DEPLOY_KNOWN_HOSTS   optional but recommended: output of `ssh-keyscan -H <host>`
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time; a newer push waits for the running one instead of cutting it
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run tests
+        env:
+          DEBUG: 'True'
+          DJANGO_SECRET_KEY: ci-only-secret-key-not-used-in-production
+        run: python manage.py test orchestrator
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        run: |
+          if [ -z "$SSH_KEY" ] || [ -z "$HOST" ]; then
+            echo "::error::Add the DEPLOY_HOST, DEPLOY_USER and DEPLOY_SSH_KEY secrets"; exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          if [ -n "$KNOWN_HOSTS" ]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::DEPLOY_KNOWN_HOSTS is not set: trusting the server key seen now"
+            ssh-keyscan -p "$PORT" -H "$HOST" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          DIR: ${{ secrets.DEPLOY_PATH || '/opt/community-sh' }}
+        # The script is taken from the commit being deployed, so changes to it apply right away
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$PORT" -o BatchMode=yes -o ServerAliveInterval=30 "$USER@$HOST" \
+            "set -e; S=''; [ \"\$(id -u)\" = 0 ] || S='sudo -n'; \
+             \$S git -C '$DIR' fetch --quiet origin main; \
+             \$S git -C '$DIR' show '${{ github.sha }}:scripts/deploy.sh' > /tmp/community-sh-deploy.sh; \
+             \$S bash /tmp/community-sh-deploy.sh main '$DIR'"
+
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.48**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.49**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.49 — 2026-11-04
+
+- Despliegue automático: cada push a main pasa los tests en GitHub Actions y, si van bien, despliega en el servidor por SSH (scripts/deploy.sh): espera a las tareas en curso, guarda una copia de la base del panel (si falla, no despliega), conserva .env, instancias, backups y certificados, reconstruye el panel y vuelve a la versión anterior si no responde.
 
 ## 1.0.48 — 2026-11-04
 
