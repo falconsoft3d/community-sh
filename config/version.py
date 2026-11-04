@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.52'
+VERSION = '1.0.53'
 
 CHANGELOG = [
+    {
+        'version': '1.0.53',
+        'date': '2026-11-04',
+        'notes': [
+            "Despliegue automático: funciona aunque el servidor tenga letsencrypt/acme.json marcado con skip-worktree o assume-unchanged (git se negaba a cambiar de versión: «Entry 'letsencrypt/acme.json' not uptodate»).",
+        ],
+    },
     {
         'version': '1.0.52',
         'date': '2026-11-04',

@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.52**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.53**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.53 — 2026-11-04
+
+- Despliegue automático: funciona aunque el servidor tenga letsencrypt/acme.json marcado con skip-worktree o assume-unchanged (git se negaba a cambiar de versión: «Entry 'letsencrypt/acme.json' not uptodate»).
 
 ## 1.0.52 — 2026-11-04
 

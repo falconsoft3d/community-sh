@@ -63,6 +63,18 @@ if [ -s "$ACME" ]; then
     cp -p "$ACME" "$ACME_BACKUP"
 fi
 
+# acme.json is often marked skip-worktree / assume-unchanged on servers (so git ignores what Traefik
+# writes): git then refuses to move to a version that no longer tracks it. It has its own copy above.
+if git ls-files --error-unmatch "$ACME" >/dev/null 2>&1; then
+    # Two calls: given together, git keeps one of the flags
+    git update-index --no-skip-worktree -- "$ACME"
+    git update-index --no-assume-unchanged -- "$ACME"
+fi
+FLAGGED="$(git ls-files -v | awk '/^([a-z]|S) /{ $1=""; sub(/^ /, ""); print }')"
+if [ -n "$FLAGGED" ]; then
+    log "Files marked skip-worktree/assume-unchanged on this server (left as they are): $(echo "$FLAGGED" | tr '\n' ' ')"
+fi
+
 PREVIOUS="$(git rev-parse HEAD)"
 git fetch --quiet origin "$BRANCH"
 TARGET="$(git rev-parse "origin/$BRANCH")"
