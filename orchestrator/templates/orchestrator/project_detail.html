@@ -21,6 +21,11 @@
             {% if project.description %}
             <p class="mt-2 max-w-2xl text-sm text-muted-foreground">{{ project.description|linebreaksbr }}</p>
             {% endif %}
+            {% if project.tags.all %}
+            <div class="mt-2 flex flex-wrap gap-1.5">
+                {% for tag in project.tags.all %}<a href="{% url 'project-list' %}?tag={{ tag.name|urlencode }}" class="rounded-full bg-{{ tag.color }}-100 px-2 py-0.5 text-xs font-medium text-{{ tag.color }}-800 hover:underline dark:bg-{{ tag.color }}-900/50 dark:text-{{ tag.color }}-200">{{ tag.name }}</a>{% endfor %}
+            </div>
+            {% endif %}
         </div>
         {% if can_manage %}
         <div class="flex items-center gap-2">

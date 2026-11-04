@@ -3376,3 +3376,48 @@ class ApiDatabaseAndModuleTests(BaseTestCase):
         self.assertIn('-i base --without-demo=all --load-language=es_ES --stop-after-init', command)
         self.assertEqual(odoo.exec_run.call_args.kwargs['environment'], {'DB': 'bim18'})
         set_password.assert_called_once_with(self.alice_instance, 'Secret-123', databases=['bim18'])
+
+
+class ProjectColorTagsMoveTests(BaseTestCase):
+    def test_colour_and_tags_from_the_form_and_the_filter(self):
+        from .project_models import Project
+        self.client.force_login(self.alice)
+        self.client.post(f'/project/{self.alice_project.pk}/edit/', {'name': 'ACME', 'color': 'violet', 'tags_text': 'Odoo 20, cliente,  odoo 20 ,demo'})
+        project = Project.objects.get(pk=self.alice_project.pk)
+        self.assertEqual(project.color, 'violet')
+        self.assertEqual(sorted(project.tag_list), ['Odoo 20', 'cliente', 'demo'])
+        other = Project.objects.create(name='Otro', owner=self.alice)
+        page = self.client.get('/projects/').content.decode()
+        self.assertIn('bg-violet-50', page)
+        self.assertIn('?tag=cliente', page)
+        page = self.client.get('/projects/?tag=CLIENTE').content.decode()
+        self.assertIn('ACME', page)
+        self.assertNotIn('>Otro<', page)
+        # The form shows the current tags and the existing ones as suggestions
+        form = self.client.get(f'/project/{other.pk}/edit/').content.decode()
+        self.assertIn('<option value="demo">', form)
+        # Bob doesn't see Alice's tags
+        self.client.force_login(self.bob)
+        self.assertNotIn('?tag=cliente', self.client.get('/projects/').content.decode())
+
+    def test_tags_and_colour_through_the_api(self):
+        self.client.force_login(self.alice)
+        response = self.client.patch(f'/api/projects/{self.alice_project.pk}/', {'color': 'green', 'tag_names': ['erp', 'demo']},
+                                     content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual((response.json()['color'], sorted(response.json()['tag_names'])), ('green', ['demo', 'erp']))
+
+    def test_move_an_instance_to_another_of_your_projects(self):
+        from .project_models import Project
+        target = Project.objects.create(name='Destino', owner=self.alice)
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get(f'/instance/{self.alice_instance.pk}/'), 'Destino')
+        subdomain = Instance.objects.get(pk=self.alice_instance.pk).subdomain
+        self.client.post(f'/instance/{self.alice_instance.pk}/move/', {'project': target.pk})
+        moved = Instance.objects.get(pk=self.alice_instance.pk)
+        self.assertEqual((moved.project, moved.subdomain), (target, subdomain))
+        # Not into someone else's project
+        self.client.post(f'/instance/{self.alice_instance.pk}/move/', {'project': self.bob_project.pk})
+        self.assertEqual(Instance.objects.get(pk=self.alice_instance.pk).project, target)
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.post(f'/instance/{self.alice_instance.pk}/move/', {'project': self.bob_project.pk}).status_code, 404)

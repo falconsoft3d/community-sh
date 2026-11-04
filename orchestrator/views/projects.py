@@ -12,11 +12,19 @@ from ..permissions import can_manage, get_project_for_user, management_required,
 
 @login_required
 def project_list(request):
-    projects = projects_for(request.user).annotate(
-        instance_count=Count('instances'),
-        running_count=Count('instances', filter=Q(instances__status='running')),
-    ).select_related('owner').order_by('name')
-    return render(request, 'orchestrator/project_list.html', {'projects': paginate(request, projects)})
+    from ..project_models import ProjectTag
+    visible = projects_for(request.user)
+    projects = visible.annotate(
+        instance_count=Count('instances', distinct=True),
+        running_count=Count('instances', filter=Q(instances__status='running'), distinct=True),
+    ).select_related('owner').prefetch_related('tags').order_by('name')
+    selected_tag = request.GET.get('tag', '').strip()
+    if selected_tag:
+        projects = projects.filter(tags__name__iexact=selected_tag)
+    tags = ProjectTag.objects.filter(projects__in=visible).annotate(count=Count('projects', distinct=True)).order_by('name')
+    return render(request, 'orchestrator/project_list.html', {
+        'projects': paginate(request, projects), 'tags': tags, 'selected_tag': selected_tag,
+    })
 
 
 @login_required

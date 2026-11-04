@@ -110,10 +110,10 @@ class ProjectForm(forms.ModelForm):
 
     class Meta:
         model = Project
-        fields = ['name', 'client', 'description', 'trial_enabled', 'trial_slug', 'trial_days',
+        fields = ['name', 'client', 'description', 'color', 'trial_enabled', 'trial_slug', 'trial_days',
                   'trial_target_project', 'trial_message', 'trial_max_active']
         labels = {
-            'name': 'Nombre', 'client': 'Cliente (usuario)', 'description': 'Descripción',
+            'name': 'Nombre', 'client': 'Cliente (usuario)', 'description': 'Descripción', 'color': 'Color de la tarjeta',
             'trial_enabled': 'Modo test',
             'trial_slug': 'URL de la página de demos',
             'trial_days': 'Días de prueba',
@@ -136,9 +136,17 @@ class ProjectForm(forms.ModelForm):
             'trial_message': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Prueba gratis nuestro Odoo para la construcción durante 15 días...'}),
         }
 
+    tags_text = forms.CharField(label='Etiquetas', required=False, max_length=400,
+                                help_text='Separadas por comas, p. ej. «cliente, odoo 20, demo»')
+
     def __init__(self, *args, owner=None, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.owner = owner or getattr(self.instance, 'owner', None)
+        if self.instance.pk:
+            self.fields['tags_text'].initial = ', '.join(self.instance.tags.values_list('name', flat=True))
+        self.fields['tags_text'].widget.attrs['list'] = 'project-tags'
+        from .project_models import ProjectTag
+        self.existing_tags = list(ProjectTag.objects.filter(owner=self.owner).values_list('name', flat=True)) if self.owner else []
         # Assigning client users is an admin task (clients are managed in the Clients menu)
         if user is not None and user.is_superuser:
             # Any active non-admin user can be the project's client
@@ -170,7 +178,32 @@ class ProjectForm(forms.ModelForm):
 
     @property
     def main_fields(self):
-        return [self[name] for name in self.fields if not name.startswith('trial_')]
+        return [self[name] for name in self.fields if not name.startswith('trial_') and name not in ('color', 'tags_text')]
+
+    def clean_tags_text(self):
+        names = []
+        for raw in (self.cleaned_data.get('tags_text') or '').split(','):
+            name = ' '.join(raw.split())[:40]
+            if name and name.lower() not in [n.lower() for n in names]:
+                names.append(name)
+        if len(names) > 12:
+            raise forms.ValidationError('Como mucho 12 etiquetas por proyecto.')
+        return names
+
+    def save(self, commit=True):
+        project = super().save(commit=commit)
+        if commit:
+            self.save_tags(project)
+        return project
+
+    def save_tags(self, project):
+        from .project_models import ProjectTag
+        tags = []
+        for name in self.cleaned_data.get('tags_text') or []:
+            tag = ProjectTag.objects.filter(owner=project.owner, name__iexact=name).first() \
+                or ProjectTag.objects.create(owner=project.owner, name=name)
+            tags.append(tag)
+        project.tags.set(tags)
 
     @property
     def trial_fields(self):

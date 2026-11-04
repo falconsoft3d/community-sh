@@ -29,6 +29,29 @@
         </div>
         {% endfor %}
 
+        <!-- Card colour and tags -->
+        <div class="space-y-2">
+            <span class="text-sm font-medium leading-none">{{ form.color.label }}</span>
+            <div class="flex flex-wrap gap-2">
+                {% for value, label in form.fields.color.choices %}
+                <label title="{{ label }}" class="cursor-pointer">
+                    <input type="radio" name="{{ form.color.html_name }}" value="{{ value }}" class="peer sr-only" {% if form.color.value|default:'' == value %}checked{% endif %}>
+                    <span class="flex h-9 items-center gap-2 rounded-md border px-3 text-sm peer-checked:ring-2 peer-checked:ring-primary
+                        {% if value %}border-{{ value }}-200 bg-{{ value }}-50 text-{{ value }}-900 dark:border-{{ value }}-800 dark:bg-{{ value }}-950/40 dark:text-{{ value }}-100{% else %}bg-background{% endif %}">
+                        {% if value %}<span class="h-3 w-3 rounded-full bg-{{ value }}-500"></span>{% endif %}{{ label }}
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="space-y-2">
+            <label for="{{ form.tags_text.id_for_label }}" class="text-sm font-medium leading-none">{{ form.tags_text.label }}</label>
+            {{ form.tags_text }}
+            <datalist id="project-tags">{% for tag in form.existing_tags %}<option value="{{ tag }}">{% endfor %}</datalist>
+            <p class="text-sm text-muted-foreground">{{ form.tags_text.help_text }}</p>
+            {% if form.tags_text.errors %}<p class="text-sm font-medium text-destructive">{{ form.tags_text.errors.0 }}</p>{% endif %}
+        </div>
+
         <!-- Test mode: public demo page -->
         <div class="rounded-lg border bg-muted/30 p-4 space-y-4" x-data="{ trial: {{ form.trial_enabled.value|yesno:'true,false' }} }">
             <label class="flex items-start gap-3 cursor-pointer">

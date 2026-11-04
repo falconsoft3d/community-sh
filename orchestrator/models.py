@@ -158,7 +158,7 @@ from .config_models import GitHubConfig
 from .backup_models import Backup
 from .blog_models import BlogPost
 from .task_models import Task
-from .project_models import Project
+from .project_models import Project, ProjectTag
 from .trial_models import TrialRequest
 from .contact_models import Contact
 from .ai_models import AIAttachment, AIFileChange, AIMessage

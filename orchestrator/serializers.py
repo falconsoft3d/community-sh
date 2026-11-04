@@ -44,12 +44,14 @@ class InstanceSerializer(serializers.ModelSerializer):
 
 class ProjectSerializer(serializers.ModelSerializer):
     instances = serializers.SlugRelatedField(many=True, read_only=True, slug_field='name')
+    tag_names = serializers.ListField(child=serializers.CharField(max_length=40), required=False, source='tag_list',
+                                      help_text='Tags of the project (created as needed)')
     trial_url = serializers.SerializerMethodField()
 
     class Meta:
         from .project_models import Project
         model = Project
-        fields = ['id', 'name', 'client', 'description', 'owner', 'instances',
+        fields = ['id', 'name', 'client', 'description', 'owner', 'instances', 'color', 'tag_names',
                   'trial_enabled', 'trial_slug', 'trial_days', 'trial_target_project', 'trial_message', 'trial_max_active',
                   'trial_url', 'created_at', 'updated_at']
         read_only_fields = ['owner', 'instances', 'trial_url', 'created_at', 'updated_at']
@@ -81,6 +83,30 @@ class ProjectSerializer(serializers.ModelSerializer):
             if problem:
                 raise serializers.ValidationError(problem)
         return value
+
+    def _save_tags(self, project, names):
+        from .project_models import ProjectTag
+        tags = []
+        for name in names:
+            name = ' '.join(name.split())[:40]
+            if name:
+                tags.append(ProjectTag.objects.filter(owner=project.owner, name__iexact=name).first()
+                            or ProjectTag.objects.create(owner=project.owner, name=name))
+        project.tags.set(tags)
+
+    def create(self, validated_data):
+        names = validated_data.pop('tag_list', None)
+        project = super().create(validated_data)
+        if names is not None:
+            self._save_tags(project, names)
+        return project
+
+    def update(self, instance, validated_data):
+        names = validated_data.pop('tag_list', None)
+        project = super().update(instance, validated_data)
+        if names is not None:
+            self._save_tags(project, names)
+        return project
 
     def validate(self, attrs):
         from .services.trials import trial_settings_problems

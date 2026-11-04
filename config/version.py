@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.62'
+VERSION = '1.0.63'
 
 CHANGELOG = [
+    {
+        'version': '1.0.63',
+        'date': '2026-11-04',
+        'notes': [
+            'Proyectos: color de fondo para su tarjeta (paleta de 9 colores, también en modo oscuro) y etiquetas (separadas por comas, con sugerencias de las que ya existen y un color fijo por etiqueta). En «Proyectos» se filtra por etiqueta, con el número de proyectos de cada una; también por la API (color, tag_names).',
+            'Instancias: «Mover» a otro de tus proyectos desde la ficha (su dirección no cambia).',
+        ],
+    },
     {
         'version': '1.0.62',
         'date': '2026-11-04',

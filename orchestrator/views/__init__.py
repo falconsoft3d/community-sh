@@ -65,6 +65,7 @@ from .instances import (
     instance_update_name,
     instance_install_module,
     instance_install_named_module,
+    instance_move,
     instance_delete,
     instance_duplicate,
 )
@@ -152,6 +153,7 @@ __all__ = [
     'instance_update_name',
     'instance_install_module',
     'instance_install_named_module',
+    'instance_move',
     'instance_delete',
     'instance_duplicate',
     'backup_list',

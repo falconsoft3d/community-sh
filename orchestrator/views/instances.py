@@ -114,6 +114,8 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         context['ai_enabled'] = context['can_manage'] and get_ai_config() is not None
         context['tasks'] = list(self.object.tasks.all()[:5])
         if context['can_manage']:
+            from ..permissions import managed_projects_for
+            context['move_projects'] = managed_projects_for(self.request.user).order_by('name')
             from .webhooks import hook_url
             context['webhook_url'] = hook_url(self.object)
             context['auto_update_choices'] = Instance.AutoUpdate.choices
@@ -758,3 +760,19 @@ def instance_install_named_module(request, pk):
     messages.success(request, f'{"Actualizando" if upgrade else "Instalando"} {module} en todas las bases de la instancia: '
                               'sigue el progreso en «Tareas recientes»')
     return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
+
+
+@login_required
+@require_POST
+def instance_move(request, pk):
+    """Move the instance to another of your projects. Its address (subdomain) stays the same."""
+    from ..permissions import managed_projects_for
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    target = managed_projects_for(request.user).filter(pk=request.POST.get('project') or 0).first()
+    if target is None:
+        messages.error(request, 'Elige uno de tus proyectos')
+    elif target.pk != instance.project_id:
+        instance.project = target
+        instance.save(update_fields=['project'])
+        messages.success(request, f'Instancia movida al proyecto «{target.name}». Su dirección no cambia.')
+    return redirect('instance-detail', pk=pk)

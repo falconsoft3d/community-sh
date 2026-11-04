@@ -283,6 +283,20 @@
                     </div>
                 </div>
 
+                {% if can_manage %}
+                <div class="space-y-1">
+                    <label for="move_project" class="text-sm font-medium leading-none">Proyecto</label>
+                    <form method="post" action="{% url 'instance-move' object.pk %}" class="flex gap-2"
+                        onsubmit="return confirm('¿Mover la instancia a este proyecto? Su dirección no cambia.');">
+                        {% csrf_token %}
+                        <select id="move_project" name="project" class="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm">
+                            {% for project in move_projects %}<option value="{{ project.pk }}" {% if project.pk == object.project_id %}selected{% endif %}>{{ project.name }}</option>{% endfor %}
+                        </select>
+                        <button type="submit" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">Mover</button>
+                    </form>
+                </div>
+                {% endif %}
+
                 <div class="space-y-1">
                     <label class="text-sm font-medium leading-none">Version</label>
                     <div class="text-sm text-muted-foreground">{{ object.odoo_version }}</div>

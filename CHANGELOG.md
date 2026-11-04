@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.62**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.63**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.63 — 2026-11-04
+
+- Proyectos: color de fondo para su tarjeta (paleta de 9 colores, también en modo oscuro) y etiquetas (separadas por comas, con sugerencias de las que ya existen y un color fijo por etiqueta). En «Proyectos» se filtra por etiqueta, con el número de proyectos de cada una; también por la API (color, tag_names).
+- Instancias: «Mover» a otro de tus proyectos desde la ficha (su dirección no cambia).
 
 ## 1.0.62 — 2026-11-04
 

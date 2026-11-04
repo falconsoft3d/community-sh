@@ -3,6 +3,31 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
+# Palette for project cards and tags (Tailwind colour names, used in the templates)
+COLORS = [('', 'Sin color'), ('slate', 'Gris'), ('blue', 'Azul'), ('teal', 'Turquesa'), ('green', 'Verde'),
+          ('amber', 'Ámbar'), ('orange', 'Naranja'), ('red', 'Rojo'), ('pink', 'Rosa'), ('violet', 'Violeta')]
+TAG_COLORS = [value for value, _label in COLORS if value]
+
+
+class ProjectTag(models.Model):
+    """A label for projects (each user has their own), to group and filter them."""
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='project_tags')
+    name = models.CharField(max_length=40)
+
+    class Meta:
+        ordering = ['name']
+        constraints = [models.UniqueConstraint(fields=['owner', 'name'], name='unique_project_tag_per_owner')]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def color(self):
+        """Always the same colour for the same name."""
+        import hashlib
+        return TAG_COLORS[int(hashlib.md5(self.name.lower().encode()).hexdigest(), 16) % len(TAG_COLORS)]
+
+
 class Project(models.Model):
     """Groups the instances of one client or initiative (e.g. production, staging, tests)."""
     name = models.CharField(max_length=100)
@@ -12,6 +37,8 @@ class Project(models.Model):
     )
     description = models.TextField(blank=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='projects')
+    color = models.CharField(max_length=10, blank=True, default='', choices=COLORS, help_text="Background of its card")
+    tags = models.ManyToManyField(ProjectTag, blank=True, related_name='projects')
 
     # Test mode: a public page at /<trial_slug>/ where anyone asks for a demo of one of its instances,
     # copied into trial_target_project (a sibling project) with its own admin password
@@ -55,6 +82,10 @@ class Project(models.Model):
         if not self.trial_api_key_hash or not key:
             return False
         return hmac.compare_digest(self.trial_api_key_hash, hashlib.sha256(key.encode()).hexdigest())
+
+    @property
+    def tag_list(self):
+        return [tag.name for tag in self.tags.all()]
 
     @property
     def client_display(self):
