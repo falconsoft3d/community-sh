@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.64'
+VERSION = '1.0.65'
 
 CHANGELOG = [
+    {
+        'version': '1.0.65',
+        'date': '2026-11-06',
+        'notes': [
+            'API y MCP: repositorios de módulos extra de una instancia (OCA, odoo/enterprise…). GET/POST /api/instances/{id}/repositories/ (url HTTPS, branch) y DELETE /api/instances/{id}/repositories/{repo_id}/; en el MCP, add_instance_repository y remove_instance_repository. Mismas validaciones que en la ficha (sin duplicados ni el repositorio principal) y solo para quien gestiona la instancia; se aplican en el próximo despliegue.',
+        ],
+    },
     {
         'version': '1.0.64',
         'date': '2026-11-04',

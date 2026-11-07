@@ -1267,6 +1267,30 @@ class RepositoryTests(BaseTestCase):
         response = self.client.post(reverse('instance-repo-add', args=[self.alice_instance.pk]), {'url': 'https://github.com/OCA/web.git'})
         self.assertEqual(response.status_code, 404)
 
+    def test_repositories_through_the_api(self):
+        self.client.force_login(self.alice)
+        url = f'/api/instances/{self.alice_instance.pk}/repositories/'
+        response = self.client.post(url, {'url': 'https://github.com/odoo/enterprise', 'branch': '19.0'}, content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        repo_id = response.json()['id']
+        self.assertEqual(response.json()['folder'], 'odoo-enterprise')
+        self.assertEqual(self.client.get(url).json()[0]['branch'], '19.0')
+        # Same checks as the web form: duplicates, invalid URL or branch
+        for data in ({'url': 'https://github.com/odoo/enterprise', 'branch': '19.0'}, {'url': 'git@github.com:odoo/enterprise.git'},
+                     {'url': 'https://github.com/OCA/web', 'branch': '19.0; rm -rf /'}):
+            self.assertEqual(self.client.post(url, data, content_type='application/json').status_code, 400)
+        # Clients of the project read but don't change them
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.assertEqual(self.client.post(url, {'url': 'https://github.com/OCA/web'}, content_type='application/json').status_code, 403)
+        self.assertEqual(self.client.delete(f'{url}{repo_id}/').status_code, 403)
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.delete(f'{url}{repo_id}/').status_code, 204)
+        self.assertFalse(self.alice_instance.repositories.exists())
+        self.assertEqual(self.client.delete(f'{url}{repo_id}/').status_code, 404)
+
 
 class RepositorySyncTests(DockerServiceTests):
     def test_deploy_clones_extra_repos_into_addons_path(self):
@@ -1330,6 +1354,21 @@ class MCPServerTests(BaseTestCase):
         self.assertEqual(self.rpc('notifications/initialized', request_id=None).status_code, 202)
         names = {t['name'] for t in self.rpc('tools/list').json()['result']['tools']}
         self.assertTrue({'list_instances', 'deploy_instance', 'create_backup', 'get_task'} <= names)
+
+    def test_repository_tools(self):
+        import json
+        args = {'instance': 'alice-odoo', 'url': 'https://github.com/odoo/enterprise', 'branch': '19.0'}
+        added = self.rpc('tools/call', {'name': 'add_instance_repository', 'arguments': args}).json()['result']
+        self.assertFalse(added['isError'])
+        self.assertEqual(json.loads(added['content'][0]['text'])['folder'], 'odoo-enterprise')
+        self.assertTrue(self.rpc('tools/call', {'name': 'add_instance_repository', 'arguments': args}).json()['result']['isError'])
+        denied = self.rpc('tools/call', {'name': 'add_instance_repository',
+                                         'arguments': dict(args, instance='bob-odoo')}).json()['result']
+        self.assertTrue(denied['isError'])
+        removed = self.rpc('tools/call', {'name': 'remove_instance_repository',
+                                          'arguments': {'instance': 'alice-odoo', 'url': args['url']}}).json()['result']
+        self.assertFalse(removed['isError'])
+        self.assertFalse(self.alice_instance.repositories.exists())
 
     def test_tools_respect_permissions(self):
         import json

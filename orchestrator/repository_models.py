@@ -24,3 +24,24 @@ class InstanceRepository(models.Model):
         """Folder name: the repo name ('web' for .../OCA/web.git), plus the owner if needed to stay unique."""
         parts = [p for p in self.url.rstrip('/').removesuffix('.git').split('/') if p]
         return re.sub(r'[^A-Za-z0-9._-]', '_', '-'.join(parts[-2:]) if len(parts) >= 2 else parts[-1])
+
+
+def add_instance_repository(instance, url, branch=None):
+    """Add an extra addons repository to an instance, with the same checks as the web form.
+    Returns (repository, error): one of them is None. Applied on the next deploy."""
+    from django.core.exceptions import ValidationError
+    url = (url or '').strip()
+    branch = (branch or '').strip() or 'main'
+    for validate, value in ((validate_repo_url, url), (validate_git_branch, branch)):
+        try:
+            validate(value or '-')
+        except ValidationError as e:
+            return None, e.messages[0]
+    if instance.repositories.filter(url=url).exists() or url == instance.github_repo:
+        return None, 'Ese repositorio ya está en la instancia'
+    return instance.repositories.create(url=url, branch=branch), None
+
+
+def repository_data(repository):
+    return {'id': repository.pk, 'url': repository.url, 'branch': repository.branch, 'folder': repository.slug,
+            'created_at': repository.created_at.isoformat() if repository.created_at else None}

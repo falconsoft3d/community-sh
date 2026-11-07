@@ -32,6 +32,14 @@ TOOLS = [
      'inputSchema': _schema({**INSTANCE, 'lines': {'type': 'integer', 'minimum': 1, 'maximum': 1000, 'default': 100}}, ['instance'])},
     {'name': 'deploy_instance', 'description': 'Queue a (re)deploy of the instance. Returns a task id.',
      'inputSchema': _schema(INSTANCE, ['instance'])},
+    {'name': 'add_instance_repository',
+     'description': 'Add an extra addons repository (e.g. OCA or odoo/enterprise) to the instance, cloned next to the main one '
+                    'and added to addons_path. Only who manages the instance. Applied on the next deploy (deploy_instance).',
+     'inputSchema': _schema({**INSTANCE, 'url': {'type': 'string', 'description': 'HTTPS clone URL, e.g. https://github.com/OCA/web.git'},
+                             'branch': {'type': 'string', 'description': 'Branch, e.g. "19.0" (default "main")'}}, ['instance', 'url'])},
+    {'name': 'remove_instance_repository',
+     'description': 'Remove an extra addons repository from the instance (by its URL). Applied on the next deploy.',
+     'inputSchema': _schema({**INSTANCE, 'url': {'type': 'string'}}, ['instance', 'url'])},
     {'name': 'restart_instance', 'description': 'Restart the Odoo container of the instance.',
      'inputSchema': _schema(INSTANCE, ['instance'])},
     {'name': 'stop_instance', 'description': 'Stop the Odoo container of the instance.',
@@ -108,6 +116,22 @@ def call_tool(user, name, arguments):
         else:
             task = enqueue(Task.Kind.BACKUP, instance, user, include_filestore=arguments.get('include_filestore', True))
         return {'task_id': task.id, 'status': task.status}
+    if name in ('add_instance_repository', 'remove_instance_repository'):
+        from ..permissions import can_manage
+        from ..repository_models import add_instance_repository, repository_data
+        instance = _instance(user, arguments['instance'])
+        if not can_manage(user, instance):
+            raise ToolError('Only who manages the instance can change its repositories')
+        if name == 'add_instance_repository':
+            repository, error = add_instance_repository(instance, arguments.get('url'), arguments.get('branch'))
+            if error:
+                raise ToolError(error)
+            return dict(repository_data(repository), note='Added: deploy the instance to apply it')
+        repository = instance.repositories.filter(url=(arguments.get('url') or '').strip()).first()
+        if repository is None:
+            raise ToolError('That repository is not in the instance')
+        repository.delete()
+        return {'removed': repository.url, 'note': 'Removed: deploy the instance to apply it'}
     if name in ('restart_instance', 'stop_instance'):
         instance = _instance(user, arguments['instance'])
         service = DockerService()

@@ -121,7 +121,34 @@ class InstanceDatabaseMixin:
         return Response({'task_id': task.pk, 'status': task.status}, status=status.HTTP_202_ACCEPTED)
 
 
-class InstanceAPIViewSet(InstanceDatabaseMixin, InstanceActionsMixin, InstanceViewSet):
+class InstanceRepositoriesMixin:
+    """Extra addons repositories of an instance (OCA, enterprise...): read by whoever sees it, edited by who manages it.
+    Changes apply on the next deploy."""
+
+    @action(detail=True, methods=['get', 'post'], url_path='repositories')
+    def repositories(self, request, pk=None):
+        from ..repository_models import add_instance_repository, repository_data
+        if request.method == 'GET':
+            instance = self.get_object()
+            return Response([repository_data(r) for r in instance.repositories.all()])
+        instance = self._managed(request)
+        repository, error = add_instance_repository(instance, request.data.get('url'), request.data.get('branch'))
+        if error:
+            return Response({'detail': error}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(dict(repository_data(repository), detail='Añadido: despliega la instancia para aplicarlo'),
+                        status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'], url_path=r'repositories/(?P<repo_id>[0-9]+)')
+    def remove_repository(self, request, pk=None, repo_id=None):
+        instance = self._managed(request)
+        repository = instance.repositories.filter(pk=repo_id).first()
+        if repository is None:
+            return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+        repository.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class InstanceAPIViewSet(InstanceRepositoriesMixin, InstanceDatabaseMixin, InstanceActionsMixin, InstanceViewSet):
     pass
 
 

@@ -672,22 +672,12 @@ def instance_browser(request, pk):
 @login_required
 @require_POST
 def instance_repo_add(request, pk):
-    from ..permissions import validate_git_branch, validate_repo_url
+    from ..repository_models import add_instance_repository
     instance = get_instance_for_user(request.user, pk, manage=True)
-    url = request.POST.get('url', '').strip()
-    branch = request.POST.get('branch', '').strip() or 'main'
-    error = ''
-    for validate, value in ((validate_repo_url, url), (validate_git_branch, branch)):
-        try:
-            validate(value or '-')
-        except ValidationError as e:
-            error = error or e.messages[0]
+    repository, error = add_instance_repository(instance, request.POST.get('url'), request.POST.get('branch'))
     if error:
         messages.error(request, error)
-    elif instance.repositories.filter(url=url).exists() or url == instance.github_repo:
-        messages.error(request, 'Ese repositorio ya está en la instancia')
     else:
-        repository = instance.repositories.create(url=url, branch=branch)
         messages.success(request, f'Repositorio {repository.slug} añadido. Despliega la instancia para aplicarlo.')
     from django.urls import reverse
     return redirect(reverse('instance-detail', args=[pk]) + '#modules')

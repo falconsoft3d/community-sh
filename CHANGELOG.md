@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.64**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.65**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.65 — 2026-11-06
+
+- API y MCP: repositorios de módulos extra de una instancia (OCA, odoo/enterprise…). GET/POST /api/instances/{id}/repositories/ (url HTTPS, branch) y DELETE /api/instances/{id}/repositories/{repo_id}/; en el MCP, add_instance_repository y remove_instance_repository. Mismas validaciones que en la ficha (sin duplicados ni el repositorio principal) y solo para quien gestiona la instancia; se aplican en el próximo despliegue.
 
 ## 1.0.64 — 2026-11-04
 
