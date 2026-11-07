@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.66**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.67**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.67 — 2026-11-07
+
+- Actualización automática activada por defecto («Pull y reiniciar Odoo»): las instancias nuevas la traen puesta y la migración 0064 la activa en las existentes que la tenían desactivada, así todas siguen el último commit de sus ramas (con cada push y en la pasada diaria). Se puede desactivar o pasar a -u all en Módulos → Actualización automática.
 
 ## 1.0.66 — 2026-11-07
 

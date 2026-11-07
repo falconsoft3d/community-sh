@@ -77,7 +77,8 @@ class Instance(models.Model):
         PULL = 'pull', 'Pull y reiniciar Odoo'
         UPDATE_ALL = 'update', 'Pull y actualizar todos los módulos (-u all)'
 
-    auto_update = models.CharField(max_length=10, choices=AutoUpdate.choices, default='', blank=True)
+    # On by default (pull): a push, and the daily pass, keep every instance on the last commit of its branches
+    auto_update = models.CharField(max_length=10, choices=AutoUpdate.choices, default=AutoUpdate.PULL, blank=True)
     webhook_secret = models.CharField(max_length=64, default=generate_webhook_secret,
                                       help_text="Signs the GitHub webhook calls of this instance")
 

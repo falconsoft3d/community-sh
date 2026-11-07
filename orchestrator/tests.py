@@ -3100,8 +3100,9 @@ class GitHubWebhookTests(BaseTestCase):
         from .task_models import Task
         self.instance.status = Instance.Status.RUNNING
         self.instance.save()
-        Instance.objects.create(name='no-repos', owner=self.bob, project=self.bob_project,
-                                status=Instance.Status.RUNNING, auto_update=Instance.AutoUpdate.PULL)
+        # On by default: new instances follow their repositories
+        self.assertEqual(Instance.objects.create(name='no-repos', owner=self.bob, project=self.bob_project,
+                                                 status=Instance.Status.RUNNING).auto_update, Instance.AutoUpdate.PULL)
         day = datetime.datetime(2026, 11, 7, tzinfo=datetime.timezone.utc)
         if DAILY_UPDATE_HOUR:
             self.assertEqual(queue_daily_updates(day.replace(hour=DAILY_UPDATE_HOUR - 1)), [])

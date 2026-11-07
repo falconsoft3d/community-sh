@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.66'
+VERSION = '1.0.67'
 
 CHANGELOG = [
+    {
+        'version': '1.0.67',
+        'date': '2026-11-07',
+        'notes': [
+            'Actualización automática activada por defecto («Pull y reiniciar Odoo»): las instancias nuevas la traen puesta y la migración 0064 la activa en las existentes que la tenían desactivada, así todas siguen el último commit de sus ramas (con cada push y en la pasada diaria). Se puede desactivar o pasar a -u all en Módulos → Actualización automática.',
+        ],
+    },
     {
         'version': '1.0.66',
         'date': '2026-11-07',
