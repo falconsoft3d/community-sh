@@ -1,4 +1,4 @@
-"""GitHub webhooks: a push to an instance's repository updates it (Modules → automatic update)."""
+"""GitHub webhooks: a push to a repository updates every instance that uses it (Modules → automatic update)."""
 import json
 
 from django.contrib import messages
@@ -60,8 +60,9 @@ def instance_auto_update(request, pk):
     instance.auto_update = mode
     instance.save(update_fields=['auto_update'])
     if mode:
-        messages.success(request, f'Actualización automática: {instance.get_auto_update_display()}. '
-                                  'Falta el webhook en GitHub: pulsa «Crear webhook en GitHub» o añádelo a mano.')
+        messages.success(request, f'Actualización automática: {instance.get_auto_update_display()}. Se actualiza cada noche; '
+                                  'para hacerlo al momento con cada push hace falta un webhook en el repositorio (el de esta '
+                                  'u otra instancia): pulsa «Crear webhook en GitHub» o añádelo a mano.')
     else:
         messages.success(request, 'Actualización automática desactivada')
     return _modules(pk)

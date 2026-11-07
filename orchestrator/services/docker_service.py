@@ -1205,13 +1205,38 @@ class DockerService:
         except Exception as e:
             return f"Error executing command: {str(e)}"
     
-    def pull_repositories(self, instance, update_all=False):
+    @staticmethod
+    def _code_state(workspace_path):
+        """What the instance runs: the commit of each of its repository folders and its Odoo config."""
+        folders = [os.path.join(workspace_path, 'addons')]
+        repos_root = os.path.join(workspace_path, 'repos')
+        if os.path.isdir(repos_root):
+            folders += [os.path.join(repos_root, name) for name in sorted(os.listdir(repos_root))]
+        state = {}
+        for folder in folders:
+            try:
+                state[folder] = git.Repo(folder).head.commit.hexsha
+            except Exception:
+                pass
+        config_dir = os.path.join(workspace_path, 'conf')
+        if os.path.isdir(config_dir):
+            for name in sorted(os.listdir(config_dir)):
+                try:
+                    with open(os.path.join(config_dir, name), 'rb') as f:
+                        state[name] = f.read()
+                except OSError:
+                    pass
+        return state
+
+    def pull_repositories(self, instance, update_all=False, only_if_changed=False):
         """The instance's repositories brought to the last commit of their branch, and Odoo restarted to load the
         code: what a deploy does with them, without recreating the container. update_all: also `-u all` on
-        every database (new fields, views and data of the modules), as a redeploy does."""
+        every database (new fields, views and data of the modules), as a redeploy does. only_if_changed (the
+        automatic updates): neither when no commit nor the config changed. self.changed tells which it was."""
         workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
         os.makedirs(workspace_path, exist_ok=True)
         self.deploy_notes = []
+        before = self._code_state(workspace_path)
         progress(10, 'Actualizando el repositorio principal')
         self._clone_repo(instance, workspace_path)
         progress(40, 'Actualizando los repositorios de módulos')
@@ -1226,6 +1251,10 @@ class DockerService:
                 notes.append(f'{label}: {commit.hexsha[:7]} {commit.summary}')
             except Exception:
                 pass
+        self.changed = self._code_state(workspace_path) != before
+        if only_if_changed and not self.changed:
+            notes.append('Sin cambios desde la última actualización: Odoo no se reinicia')
+            return notes
         if update_all:
             notes += self.update_all_modules(instance)
         progress(90, 'Reiniciando Odoo para cargar el código')

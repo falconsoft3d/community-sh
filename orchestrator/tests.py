@@ -3075,6 +3075,63 @@ class GitHubWebhookTests(BaseTestCase):
         self.assertIn('desactivada', self.push(delivery='d').json()['detail'])
         self.assertFalse(Task.objects.filter(kind=Task.Kind.PULL_REPOS).exists())
 
+    def test_push_updates_every_running_instance_of_that_repository(self):
+        from .task_models import Task
+        repo = 'https://github.com/falconsoft3d/module_to_sale_marlon'
+        def other(name, status=Instance.Status.RUNNING, mode=Instance.AutoUpdate.PULL, branch='19.0'):
+            instance = Instance.objects.create(name=name, owner=self.bob, project=self.bob_project, status=status, auto_update=mode)
+            instance.repositories.create(url=repo + '.git', branch=branch)
+            return instance
+        running = other('shared-running')
+        other('shared-stopped', status=Instance.Status.STOPPED)
+        other('shared-off', mode='')
+        other('shared-other-branch', branch='18.0')
+        # Its own instance has auto update off: the others are updated all the same
+        self.instance.auto_update = ''
+        self.instance.save()
+        self.assertEqual(self.push(repo=repo, branch='19.0').status_code, 202)
+        task = Task.objects.get(kind=Task.Kind.PULL_REPOS)
+        self.assertEqual(task.instance, running)
+        self.assertEqual((task.params['update_all'], task.params['only_if_changed'], task.params['source']), (False, True, 'webhook'))
+
+    def test_daily_update_once_a_day_from_its_hour(self):
+        import datetime
+        from .services.webhooks import DAILY_UPDATE_HOUR, queue_daily_updates
+        from .task_models import Task
+        self.instance.status = Instance.Status.RUNNING
+        self.instance.save()
+        Instance.objects.create(name='no-repos', owner=self.bob, project=self.bob_project,
+                                status=Instance.Status.RUNNING, auto_update=Instance.AutoUpdate.PULL)
+        day = datetime.datetime(2026, 11, 7, tzinfo=datetime.timezone.utc)
+        if DAILY_UPDATE_HOUR:
+            self.assertEqual(queue_daily_updates(day.replace(hour=DAILY_UPDATE_HOUR - 1)), [])
+        self.assertEqual(queue_daily_updates(day.replace(hour=DAILY_UPDATE_HOUR)), ['alice-odoo'])
+        Task.objects.update(status=Task.Status.DONE)
+        self.assertEqual(queue_daily_updates(day.replace(hour=23)), [])  # already done today
+        self.assertEqual(queue_daily_updates(day.replace(day=8, hour=DAILY_UPDATE_HOUR)), ['alice-odoo'])
+        task = Task.objects.filter(kind=Task.Kind.PULL_REPOS).latest('pk')
+        self.assertEqual((task.params['source'], task.params['update_all']), ('schedule', True))
+
+    def test_automatic_pull_without_changes_does_not_restart(self):
+        import tempfile
+        from .services.docker_service import DockerService
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        with tempfile.TemporaryDirectory() as base, self.settings(BASE_DIR=base), \
+                mock.patch.object(service, '_clone_repo'), \
+                mock.patch.object(service, '_sync_extra_repos', return_value=[]), \
+                mock.patch.object(service, '_write_odoo_config'), \
+                mock.patch.object(service, 'update_all_modules') as update_all, \
+                mock.patch.object(service, 'restart_instance') as restart:
+            notes = service.pull_repositories(self.instance, update_all=True, only_if_changed=True)
+            self.assertFalse(service.changed)
+            self.assertIn('Sin cambios', notes[-1])
+            update_all.assert_not_called()
+            restart.assert_not_called()
+            # A manual pull restarts all the same
+            service.pull_repositories(self.instance)
+            restart.assert_called_once()
+
     def test_unknown_instance_answers_like_a_bad_signature(self):
         response = self.client.post('/webhooks/github/99999/', b'{}', content_type='application/json',
                                     HTTP_X_HUB_SIGNATURE_256='sha256=00', HTTP_X_GITHUB_EVENT='push')

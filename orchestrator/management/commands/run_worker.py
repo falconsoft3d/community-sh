@@ -10,7 +10,7 @@ SCHEDULE_CHECK_SECONDS = 60
 
 
 class Command(BaseCommand):
-    help = 'Process queued tasks (deploys, backups, restores) and run scheduled backups. Run a single worker.'
+    help = 'Process queued tasks (deploys, backups, restores) and run the schedules (backups, daily repository update). Run a single worker.'
 
     def add_arguments(self, parser):
         parser.add_argument('--once', action='store_true', help='Process pending tasks and exit')
@@ -50,6 +50,13 @@ class Command(BaseCommand):
                         self.stdout.write(f"Updated the published port of: {', '.join(changed)}")
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Port sync failed: {e}'))
+                try:
+                    from orchestrator.services.webhooks import queue_daily_updates
+                    queued = queue_daily_updates()
+                    if queued:
+                        self.stdout.write(f"Daily repository update queued for: {', '.join(queued)}")
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Daily repository update failed: {e}'))
                 try:
                     from orchestrator.services.trials import expire_demos
                     for line in expire_demos():

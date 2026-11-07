@@ -340,9 +340,15 @@ def install_module(task):
 @handler(Task.Kind.PULL_REPOS)
 def pull_repos(task):
     update_all = bool(task.params.get('update_all'))
+    only_if_changed = bool(task.params.get('only_if_changed'))
     if task.params.get('push'):
         task_log.line(f"Push a {task.params['push']}")
-    notes = DockerService().pull_repositories(task.instance, update_all=update_all)
+    elif task.params.get('source') == 'schedule':
+        task_log.line('Actualización diaria automática')
+    service = DockerService()
+    notes = service.pull_repositories(task.instance, update_all=update_all, only_if_changed=only_if_changed)
+    if only_if_changed and service.changed is False:
+        return '\n'.join(notes)
     if update_all:
         return '\n'.join(notes + ['Repositorios actualizados, módulos actualizados y Odoo reiniciado'])
     return '\n'.join(notes + ['Repositorios actualizados y Odoo reiniciado. Si cambian vistas o datos, actualiza el módulo '

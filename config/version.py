@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.65'
+VERSION = '1.0.66'
 
 CHANGELOG = [
+    {
+        'version': '1.0.66',
+        'date': '2026-11-07',
+        'notes': [
+            'Actualización automática: un push a un repositorio actualiza todas las instancias en marcha que usan ese repositorio y rama con la actualización automática activa, aunque el webhook sea de otra instancia (basta un webhook por repositorio). Además, cada día desde las 02:00 UTC (AUTO_UPDATE_HOUR) el worker hace pull de todas ellas, aunque el repositorio no tenga webhook o una entrega fallara. Estas actualizaciones solo hacen -u all y reinician Odoo si cambió algún commit o la configuración.',
+        ],
+    },
     {
         'version': '1.0.65',
         'date': '2026-11-06',

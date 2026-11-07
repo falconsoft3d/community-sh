@@ -1,14 +1,23 @@
 """
-GitHub push webhooks: a push to one of an instance's repositories (the main one or an addons one, on the
-branch the instance uses) queues a pull, and with "update" also `-u all`, when the instance has auto update on.
+Automatic update of instances from their repositories.
+
+GitHub push webhooks: a push to a repository (the main one or an addons one, on a branch) queues a pull, and with
+"update" also `-u all`, on every instance with auto update on that uses that repository and branch, whichever
+instance's webhook received it (one webhook per repository is enough). Once a day every such instance is pulled
+too, for repositories without a webhook or deliveries that failed. These pulls only restart Odoo when the code
+changed, so a repeated or replayed push costs a git fetch.
 """
 import hashlib
 import hmac
+import os
 import re
 
 import requests
 
 GITHUB_API = 'https://api.github.com'
+
+# Hour (UTC, the panel's TIME_ZONE) from which the daily pull of every instance with auto update runs
+DAILY_UPDATE_HOUR = int(os.environ.get('AUTO_UPDATE_HOUR', '2'))
 
 
 def signature_ok(instance, body, header):
@@ -47,27 +56,71 @@ def matching_repository(instance, payload):
     return None
 
 
-def handle_push(instance, payload):
-    """Queue the update for a push. Returns (http status, message)."""
+def instances_using(url, branch):
+    """Instances with auto update on that use this repository on this branch."""
+    from ..models import Instance
+    wanted = _normalize(url)
+    return [instance for instance in Instance.objects.exclude(auto_update='').prefetch_related('repositories').order_by('pk')
+            if any(_normalize(u) == wanted and b == branch for u, b in repositories(instance))]
+
+
+def queue_update(instance, source, push=''):
+    """
+    Queue the automatic update of an instance (pull, and `-u all` in that mode), which restarts Odoo only if the
+    code changed. One waiting update covers several pushes in a row (it pulls whatever is there when it runs).
+    Returns (task, created).
+    """
     from ..task_models import Task
     from ..tasks import enqueue
-    if not instance.auto_update:
-        return 202, 'La actualización automática está desactivada en esta instancia'
+    update_all = instance.auto_update == instance.AutoUpdate.UPDATE_ALL
+    waiting = instance.tasks.filter(kind=Task.Kind.PULL_REPOS, status=Task.Status.PENDING).first()
+    if waiting is not None:
+        if update_all and not waiting.params.get('update_all'):
+            waiting.params['update_all'] = True
+            waiting.save(update_fields=['params'])
+        return waiting, False
+    params = {'update_all': update_all, 'source': source, 'only_if_changed': True}
+    if push:
+        params['push'] = push
+    return enqueue(Task.Kind.PULL_REPOS, instance, instance.owner, **params), True
+
+
+def handle_push(instance, payload):
+    """Queue the update of every instance of the pushed repository and branch. Returns (http status, message)."""
     match = matching_repository(instance, payload)
     if match is None:
         return 202, 'El push no es de un repositorio y rama de esta instancia: ignorado'
-    waiting = instance.tasks.filter(kind=Task.Kind.PULL_REPOS, status=Task.Status.PENDING).first()
     commit = (payload.get('after') or '')[:7]
     label = f"{match[0].rstrip('/').removesuffix('.git').split('/')[-1]}@{match[1]} {commit}".strip()
-    if waiting is not None:
-        # One queued update covers several pushes in a row (it pulls whatever is there when it runs)
-        if instance.auto_update == instance.AutoUpdate.UPDATE_ALL and not waiting.params.get('update_all'):
-            waiting.params['update_all'] = True
-            waiting.save(update_fields=['params'])
-        return 202, f'Ya hay una actualización en cola (tarea {waiting.pk})'
-    task = enqueue(Task.Kind.PULL_REPOS, instance, instance.owner, update_all=instance.auto_update == instance.AutoUpdate.UPDATE_ALL,
-                   push=label, source='webhook')
-    return 202, f'Actualización en cola (tarea {task.pk})'
+    # The other instances only when running: an update starts a stopped Odoo
+    targets = [target for target in instances_using(*match)
+               if target.pk == instance.pk or target.status == target.Status.RUNNING]
+    if not targets:
+        return 202, 'La actualización automática está desactivada en esta instancia'
+    lines = []
+    for target in targets:
+        task, created = queue_update(target, 'webhook', push=label)
+        lines.append(f"{target.name}: {'en cola' if created else 'ya había una actualización en cola'} (tarea {task.pk})")
+    return 202, 'Actualización de ' + '; '.join(lines)
+
+
+def queue_daily_updates(now=None):
+    """
+    Once a day, from DAILY_UPDATE_HOUR (or later that day if the worker was down then): a pull of every running
+    instance with auto update and repositories. Returns the names of the instances queued.
+    """
+    from django.core.cache import cache
+    from django.utils import timezone
+    from ..models import Instance
+    now = now or timezone.now()
+    if now.hour < DAILY_UPDATE_HOUR or not cache.add(f'auto-update-daily:{now.date().isoformat()}', 1, 3 * 86400):
+        return []
+    queued = []
+    instances = Instance.objects.exclude(auto_update='').filter(status=Instance.Status.RUNNING).prefetch_related('repositories')
+    for instance in instances.order_by('pk'):
+        if repositories(instance) and queue_update(instance, 'schedule')[1]:
+            queued.append(instance.name)
+    return queued
 
 
 def _owner_repo(url):
