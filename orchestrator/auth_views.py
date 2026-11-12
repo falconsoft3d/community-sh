@@ -82,3 +82,34 @@ def register(request):
     else:
         form = UserCreationForm()
     return render(request, 'registration/register.html', {'form': form})
+
+
+def reauth(request):
+    """Confirm the password (and the 2FA code) again before a sensitive action: see reauth.py."""
+    from django.contrib.auth.views import redirect_to_login
+    from .audit import record
+    from .reauth import mark, safe_next
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
+    next_url = safe_next(request, request.POST.get('next') or request.GET.get('next') or '', '/instances/')
+    profile = getattr(request.user, 'profile', None)
+    needs_code = bool(profile and profile.two_factor_enabled and profile.two_factor_secret)
+    lockout_key = f'reauth-fail:{request.user.pk}'
+    error = ''
+    if request.method == 'POST':
+        if is_locked_out(lockout_key):
+            error = 'Demasiados intentos fallidos. Inténtalo de nuevo en 15 minutos.'
+        else:
+            from .two_factor import verify_code
+            ok = request.user.check_password(request.POST.get('password', ''))
+            if ok and needs_code:
+                ok = verify_code(request.user, request.POST.get('code', ''))
+            if ok:
+                clear_failures(lockout_key)
+                mark(request)
+                record(request, 'reauth')
+                return redirect(next_url)
+            register_failure(lockout_key)
+            record(request, 'reauth_failed')
+            error = 'Contraseña o código incorrectos'
+    return render(request, 'orchestrator/reauth.html', {'next': next_url, 'needs_code': needs_code, 'error': error})

@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST
 from ..mcp_models import MCPToken, hash_token
 from ..permissions import get_global_config
 from ..services.mcp_server import handle_message
+from ..reauth import recent_auth_required
 
 
 def _token_user(request):
@@ -58,6 +59,7 @@ def mcp_endpoint(request):
 
 @login_required
 @require_POST
+@recent_auth_required
 def mcp_token_create(request):
     tab = _token_tab(request)
     name = request.POST.get('name', '').strip()[:100] or ('API' if tab == 'api' else 'Claude')
@@ -82,6 +84,7 @@ def mcp_token_revoke(request, token_id):
 
 @login_required
 @require_POST
+@recent_auth_required
 def api_token_markdown(request):
     """Settings → API: a new personal token and the API documentation in one .md file, to hand to an AI."""
     from ..api_docs import api_markdown

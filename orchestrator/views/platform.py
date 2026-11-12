@@ -13,6 +13,7 @@ from ..permissions import (
     superuser_required,
     validate_domain,
 )
+from ..reauth import recent_auth_required
 
 
 @login_required
@@ -44,6 +45,7 @@ def metrics_disk(request):
 
 
 @login_required
+@recent_auth_required
 def settings_view(request):
     from ..config_models import GitHubConfig
     from django.contrib import messages

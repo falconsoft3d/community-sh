@@ -4070,6 +4070,68 @@ class OdooDatabaseManagerTests(BaseTestCase):
         urlopen.assert_not_called()
 
 
+class ReauthTests(BaseTestCase):
+    def expire(self):
+        session = self.client.session
+        session['reauth_at'] = 0
+        session.save()
+
+    def test_secrets_tokens_and_deletion_ask_for_the_password_again(self):
+        from .audit_models import AuditEvent
+        from .mcp_models import MCPToken
+        self.alice_instance.master_password = 'master-secret-1'
+        self.alice_instance.save()
+        reveal = reverse('instance-secret', args=[self.alice_instance.pk, 'master'])
+        detail = reverse('instance-detail', args=[self.alice_instance.pk])
+        self.client.force_login(self.alice)
+        # Signing in counts as a confirmation
+        self.assertEqual(self.client.post(reveal).json()['value'], 'master-secret-1')
+        self.expire()
+        answer = self.client.post(reveal, HTTP_REFERER='http://testserver' + detail)
+        self.assertEqual(answer.status_code, 403)
+        self.assertEqual(answer.json()['reauth'], reverse('reauth') + '?next=' + detail.replace('/', '%2F'))
+        response = self.client.post(reverse('mcp-token-create'), {'name': 'x'}, HTTP_REFERER='http://testserver/settings/')
+        self.assertTrue(response.url.startswith(reverse('reauth')))
+        self.assertFalse(MCPToken.objects.exists())
+        self.client.post(reverse('instance-delete', args=[self.alice_instance.pk]))
+        self.assertTrue(Instance.objects.filter(pk=self.alice_instance.pk).exists())
+
+        # A wrong password doesn't confirm (and is audited); an outside "next" is ignored
+        self.client.post(reverse('reauth'), {'password': 'wrong', 'next': detail})
+        self.assertEqual(self.client.post(reveal).status_code, 403)
+        self.assertTrue(AuditEvent.objects.filter(action='reauth_failed').exists())
+        response = self.client.post(reverse('reauth'), {'password': 'pass-12345', 'next': 'https://evil.example.com/'})
+        self.assertEqual(response.url, '/instances/')
+        self.assertEqual(self.client.post(reveal).json()['value'], 'master-secret-1')
+        self.assertTrue(AuditEvent.objects.filter(action='reauth', user=self.alice).exists())
+        page = self.client.get(reverse('reauth') + '?next=' + detail).content.decode()
+        self.assertIn(f'value="{detail}"', page)
+        self.assertNotIn('name="code"', page)
+
+    def test_with_2fa_the_code_is_needed_too(self):
+        import pyotp
+        profile = self.alice.profile
+        profile.two_factor_secret = pyotp.random_base32()
+        profile.two_factor_enabled = True
+        profile.save()
+        self.client.force_login(self.alice)
+        self.expire()
+        self.assertIn('name="code"', self.client.get(reverse('reauth')).content.decode())
+        self.client.post(reverse('reauth'), {'password': 'pass-12345', 'code': '000000'})
+        self.assertFalse(self.client.session.get('reauth_at'))
+        self.client.post(reverse('reauth'), {'password': 'pass-12345', 'code': pyotp.TOTP(profile.two_factor_secret).now()})
+        self.assertTrue(self.client.session.get('reauth_at'))
+
+    def test_repeated_failures_lock_it(self):
+        self.client.force_login(self.alice)
+        self.expire()
+        for _ in range(12):
+            self.client.post(reverse('reauth'), {'password': 'wrong'})
+        page = self.client.post(reverse('reauth'), {'password': 'pass-12345'}).content.decode()
+        self.assertIn('Demasiados intentos', page)
+        self.assertFalse(self.client.session.get('reauth_at'))
+
+
 class ContentSecurityPolicyTests(TestCase):
     def test_header_and_no_script_from_another_host(self):
         import pathlib

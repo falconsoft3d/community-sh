@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 21:37+0000\n"
+"POT-Creation-Date: 2026-11-12 21:57+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -366,6 +366,7 @@ msgstr ""
 #: orchestrator/templates/orchestrator/instance_detail.html:1555
 #: orchestrator/templates/orchestrator/project_detail.html:64
 #: orchestrator/templates/orchestrator/project_form.html:100
+#: orchestrator/templates/orchestrator/reauth.html:30
 #: orchestrator/templates/orchestrator/todo_list.html:48
 #: orchestrator/templates/orchestrator/todo_list.html:81
 msgid "Cancelar"
@@ -2645,6 +2646,35 @@ msgstr ""
 msgid "Crear el primer proyecto"
 msgstr ""
 
+#: orchestrator/templates/orchestrator/reauth.html:7
+#, fuzzy
+#| msgid "Confirm Action"
+msgid "Confirma tu identidad"
+msgstr "Confirmar acción"
+
+#: orchestrator/templates/orchestrator/reauth.html:8
+msgid ""
+"Esta acción es sensible: escribe tu contraseña para continuar. No se vuelve "
+"a pedir en los próximos 15 minutos."
+msgstr ""
+
+#: orchestrator/templates/orchestrator/reauth.html:15
+#: orchestrator/templates/orchestrator/trial_status.html:60
+#, fuzzy
+#| msgid "Container"
+msgid "Contraseña"
+msgstr "Contenedor"
+
+#: orchestrator/templates/orchestrator/reauth.html:21
+msgid "Código de tu app de autenticación"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/reauth.html:28
+#, fuzzy
+#| msgid "Confirm"
+msgid "Confirmar"
+msgstr "Confirmar"
+
 #: orchestrator/templates/orchestrator/todo_list.html:9
 msgid ""
 "Tareas del equipo. Claude puede leerlas y completarlas desde el servidor MCP."
@@ -2791,12 +2821,6 @@ msgstr ""
 #: orchestrator/templates/orchestrator/trial_status.html:46
 msgid "Dirección"
 msgstr ""
-
-#: orchestrator/templates/orchestrator/trial_status.html:60
-#, fuzzy
-#| msgid "Container"
-msgid "Contraseña"
-msgstr "Contenedor"
 
 #: orchestrator/templates/orchestrator/trial_status.html:69
 msgid "Abrir mi demo"

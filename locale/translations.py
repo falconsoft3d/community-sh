@@ -554,6 +554,16 @@ ES_TO_EN = {
         'Demo data',
     'Crear base de datos':
         'Create database',
+    'Confirma tu identidad':
+        "Confirm it's you",
+    'Esta acción es sensible: escribe tu contraseña para continuar. No se vuelve a pedir en los próximos 15 minutos.':
+        "This action is sensitive: type your password to continue. It isn't asked again for the next 15 minutes.",
+    'Contraseña':
+        'Password',
+    'Código de tu app de autenticación':
+        'Code from your authenticator app',
+    'Confirmar':
+        'Confirm',
 }
 
 # Strings written in English in the code -> Spanish

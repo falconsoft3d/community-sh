@@ -1755,8 +1755,13 @@
     // Passwords aren't in the page: they're fetched when shown or copied (each time is recorded in Auditoría)
     function revealField(url) {
         const csrf = () => '{{ csrf_token }}';
+        // An old sign-in: the server asks to confirm the password first (reauth), then back to this page
         const load = () => fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf() } })
-            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => d.value);
+            .then(r => r.json().catch(() => ({})).then(d => {
+                if (d.reauth) { window.location.href = d.reauth; throw new Error('reauth'); }
+                if (!r.ok) throw new Error(r.status);
+                return d.value;
+            }));
         return {
             show: false, value: '',
             toggle() {

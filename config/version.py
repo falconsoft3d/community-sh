@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.101'
+VERSION = '1.0.102'
 
 CHANGELOG = [
+    {
+        'version': '1.0.102',
+        'date': '2026-11-12',
+        'notes': [
+            'Seguridad: confirmar la contraseña (y el código 2FA si está activo) antes de lo sensible cuando hace más de 15 minutos que se entró o se confirmó: mostrar o copiar contraseñas, Entrar como admin, restablecer la contraseña del administrador, abrir o cerrar el gestor de bases de datos, crear tokens (también el .md para la IA), eliminar instancias, restaurar backups (también desde S3), guardar la Configuración y crear o editar usuarios. Una sesión robada o un ordenador sin bloquear ya no bastan. Nueva página /reauth/ que vuelve a la página de origen; iniciar sesión cuenta como confirmación; los fallos quedan en la Auditoría y bloquean 15 minutos tras varios.',
+        ],
+    },
     {
         'version': '1.0.101',
         'date': '2026-11-12',

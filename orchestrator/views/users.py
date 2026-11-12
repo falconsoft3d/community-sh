@@ -2,9 +2,11 @@
 
 from django.shortcuts import redirect, get_object_or_404, render
 from django.contrib.auth.decorators import login_required
+from ..reauth import recent_auth_required
 
 
 # User Management Views
+
 @login_required
 def user_list(request):
     """List all users (admin only)"""
@@ -21,6 +23,7 @@ def user_list(request):
 
 
 @login_required
+@recent_auth_required
 def user_create(request):
     """Create a new user (admin only)"""
     from django.contrib.auth.models import User
@@ -69,6 +72,7 @@ def user_create(request):
 
 
 @login_required
+@recent_auth_required
 def user_edit(request, user_id):
     """Edit user (admin only)"""
     from django.contrib.auth.models import User

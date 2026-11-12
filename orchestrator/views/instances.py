@@ -26,6 +26,7 @@ from ..permissions import (
     validate_domain,
     validate_resource_name,
 )
+from ..reauth import recent_auth_required
 
 
 @login_required
@@ -474,6 +475,7 @@ def instance_install_module(request, pk):
 
 
 @login_required
+@recent_auth_required
 def instance_delete(request, pk):
     instance = get_instance_for_user(request.user, pk, manage=True)
     if request.method == 'POST':
@@ -724,7 +726,6 @@ def instance_repo_remove(request, pk, repo_id):
     return redirect(reverse('instance-detail', args=[pk]) + '#modules')
 
 
-
 @login_required
 def instance_ai_modules(request, pk):
     """Custom modules of the instance, for @mentions in the AI chat."""
@@ -735,6 +736,7 @@ def instance_ai_modules(request, pk):
 
 @login_required
 @require_POST
+@recent_auth_required
 def instance_admin_login(request, pk):
     """Open Odoo as its administrator through a signed, one-time, 60-second link."""
     import hashlib
@@ -789,6 +791,7 @@ def instance_install_named_module(request, pk):
 
 @login_required
 @require_POST
+@recent_auth_required(json=True)
 def instance_secret(request, pk, kind):
     """A password of the instance, asked when shown or copied on its page (each time goes to the audit log)."""
     from ..audit import record
@@ -807,6 +810,7 @@ def instance_secret(request, pk, kind):
 
 @login_required
 @require_POST
+@recent_auth_required
 def instance_db_manager(request, pk):
     """Information → Gestor de bases de datos de Odoo: open or close it (Traefik now, list_db on the next deploy)."""
     from django.urls import reverse
@@ -925,6 +929,7 @@ def instance_offsite_copies(request, pk):
 
 @login_required
 @require_POST
+@recent_auth_required
 def instance_offsite_restore(request, pk):
     """Restore one of its copies in the bucket over the instance, as a task."""
     from django.urls import reverse
@@ -989,6 +994,7 @@ def instance_update_memory(request, pk):
 
 @login_required
 @require_POST
+@recent_auth_required
 def instance_reset_admin_password(request, pk):
     """A new password for the Odoo administrator (the one given, or a random one), shown afterwards in the instance page."""
     from django.urls import reverse

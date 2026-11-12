@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.101**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.102**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.102 — 2026-11-12
+
+- Seguridad: confirmar la contraseña (y el código 2FA si está activo) antes de lo sensible cuando hace más de 15 minutos que se entró o se confirmó: mostrar o copiar contraseñas, Entrar como admin, restablecer la contraseña del administrador, abrir o cerrar el gestor de bases de datos, crear tokens (también el .md para la IA), eliminar instancias, restaurar backups (también desde S3), guardar la Configuración y crear o editar usuarios. Una sesión robada o un ordenador sin bloquear ya no bastan. Nueva página /reauth/ que vuelve a la página de origen; iniciar sesión cuenta como confirmación; los fallos quedan en la Auditoría y bloquean 15 minutos tras varios.
 
 ## 1.0.101 — 2026-11-12
 

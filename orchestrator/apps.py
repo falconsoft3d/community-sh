@@ -10,6 +10,9 @@ class OrchestratorConfig(AppConfig):
 
         def logged_in(sender, request, user, **kwargs):
             record(request, 'login', user=user)
+            if request is not None and hasattr(request, 'session'):
+                from .reauth import mark
+                mark(request)  # signing in counts as confirming the password
 
         def logged_out(sender, request, user, **kwargs):
             if user is not None:

@@ -107,7 +107,7 @@ from .views import (
     blog_list,
     blog_detail
 )
-from .auth_views import register, custom_login
+from .auth_views import register, custom_login, reauth
 from .two_factor_views import two_factor_setup, two_factor_verify
 from .container_views import (
     container_list,
@@ -134,6 +134,7 @@ router.register(r'api/contacts', ContactViewSet, basename='api-contact')
 urlpatterns = [
     path('accounts/register/', register, name='register'),
     path('accounts/login/', custom_login, name='login'),
+    path('reauth/', reauth, name='reauth'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('two-factor/setup/', two_factor_setup, name='two-factor-setup'),
     path('two-factor/verify/', two_factor_verify, name='two-factor-verify'),

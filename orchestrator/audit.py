@@ -36,6 +36,8 @@ ACTIONS = {
     'backup_restored': 'Restaurar backup',
     'backups_verify': 'Comprobar backups',
     'db_manager': 'Abrir/cerrar el gestor de bases de datos de Odoo',
+    'reauth': 'Confirmar la contraseña',
+    'reauth_failed': 'Confirmación de contraseña fallida',
 }
 
 

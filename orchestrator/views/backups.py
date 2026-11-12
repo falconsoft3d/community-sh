@@ -15,6 +15,7 @@ from ..permissions import (
 )
 from ..task_models import Task
 from ..tasks import enqueue
+from ..reauth import recent_auth_required
 
 
 @login_required
@@ -113,6 +114,7 @@ def backup_delete(request, backup_id):
 
 @login_required
 @require_POST
+@recent_auth_required
 def backup_restore_action(request, backup_id):
     from ..audit import record
     from ..permissions import require
@@ -220,7 +222,6 @@ def backup_list(request):
         'selected_project': selected_project,
         'total_size': total_size,
     })
-
 
 
 @login_required
