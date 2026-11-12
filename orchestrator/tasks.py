@@ -92,7 +92,26 @@ def run_task(task):
             log.line(task.result)
     task.finished_at = timezone.now()
     task.save(update_fields=['status', 'result', 'finished_at'])
+    if task.status == Task.Status.DONE and _creates_instance(task):
+        enqueue_auto_cleanup(task.created_by)
     return task
+
+
+# Every new instance is followed by a cleanup of what Docker no longer uses. Not volumes (they may hold data,
+# the manual cleanup asks to type BORRAR) nor tagged images (the next instance of that version would pull them again)
+AUTO_CLEANUP_KINDS = ['containers', 'images', 'build_cache', 'networks']
+
+
+def _creates_instance(task):
+    return (task.kind in (Task.Kind.DUPLICATE, Task.Kind.CREATE_FROM_BACKUP, Task.Kind.TRIAL)
+            or (task.kind == Task.Kind.DEPLOY and task.params.get('created')))
+
+
+def enqueue_auto_cleanup(user=None):
+    """One cleanup in the queue is enough: several instances created in a row share it."""
+    if Task.objects.filter(kind=Task.Kind.DOCKER_CLEANUP, status=Task.Status.PENDING, params__auto=True).exists():
+        return None
+    return enqueue(Task.Kind.DOCKER_CLEANUP, user=user, kinds=AUTO_CLEANUP_KINDS, auto=True)
 
 
 def _create_instance_branch(instance, user, base_branch):
@@ -393,6 +412,8 @@ def docker_cleanup(task):
     from .services import docker_admin
     # A build in the build-worker uses stopped intermediate containers and the build cache
     if Task.objects.filter(kind=Task.Kind.BUILD_CONTAINER, status=Task.Status.RUNNING).exists():
+        if task.params.get('auto'):
+            return 'Limpieza automática omitida: hay un contenedor construyéndose (se hará tras la próxima instancia)'
         raise Exception('Hay un contenedor construyéndose: limpia cuando termine')
     results = docker_admin.cleanup(task.params.get('kinds', []), progress=task_log.progress)
     lines = [f'{docker_admin.CLEANUP_KINDS[kind]}: {count} · {filesizeformat(size)}' for kind, (count, size) in results.items()]

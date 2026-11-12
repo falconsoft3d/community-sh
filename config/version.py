@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.69'
+VERSION = '1.0.70'
 
 CHANGELOG = [
+    {
+        'version': '1.0.70',
+        'date': '2026-11-12',
+        'notes': [
+            'Limpieza automática de Docker tras crear una instancia (formulario, API/MCP, duplicar, desde respaldo y demos de «Modo test»): al terminar bien la creación se pone en cola una limpieza de contenedores detenidos que no son de ninguna instancia, imágenes sin etiqueta, caché de build y redes sin uso. No toca volúmenes (pueden tener datos; siguen requiriendo BORRAR en la limpieza manual) ni imágenes etiquetadas (la próxima instancia de esa versión tendría que descargarlas otra vez). Una sola limpieza en cola aunque se creen varias instancias seguidas; si hay un contenedor construyéndose se omite. Su resultado aparece en Docker → Limpieza y en Actividad.',
+        ],
+    },
     {
         'version': '1.0.69',
         'date': '2026-11-12',

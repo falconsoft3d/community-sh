@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.69**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.70**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.70 — 2026-11-12
+
+- Limpieza automática de Docker tras crear una instancia (formulario, API/MCP, duplicar, desde respaldo y demos de «Modo test»): al terminar bien la creación se pone en cola una limpieza de contenedores detenidos que no son de ninguna instancia, imágenes sin etiqueta, caché de build y redes sin uso. No toca volúmenes (pueden tener datos; siguen requiriendo BORRAR en la limpieza manual) ni imágenes etiquetadas (la próxima instancia de esa versión tendría que descargarlas otra vez). Una sola limpieza en cola aunque se creen varias instancias seguidas; si hay un contenedor construyéndose se omite. Su resultado aparece en Docker → Limpieza y en Actividad.
 
 ## 1.0.69 — 2026-11-12
 

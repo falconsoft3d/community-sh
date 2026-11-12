@@ -982,6 +982,40 @@ class DockerAdminTests(BaseTestCase):
             cleanup.assert_not_called()
         self.assertEqual(task.status, Task.Status.FAILED)
 
+    def test_a_new_instance_is_followed_by_one_automatic_cleanup(self):
+        from .task_models import Task
+        from .tasks import AUTO_CLEANUP_KINDS, HANDLERS, enqueue, run_task
+        cleanups = Task.objects.filter(kind=Task.Kind.DOCKER_CLEANUP)
+        with mock.patch.dict(HANDLERS, {Task.Kind.DEPLOY: lambda task: 'ok', Task.Kind.DUPLICATE: lambda task: 'ok'}):
+            # A redeploy is not a new instance
+            run_task(enqueue(Task.Kind.DEPLOY, self.alice_instance, self.alice))
+            self.assertFalse(cleanups.exists())
+            run_task(enqueue(Task.Kind.DEPLOY, self.alice_instance, self.alice, created=True))
+            run_task(enqueue(Task.Kind.DUPLICATE, self.alice_instance, self.alice, new_name='copy'))
+        cleanup = cleanups.get()
+        self.assertEqual(cleanup.params, {'kinds': AUTO_CLEANUP_KINDS, 'auto': True})
+        self.assertNotIn('volumes', AUTO_CLEANUP_KINDS)
+        # A failed creation doesn't queue one; once it ran, the next instance queues another
+        with mock.patch('orchestrator.services.docker_admin.cleanup', return_value={'images': (2, 300)}) as docker_cleanup:
+            self.assertEqual(run_task(cleanup).status, Task.Status.DONE)
+            docker_cleanup.assert_called_once()
+        with mock.patch.dict(HANDLERS, {Task.Kind.DEPLOY: mock.Mock(side_effect=Exception('boom'))}):
+            run_task(enqueue(Task.Kind.DEPLOY, self.alice_instance, self.alice, created=True))
+        self.assertEqual(cleanups.count(), 1)
+        # While a container builds, the automatic one is skipped instead of failing
+        Task.objects.create(kind=Task.Kind.BUILD_CONTAINER, status=Task.Status.RUNNING)
+        with mock.patch('orchestrator.services.docker_admin.cleanup') as docker_cleanup:
+            task = run_task(enqueue(Task.Kind.DOCKER_CLEANUP, kinds=AUTO_CLEANUP_KINDS, auto=True))
+            docker_cleanup.assert_not_called()
+        self.assertEqual(task.status, Task.Status.DONE)
+
+    def test_creating_an_instance_marks_its_deploy(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/instances/', {'name': 'auto-clean', 'project': self.alice_project.pk},
+                                    content_type='application/json')
+        self.assertTrue(Task.objects.get(pk=response.json()['task_id']).params['created'])
+
     def test_pull_is_queued_and_validated(self):
         from .task_models import Task
         self.client.force_login(self.admin)

@@ -90,7 +90,7 @@ class InstanceCreateView(LoginRequiredMixin, CreateView):
         response = super().form_valid(form)
         
         # The worker creates the instance's GitHub branch, deploys it and notifies
-        enqueue(Task.Kind.DEPLOY, self.object, self.request.user, create_branch=True, notify=True)
+        enqueue(Task.Kind.DEPLOY, self.object, self.request.user, create_branch=True, notify=True, created=True)
         messages.info(self.request, 'Instancia creada. El despliegue está en cola y puede tardar unos minutos.')
         return response
 

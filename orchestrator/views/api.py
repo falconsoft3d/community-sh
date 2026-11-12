@@ -28,7 +28,7 @@ class InstanceViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save(owner=request.user)
-        task = enqueue(Task.Kind.DEPLOY, instance, request.user)
+        task = enqueue(Task.Kind.DEPLOY, instance, request.user, created=True)
         data = dict(self.get_serializer(instance).data, task_id=task.pk)
         return Response(data, status=status.HTTP_201_CREATED)
 
