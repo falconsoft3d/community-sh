@@ -29,6 +29,17 @@
         </div>
         {% endfor %}
 
+        <!-- What the client of the project may do -->
+        <div class="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <div>
+                <p class="text-sm font-medium">{% translate "Permisos del cliente" %}</p>
+                <p class="text-sm text-muted-foreground">{% translate "Lo que puede hacer el cliente asignado al proyecto con sus instancias. Quien gestiona el proyecto siempre puede todo, y cada acción queda en la Auditoría." %}</p>
+            </div>
+            {% for field in form.client_fields %}
+            <label class="flex items-center gap-2 text-sm">{{ field }} {{ field.label }}</label>
+            {% endfor %}
+        </div>
+
         <!-- Card colour and tags -->
         <div class="space-y-2">
             <span class="text-sm font-medium leading-none">{{ form.color.label }}</span>

@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.97'
+VERSION = '1.0.98'
 
 CHANGELOG = [
+    {
+        'version': '1.0.98',
+        'date': '2026-11-12',
+        'notes': [
+            'Permisos del cliente por proyecto (al editar el proyecto): desplegar, reiniciar y detener; crear y descargar backups; ver los logs (las tres sí por defecto, como hasta ahora); restaurar sus backups y entrar como admin en Odoo (nuevas, no por defecto). Se aplican en la web (los botones solo aparecen si se puede), la API y el MCP; quien gestiona el proyecto siempre puede todo. Desplegar, reiniciar, detener, crear, descargar y restaurar backups quedan en la Auditoría. Migración 0078.',
+        ],
+    },
     {
         'version': '1.0.97',
         'date': '2026-11-12',

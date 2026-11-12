@@ -1,6 +1,8 @@
 {% extends "orchestrator/base.html" %}
+{% load perms %}
 
 {% block content %}
+{% may instance 'backups' as can_backups %}{% may instance 'restore' as can_restore %}
 <div class="flex flex-col gap-6">
     <div class="flex items-center justify-between">
         <div>
@@ -13,6 +15,7 @@
         </a>
     </div>
 
+    {% if can_backups %}
     <!-- Create Backup Actions -->
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
         <h3 class="font-semibold leading-none tracking-tight mb-4">Create New Backup</h3>
@@ -31,6 +34,7 @@
             </form>
         </div>
     </div>
+    {% endif %}
 
     <!-- Backups List -->
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -65,22 +69,22 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <a href="{% url 'backup-download' backup.pk %}"
+{% if can_backups %}                        <a href="{% url 'backup-download' backup.pk %}"
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
                             <i data-lucide="download" class="mr-2 h-4 w-4"></i> Download
-                        </a>
+                        </a>{% endif %}
                         <a href="{% url 'backup-create-instance' backup.pk %}"
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-green-200 bg-green-50 hover:bg-green-100 text-green-600 h-9 px-3">
                             <i data-lucide="copy-plus" class="mr-2 h-4 w-4"></i> New Instance
                         </a>
-                        <form action="{% url 'backup-restore-action' backup.pk %}" method="post"
+{% if can_restore %}                        <form action="{% url 'backup-restore-action' backup.pk %}" method="post"
                             onsubmit="return confirm('ADVERTENCIA: Esto sobrescribirá la base de datos y archivos actuales. ¿Estás seguro de que quieres restaurar este backup?')">
                             {% csrf_token %}
                             <button type="submit"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-yellow-600 text-white hover:bg-yellow-700 h-9 px-3">
                                 <i data-lucide="rotate-ccw" class="mr-2 h-4 w-4"></i> Restore
                             </button>
-                        </form>
+                        </form>{% endif %}
                         <form action="{% url 'backup-delete' backup.pk %}" method="post"
                             onsubmit="return confirm('¿Estás seguro de que deseas eliminar este backup?')">
                             {% csrf_token %}

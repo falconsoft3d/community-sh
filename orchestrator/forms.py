@@ -118,11 +118,15 @@ class ProjectForm(forms.ModelForm):
 
     class Meta:
         model = Project
-        fields = ['name', 'client', 'description', 'max_instances', 'max_memory_mb', 'color', 'trial_enabled', 'trial_slug', 'trial_days',
+        fields = ['name', 'client', 'description', 'max_instances', 'max_memory_mb', 'client_can_operate', 'client_can_backups',
+                  'client_can_logs', 'client_can_restore', 'client_can_admin_login', 'color', 'trial_enabled', 'trial_slug', 'trial_days',
                   'trial_target_project', 'trial_message', 'trial_max_active']
         labels = {
             'name': 'Nombre', 'client': 'Cliente (usuario)', 'description': 'Descripción', 'color': 'Color de la tarjeta',
             'max_instances': 'Cuota: instancias', 'max_memory_mb': 'Cuota: RAM (MB)',
+            'client_can_operate': 'El cliente puede desplegar, reiniciar y detener', 'client_can_backups': 'El cliente puede crear y descargar backups',
+            'client_can_logs': 'El cliente puede ver los logs', 'client_can_restore': 'El cliente puede restaurar sus backups',
+            'client_can_admin_login': 'El cliente puede entrar como admin en Odoo',
             'trial_enabled': 'Modo test',
             'trial_slug': 'URL de la página de demos',
             'trial_days': 'Días de prueba',
@@ -199,7 +203,11 @@ class ProjectForm(forms.ModelForm):
 
     @property
     def main_fields(self):
-        return [self[name] for name in self.fields if not name.startswith('trial_') and name not in ('color', 'tags_text')]
+        return [self[name] for name in self.fields if not name.startswith(('trial_', 'client_can_')) and name not in ('color', 'tags_text')]
+
+    @property
+    def client_fields(self):
+        return [self[name] for name in self.fields if name.startswith('client_can_')]
 
     def clean_tags_text(self):
         names = []

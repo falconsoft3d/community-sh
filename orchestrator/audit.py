@@ -28,6 +28,12 @@ ACTIONS = {
     'offsite_restore': 'Restaurar desde S3',
     'refresh_data': 'Refrescar datos desde otra instancia',
     'instance_power': 'Cambiar el ahorro de memoria',
+    'instance_deploy': 'Desplegar',
+    'instance_restart': 'Reiniciar',
+    'instance_stop': 'Detener',
+    'backup_created': 'Crear backup',
+    'backup_downloaded': 'Descargar backup',
+    'backup_restored': 'Restaurar backup',
     'backups_verify': 'Comprobar backups',
 }
 

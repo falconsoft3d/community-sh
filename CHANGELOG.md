@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.97**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.98**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.98 — 2026-11-12
+
+- Permisos del cliente por proyecto (al editar el proyecto): desplegar, reiniciar y detener; crear y descargar backups; ver los logs (las tres sí por defecto, como hasta ahora); restaurar sus backups y entrar como admin en Odoo (nuevas, no por defecto). Se aplican en la web (los botones solo aparecen si se puede), la API y el MCP; quien gestiona el proyecto siempre puede todo. Desplegar, reiniciar, detener, crear, descargar y restaurar backups quedan en la Auditoría. Migración 0078.
 
 ## 1.0.97 — 2026-11-12
 

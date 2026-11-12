@@ -4333,6 +4333,74 @@ class ProjectQuotaTests(BaseTestCase):
         self.assertEqual(self.client.get(reverse('usage')).status_code, 403)
 
 
+class ClientPermissionTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.backup = Backup.objects.create(instance=self.alice_instance, filename='a.zip', file_path='/nonexistent', file_size=1)
+        Instance.objects.filter(pk=self.alice_instance.pk).update(status=Instance.Status.RUNNING)
+
+    def test_defaults_are_what_clients_could_always_do(self):
+        from .permissions import may
+        for permission, allowed in (('operate', True), ('backups', True), ('logs', True), ('restore', False), ('admin_login', False)):
+            self.assertEqual(may(self.bob, self.alice_instance, permission), allowed, permission)
+            self.assertTrue(may(self.alice, self.alice_instance, permission))  # who manages: always
+        self.assertFalse(may(self.bob, Instance.objects.create(name='other', owner=self.alice), 'operate'))  # not its project
+
+    def test_restricted_client(self):
+        from .audit_models import AuditEvent
+        from .task_models import Task
+        self.alice_project.client_can_operate = self.alice_project.client_can_backups = self.alice_project.client_can_logs = False
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        pk = self.alice_instance.pk
+        page = self.client.get(f'/instance/{pk}/').content.decode()
+        self.assertNotIn(reverse('instance-deploy', args=[pk]), page)
+        self.assertNotIn("activeTab = 'logs'", page)
+        for url in (reverse('instance-deploy', args=[pk]), reverse('instance-backup', args=[pk]), reverse('instance-restart', args=[pk])):
+            self.assertEqual(self.client.post(url).status_code, 403, url)
+        self.assertEqual(self.client.get(reverse('backup-download', args=[self.backup.pk])).status_code, 403)
+        self.assertEqual(self.client.get(reverse('instance-logs-api', args=[pk])).status_code, 403)
+        self.assertEqual(self.client.post(f'/api/instances/{pk}/deploy/').status_code, 403)
+        self.assertFalse(Task.objects.exists())
+        self.assertFalse(AuditEvent.objects.filter(action='instance_deploy').exists())
+
+    def test_allowed_restore_and_admin_login_are_recorded(self):
+        from .audit_models import AuditEvent
+        from .task_models import Task
+        self.alice_project.client_can_restore = self.alice_project.client_can_admin_login = True
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        pk = self.alice_instance.pk
+        page = self.client.get(f'/instance/{pk}/').content.decode()
+        self.assertIn(reverse('instance-admin-login', args=[pk]), page)
+        self.assertIn(reverse('backup-restore-action', args=[self.backup.pk]), page)
+        self.client.post(reverse('backup-restore-action', args=[self.backup.pk]))
+        self.assertTrue(Task.objects.filter(kind=Task.Kind.RESTORE).exists())
+        self.client.post(reverse('instance-deploy', args=[pk]))
+        self.assertEqual(set(AuditEvent.objects.filter(username='bob').exclude(action='login').values_list('action', flat=True)),
+                         {'backup_restored', 'instance_deploy'})
+        # Still nothing that changes code or configuration
+        self.assertEqual(self.client.post(reverse('instance-delete', args=[pk])).status_code, 403)
+
+    def test_project_form_and_mcp(self):
+        import json
+        from .mcp_models import MCPToken
+        self.client.force_login(self.alice)
+        form = self.client.get(f'/project/{self.alice_project.pk}/edit/').content.decode()
+        self.assertIn('client_can_restore', form)
+        self.alice_project.client_can_operate = False
+        self.alice_project.save()
+        self.config.mcp_enabled = True
+        self.config.save()
+        _, token = MCPToken.issue(self.bob, 'bob')
+        body = {'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': 'deploy_instance', 'arguments': {'instance': 'alice-odoo'}}}
+        result = self.client.post('/mcp/', json.dumps(body), content_type='application/json', HTTP_AUTHORIZATION=f'Bearer {token}').json()['result']
+        self.assertTrue(result['isError'])
+        self.assertIn('does not let its client', result['content'][0]['text'])
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

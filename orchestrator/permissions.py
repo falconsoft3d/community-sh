@@ -140,6 +140,31 @@ def can_manage(user, obj):
     return user.is_superuser or obj.owner_id == user.id
 
 
+# What the client of a project may do with its instances (chosen per project; who manages always may)
+CLIENT_PERMISSIONS = {
+    'operate': 'Desplegar, reiniciar y detener',
+    'backups': 'Crear y descargar backups',
+    'logs': 'Ver los logs',
+    'restore': 'Restaurar sus backups',
+    'admin_login': 'Entrar como admin en Odoo',
+}
+
+
+def may(user, instance, permission):
+    """Whoever manages the instance may do everything; the client of its project, what the project allows."""
+    if can_manage(user, instance):
+        return True
+    project = instance.project
+    if project is None or project.client_id != user.id:
+        return False
+    return bool(getattr(project, f'client_can_{permission}'))
+
+
+def require(user, instance, permission):
+    if not may(user, instance, permission):
+        raise PermissionDenied
+
+
 def instances_for(user):
     """Instances a user can see: their own, and as a client those of their projects."""
     from django.db.models import Q

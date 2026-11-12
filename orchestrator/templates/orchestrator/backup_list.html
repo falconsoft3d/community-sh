@@ -1,5 +1,5 @@
 {% extends "orchestrator/base.html" %}
-{% load i18n %}
+{% load i18n perms %}
 
 {% block content %}
 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -94,11 +94,12 @@
                     <td class="p-4 text-muted-foreground">{{ backup.created_at|date:"d M Y H:i" }}</td>
                     <td class="p-4">
                         <div class="flex items-center justify-end gap-2">
-                            <a href="{% url 'backup-download' backup.pk %}" title="{% translate "Descargar" %}"
+                            {% may backup.instance 'backups' as can_backups %}{% may backup.instance 'restore' as can_restore %}
+                            {% if can_backups %}<a href="{% url 'backup-download' backup.pk %}" title="{% translate "Descargar" %}"
                                 class="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent h-8 px-3 text-xs font-medium">
                                 <i data-lucide="download" class="mr-1.5 h-3.5 w-3.5"></i> {% translate "Descargar" %}
-                            </a>
-                            {% if backup.can_manage %}
+                            </a>{% endif %}
+                            {% if can_restore %}
                             <form action="{% url 'backup-restore-action' backup.pk %}" method="post"
                                 onsubmit="return confirm('Esto sobrescribirá la base de datos y archivos actuales de {{ backup.instance.name|escapejs }}. ¿Restaurar?');">
                                 {% csrf_token %}

@@ -1,5 +1,5 @@
 {% extends "orchestrator/base.html" %}
-{% load i18n %}
+{% load i18n perms %}
 
 {% block content %}
 <div class="flex flex-col gap-6">
@@ -149,7 +149,8 @@
                             <a href="{{ instance.url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-primary hover:underline">
                                 {% translate "Abrir" %} <i data-lucide="external-link" class="h-3 w-3"></i>
                             </a>
-                            {% if can_manage and instance.status == 'running' %}
+                            {% may instance 'admin_login' as can_admin_login %}
+                            {% if can_admin_login and instance.status == 'running' %}
                             <form action="{% url 'instance-admin-login' instance.pk %}" method="post" target="_blank" class="ml-3 inline">
                                 {% csrf_token %}
                                 <button type="submit" class="inline-flex items-center gap-1 text-primary hover:underline" title="Abre Odoo como administrador">

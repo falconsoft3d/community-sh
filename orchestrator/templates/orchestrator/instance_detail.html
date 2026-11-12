@@ -1,5 +1,5 @@
 {% extends "orchestrator/base.html" %}
-{% load i18n %}
+{% load i18n perms %}
 
 {% block content %}
 <div class="flex flex-col gap-6" x-data="{ 
@@ -24,7 +24,9 @@
                 {% if object.project %}<a href="{% url 'project-detail' object.project.pk %}" class="text-muted-foreground font-semibold hover:text-foreground">{{ object.project.name }}</a> <span class="text-muted-foreground font-semibold">/</span> {% endif %}{{ object.name }}
             </h1>
         </div>
+        {% may object 'operate' as can_operate %}{% may object 'admin_login' as can_admin_login %}{% may object 'logs' as can_logs %}{% may object 'backups' as can_backups %}{% may object 'restore' as can_restore %}
         <div class="flex items-center gap-2">
+            {% if can_operate %}
             <form action="{% url 'instance-deploy' object.pk %}" method="post">
                 {% csrf_token %}
                 <button type="submit"
@@ -47,6 +49,15 @@
                 </button>
             </form>
             <div class="h-6 w-px bg-border mx-2"></div>
+            {% endif %}
+            {% if can_admin_login and not can_manage and object.status == 'running' %}
+            <form action="{% url 'instance-admin-login' object.pk %}" method="post" target="_blank">
+                {% csrf_token %}
+                <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    <i data-lucide="key-round" class="mr-2 h-4 w-4"></i> {% translate "Entrar como admin" %}
+                </button>
+            </form>
+            {% endif %}
 {% if can_manage %}
             {% if can_manage and object.status == 'running' %}
             <form action="{% url 'instance-admin-login' object.pk %}" method="post" target="_blank">
@@ -99,12 +110,14 @@
                 <i data-lucide="info" class="inline-block h-4 w-4 mr-2"></i>
                 {% translate "Information" %}
             </button>
+            {% if can_logs %}
             <button @click="activeTab = 'logs'"
                 :class="activeTab === 'logs' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="terminal" class="inline-block h-4 w-4 mr-2"></i>
                 {% translate "Logs" %}
             </button>
+            {% endif %}
 {% if can_manage %}
             <button @click="activeTab = 'console'"
                 :class="activeTab === 'console' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
@@ -945,7 +958,7 @@
         <!-- Create Backup Actions -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
             <h3 class="font-semibold leading-none tracking-tight mb-4">{% translate "Create New Backup" %}</h3>
-            <div class="flex gap-3">
+            {% if can_backups %}<div class="flex gap-3">
                 <form method="post" action="{% url 'instance-backup' object.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="filestore" value="true">
                     <button type="submit"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
@@ -958,7 +971,7 @@
                     <i data-lucide="database" class="mr-2 h-4 w-4"></i> {% translate "Database Only" %}
                 </button>
                 </form>
-            </div>
+            </div>{% else %}<p class="text-sm text-muted-foreground">{% translate "Este proyecto no permite crear backups a su cliente." %}</p>{% endif %}
         </div>
         {% if can_manage %}
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
@@ -1011,23 +1024,25 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <a href="{% url 'backup-download' backup.pk %}"
+{% if can_backups %}                            <a href="{% url 'backup-download' backup.pk %}"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
                                 <i data-lucide="download" class="mr-2 h-4 w-4"></i> {% translate "Descargar" %}
-                            </a>
+                            </a>{% endif %}
 {% if can_manage %}
                             <a href="{% url 'backup-create-instance' backup.pk %}"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-green-200 bg-green-50 hover:bg-green-100 text-green-600 h-9 px-3">
                                 <i data-lucide="copy-plus" class="mr-2 h-4 w-4"></i> {% translate "New Instance" %}
                             </a>
-                            <form action="{% url 'backup-restore-action' backup.pk %}" method="post"
+{% endif %}
+{% if can_restore %}                            <form action="{% url 'backup-restore-action' backup.pk %}" method="post"
                                 onsubmit="return confirm('{{ confirm_restore_backup|escapejs }}')">
                                 {% csrf_token %}
                                 <button type="submit"
                                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-yellow-600 text-white hover:bg-yellow-700 h-9 px-3">
                                     <i data-lucide="rotate-ccw" class="mr-2 h-4 w-4"></i> {% translate "Restaurar" %}
                                 </button>
-                            </form>
+                            </form>{% endif %}
+{% if can_manage %}
                             <form action="{% url 'backup-delete' backup.pk %}" method="post"
                                 onsubmit="return confirm('{{ confirm_delete_backup|escapejs }}')">
                                 {% csrf_token %}
@@ -1114,6 +1129,7 @@
     </div>
     {% endif %}
 
+{% if can_logs %}
     <div x-show="activeTab === 'logs'" class="space-y-6">
         <!-- Live Logs Card -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col h-[500px]">
@@ -1137,6 +1153,7 @@
         </div>
     </div>
 
+    {% endif %}
     <!-- Console Tab -->
 {% if can_manage %}
     <div x-show="activeTab === 'console'" class="space-y-6">

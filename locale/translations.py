@@ -178,6 +178,10 @@ ES_TO_EN = {
     'No responde': 'Not responding',
     'Uso por instancia': 'Usage by instance',
     'Copias en S3': 'Copies in S3',
+    'Permisos del cliente': 'Client permissions',
+    'Lo que puede hacer el cliente asignado al proyecto con sus instancias. Quien gestiona el proyecto siempre puede todo, y cada acción queda en la Auditoría.':
+        "What the client assigned to the project can do with its instances. Whoever manages the project can always do everything, and every action is recorded in the audit log.",
+    'Este proyecto no permite crear backups a su cliente.': "This project doesn't let its client create backups.",
     'Uso por proyecto': 'Usage by project',
     'Lo que ocupa cada proyecto frente a su cuota: para repartir el servidor y para facturar. El disco es el de la última medición (Metrics → Recursos).':
         'What each project takes against its quota: to share the server and to bill. Disk is from the last measure (Metrics → Resources).',

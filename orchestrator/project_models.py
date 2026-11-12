@@ -54,6 +54,13 @@ class Project(models.Model):
     trial_api_key_hash = models.CharField(max_length=64, blank=True, help_text="SHA-256 of the demo API key")
     trial_api_key_hint = models.CharField(max_length=8, blank=True, help_text="Last characters, to recognise it")
     trial_max_active = models.PositiveSmallIntegerField(default=3, validators=[MinValueValidator(1), MaxValueValidator(50)], help_text="Demos running at the same time (each one is an Odoo and a PostgreSQL)")
+    # What its client may do (whoever manages the project always may). The defaults are what clients could always do
+    client_can_operate = models.BooleanField(default=True, help_text="Deploy, restart and stop its instances")
+    client_can_backups = models.BooleanField(default=True, help_text="Create and download backups")
+    client_can_logs = models.BooleanField(default=True, help_text="See the Odoo logs")
+    client_can_restore = models.BooleanField(default=False, help_text="Restore one of its backups")
+    client_can_admin_login = models.BooleanField(default=False, help_text="Log into its Odoo as administrator")
+
     # Quotas, set by an administrator (0: no limit)
     max_instances = models.PositiveSmallIntegerField(default=0, help_text="Instances the project can have (0: no limit)")
     max_memory_mb = models.PositiveIntegerField(default=0, help_text="RAM its instances' memory limits can add up to, in MB (0: no limit)")

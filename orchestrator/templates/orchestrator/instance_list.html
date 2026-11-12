@@ -1,5 +1,5 @@
 {% extends "orchestrator/base.html" %}
-{% load i18n %}
+{% load i18n perms %}
 
 {% block content %}
 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -126,7 +126,8 @@
                                 <i data-lucide="link" class="h-3 w-3 mr-1"></i>
                                 Alt
                             </a>
-                            {% if instance.can_manage %}
+                            {% may instance 'admin_login' as can_admin_login %}
+                            {% if can_admin_login %}
                             <form action="{% url 'instance-admin-login' instance.pk %}" method="post" target="_blank">
                                 {% csrf_token %}
                                 <button type="submit" title="{% translate 'Entrar como admin' %}"
@@ -143,7 +144,9 @@
                     </td>
                     <td class="p-4 align-middle">
                         <div class="flex items-center gap-2">
-                            {% if instance.status == 'stopped' or instance.status == 'error' %}
+                            {% may instance 'operate' as can_operate %}
+                            {% if not can_operate %}
+                            {% elif instance.status == 'stopped' or instance.status == 'error' %}
                             <button
                                 @click="confirmModal = true; actionUrl = '{% url 'instance-deploy' instance.pk %}'; actionName = 'Start'; instanceName = '{{ instance.name }}'"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-8 px-3">

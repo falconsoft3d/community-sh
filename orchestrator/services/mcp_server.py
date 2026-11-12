@@ -78,6 +78,12 @@ def _instance(user, name):
     return instance
 
 
+def _may(user, instance, permission):
+    from ..permissions import may
+    if not may(user, instance, permission):
+        raise ToolError(f'The project of "{instance.name}" does not let its client do this ({permission})')
+
+
 def _instance_info(instance):
     return {
         'name': instance.name, 'project': instance.project.name if instance.project else None,
@@ -118,9 +124,11 @@ def call_tool(user, name, arguments):
         return info
     if name == 'get_instance_logs':
         instance = _instance(user, arguments['instance'])
+        _may(user, instance, 'logs')
         return DockerService().get_logs(instance, lines=min(int(arguments.get('lines', 100)), 1000))
     if name in ('deploy_instance', 'create_backup'):
         instance = _instance(user, arguments['instance'])
+        _may(user, instance, 'operate' if name == 'deploy_instance' else 'backups')
         if name == 'deploy_instance':
             task = enqueue(Task.Kind.DEPLOY, instance, user)
         else:
@@ -156,6 +164,7 @@ def call_tool(user, name, arguments):
                 'note': 'Applied by the task: follow it with get_task; get_instance then shows the login'}
     if name in ('restart_instance', 'stop_instance'):
         instance = _instance(user, arguments['instance'])
+        _may(user, instance, 'operate')
         service = DockerService()
         (service.restart_instance if name == 'restart_instance' else service.stop_instance)(instance)
         instance.refresh_from_db()

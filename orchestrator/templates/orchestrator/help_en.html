@@ -42,7 +42,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                 <ul>
                     <li><strong>Administrator</strong> (superuser): everything, including Users, Docker, the global Settings (domain, backups, AI, email, demos) and the Docker cleanup.</li>
                     <li><strong>User</strong>: creates and manages their projects and instances.</li>
-                    <li><strong>Client</strong> (the user's «Client» checkbox, assigned to a project): only sees and operates their projects; doesn't see the Master Password or the Odoo administrator's password, nor the Console, Domains, Modules and Migrate tabs.</li>
+                    <li><strong>Client</strong> (the user's «Client» checkbox, assigned to a project): sees their projects and does what the project allows in <strong>Client permissions</strong> (when editing it): deploy, restart and stop; create and download backups; see the logs (all three yes by default); restore their backups and log into Odoo as admin (no by default). Never changes code or configuration, doesn't see the Master Password or the administrator's password, nor the Console, Domains, Modules and Migrate tabs. Everything they do is recorded in the audit log. The same rules apply in the API and MCP.</li>
                 </ul>
             </section>
 

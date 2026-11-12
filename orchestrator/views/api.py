@@ -16,6 +16,14 @@ from ..permissions import (
 
 
 # API ViewSet
+
+def _may(request, instance, permission):
+    """The client permissions of the project (whoever manages the instance always may)."""
+    from rest_framework.exceptions import PermissionDenied
+    from ..permissions import may
+    if not may(request.user, instance, permission):
+        raise PermissionDenied(f'The project does not let its client do this ({permission})')
+
 class InstanceViewSet(viewsets.ModelViewSet):
     serializer_class = InstanceSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrSuperuser]
@@ -35,12 +43,14 @@ class InstanceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def deploy(self, request, pk=None):
         instance = self.get_object()
+        _may(request, instance, 'operate')
         task = enqueue(Task.Kind.DEPLOY, instance, request.user)
         return Response({'task_id': task.pk, 'status': task.status}, status=status.HTTP_202_ACCEPTED)
 
     @action(detail=True, methods=['post'])
     def stop(self, request, pk=None):
         instance = self.get_object()
+        _may(request, instance, 'operate')
         service = DockerService()
         service.stop_instance(instance)
         serializer = self.get_serializer(instance)
@@ -53,12 +63,14 @@ class InstanceActionsMixin:
     @action(detail=True, methods=['post'])
     def restart(self, request, pk=None):
         instance = self.get_object()
+        _may(request, instance, 'operate')
         DockerService().restart_instance(instance)
         return Response(self.get_serializer(instance).data)
 
     @action(detail=True, methods=['post'])
     def backup(self, request, pk=None):
         instance = self.get_object()
+        _may(request, instance, 'backups')
         include_filestore = str(request.data.get('include_filestore', 'true')).lower() != 'false'
         task = enqueue(Task.Kind.BACKUP, instance, request.user, include_filestore=include_filestore)
         return Response({'task_id': task.pk, 'status': task.status}, status=status.HTTP_202_ACCEPTED)
@@ -208,16 +220,15 @@ class BackupViewSet(viewsets.ReadOnlyModelViewSet):
         import os
         from django.http import FileResponse
         backup = self.get_object()
+        _may(request, backup.instance, 'backups')
         if not os.path.exists(backup.file_path):
             return Response({'detail': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
         return FileResponse(open(backup.file_path, 'rb'), as_attachment=True, filename=backup.filename)
 
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
-        from ..permissions import can_manage
         backup = self.get_object()
-        if not can_manage(request.user, backup.instance):
-            return Response({'detail': 'Only the owner can restore'}, status=status.HTTP_403_FORBIDDEN)
+        _may(request, backup.instance, 'restore')
         task = enqueue(Task.Kind.RESTORE, backup.instance, request.user, file_path=backup.file_path, label=backup.filename)
         return Response({'task_id': task.pk, 'status': task.status}, status=status.HTTP_202_ACCEPTED)
 

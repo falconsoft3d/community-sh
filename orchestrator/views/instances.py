@@ -139,7 +139,12 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
 @login_required
 @require_POST
 def instance_deploy(request, pk):
+    from ..audit import record
+    from ..permissions import require
     instance = get_instance_for_user(request.user, pk)
+    require(request.user, instance, 'operate')
+    if request.method == 'POST':
+        record(request, 'instance_deploy', instance.name)
     enqueue(Task.Kind.DEPLOY, instance, request.user)
     messages.info(request, 'Despliegue en cola')
     return HttpResponseRedirect(reverse_lazy('instance-detail', args=[pk]))
@@ -171,7 +176,12 @@ def instance_tasks_api(request, pk):
 
 @login_required
 def instance_stop(request, pk):
+    from ..audit import record
+    from ..permissions import require
     instance = get_instance_for_user(request.user, pk)
+    require(request.user, instance, 'operate')
+    if request.method == 'POST':
+        record(request, 'instance_stop', instance.name)
     if request.method == 'POST':
         service = DockerService()
         service.stop_instance(instance)
@@ -180,7 +190,12 @@ def instance_stop(request, pk):
 
 @login_required
 def instance_restart(request, pk):
+    from ..audit import record
+    from ..permissions import require
     instance = get_instance_for_user(request.user, pk)
+    require(request.user, instance, 'operate')
+    if request.method == 'POST':
+        record(request, 'instance_restart', instance.name)
     if request.method == 'POST':
         service = DockerService()
         service.restart_instance(instance)
@@ -189,7 +204,9 @@ def instance_restart(request, pk):
 
 @login_required
 def instance_logs_api(request, pk):
+    from ..permissions import require
     instance = get_instance_for_user(request.user, pk)
+    require(request.user, instance, 'logs')
     service = DockerService()
     logs = service.get_logs(instance, lines=200)
     return JsonResponse({'logs': logs})
@@ -726,7 +743,9 @@ def instance_admin_login(request, pk):
     import time
     from urllib.parse import urlencode
     from ..services.docker_service import admin_login_secret
-    instance = get_instance_for_user(request.user, pk, manage=True)
+    from ..permissions import require
+    instance = get_instance_for_user(request.user, pk)
+    require(request.user, instance, 'admin_login')
     database = instance.database_name
     if not database:
         try:

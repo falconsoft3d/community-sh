@@ -20,7 +20,11 @@ from ..tasks import enqueue
 @login_required
 @require_POST
 def instance_backup(request, pk):
+    from ..audit import record
+    from ..permissions import require
     instance = get_instance_for_user(request.user, pk)
+    require(request.user, instance, 'backups')
+    record(request, 'backup_created', instance.name)
     include_filestore = request.POST.get('filestore', 'true') == 'true'
     enqueue(Task.Kind.BACKUP, instance, request.user, include_filestore=include_filestore)
     messages.info(request, 'Respaldo en cola')
@@ -71,7 +75,11 @@ def instance_backups_list(request, pk):
 
 @login_required
 def backup_download(request, backup_id):
+    from ..audit import record
+    from ..permissions import require
     backup = get_backup_for_user(request.user, backup_id)
+    require(request.user, backup.instance, 'backups')
+    record(request, 'backup_downloaded', backup.instance.name, backup.filename)
     
     if not os.path.exists(backup.file_path):
         from django.contrib import messages
@@ -106,7 +114,11 @@ def backup_delete(request, backup_id):
 @login_required
 @require_POST
 def backup_restore_action(request, backup_id):
-    backup = get_backup_for_user(request.user, backup_id, manage=True)
+    from ..audit import record
+    from ..permissions import require
+    backup = get_backup_for_user(request.user, backup_id)
+    require(request.user, backup.instance, 'restore')
+    record(request, 'backup_restored', backup.instance.name, backup.filename)
     enqueue(Task.Kind.RESTORE, backup.instance, request.user, file_path=backup.file_path, label=backup.filename)
     messages.info(request, f'Restauración desde {backup.filename} en cola')
     return redirect('instance-backups', pk=backup.instance.pk)
