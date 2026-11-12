@@ -218,6 +218,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    # Requests per minute: orchestrator/ratelimit.py
+    'DEFAULT_THROTTLE_CLASSES': [
+        'orchestrator.ratelimit.PanelRateThrottle',
+    ],
 }
 
 # Content-Security-Policy: scripts only from the panel itself (its JS libraries are in static/vendor, pinned),

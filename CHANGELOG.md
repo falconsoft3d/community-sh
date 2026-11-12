@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.102**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.103**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.103 — 2026-11-12
+
+- Seguridad: los tokens personales (API y MCP) tienen caducidad y alcance. Al generarlos se elige cuándo caducan (30 días, 90 por defecto, 1 año o nunca) y si son de solo lectura (API: solo GET; MCP: solo las herramientas list_ y get_, y tools/list solo muestra esas). «Tus tokens» muestra la caducidad; uno caducado responde 401. Los tokens que ya existían siguen igual (sin caducidad, acceso completo). La Auditoría guarda la caducidad y el alcance de cada token creado. Migración 0080.
+- Seguridad: límites de peticiones (contador por ventana en la caché): 600 por minuto y usuario en la API REST (60 por dirección sin token), 300 por minuto y token en el MCP y 20 peticiones de demo por hora y dirección en la página y la API públicas de demos (las de una web con la clave de la API no cuentan), para frenar inundaciones y adivinar el captcha. Responden 429 con Retry-After.
 
 ## 1.0.102 — 2026-11-12
 

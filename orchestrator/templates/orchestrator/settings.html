@@ -972,6 +972,13 @@
                         {% csrf_token %}
                         <input name="name" placeholder="Nombre del token (vacío: IA y la fecha)" aria-label="Nombre del token para la IA"
                             class="h-10 min-w-[16rem] flex-1 rounded-md border border-input bg-background px-3 text-sm">
+                        <select name="days" aria-label="Caducidad del token" class="h-10 rounded-md border border-input bg-background px-2 text-sm">
+                            <option value="30">Caduca en 30 días</option>
+                            <option value="90" selected>Caduca en 90 días</option>
+                            <option value="365">Caduca en 1 año</option>
+                            <option value="0">Sin caducidad</option>
+                        </select>
+                        <label class="flex h-10 items-center gap-1.5 text-sm"><input type="checkbox" name="read_only" value="1"> Solo lectura</label>
                         <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                             <i data-lucide="file-down" class="mr-2 h-4 w-4"></i> Generar token y descargar .md
                         </button>

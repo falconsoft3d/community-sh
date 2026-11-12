@@ -218,7 +218,12 @@ def _error(request_id, code, message):
     return {'jsonrpc': '2.0', 'id': request_id, 'error': {'code': code, 'message': message}}
 
 
-def handle_message(user, message):
+# What a read-only token may call
+READ_ONLY_TOOLS = {'list_projects', 'list_instances', 'get_instance', 'get_instance_logs', 'list_backups', 'get_task',
+                   'list_todos'}
+
+
+def handle_message(user, message, read_only=False):
     """Handle one JSON-RPC message. Returns the response dict, or None for notifications."""
     if not isinstance(message, dict) or message.get('jsonrpc') != '2.0' or 'method' not in message:
         return _error(message.get('id') if isinstance(message, dict) else None, -32600, 'Invalid Request')
@@ -237,11 +242,14 @@ def handle_message(user, message):
     if method == 'ping':
         return _result(request_id, {})
     if method == 'tools/list':
-        return _result(request_id, {'tools': TOOLS})
+        return _result(request_id, {'tools': [t for t in TOOLS if not read_only or t['name'] in READ_ONLY_TOOLS]})
     if method == 'tools/call':
         name = params.get('name')
         if name not in {tool['name'] for tool in TOOLS}:
             return _error(request_id, -32602, f'Unknown tool: {name}')
+        if read_only and name not in READ_ONLY_TOOLS:
+            return _result(request_id, {'content': [{'type': 'text', 'text': f'{name}: este token es de solo lectura'}],
+                                        'isError': True})
         try:
             output = call_tool(user, name, params.get('arguments') or {})
             text = output if isinstance(output, str) else json.dumps(output, ensure_ascii=False, indent=2, default=str)

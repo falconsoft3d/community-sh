@@ -105,8 +105,9 @@ Contiene un token personal: trátalo como una contraseña y no lo publiques.
 - Las operaciones largas (crear o desplegar una instancia, backup, restaurar, duplicar, crear una base de datos,
   instalar un módulo, construir un contenedor) responden `202` con `task_id`: consulta `GET {api}/tasks/{{task_id}}/`
   cada pocos segundos hasta que `status` sea `done` o `failed`; `result` y `log` explican qué pasó.
-- Errores: `400` con el campo y el motivo, `401` token inválido o revocado, `403` sin permiso (p. ej. clientes de un
-  proyecto, que no gestionan sus instancias), `404` no existe o no es tuyo.
+- Errores: `400` con el campo y el motivo, `401` token inválido, revocado o caducado, `403` sin permiso (p. ej. clientes
+  de un proyecto, que no gestionan sus instancias, o un token de solo lectura en un POST/PATCH/DELETE), `404` no existe o
+  no es tuyo, `429` demasiadas peticiones (600 por minuto y usuario; espera los segundos de `Retry-After`).
 - Versiones de Odoo válidas (`odoo_version`): {versions}.
 - Cada instancia queda en su propia URL (campo `url`) con HTTPS.
 

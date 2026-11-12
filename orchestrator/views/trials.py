@@ -100,7 +100,10 @@ def trial_page(request, slug):
     instances = demo_instances(project)
     form = DemoForm(request.POST or None, instances=instances)
     error = ''
-    if request.method == 'POST' and form.is_valid():
+    from ..ratelimit import TRIAL_POSTS_PER_HOUR, hit
+    if request.method == 'POST' and hit(f'trial:{client_ip(request)}', TRIAL_POSTS_PER_HOUR, 3600):
+        error = 'Demasiadas peticiones desde tu dirección: inténtalo dentro de una hora.'
+    elif request.method == 'POST' and form.is_valid():
         data = form.cleaned_data
         if project.trial_target_project is None:
             error = 'Las demos no están disponibles ahora mismo.'
@@ -202,7 +205,12 @@ def trial_api(request, slug):
     # With the project's API key (a website's backend): no captcha and no per-address limit
     authorization = request.headers.get('Authorization', '')
     key = authorization[7:].strip() if authorization.startswith('Bearer ') else request.headers.get('X-Demo-Key', '').strip()
-    if key and not project.trial_api_key_ok(key):
+    from ..ratelimit import TRIAL_POSTS_PER_HOUR, hit
+    valid_key = bool(key) and project.trial_api_key_ok(key)
+    # A website's backend with the key sends all its visitors from one address: only the others are limited
+    if not valid_key and hit(f'trial:{client_ip(request)}', TRIAL_POSTS_PER_HOUR, 3600):
+        return _cors(JsonResponse({'detail': 'Demasiadas peticiones desde tu dirección: inténtalo dentro de una hora.'}, status=429), methods)
+    if key and not valid_key:
         return _cors(JsonResponse({'detail': 'Clave de API no válida'}, status=401), methods)
     with_key = bool(key)
     form = DemoForm(data, instances=demo_instances(project), captcha=not with_key)

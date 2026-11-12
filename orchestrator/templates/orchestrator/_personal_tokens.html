@@ -22,7 +22,8 @@
             <i data-lucide="key-round" class="h-4 w-4 text-muted-foreground"></i>
             <div class="flex-1">
                 <div class="font-medium">{{ token.name }} <span class="font-mono text-xs text-muted-foreground">…{{ token.hint }}</span></div>
-                <div class="text-xs text-muted-foreground">Creado {{ token.created_at|date:"d M Y H:i" }} · último uso {{ token.last_used_at|date:"d M Y H:i"|default:"nunca" }}</div>
+                <div class="text-xs text-muted-foreground">Creado {{ token.created_at|date:"d M Y H:i" }} · último uso {{ token.last_used_at|date:"d M Y H:i"|default:"nunca" }} ·
+                    {% if token.expired %}<span class="font-semibold text-destructive">caducado el {{ token.expires_at|date:"d M Y" }}</span>{% elif token.expires_at %}caduca el {{ token.expires_at|date:"d M Y" }}{% else %}sin caducidad{% endif %}{% if token.read_only %} · <span class="font-semibold">solo lectura</span>{% endif %}</div>
             </div>
             <form method="post" action="{% url 'mcp-token-revoke' token.pk %}" onsubmit="return confirm('¿Revocar este token? Dejará de funcionar en la API y en MCP.');">
                 {% csrf_token %}
@@ -38,6 +39,13 @@
         {% csrf_token %}
         <input type="hidden" name="tab" value="{{ tab }}">
         <input name="name" placeholder="{% if tab == 'api' %}Ej.: Script de backups{% else %}Ej.: Claude Code en mi portátil{% endif %}" aria-label="Nombre del token" class="h-10 min-w-[16rem] flex-1 rounded-md border border-input bg-background px-3 text-sm">
+        <select name="days" aria-label="Caducidad del token" class="h-10 rounded-md border border-input bg-background px-2 text-sm">
+            <option value="30">Caduca en 30 días</option>
+            <option value="90" selected>Caduca en 90 días</option>
+            <option value="365">Caduca en 1 año</option>
+            <option value="0">Sin caducidad</option>
+        </select>
+        <label class="flex h-10 items-center gap-1.5 text-sm"><input type="checkbox" name="read_only" value="1"> Solo lectura</label>
         <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
             <i data-lucide="key-round" class="mr-2 h-4 w-4"></i> Generar token
         </button>

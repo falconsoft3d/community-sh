@@ -4070,6 +4070,81 @@ class OdooDatabaseManagerTests(BaseTestCase):
         urlopen.assert_not_called()
 
 
+class TokenScopeAndRateLimitTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.config.mcp_enabled = True
+        self.config.save()
+
+    def rpc(self, token, name, arguments=None):
+        import json
+        body = {'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': name, 'arguments': arguments or {}}}
+        return self.client.post('/mcp/', json.dumps(body), content_type='application/json', HTTP_AUTHORIZATION=f'Bearer {token}')
+
+    def test_expired_and_read_only_tokens(self):
+        import json
+        from datetime import timedelta
+        from django.utils import timezone
+        from .mcp_models import MCPToken
+        record, token = MCPToken.issue(self.alice, 'reader', days=30, read_only=True)
+        self.assertAlmostEqual(record.expires_at, timezone.now() + timedelta(days=30), delta=timedelta(minutes=1))
+        auth = {'HTTP_AUTHORIZATION': f'Bearer {token}'}
+        self.assertEqual(self.client.get('/api/instances/', **auth).status_code, 200)
+        self.assertEqual(self.client.post(f'/api/instances/{self.alice_instance.pk}/backup/', **auth).status_code, 403)
+        self.assertFalse(self.rpc(token, 'list_instances').json()['result']['isError'])
+        refused = self.rpc(token, 'restart_instance', {'instance': 'alice-odoo'}).json()['result']
+        self.assertTrue(refused['isError'])
+        self.assertIn('solo lectura', refused['content'][0]['text'])
+        tools = self.client.post('/mcp/', json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}),
+                                 content_type='application/json', **auth).json()['result']['tools']
+        self.assertNotIn('deploy_instance', {t['name'] for t in tools})
+        self.assertIn('get_instance', {t['name'] for t in tools})
+
+        MCPToken.objects.filter(pk=record.pk).update(expires_at=timezone.now() - timedelta(seconds=1))
+        self.assertEqual(self.client.get('/api/instances/', **auth).status_code, 401)
+        self.assertEqual(self.rpc(token, 'list_instances').status_code, 401)
+        # Tokens made before expiry existed keep working with full access
+        old, old_token = MCPToken.issue(self.alice, 'old')
+        self.assertIsNone(old.expires_at)
+        self.assertFalse(old.read_only)
+
+    def test_created_from_settings_with_lifetime_and_scope(self):
+        from .mcp_models import MCPToken
+        self.client.force_login(self.alice)
+        self.client.post(reverse('mcp-token-create'), {'name': 'ci', 'tab': 'api', 'days': '365', 'read_only': '1'})
+        token = MCPToken.objects.get(name='ci')
+        self.assertTrue(token.read_only)
+        self.assertGreater((token.expires_at - token.created_at).days, 360)
+        self.client.post(reverse('mcp-token-create'), {'name': 'forever', 'tab': 'api', 'days': '0'})
+        self.assertIsNone(MCPToken.objects.get(name='forever').expires_at)
+        self.client.post(reverse('mcp-token-create'), {'name': 'odd', 'tab': 'api', 'days': '7000'})
+        odd = MCPToken.objects.get(name='odd')
+        self.assertEqual(round((odd.expires_at - odd.created_at).total_seconds() / 86400), 90)
+        page = self.client.get(reverse('settings')).content.decode()
+        self.assertIn('solo lectura', page)
+        self.assertIn('caduca el', page)
+
+    def test_rate_limits(self):
+        from .mcp_models import MCPToken
+        from . import ratelimit
+        _record, token = MCPToken.issue(self.alice, 'busy')
+        auth = {'HTTP_AUTHORIZATION': f'Bearer {token}'}
+        with mock.patch.object(ratelimit, 'API_PER_MINUTE', 3):
+            codes = [self.client.get('/api/instances/', **auth).status_code for _ in range(4)]
+        self.assertEqual(codes, [200, 200, 200, 429])
+        with mock.patch.object(ratelimit, 'MCP_PER_MINUTE', 2):
+            codes = [self.rpc(token, 'list_instances').status_code for _ in range(3)]
+        self.assertEqual(codes, [200, 200, 429])
+        self.alice_project.trial_enabled = True
+        self.alice_project.trial_slug = 'bim'
+        self.alice_project.save()
+        with mock.patch.object(ratelimit, 'TRIAL_POSTS_PER_HOUR', 1):
+            first = self.client.post(reverse('trial-api', args=['bim']), {'name': 'Ana'}).status_code
+            second = self.client.post(reverse('trial-api', args=['bim']), {'name': 'Ana'})
+        self.assertNotEqual(first, 429)
+        self.assertEqual(second.status_code, 429)
+
+
 class ReauthTests(BaseTestCase):
     def expire(self):
         session = self.client.session

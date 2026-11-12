@@ -1,7 +1,6 @@
-from django.utils import timezone
-from rest_framework import authentication, exceptions
+from rest_framework import authentication, exceptions, permissions
 
-from .mcp_models import MCPToken, hash_token
+from .mcp_models import MCPToken
 
 
 class PersonalTokenAuthentication(authentication.BaseAuthentication):
@@ -11,13 +10,12 @@ class PersonalTokenAuthentication(authentication.BaseAuthentication):
         header = request.headers.get('Authorization', '')
         if not header.startswith('Bearer '):
             return None
-        token = MCPToken.objects.select_related('user').filter(token_hash=hash_token(header[7:].strip())).first()
-        if token is None or not token.user.is_active:
-            raise exceptions.AuthenticationFailed('Invalid token')
-        from .permissions import missing_required_2fa
-        if missing_required_2fa(token.user):
-            raise exceptions.AuthenticationFailed('Two-factor authentication setup required.')
-        MCPToken.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
+        token = MCPToken.authenticate(header)
+        if token is None:
+            raise exceptions.AuthenticationFailed('Invalid or expired token (or 2FA setup required)')
+        # A read-only token never changes anything, whatever the view allows
+        if token.read_only and request.method not in permissions.SAFE_METHODS:
+            raise exceptions.PermissionDenied('Read-only token')
         return token.user, token
 
     def authenticate_header(self, request):

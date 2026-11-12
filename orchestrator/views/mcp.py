@@ -10,24 +10,26 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from ..mcp_models import MCPToken, hash_token
+from ..mcp_models import MCPToken
 from ..permissions import get_global_config
 from ..services.mcp_server import handle_message
 from ..reauth import recent_auth_required
 
 
-def _token_user(request):
-    header = request.headers.get('Authorization', '')
-    if not header.startswith('Bearer '):
-        return None
-    token = MCPToken.objects.select_related('user').filter(token_hash=hash_token(header[7:].strip())).first()
-    if token is None or not token.user.is_active:
-        return None
-    from ..permissions import missing_required_2fa
-    if missing_required_2fa(token.user):
-        return None
-    MCPToken.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
-    return token.user
+TOKEN_DAYS = (30, 90, 365, 0)
+
+
+def _token_options(request):
+    """(days, read_only) from the form: 90 days unless another lifetime (0: never) is chosen."""
+    try:
+        days = int(request.POST.get('days', 90))
+    except ValueError:
+        days = 90
+    return (days if days in TOKEN_DAYS else 90) or None, request.POST.get('read_only') == '1'
+
+
+def _token(request):
+    return MCPToken.authenticate(request.headers.get('Authorization', ''))
 
 
 @csrf_exempt
@@ -40,10 +42,15 @@ def mcp_endpoint(request):
     config = get_global_config()
     if not config or not config.mcp_enabled:
         return JsonResponse({'error': 'MCP is disabled (Settings → MCP)'}, status=404)
-    user = _token_user(request)
-    if user is None:
+    token = _token(request)
+    if token is None:
         response = JsonResponse({'error': 'Invalid or missing token'}, status=401)
         response['WWW-Authenticate'] = 'Bearer'
+        return response
+    from ..ratelimit import MCP_PER_MINUTE, hit
+    if hit(f'mcp:{token.pk}', MCP_PER_MINUTE, 60):
+        response = JsonResponse({'error': f'Too many requests: at most {MCP_PER_MINUTE} a minute per token'}, status=429)
+        response['Retry-After'] = '60'
         return response
     try:
         payload = json.loads(request.body or b'null')
@@ -51,9 +58,10 @@ def mcp_endpoint(request):
         return JsonResponse({'jsonrpc': '2.0', 'id': None, 'error': {'code': -32700, 'message': 'Parse error'}}, status=400)
 
     if isinstance(payload, list):
-        replies = [reply for reply in (handle_message(user, m) for m in payload) if reply is not None]
+        replies = [reply for reply in (handle_message(token.user, m, read_only=token.read_only) for m in payload)
+                   if reply is not None]
         return JsonResponse(replies, safe=False) if replies else HttpResponse(status=202)
-    reply = handle_message(user, payload)
+    reply = handle_message(token.user, payload, read_only=token.read_only)
     return JsonResponse(reply) if reply is not None else HttpResponse(status=202)
 
 
@@ -63,9 +71,11 @@ def mcp_endpoint(request):
 def mcp_token_create(request):
     tab = _token_tab(request)
     name = request.POST.get('name', '').strip()[:100] or ('API' if tab == 'api' else 'Claude')
-    _record, token = MCPToken.issue(request.user, name)
+    days, read_only = _token_options(request)
+    _record, token = MCPToken.issue(request.user, name, days=days, read_only=read_only)
     from ..audit import record
-    record(request, 'token_created', name, 'Pestaña ' + tab)
+    record(request, 'token_created', name, f"Pestaña {tab} · {f'{days} días' if days else 'sin caducidad'}"
+                                           f"{' · solo lectura' if read_only else ''}")
     # Shown once on the next settings page (with a copy button), then dropped
     request.session['new_personal_token'] = {'name': name, 'token': token}
     return redirect(reverse('settings') + f'#{tab}')
@@ -93,9 +103,11 @@ def api_token_markdown(request):
         messages.error(request, 'Activa la verificación en dos pasos (2FA) en tu perfil: sin ella los tokens no funcionan')
         return redirect(reverse('settings') + '#api')
     name = request.POST.get('name', '').strip()[:100] or f'IA {timezone.localtime():%d/%m/%Y %H:%M}'
-    _record, token = MCPToken.issue(request.user, name)
+    days, read_only = _token_options(request)
+    _record, token = MCPToken.issue(request.user, name, days=days, read_only=read_only)
     from ..audit import record
-    record(request, 'token_created', name, 'Fichero .md para una IA')
+    record(request, 'token_created', name, f"Fichero .md para una IA · {f'{days} días' if days else 'sin caducidad'}"
+                                           f"{' · solo lectura' if read_only else ''}")
     config = get_global_config()
     mcp_url = request.build_absolute_uri(reverse('mcp')) if config and config.mcp_enabled else ''
     content = api_markdown(request.user, request.build_absolute_uri('/api/'), token, name, mcp_url=mcp_url)
