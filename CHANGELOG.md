@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.80**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.81**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.81 — 2026-11-12
+
+- Uso por instancia: Metrics → Recursos tiene una tabla con cada instancia (su Odoo y su PostgreSQL juntos), de la que más memoria usa a la que menos, con su CPU y cuánto de su límite de memoria gasta; y la ficha de la instancia muestra su uso ahora en Information (se mide en segundo plano, sin frenar la página).
 
 ## 1.0.80 — 2026-11-12
 

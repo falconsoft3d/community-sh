@@ -164,6 +164,12 @@ ES_TO_EN = {
     'Nueva instancia': 'New instance',
     'Ayuda': 'Help',
     'No responde': 'Not responding',
+    'Uso por instancia': 'Usage by instance',
+    'Su Odoo y su PostgreSQL juntos, de la que más memoria usa a la que menos. Útil para saber cuál parar cuando falta memoria.':
+        'Its Odoo and its PostgreSQL together, from the one using the most memory to the least. Useful to know which to stop when memory is short.',
+    'Odoo / límite': 'Odoo / limit',
+    'sin límite': 'no limit',
+    'Ninguna instancia en marcha': 'No instance running',
     'Tiempo de respuesta en la última comprobación': 'Response time in the last check',
     'Neutralizar la copia (recomendado)': 'Neutralize the copy (recommended)',
     'Antes de arrancar la copia se desactivan los servidores de correo entrante y saliente, las tareas programadas (salvo la limpieza automática), los métodos de pago y las claves API, y se cambia el UUID de la base. Así una copia de producción no escribe a tus clientes ni cobra. Desmárcalo solo si la copia va a sustituir a la original.':

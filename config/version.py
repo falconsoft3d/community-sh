@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.80'
+VERSION = '1.0.81'
 
 CHANGELOG = [
+    {
+        'version': '1.0.81',
+        'date': '2026-11-12',
+        'notes': [
+            'Uso por instancia: Metrics → Recursos tiene una tabla con cada instancia (su Odoo y su PostgreSQL juntos), de la que más memoria usa a la que menos, con su CPU y cuánto de su límite de memoria gasta; y la ficha de la instancia muestra su uso ahora en Information (se mide en segundo plano, sin frenar la página).',
+        ],
+    },
     {
         'version': '1.0.80',
         'date': '2026-11-12',

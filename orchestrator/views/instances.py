@@ -755,6 +755,18 @@ def instance_install_named_module(request, pk):
 
 
 @login_required
+def instance_usage(request, pk):
+    """CPU and RAM the instance uses right now (Odoo + PostgreSQL), loaded by its page in the background."""
+    from ..services.metrics import single_instance_usage
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    try:
+        usage = single_instance_usage(instance)
+    except Exception:
+        usage = None
+    return JsonResponse({'usage': usage})
+
+
+@login_required
 @require_POST
 def instance_update_memory(request, pk):
     """Memory cap of the Odoo container: applied right away to a running one (and checked every minute by the worker)."""

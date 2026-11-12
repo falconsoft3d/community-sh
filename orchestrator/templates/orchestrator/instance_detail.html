@@ -370,6 +370,23 @@
                 {% endif %}
 
                 {% if can_manage %}
+                <div class="space-y-1" x-data="{ usage: undefined }"
+                    x-init="fetch('{% url 'instance-usage' object.pk %}').then(r => r.json()).then(d => usage = d.usage).catch(() => usage = null)">
+                    <label class="text-sm font-medium leading-none">Uso ahora</label>
+                    <div class="text-sm text-muted-foreground tabular-nums">
+                        <span x-show="usage === undefined">Midiendo…</span>
+                        <span x-show="usage === null" x-cloak>No está en marcha</span>
+                        <template x-if="usage">
+                            <span>
+                                CPU <span x-text="usage.cpu_percent + ' %'"></span> ·
+                                RAM <span x-text="usage.memory_mb + ' MB'"></span>
+                                (Odoo <span x-text="usage.odoo_memory_mb"></span> MB<template x-if="usage.memory_limit_mb"><span x-text="', ' + usage.limit_percent + ' % de su límite'"></span></template>;
+                                PostgreSQL <span x-text="usage.db_memory_mb"></span> MB)
+                            </span>
+                        </template>
+                    </div>
+                </div>
+
                 <div class="space-y-1" x-data="{ editingMemory: false }">
                     <label class="text-sm font-medium leading-none">Límite de memoria</label>
                     <div x-show="!editingMemory" class="flex items-center gap-2">

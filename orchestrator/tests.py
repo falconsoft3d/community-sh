@@ -3771,6 +3771,33 @@ class AlertsAndHealthTests(BaseTestCase):
         self.assertEqual((self.config.alerts_enabled, self.config.alert_webhook_url), (True, ''))
 
 
+class InstanceUsageTests(BaseTestCase):
+    def test_grouped_by_instance_heaviest_first(self):
+        from .services.metrics import instance_usage
+        Instance.objects.filter(pk=self.bob_instance.pk).update(memory_limit_mb=0)
+
+        def stat(name, cpu, mb):
+            return {'name': name, 'cpu_percent': cpu, 'memory_usage_mb': mb}
+        rows = instance_usage([stat('odoo_alice-odoo', 10.5, 768), stat('db_alice-odoo', 2.0, 100),
+                               stat('odoo_bob-odoo', 1.0, 2000), stat('traefik', 1, 50), stat('odoo_gone', 1, 9999)])
+        self.assertEqual([r['name'] for r in rows], ['bob-odoo', 'alice-odoo'])
+        alice = rows[1]
+        self.assertEqual((alice['cpu_percent'], alice['memory_mb'], alice['odoo_memory_mb'], alice['db_memory_mb']), (12.5, 868, 768, 100))
+        self.assertEqual((alice['memory_limit_mb'], alice['limit_percent']), (1536, 50.0))
+        self.assertEqual((rows[0]['memory_limit_mb'], rows[0]['limit_percent']), (None, None))
+
+    def test_instance_page_loads_its_usage(self):
+        url = reverse('instance-usage', args=[self.alice_instance.pk])
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get(f'/instance/{self.alice_instance.pk}/'), url)
+        with mock.patch('orchestrator.services.metrics.single_instance_usage', return_value={'memory_mb': 500}):
+            self.assertEqual(self.client.get(url).json(), {'usage': {'memory_mb': 500}})
+        with mock.patch('orchestrator.services.metrics.single_instance_usage', side_effect=Exception('no docker')):
+            self.assertEqual(self.client.get(url).json(), {'usage': None})
+        self.client.force_login(self.bob)
+        self.assertIn(self.client.get(url).status_code, (403, 404))
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

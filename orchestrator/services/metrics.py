@@ -68,7 +68,51 @@ def collect_metrics(include_containers=False):
         with ThreadPoolExecutor(max_workers=8) as pool:
             stats = [s for s in pool.map(_container_stats, running) if s]
         data['containers'] = sorted(stats, key=lambda s: s['name'])
+        data['instances'] = instance_usage(stats)
     return data
+
+
+def instance_usage(stats):
+    """
+    Container stats grouped by instance (its Odoo plus its PostgreSQL), the heaviest first, with how much of its
+    memory limit (of the Odoo container) it is using.
+    """
+    from ..models import Instance
+    by_name = {}
+    for stat in stats:
+        prefix, _, name = stat['name'].partition('_')
+        if prefix in ('odoo', 'db') and name:
+            by_name.setdefault(name, {})[prefix] = stat
+    instances = {i.name: i for i in Instance.objects.filter(name__in=by_name).select_related('project')}
+    rows = []
+    for name, parts in by_name.items():
+        instance = instances.get(name)
+        if instance is None:
+            continue
+        odoo, db = parts.get('odoo'), parts.get('db')
+        odoo_mb = odoo['memory_usage_mb'] if odoo else 0
+        limit = instance.memory_limit_mb or None
+        rows.append({
+            'id': instance.pk, 'name': name, 'project': instance.project.name if instance.project else '',
+            'cpu_percent': round(sum(p['cpu_percent'] for p in parts.values()), 1),
+            'memory_mb': sum(p['memory_usage_mb'] for p in parts.values()),
+            'odoo_memory_mb': odoo_mb, 'db_memory_mb': db['memory_usage_mb'] if db else 0,
+            'memory_limit_mb': limit, 'limit_percent': round(odoo_mb / limit * 100, 1) if limit else None,
+        })
+    return sorted(rows, key=lambda row: -row['memory_mb'])
+
+
+def single_instance_usage(instance):
+    """Current use of one instance (the instance page), or None if its containers aren't running."""
+    client = docker.from_env()
+    containers = [c for c in client.containers.list(filters={'name': f'_{instance.name}'})
+                  if c.name in (f'odoo_{instance.name}', f'db_{instance.name}')]
+    if not containers:
+        return None
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        stats = [s for s in pool.map(_container_stats, containers) if s]
+    rows = instance_usage(stats)
+    return rows[0] if rows else None
 
 
 SAMPLE_RETENTION_HOURS = 48

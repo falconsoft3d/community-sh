@@ -184,6 +184,51 @@
     <div x-show="activeTab === 'resources'" class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 border-b">
+                <h3 class="font-semibold text-lg">{% translate "Uso por instancia" %}</h3>
+                <p class="text-sm text-muted-foreground mt-1">{% translate "Su Odoo y su PostgreSQL juntos, de la que más memoria usa a la que menos. Útil para saber cuál parar cuando falta memoria." %}</p>
+            </div>
+            <div class="p-6">
+                <div class="relative w-full overflow-auto">
+                    <table class="w-full caption-bottom text-sm">
+                        <thead><tr class="border-b">
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Instancia" %}</th>
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">CPU</th>
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">RAM</th>
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Odoo / límite" %}</th>
+                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">PostgreSQL</th>
+                        </tr></thead>
+                        <tbody>
+                            <template x-for="row in (m.instances || [])" :key="row.name">
+                                <tr class="border-b last:border-0 hover:bg-muted/50">
+                                    <td class="p-4 align-middle">
+                                        <a :href="'/instance/' + row.id + '/'" class="font-medium hover:underline" x-text="row.name"></a>
+                                        <div class="text-xs text-muted-foreground" x-text="row.project"></div>
+                                    </td>
+                                    <td class="p-4 align-middle tabular-nums" x-text="row.cpu_percent + ' %'"></td>
+                                    <td class="p-4 align-middle tabular-nums font-medium" x-text="row.memory_mb + ' MB'"></td>
+                                    <td class="p-4 align-middle tabular-nums">
+                                        <span x-text="row.odoo_memory_mb + ' MB'"></span>
+                                        <span class="text-muted-foreground" x-text="row.memory_limit_mb ? ' / ' + row.memory_limit_mb + ' MB' : ' / {% translate "sin límite" %}'"></span>
+                                        <template x-if="row.limit_percent !== null">
+                                            <div class="mt-1 w-24 h-2 bg-muted rounded-full overflow-hidden">
+                                                <div class="h-full" :style="'width:' + Math.min(row.limit_percent, 100) + '%'"
+                                                    :class="row.limit_percent > 85 ? 'bg-red-500' : row.limit_percent > 60 ? 'bg-yellow-500' : 'bg-green-500'"></div>
+                                            </div>
+                                        </template>
+                                    </td>
+                                    <td class="p-4 align-middle tabular-nums" x-text="row.db_memory_mb + ' MB'"></td>
+                                </tr>
+                            </template>
+                            <tr x-show="!m.instances || m.instances.length === 0">
+                                <td colspan="5" class="p-8 text-center text-muted-foreground" x-text="m.instances ? '{% translate "Ninguna instancia en marcha" %}' : 'Cargando…'"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
+            <div class="p-6 border-b">
                 <h3 class="font-semibold text-lg">{% translate "Container Resource Usage" %}</h3>
                 <p class="text-sm text-muted-foreground mt-1">{% translate "Real-time CPU and memory usage by container" %}</p>
             </div>
