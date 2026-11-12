@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.83**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.84**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.84 — 2026-11-12
+
+- Código: orchestrator/services/docker_service.py (1.780 líneas) dividido por áreas para cambiarlo con menos riesgo: docker_service (desplegar, arrancar, detener, eliminar), docker_databases (crear bases, contraseña del administrador, neutralizar), docker_copies (duplicar, renombrar), docker_backups (backups y restauraciones), docker_operations (logs, consola, pull, módulos, navegador, pip) y docker_helpers (funciones comunes). DockerService sigue siendo la misma clase con los mismos 42 métodos, idénticos; nada cambia para quien la usa.
 
 ## 1.0.83 — 2026-11-12
 
