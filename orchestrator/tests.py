@@ -4070,6 +4070,25 @@ class OdooDatabaseManagerTests(BaseTestCase):
         urlopen.assert_not_called()
 
 
+class ContentSecurityPolicyTests(TestCase):
+    def test_header_and_no_script_from_another_host(self):
+        import pathlib
+        import re
+        policy = self.client.get(reverse('login'))['Content-Security-Policy']
+        self.assertIn("script-src 'self' 'unsafe-inline' 'unsafe-eval'", policy)
+        self.assertIn("connect-src 'self'", policy)
+        self.assertIn("object-src 'none'", policy)
+        self.assertIn("frame-ancestors 'none'", policy)
+        # The JS libraries are pinned copies in static/vendor: a template loading one from a CDN would be blocked
+        templates = pathlib.Path(__file__).parent / 'templates'
+        external = [f'{path.name}: {match}' for path in templates.rglob('*.html')
+                    for match in re.findall(r'<script[^>]+src="(https?:[^"]+)"', path.read_text())]
+        self.assertEqual(external, [])
+        vendor = pathlib.Path(__file__).parent / 'static' / 'vendor'
+        for name in ('alpinejs-3.17.5.min.js', 'lucide-1.58.0.min.js', 'tailwindcss-3.4.17.js', 'chart-4.4.1.umd.js'):
+            self.assertGreater((vendor / name).stat().st_size, 10000, name)
+
+
 class DockerProxyPolicyTests(TestCase):
     """scripts/docker_proxy.py: what the web container may ask Docker (the integration run is in its docstring)."""
 

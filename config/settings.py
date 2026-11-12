@@ -84,6 +84,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'orchestrator.middleware.ConditionalSSLRedirectMiddleware',  # Custom SSL redirect middleware
     'orchestrator.middleware.DynamicAllowedHostsMiddleware',  # Dynamic ALLOWED_HOSTS validation
@@ -217,6 +218,25 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+}
+
+# Content-Security-Policy: scripts only from the panel itself (its JS libraries are in static/vendor, pinned),
+# no plugins, no framing, and the browser only talks to the panel: an injected script can't load code from
+# elsewhere or send data out. Inline scripts and eval stay allowed: the templates use inline handlers and
+# Alpine.js evaluates its expressions.
+from django.utils.csp import CSP  # noqa: E402
+
+SECURE_CSP = {
+    'default-src': [CSP.SELF],
+    'script-src': [CSP.SELF, CSP.UNSAFE_INLINE, CSP.UNSAFE_EVAL],
+    'style-src': [CSP.SELF, CSP.UNSAFE_INLINE, 'https://fonts.googleapis.com'],
+    'font-src': [CSP.SELF, 'https://fonts.gstatic.com', 'data:'],
+    'img-src': [CSP.SELF, 'data:', 'blob:', 'https:'],
+    'connect-src': [CSP.SELF],
+    'frame-src': [CSP.NONE],
+    'object-src': [CSP.NONE],
+    'base-uri': [CSP.SELF],
+    'frame-ancestors': [CSP.NONE],
 }
 
 # Default primary key field type

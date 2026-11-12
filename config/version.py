@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.100'
+VERSION = '1.0.101'
 
 CHANGELOG = [
+    {
+        'version': '1.0.101',
+        'date': '2026-11-12',
+        'notes': [
+            'Seguridad: Alpine.js (3.17.5), Lucide (1.58.0), Tailwind (3.4.17) y Chart.js (4.4.1) se sirven desde el propio panel (static/vendor, versiones fijas, comprobadas byte a byte contra los paquetes de npm) en lugar de CDNs; Alpine se cargaba como 3.x.x sin versión fija. Un CDN comprometido ya no puede ejecutar código en el panel con la sesión de un administrador.',
+            'Seguridad: cabecera Content-Security-Policy (middleware de Django 6): scripts solo del panel, conexiones del navegador solo al panel (un script inyectado no puede mandar datos fuera), sin plugins, sin iframes y base-uri propia. Se mantienen las fuentes de Google y las imágenes por HTTPS. Comprobado en Chrome página a página sin bloqueos.',
+        ],
+    },
     {
         'version': '1.0.100',
         'date': '2026-11-12',

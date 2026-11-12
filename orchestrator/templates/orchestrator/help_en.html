@@ -244,6 +244,8 @@ its section here and in help.html (and the index in views/public.py) in the same
                     <li>An app container that needs another host folder (administrators only): add it to <code>DOCKER_PROXY_ALLOWED_BINDS</code> in <code>.env</code> (comma separated) and redeploy. Mounting the Docker socket (e.g. Portainer) is no longer possible from the web.</li>
                     <li><strong>Read-only code</strong>: the web container mounts the code without write access (it only writes to media, backups, instances, letsencrypt, traefik, staticfiles and ai_attachments), so a bug in a page can't change the code the workers run. SQLite installs keep it writable (<code>PANEL_CODE_MOUNT=rw</code>).</li>
                     <li><strong>Odoo database manager</strong>: closed by default (see Odoo access); a leaked Master Password isn't enough to download or drop the database from the internet.</li>
+                    <li><strong>No third-party scripts</strong>: Alpine.js, Lucide, Tailwind and Chart.js are served by the panel itself (<code>static/vendor</code>, pinned versions checked against npm), not from CDNs. A compromised CDN can't run code in the panel with your session.</li>
+                    <li><strong>Content-Security-Policy</strong>: the browser only runs the panel's scripts, only talks to the panel (it can't send data elsewhere), loads no plugins and won't put the panel in an iframe. Google Fonts and HTTPS images are still allowed.</li>
                     <li><strong>Port 8000</strong>: with a domain the panel is only served through Traefik (HTTPS). The deploy adds <code>PANEL_BIND=127.0.0.1</code> to <code>.env</code> when missing, so plain-HTTP port 8000 isn't open to the internet.</li>
                 </ul>
             </section>
