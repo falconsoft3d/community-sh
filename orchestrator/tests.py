@@ -1033,9 +1033,19 @@ class DockerAdminTests(BaseTestCase):
         from .views.public import HELP_SECTIONS
         self.client.force_login(self.alice)
         page = self.client.get(reverse('help')).content.decode()
-        for anchor, _ in HELP_SECTIONS:
+        for anchor, title, _ in HELP_SECTIONS:
             self.assertIn(f'id="{anchor}"', page)
+            self.assertIn(title, page)
+        self.assertIn('Cómo funciona cada proceso', page)
         self.assertIn(f'href="{reverse("help")}"', self.client.get('/dashboard/').content.decode())
+        # In English: the English page, with the same sections, and the menu entry translated
+        self.client.cookies['django_language'] = 'en'
+        page = self.client.get(reverse('help')).content.decode()
+        self.assertIn('How every process in Community SH works', page)
+        for anchor, _, title in HELP_SECTIONS:
+            self.assertIn(f'id="{anchor}"', page)
+            self.assertIn(title, page)
+        self.assertIn('>Help</span>', page)
 
     def test_pull_is_queued_and_validated(self):
         from .task_models import Task

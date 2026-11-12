@@ -116,29 +116,33 @@ def about(request):
     })
 
 
-# Sections of the Ayuda page (anchor, title), in order: add one here when help.html gets a new section
+# Sections of the Ayuda page (anchor, Spanish title, English title), in order: add one here when
+# help.html and help_en.html get a new section
 HELP_SECTIONS = [
-    ('conceptos', 'Conceptos y permisos'),
-    ('crear-instancia', 'Crear una instancia'),
-    ('gestionar', 'Gestionar una instancia'),
-    ('acceso', 'Acceso a Odoo y contraseñas'),
-    ('codigo', 'Código y módulos'),
-    ('dominios', 'Dominios y HTTPS'),
-    ('backups', 'Backups'),
-    ('demos', 'Demos (Modo test)'),
-    ('contactos', 'Contactos (CRM)'),
-    ('ia', 'IA y migraciones'),
-    ('contenedores', 'Contenedores'),
-    ('limpieza', 'Docker y limpieza'),
-    ('tareas', 'Tareas y Actividad'),
-    ('panel', 'Dashboard, Metrics y Todo'),
-    ('api', 'API y MCP'),
-    ('cuenta', 'Usuarios y configuración'),
-    ('actualizaciones', 'Actualizaciones del panel'),
+    ('conceptos', 'Conceptos y permisos', 'Concepts and permissions'),
+    ('crear-instancia', 'Crear una instancia', 'Create an instance'),
+    ('gestionar', 'Gestionar una instancia', 'Manage an instance'),
+    ('acceso', 'Acceso a Odoo y contraseñas', 'Odoo access and passwords'),
+    ('codigo', 'Código y módulos', 'Code and modules'),
+    ('dominios', 'Dominios y HTTPS', 'Domains and HTTPS'),
+    ('backups', 'Backups', 'Backups'),
+    ('demos', 'Demos (Modo test)', 'Demos (Test mode)'),
+    ('contactos', 'Contactos (CRM)', 'Contacts (CRM)'),
+    ('ia', 'IA y migraciones', 'AI and migrations'),
+    ('contenedores', 'Contenedores', 'Containers'),
+    ('limpieza', 'Docker y limpieza', 'Docker and cleanup'),
+    ('tareas', 'Tareas y Actividad', 'Tasks and Activity'),
+    ('panel', 'Dashboard, Metrics y Todo', 'Dashboard, Metrics and Todo'),
+    ('api', 'API y MCP', 'API and MCP'),
+    ('cuenta', 'Usuarios y configuración', 'Users and settings'),
+    ('actualizaciones', 'Actualizaciones del panel', 'Panel updates'),
 ]
 
 
 @login_required
 def help_page(request):
-    """Ayuda: how every process of the platform works (kept current with every change)."""
-    return render(request, 'orchestrator/help.html', {'sections': HELP_SECTIONS})
+    """Ayuda / Help: how every process of the platform works (kept current with every change), in the panel's language."""
+    from django.utils.translation import get_language
+    english = (get_language() or '').startswith('en')
+    sections = [(anchor, en if english else es) for anchor, es, en in HELP_SECTIONS]
+    return render(request, 'orchestrator/help_en.html' if english else 'orchestrator/help.html', {'sections': sections})

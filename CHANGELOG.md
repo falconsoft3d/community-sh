@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.72**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.73**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.73 — 2026-11-12
+
+- Ayuda en inglés: con el panel en EN, el menú dice «Help» y la página se muestra en inglés (misma estructura e índice que la española). El botón «Limpiar» del Dashboard y su confirmación también están traducidos.
 
 ## 1.0.72 — 2026-11-12
 

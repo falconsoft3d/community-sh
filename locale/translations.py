@@ -162,6 +162,11 @@ ES_TO_EN = {
     'Sin cliente': 'No client',
     'Editar': 'Edit',
     'Nueva instancia': 'New instance',
+    'Ayuda': 'Help',
+    'Limpiar': 'Clean up',
+    'Libera disco: lo mismo que se hace tras crear cada instancia': 'Frees disk space: the same cleanup that follows every new instance',
+    '¿Limpiar lo que Docker no usa? Contenedores detenidos que no son de ninguna instancia, imágenes sin usar, caché de build y redes sin uso. Nunca toca las instancias ni los volúmenes.':
+        "Clean up what Docker doesn't use? Stopped containers that belong to no instance, unused images, build cache and unused networks. Instances and volumes are never touched.",
     'Versión': 'Version',
     'Estado': 'Status',
     'Acceso': 'Access',
