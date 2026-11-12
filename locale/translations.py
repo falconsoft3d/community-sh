@@ -178,6 +178,17 @@ ES_TO_EN = {
     'No responde': 'Not responding',
     'Uso por instancia': 'Usage by instance',
     'Copias en S3': 'Copies in S3',
+    'Ahorro de memoria': 'Memory saving',
+    'Se detiene si nadie entra en %(days)s días': 'Stops if nobody logs in for %(days)s days',
+    'No se detiene sola': "Doesn't stop on its own",
+    'horario': 'schedule',
+    'Detener si nadie entra en': 'Stop if nobody logs in for',
+    'nunca': 'never',
+    'días': 'days',
+    'Horario (UTC): arrancar a las': 'Schedule (UTC): start at',
+    'y detener a las': 'and stop at',
+    'Para instancias de prueba: el día antes de detenerla por no usarse llega una alerta. Deja las horas vacías para no usar horario.':
+        'For test instances: an alert arrives the day before it is stopped for not being used. Leave the times empty for no schedule.',
     'Refrescar datos desde otra instancia': 'Refresh data from another instance',
     'Para una staging: sustituye las bases de datos y los adjuntos de esta instancia por los de otra (producción). Su código, su rama y su configuración no cambian.':
         "For a staging copy: replaces this instance's databases and attachments with another's (production). Its code, branch and configuration don't change.",

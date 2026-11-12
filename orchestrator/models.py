@@ -77,6 +77,12 @@ class Instance(models.Model):
     health_failures = models.PositiveSmallIntegerField(default=0, help_text="Failed checks in a row")
     health_error = models.CharField(max_length=255, blank=True, default='')
 
+    # Saving memory, both off unless chosen: stop it when nobody logs into its Odoo in N days, and a daily
+    # schedule (UTC) to start and stop it
+    auto_stop_days = models.PositiveSmallIntegerField(default=0, help_text="Stop when nobody logs in for these days (0: never)")
+    schedule_start = models.TimeField(null=True, blank=True, help_text="Start it every day at this time (UTC)")
+    schedule_stop = models.TimeField(null=True, blank=True, help_text="Stop it every day at this time (UTC)")
+
     # The instance this one is a copy of (duplicate, demo): the default source to refresh its data from
     copied_from = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='copies')
 

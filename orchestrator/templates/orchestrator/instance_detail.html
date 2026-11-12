@@ -388,6 +388,40 @@
                     </div>
                 </div>
 
+                <div class="space-y-1" x-data="{ editingPower: false }">
+                    <label class="text-sm font-medium leading-none">{% translate "Ahorro de memoria" %}</label>
+                    <div x-show="!editingPower" class="flex items-center gap-2">
+                        <span class="text-sm text-muted-foreground">
+                            {% if object.auto_stop_days %}{% blocktranslate with days=object.auto_stop_days %}Se detiene si nadie entra en {{ days }} días{% endblocktranslate %}{% else %}{% translate "No se detiene sola" %}{% endif %}{% if object.schedule_start or object.schedule_stop %} · {% translate "horario" %} {{ object.schedule_start|time:"H:i"|default:"—" }} → {{ object.schedule_stop|time:"H:i"|default:"—" }} UTC{% endif %}
+                        </span>
+                        <button @click="editingPower = true" class="text-xs text-primary hover:underline flex items-center gap-1">
+                            <i data-lucide="pencil" class="h-3 w-3"></i> {% translate "Editar" %}
+                        </button>
+                    </div>
+                    <form x-show="editingPower" x-cloak action="{% url 'instance-update-power' object.pk %}" method="post" class="space-y-2">
+                        {% csrf_token %}
+                        <label class="flex flex-wrap items-center gap-2 text-sm">{% translate "Detener si nadie entra en" %}
+                            <select name="auto_stop_days" class="h-8 rounded-md border border-input bg-background px-2 text-sm">
+                                <option value="0" {% if not object.auto_stop_days %}selected{% endif %}>{% translate "nunca" %}</option>
+                                <option value="3" {% if object.auto_stop_days == 3 %}selected{% endif %}>3 {% translate "días" %}</option>
+                                <option value="7" {% if object.auto_stop_days == 7 %}selected{% endif %}>7 {% translate "días" %}</option>
+                                <option value="14" {% if object.auto_stop_days == 14 %}selected{% endif %}>14 {% translate "días" %}</option>
+                                <option value="30" {% if object.auto_stop_days == 30 %}selected{% endif %}>30 {% translate "días" %}</option>
+                            </select></label>
+                        <div class="flex flex-wrap items-center gap-2 text-sm">
+                            <span>{% translate "Horario (UTC): arrancar a las" %}</span>
+                            <input type="time" name="schedule_start" value="{{ object.schedule_start|time:'H:i' }}" class="h-8 rounded-md border border-input bg-background px-2 text-sm">
+                            <span>{% translate "y detener a las" %}</span>
+                            <input type="time" name="schedule_stop" value="{{ object.schedule_stop|time:'H:i' }}" class="h-8 rounded-md border border-input bg-background px-2 text-sm">
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">{% translate "Guardar" %}</button>
+                            <button type="button" @click="editingPower = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">{% translate "Cancelar" %}</button>
+                        </div>
+                    </form>
+                    <p class="text-xs text-muted-foreground">{% translate "Para instancias de prueba: el día antes de detenerla por no usarse llega una alerta. Deja las horas vacías para no usar horario." %}</p>
+                </div>
+
                 <div class="space-y-1" x-data="{ editingMemory: false }">
                     <label class="text-sm font-medium leading-none">{% translate "Memory Limit" %}</label>
                     <div x-show="!editingMemory" class="flex items-center gap-2">

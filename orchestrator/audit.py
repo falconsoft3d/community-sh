@@ -27,6 +27,7 @@ ACTIONS = {
     'instance_env_vars': 'Cambiar variables de entorno',
     'offsite_restore': 'Restaurar desde S3',
     'refresh_data': 'Refrescar datos desde otra instancia',
+    'instance_power': 'Cambiar el ahorro de memoria',
     'backups_verify': 'Comprobar backups',
 }
 

@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.94**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.95**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.95 — 2026-11-12
+
+- Ahorro de memoria por instancia (Information, desactivado por defecto): «Detener si nadie entra en N días» (3, 7, 14 o 30), según el registro de entradas de su Odoo, con alerta el día antes y al detenerla; y un horario diario (UTC) para arrancarla y detenerla, que el worker aplica una vez al día dentro de la hora siguiente. Queda en la Auditoría. Migración 0076.
 
 ## 1.0.94 — 2026-11-12
 

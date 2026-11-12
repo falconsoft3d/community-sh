@@ -781,6 +781,35 @@ def instance_secret(request, pk, kind):
     return response
 
 
+@login_required
+@require_POST
+def instance_update_power(request, pk):
+    """Information → Ahorro de memoria: stop when unused for N days, and a daily schedule (UTC)."""
+    from datetime import time
+    from django.urls import reverse
+    from ..audit import record
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    back = redirect(reverse('instance-detail', args=[pk]))
+    try:
+        days = int(request.POST.get('auto_stop_days') or 0)
+        times = {}
+        for field in ('schedule_start', 'schedule_stop'):
+            value = request.POST.get(field, '').strip()
+            times[field] = time.fromisoformat(value) if value else None
+    except ValueError:
+        messages.error(request, 'Días u horas no válidos')
+        return back
+    if days not in (0, 3, 7, 14, 30):
+        messages.error(request, 'Elige 3, 7, 14 o 30 días, o nunca')
+        return back
+    instance.auto_stop_days, instance.schedule_start, instance.schedule_stop = days, times['schedule_start'], times['schedule_stop']
+    instance.save(update_fields=['auto_stop_days', 'schedule_start', 'schedule_stop'])
+    record(request, 'instance_power', instance.name,
+           f"Sin uso: {days or 'nunca'} días · horario {times['schedule_start'] or '-'} → {times['schedule_stop'] or '-'} UTC")
+    messages.success(request, 'Ahorro de memoria guardado')
+    return back
+
+
 def refresh_sources(user, instance):
     """Instances whose data this one can take: the same Odoo version, managed by the user, not itself."""
     sources = [i for i in instances_for(user).filter(odoo_version=instance.odoo_version).exclude(pk=instance.pk)

@@ -4194,6 +4194,82 @@ class RefreshDataTests(BaseTestCase):
         self.assertEqual(self.staging.admin_password, 'Prod-pass-1')
 
 
+class PowerSavingTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+        cache.clear()
+        Instance.objects.filter(pk=self.alice_instance.pk).update(status=Instance.Status.RUNNING)
+
+    def test_last_login_reads_the_odoo_login_log(self):
+        from datetime import datetime, timezone as tz
+        from .services import power
+        db = mock.Mock(status='running')
+        answers = {'shop': '1762000000.5', 'old': ''}
+
+        def psql(container, database, sql, check=True):
+            return answers[database] if 'res_users_log' in sql else ('1700000000' if database == 'old' else '')
+        with mock.patch('orchestrator.services.docker_service.DockerService') as service:
+            service.return_value._get_container.return_value = db
+            service.return_value._list_user_databases.return_value = ['shop', 'old']
+            service.return_value._psql.side_effect = psql
+            self.assertEqual(power.last_login(self.alice_instance), datetime.fromtimestamp(1762000000.5, tz=tz.utc))
+
+    def test_idle_instances_are_warned_then_stopped(self):
+        from datetime import timedelta
+        from django.core.cache import cache
+        from django.utils import timezone
+        from .services import power
+        Instance.objects.filter(pk=self.alice_instance.pk).update(auto_stop_days=7)
+        now = timezone.now()
+        with mock.patch('orchestrator.services.power.last_login', return_value=now - timedelta(days=6, hours=1)), \
+                mock.patch('orchestrator.services.docker_service.DockerService') as service, \
+                mock.patch('orchestrator.services.alerts.alert') as alert:
+            self.assertEqual(power.check_idle(now), [])
+            self.assertIn('se detendrá mañana', alert.call_args.args[1])
+            service.return_value.stop_instance.assert_not_called()
+        cache.clear()
+        with mock.patch('orchestrator.services.power.last_login', return_value=now - timedelta(days=8)), \
+                mock.patch('orchestrator.services.docker_service.DockerService') as service, \
+                mock.patch('orchestrator.services.alerts.alert') as alert:
+            notes = power.check_idle(now)
+            self.assertEqual(power.check_idle(now), [])  # once a day
+        self.assertIn('8 días', notes[0])
+        self.assertEqual(service.return_value.stop_instance.call_args.args[0].pk, self.alice_instance.pk)
+        self.assertIn('detenida por no usarse', alert.call_args.args[1])
+        # Instances without it are never touched
+        Instance.objects.filter(pk=self.alice_instance.pk).update(auto_stop_days=0)
+        cache.clear()
+        with mock.patch('orchestrator.services.power.last_login', return_value=now - timedelta(days=99)), \
+                mock.patch('orchestrator.services.docker_service.DockerService') as service:
+            self.assertEqual(power.check_idle(now), [])
+
+    def test_schedule_starts_and_stops_once_within_the_hour(self):
+        from datetime import datetime, time, timezone as tz
+        from .services import power
+        Instance.objects.filter(pk=self.alice_instance.pk).update(schedule_start=time(7, 0), schedule_stop=time(21, 0))
+        with mock.patch('orchestrator.services.docker_service.DockerService') as service:
+            self.assertEqual(power.apply_schedules(datetime(2026, 11, 12, 20, 59, tzinfo=tz.utc)), [])
+            notes = power.apply_schedules(datetime(2026, 11, 12, 21, 10, tzinfo=tz.utc))
+            self.assertEqual(power.apply_schedules(datetime(2026, 11, 12, 21, 11, tzinfo=tz.utc)), [])
+            self.assertEqual(service.return_value.stop_instance.call_count, 1)
+            self.assertIn('detenida por su horario (21:00 UTC)', notes[0])
+            Instance.objects.filter(pk=self.alice_instance.pk).update(status=Instance.Status.STOPPED)
+            self.assertIn('arrancada', power.apply_schedules(datetime(2026, 11, 13, 7, 30, tzinfo=tz.utc))[0])
+            self.assertEqual(power.apply_schedules(datetime(2026, 11, 13, 9, 0, tzinfo=tz.utc)), [])  # an hour late: skipped
+
+    def test_form(self):
+        url = reverse('instance-update-power', args=[self.alice_instance.pk])
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get(f'/instance/{self.alice_instance.pk}/'), url)
+        self.client.post(url, {'auto_stop_days': '7', 'schedule_start': '08:00', 'schedule_stop': ''})
+        instance = Instance.objects.get(pk=self.alice_instance.pk)
+        self.assertEqual((instance.auto_stop_days, str(instance.schedule_start), instance.schedule_stop), (7, '08:00:00', None))
+        self.client.post(url, {'auto_stop_days': '5'})
+        self.client.post(url, {'auto_stop_days': '3', 'schedule_start': '25:99'})
+        self.assertEqual(Instance.objects.get(pk=self.alice_instance.pk).auto_stop_days, 7)
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

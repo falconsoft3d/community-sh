@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.94'
+VERSION = '1.0.95'
 
 CHANGELOG = [
+    {
+        'version': '1.0.95',
+        'date': '2026-11-12',
+        'notes': [
+            'Ahorro de memoria por instancia (Information, desactivado por defecto): «Detener si nadie entra en N días» (3, 7, 14 o 30), según el registro de entradas de su Odoo, con alerta el día antes y al detenerla; y un horario diario (UTC) para arrancarla y detenerla, que el worker aplica una vez al día dentro de la hora siguiente. Queda en la Auditoría. Migración 0076.',
+        ],
+    },
     {
         'version': '1.0.94',
         'date': '2026-11-12',

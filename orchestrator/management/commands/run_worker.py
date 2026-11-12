@@ -73,6 +73,12 @@ class Command(BaseCommand):
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Panel backup failed: {e}'))
                 try:
+                    from orchestrator.services.power import apply_schedules, check_idle
+                    for note in apply_schedules() + check_idle():
+                        self.stdout.write(note)
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Schedules failed: {e}'))
+                try:
                     from orchestrator.services.health import check_instances
                     for name, state in check_instances():
                         self.stdout.write(f'Health: {name} is {state}')
