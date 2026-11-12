@@ -1,0 +1,244 @@
+{% extends "orchestrator/base.html" %}
+{% comment %}
+Ayuda: how every process of Community SH works. Keep it current: every new feature or change
+updates its section here (and the index) in the same commit.
+{% endcomment %}
+
+{% block content %}
+<div class="flex flex-col gap-6 max-w-6xl mx-auto">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">Ayuda</h1>
+            <p class="text-muted-foreground mt-2">Cómo funciona cada proceso de Community SH, paso a paso.</p>
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full border border-primary/20">
+            <i data-lucide="book-open" class="h-4 w-4"></i>
+            <span class="text-sm font-semibold">Al día con v{{ app_version }}</span>
+        </div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-[220px_1fr]">
+        <!-- Index -->
+        <nav class="lg:sticky lg:top-24 lg:self-start rounded-xl border bg-card p-4 text-sm" aria-label="Índice de la ayuda">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Índice</p>
+            <ol class="space-y-1">
+                {% for anchor, title in sections %}
+                <li><a href="#{{ anchor }}" class="block rounded px-2 py-1 text-muted-foreground hover:bg-muted hover:text-primary">{{ title }}</a></li>
+                {% endfor %}
+            </ol>
+        </nav>
+
+        <div class="space-y-6 min-w-0 help-content">
+
+            <section id="conceptos" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>1. Conceptos y permisos</h2>
+                <ul>
+                    <li><strong>Proyecto</strong>: agrupa instancias y contenedores (normalmente uno por cliente). Tiene color, etiquetas (para filtrar en «Proyectos») y, opcionalmente, un <em>cliente</em> y el «Modo test» para demos.</li>
+                    <li><strong>Instancia</strong>: un Odoo (versiones 8 a 20) con su propio PostgreSQL, su filestore, su red y su dirección. Se muestra como <em>proyecto / instancia</em>.</li>
+                    <li><strong>Tarea</strong>: todo lo que tarda (desplegar, respaldar, restaurar, duplicar, instalar módulos, limpiar…) lo ejecuta un <em>worker</em> en segundo plano, de una en una, con su log y barra de progreso (ver <a href="#tareas">Tareas y Actividad</a>).</li>
+                </ul>
+                <h3>Quién puede hacer qué</h3>
+                <ul>
+                    <li><strong>Administrador</strong> (superusuario): todo, incluidos Usuarios, Docker, Configuración global (dominio, respaldos, IA, email, demos) y la limpieza de Docker.</li>
+                    <li><strong>Usuario</strong>: crea y gestiona sus proyectos e instancias.</li>
+                    <li><strong>Cliente</strong> (casilla «Cliente» del usuario, asignado a un proyecto): solo ve y opera sus proyectos; no ve la Master Password ni la contraseña del administrador de Odoo, ni las pestañas Console, Domains, Modules y Migrar.</li>
+                </ul>
+            </section>
+
+            <section id="crear-instancia" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>2. Crear una instancia</h2>
+                <ol>
+                    <li>Dashboard o Proyecto → <strong>Nueva instancia</strong>.</li>
+                    <li>Elige proyecto, nombre, versión de Odoo y, si tienes código propio, el repositorio de GitHub (HTTPS) y la rama. Para repositorios privados necesitas tu token en Configuración → GitHub.</li>
+                    <li>Opcional: nombre de la base de datos (vacío = auto-detección), «Base por defecto de las demos» (varias bases en una instancia, Odoo 18+) y dominio propio.</li>
+                    <li>Al guardar se crea una rama con el nombre de la instancia en tu repositorio (si hay token) y se pone en cola el <strong>despliegue</strong>.</li>
+                </ol>
+                <h3>Qué hace el despliegue</h3>
+                <ul>
+                    <li>Clona o actualiza el repositorio principal y los repositorios extra, descarga la imagen de Odoo (las versiones antiguas se emulan en servidores ARM) y el PostgreSQL adecuado a la versión.</li>
+                    <li>Crea los contenedores <code>odoo_&lt;nombre&gt;</code> y <code>db_&lt;nombre&gt;</code>, su red y su volumen de datos, escribe <code>odoo.conf</code> (Master Password, proxy_mode) y publica la ruta en Traefik.</li>
+                    <li>La instancia queda en <code>https://cliente-versión-nombre.tudominio</code> con su certificado de Let's Encrypt.</li>
+                    <li>Al terminar bien, se pone en cola una <a href="#limpieza">limpieza automática de Docker</a>.</li>
+                </ul>
+                <h3>Otras formas de crear una instancia</h3>
+                <ul>
+                    <li><strong>Duplicar</strong> una instancia: copia la base de datos, el filestore, los repositorios y las variables de entorno.</li>
+                    <li><strong>Desde un backup</strong>: Backups → «Importar un backup y crear una instancia» (detecta la versión y la base).</li>
+                    <li><strong>Por la API o el MCP</strong>: crear una instancia también la despliega (ver <a href="#api">API y MCP</a>).</li>
+                    <li><strong>Demos</strong> del «Modo test» (ver <a href="#demos">Demos</a>).</li>
+                </ul>
+                <p class="note">La base de datos de Odoo no se crea sola: créala desde el gestor de Odoo (<code>/web/database/manager</code>, con la Master Password) o por la API (<code>create-database</code>), que además guarda la contraseña del administrador.</p>
+            </section>
+
+            <section id="gestionar" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>3. Gestionar una instancia</h2>
+                <p>La ficha tiene las pestañas <strong>Information, Logs, Console, Domains, Modules, Backups, Migrar, IA y Tareas recientes</strong>.</p>
+                <ul>
+                    <li><strong>Deploy</strong>: vuelve a desplegar (recrea los contenedores con la configuración actual; los datos se conservan).</li>
+                    <li><strong>Restart / Stop</strong>: reiniciar arranca antes la base de datos si estaba parada. Una instancia parada pierde su ruta en Traefik (no gasta certificados) y la recupera al reiniciarla. Tras reiniciar el servidor, las instancias vuelven solas salvo las que paraste tú.</li>
+                    <li><strong>Renombrar</strong> (mueve contenedores y volúmenes), <strong>Mover</strong> a otro de tus proyectos (la dirección no cambia) y <strong>Eliminar</strong> (borra contenedores, volúmenes, workspace, rutas y sus backups).</li>
+                    <li><strong>Descripción (demos)</strong>: texto que acompaña a la instancia en la página de demos de su proyecto.</li>
+                    <li><strong>Logs</strong> de Odoo y <strong>Console</strong> para ejecutar comandos en el contenedor.</li>
+                </ul>
+            </section>
+
+            <section id="acceso" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>4. Acceso a Odoo: admin y contraseñas</h2>
+                <ul>
+                    <li><strong>Entrar como admin</strong> (icono de llave, en la ficha, la lista de instancias y el proyecto): abre Odoo como administrador sin contraseña con un enlace firmado de un solo uso válido 60 segundos. En Odoo 10 y 11 entra con un usuario propio del panel («Administrador (Community SH)»).</li>
+                    <li><strong>Master Password</strong>: la del gestor de bases de datos de Odoo (<code>/web/database/manager</code>). Se ve y se copia en Information; se aplica al redesplegar.</li>
+                    <li><strong>Administrador</strong> (Information): usuario y contraseña del administrador de Odoo, con botones para mostrar y copiar, para compartirlos. Aparece cuando la contraseña la puso la plataforma (base creada por la API/MCP, demos, copias).</li>
+                    <li><strong>Restablecer contraseña</strong> (en el bloque Administrador): pone una contraseña nueva al administrador (la que escribas, 8-64 letras, números, «_» o «-», o una aleatoria si lo dejas vacío) en la base de la instancia, o en todas si no tiene una fija, y la guarda en la ficha. Sirve también si la base se creó fuera de la plataforma. La anterior deja de funcionar y se cierran sus sesiones. La instancia tiene que estar desplegada.</li>
+                </ul>
+                <p class="note">Si cambias la contraseña del administrador dentro de Odoo, la que muestra el panel deja de valer: restablécela desde el panel para volver a tenerla.</p>
+            </section>
+
+            <section id="codigo" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>5. Código, módulos y configuración (pestaña Modules)</h2>
+                <ul>
+                    <li><strong>Repositorios extra</strong> (OCA, odoo/enterprise…): URL HTTPS y rama; se clonan y se añaden al addons_path en el próximo despliegue. Los privados usan el token de GitHub del dueño.</li>
+                    <li><strong>Pull</strong>: trae los últimos commits del repositorio principal y de los extra y reinicia Odoo, sin redesplegar.</li>
+                    <li><strong>Actualización automática</strong> (activada por defecto, «Pull y reiniciar Odoo»; también «Pull y actualizar todos los módulos (-u all)» o Desactivada):
+                        <ul>
+                            <li>Un <em>push</em> a la rama de cualquiera de sus repositorios actualiza todas las instancias en marcha que usan ese repositorio y rama (basta un webhook por repositorio). Botón «Crear webhook en GitHub» o URL y secreto para añadirlo a mano.</li>
+                            <li>Además, cada día desde las 02:00 UTC el worker hace pull de todas ellas. Solo se reinicia Odoo (o se hace -u all) si cambió algún commit o la configuración.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Instalar un módulo</strong> por su nombre técnico (o «Instalar el tema Community SH») en todas las bases, con opción de actualizar (-u). Si falla, la base queda como estaba.</li>
+                    <li><strong>Instalar desde requirements.txt</strong>: pip instala los paquetes en el volumen de datos, así se conservan al redesplegar.</li>
+                    <li><strong>Variables de entorno</strong> del contenedor de Odoo (<code>NOMBRE=valor</code>, una por línea): se aplican en cada despliegue; solo se ven sus nombres. Las copias las heredan; las demos no.</li>
+                    <li><strong>Navegador (WhatsApp Web)</strong>: instala Google Chrome en el contenedor de Odoo y lo reinstala en cada despliegue.</li>
+                </ul>
+            </section>
+
+            <section id="dominios" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>6. Dominios y HTTPS (pestaña Domains)</h2>
+                <ul>
+                    <li>Cada instancia tiene su subdominio <code>cliente-versión-nombre.tudominio</code>, cubierto por un único registro DNS <code>*.tudominio</code>. Traefik emite y renueva los certificados.</li>
+                    <li><strong>Dominio propio</strong>: apunta su DNS (registro A) a la IP del servidor y configúralo en la pestaña; no puede tomar el subdominio de otra instancia o contenedor.</li>
+                    <li>Si falta el certificado, la ficha avisa y explica por qué (DNS que no apunta, límite de Let's Encrypt…). Let's Encrypt permite 50 certificados por semana por dominio.</li>
+                    <li>El dominio principal del panel se configura en Configuración → Domain &amp; SSL.</li>
+                </ul>
+            </section>
+
+            <section id="backups" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>7. Backups y restauraciones</h2>
+                <ul>
+                    <li><strong>Crear backup</strong> (pestaña Backups): base de datos y, si quieres, filestore. Con varias bases se guarda una copia de cada una.</li>
+                    <li><strong>Backups automáticos</strong>: Configuración → Respaldos (activar, frecuencia y cuántas copias conservar por instancia).</li>
+                    <li><strong>Restaurar</strong> un backup sobre la instancia (detiene Odoo y cierra sus conexiones antes de recrear la base) o «Restaurar desde un archivo».</li>
+                    <li><strong>Importar</strong>: además de los backups del panel, acepta los del gestor de Odoo (.zip con dump.sql y filestore) y volcados .dump.</li>
+                    <li>Menú <strong>Backups</strong>: todos los respaldos, descargar e «Importar un backup y crear una instancia».</li>
+                </ul>
+            </section>
+
+            <section id="demos" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>8. Demos (Modo test)</h2>
+                <ol>
+                    <li>En el proyecto marca <strong>Modo test</strong>: URL de la página de demos (p. ej. <code>/bim</code>), días de prueba (15), proyecto hermano donde se crean, texto para el visitante y demos a la vez.</li>
+                    <li>El visitante abre la página pública, elige versión entre las instancias en marcha del proyecto (con su descripción), deja sus datos y resuelve el captcha.</li>
+                    <li>Se crea una copia en el proyecto hermano: sin correo saliente, sin claves API, con contraseñas desconocidas para los demás usuarios y una contraseña nueva para el administrador. La página muestra el progreso y al final la dirección, el usuario y la contraseña, que también se envían por email si hay SMTP.</li>
+                    <li>Al vencer se detiene y 7 días después se elimina.</li>
+                </ol>
+                <ul>
+                    <li>Límites: una demo por email al mes, 3 al mes por conexión, un máximo diario y un máximo de demos a la vez en el servidor (Configuración → Demos). No se crea si falta memoria.</li>
+                    <li>Tu web puede pedir demos sin captcha con la <strong>clave de API del proyecto</strong> (tarjeta «Modo test» → Generar clave).</li>
+                    <li>Quien pide una demo entra en <a href="#contactos">Contactos</a>, en la etapa «Demo».</li>
+                </ul>
+            </section>
+
+            <section id="contactos" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>9. Contactos (CRM)</h2>
+                <ul>
+                    <li>Un contacto por email, con sus datos, sus demos y notas propias; se conserva aunque la demo se elimine.</li>
+                    <li>Tablero Kanban: Contactado, Demo, Propuesta, A la espera, Ganado y Perdido (arrastra las tarjetas). También vista de lista, búsqueda, filtros, alta manual y exportar a CSV.</li>
+                </ul>
+            </section>
+
+            <section id="ia" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>10. IA y migraciones</h2>
+                <ul>
+                    <li><strong>Asistente de IA</strong> (pestaña IA, con la IA configurada en Configuración → IA): crea y modifica módulos en los addons de la instancia y los instala. Admite adjuntos, etiquetar módulos con @, muestra un plan paso a paso y cada respuesta que cambió archivos tiene «Deshacer estos cambios».</li>
+                    <li><strong>/ia desde Odoo</strong>: escribe <code>/ia …</code> en el chatter de cualquier registro y la respuesta llega a ese chatter.</li>
+                    <li><strong>Migrar</strong> (pestaña Migrar): trae datos de otro Odoo 8+ por XML-RPC a instancias 14+ (contactos, productos, ventas, compras, facturas y pagos); se puede repetir sin duplicar.</li>
+                </ul>
+            </section>
+
+            <section id="contenedores" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>11. Contenedores (apps)</h2>
+                <ul>
+                    <li>Menú Contenedores o Proyecto → «Nuevo contenedor»: apps a partir de plantillas (p. ej. ERPSqlite) o construidas desde un repositorio y un Dockerfile.</li>
+                    <li>Las construcciones van en su propio worker (no frenan despliegues ni backups). Cada contenedor tiene <code>https://nombre.tudominio</code>; parado deja de tener ruta.</li>
+                </ul>
+            </section>
+
+            <section id="limpieza" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>12. Docker y limpieza de disco</h2>
+                <ul>
+                    <li><strong>Limpieza automática</strong>: cada vez que se crea bien una instancia (formulario, API/MCP, duplicar, desde backup o demo) se pone en cola una limpieza de lo que Docker no usa: contenedores detenidos que no son de ninguna instancia, imágenes sin etiqueta y sin usar, caché de build y redes sin uso. Una sola en cola aunque se creen varias seguidas; si se está construyendo un contenedor, se omite.</li>
+                    <li><strong>Botón «Limpiar»</strong> del Dashboard (administradores): lanza esa misma limpieza cuando quieras.</li>
+                    <li><strong>Docker → Limpieza</strong>: muestra qué y cuánto se libera y deja elegir; los <strong>volúmenes</strong> sin uso solo se borran aquí, escribiendo BORRAR.</li>
+                    <li>Nunca se tocan el panel, las instancias (aunque estén paradas), sus filestores, bases y redes, ni los contenedores del panel y sus volúmenes. Una imagen borrada se vuelve a descargar en el próximo despliegue que la necesite.</li>
+                    <li>El servidor tiene memoria limitada: detén las instancias de prueba cuando acabes.</li>
+                </ul>
+            </section>
+
+            <section id="tareas" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>13. Tareas y Actividad</h2>
+                <ul>
+                    <li>Cada tarea guarda su log completo con la hora y una barra de progreso que avanza en directo, en la pestaña «Tareas recientes» de la instancia y en el menú <strong>Actividad</strong> (filtros por estado, tipo e instancia).</li>
+                    <li>Estados: En cola, En curso, Completada y Fallida (con el error). Si el worker se reinicia a mitad, la tarea queda como fallida.</li>
+                </ul>
+            </section>
+
+            <section id="panel" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>14. Dashboard, Metrics y Todo</h2>
+                <ul>
+                    <li><strong>Dashboard</strong>: las cifras principales, cada una enlazada a su página; CPU, memoria y disco en verde (&lt;50 %), naranja (50-90 %) o rojo (&gt;90 %).</li>
+                    <li><strong>Metrics</strong>: uso de CPU y RAM en las últimas 24 horas, 7 días, 30 días y 12 meses.</li>
+                    <li><strong>Todo</strong>: tareas del equipo (por hacer, en curso, completadas) con nota de lo realizado.</li>
+                </ul>
+            </section>
+
+            <section id="api" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>15. API y MCP (Claude)</h2>
+                <ul>
+                    <li><strong>API REST</strong> (Configuración → API → Generar token; <code>Authorization: Bearer …</code>): proyectos, instancias (crear y desplegar, reiniciar, detener, backup, duplicar, variables de entorno, repositorios extra, <code>create-database</code>, <code>install-module</code>), backups, tareas con su log, contenedores, contactos, Todo y demos.</li>
+                    <li><strong>MCP</strong> (Configuración → MCP): conecta Claude con <code>/mcp/</code> y un token personal; actúa con los permisos de su usuario.</li>
+                    <li>Los tokens se muestran una sola vez y exigen 2FA cuando es obligatorio.</li>
+                </ul>
+            </section>
+
+            <section id="cuenta" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>16. Usuarios, seguridad y configuración</h2>
+                <ul>
+                    <li><strong>Usuarios</strong> (administradores): crear, editar y marcar como Cliente.</li>
+                    <li><strong>2FA</strong> desde tu perfil; desactivarlo o cambiarlo pide un código actual. El acceso se bloquea tras varios intentos fallidos.</li>
+                    <li><strong>Configuración</strong>: GitHub (token para repos privados; la pestaña Ayuda explica cómo crearlo), Domain &amp; SSL, General, Respaldos, IA, Email (SMTP con «Enviar prueba»), Demos, MCP y API.</li>
+                </ul>
+            </section>
+
+            <section id="actualizaciones" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>17. Actualizaciones del panel</h2>
+                <ul>
+                    <li>Cada cambio del panel sube la versión y se documenta en <a href="{% url 'about' %}">Acerca de</a> y en esta Ayuda.</li>
+                    <li>Un push a la rama principal pasa los tests en GitHub Actions y, si van bien, se despliega en el servidor: espera a las tareas en curso, guarda una copia de la base del panel y vuelve a la versión anterior si no responde.</li>
+                </ul>
+            </section>
+        </div>
+    </div>
+</div>
+
+<style>
+    .help-content h2 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 0.75rem; }
+    .help-content h3 { font-size: 0.95rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+    .help-content p, .help-content li { font-size: 0.875rem; line-height: 1.6; }
+    .help-content ul { list-style: disc; padding-left: 1.25rem; }
+    .help-content ol { list-style: decimal; padding-left: 1.25rem; }
+    .help-content li + li { margin-top: 0.35rem; }
+    .help-content li ul { margin-top: 0.35rem; }
+    .help-content a { color: hsl(var(--primary)); text-decoration: underline; text-underline-offset: 2px; }
+    .help-content code { font-size: 0.8rem; padding: 0.05rem 0.3rem; border-radius: 0.25rem; background: hsl(var(--muted)); }
+    .help-content .note { margin-top: 0.75rem; padding: 0.6rem 0.8rem; border-left: 3px solid hsl(var(--primary)); background: hsl(var(--muted) / 0.5); border-radius: 0.25rem; }
+</style>
+{% endblock %}

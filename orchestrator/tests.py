@@ -1017,6 +1017,26 @@ class DockerAdminTests(BaseTestCase):
                                     content_type='application/json')
         self.assertTrue(Task.objects.get(pk=response.json()['task_id']).params['created'])
 
+    def test_dashboard_cleanup_button_for_administrators(self):
+        from .task_models import Task
+        from .tasks import AUTO_CLEANUP_KINDS
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get('/dashboard/'), reverse('docker-cleanup-unused'))
+        self.assertRedirects(self.client.post(reverse('docker-cleanup-unused')), '/dashboard/', fetch_redirect_response=False)
+        self.client.post(reverse('docker-cleanup-unused'))  # one in the queue is enough
+        self.assertEqual(Task.objects.get(kind=Task.Kind.DOCKER_CLEANUP).params['kinds'], AUTO_CLEANUP_KINDS)
+        self.client.force_login(self.alice)
+        self.assertNotContains(self.client.get('/dashboard/'), reverse('docker-cleanup-unused'))
+        self.assertEqual(self.client.post(reverse('docker-cleanup-unused')).status_code, 403)
+
+    def test_help_page_is_in_the_menu_and_covers_every_section(self):
+        from .views.public import HELP_SECTIONS
+        self.client.force_login(self.alice)
+        page = self.client.get(reverse('help')).content.decode()
+        for anchor, _ in HELP_SECTIONS:
+            self.assertIn(f'id="{anchor}"', page)
+        self.assertIn(f'href="{reverse("help")}"', self.client.get('/dashboard/').content.decode())
+
     def test_pull_is_queued_and_validated(self):
         from .task_models import Task
         self.client.force_login(self.admin)

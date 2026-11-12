@@ -3,9 +3,18 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.71'
+VERSION = '1.0.72'
 
 CHANGELOG = [
+    {
+        'version': '1.0.72',
+        'date': '2026-11-12',
+        'notes': [
+            'Menú «Ayuda» (debajo de «Acerca de»): explica cada proceso de Community SH, desde crear y gestionar instancias, accesos y contraseñas, código y módulos, dominios, backups, demos, contactos, IA, contenedores y limpieza de Docker hasta tareas, API/MCP, usuarios y actualizaciones del panel, con índice. Se actualiza con cada cambio.',
+            'Dashboard: botón «Limpiar» (administradores) antes de «Nueva instancia». Pone en cola la misma limpieza que sigue a cada instancia nueva (contenedores detenidos ajenos, imágenes sin usar, caché de build y redes sin uso; nunca volúmenes), con confirmación; si ya hay una en cola no añade otra.',
+            'Instancias: la etiqueta de la columna Estado («En ejecución») ya no se parte en dos líneas.',
+        ],
+    },
     {
         'version': '1.0.71',
         'date': '2026-11-12',

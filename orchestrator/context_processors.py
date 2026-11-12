@@ -7,7 +7,7 @@ SECTIONS = {
     'project': 'projects', 'instance': 'instances', 'container': 'containers', 'metrics': 'metrics',
     'backup': 'backups', 'client': 'clients', 'user': 'users', 'change': 'users', 'settings': 'settings',
     'generate': 'settings', 'run': 'settings', 'about': 'about', 'docker': 'docker', 'todo': 'todo',
-    'activity': 'activity', 'dashboard': 'dashboard', 'contact': 'contacts',
+    'activity': 'activity', 'dashboard': 'dashboard', 'contact': 'contacts', 'help': 'help',
 }
 
 

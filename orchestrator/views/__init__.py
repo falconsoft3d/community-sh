@@ -7,6 +7,7 @@ from .public import (
     blog_list,
     blog_detail,
     about,
+    help_page,
 )
 from .todo import (
     todo_list,
@@ -30,6 +31,7 @@ from .docker import (
     docker_network_remove,
     docker_prune,
     docker_cleanup,
+    docker_cleanup_unused,
 )
 from .projects import (
     project_list,
@@ -118,6 +120,7 @@ __all__ = [
     'docker_network_remove',
     'docker_prune',
     'docker_cleanup',
+    'docker_cleanup_unused',
     'project_list',
     'project_create',
     'project_detail',
@@ -128,6 +131,7 @@ __all__ = [
     'blog_list',
     'blog_detail',
     'about',
+    'help_page',
     'dashboard',
     'InstanceListView',
     'InstanceCreateView',

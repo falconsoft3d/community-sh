@@ -142,3 +142,18 @@ def docker_cleanup(request):
     task = enqueue(Task.Kind.DOCKER_CLEANUP, user=request.user, kinds=kinds)
     messages.info(request, f'Limpieza en cola (tarea #{task.pk}); su log está en Actividad')
     return _back(request, 'cleanup')
+
+
+@login_required
+@superuser_required
+@require_POST
+def docker_cleanup_unused(request):
+    """Dashboard → Limpiar: the same cleanup that follows every new instance (never volumes)."""
+    from ..tasks import enqueue_auto_cleanup
+    task = enqueue_auto_cleanup(request.user)
+    if task is None:
+        messages.info(request, 'Ya hay una limpieza en cola: su resultado estará en Actividad')
+    else:
+        messages.success(request, f'Limpieza en cola (tarea #{task.pk}): contenedores detenidos, imágenes sin usar, '
+                                  'caché de build y redes sin uso. Su resultado estará en Actividad')
+    return redirect('dashboard')

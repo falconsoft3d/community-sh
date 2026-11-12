@@ -114,3 +114,31 @@ def about(request):
         'current_version': VERSION,
         'versions': CHANGELOG,
     })
+
+
+# Sections of the Ayuda page (anchor, title), in order: add one here when help.html gets a new section
+HELP_SECTIONS = [
+    ('conceptos', 'Conceptos y permisos'),
+    ('crear-instancia', 'Crear una instancia'),
+    ('gestionar', 'Gestionar una instancia'),
+    ('acceso', 'Acceso a Odoo y contraseñas'),
+    ('codigo', 'Código y módulos'),
+    ('dominios', 'Dominios y HTTPS'),
+    ('backups', 'Backups'),
+    ('demos', 'Demos (Modo test)'),
+    ('contactos', 'Contactos (CRM)'),
+    ('ia', 'IA y migraciones'),
+    ('contenedores', 'Contenedores'),
+    ('limpieza', 'Docker y limpieza'),
+    ('tareas', 'Tareas y Actividad'),
+    ('panel', 'Dashboard, Metrics y Todo'),
+    ('api', 'API y MCP'),
+    ('cuenta', 'Usuarios y configuración'),
+    ('actualizaciones', 'Actualizaciones del panel'),
+]
+
+
+@login_required
+def help_page(request):
+    """Ayuda: how every process of the platform works (kept current with every change)."""
+    return render(request, 'orchestrator/help.html', {'sections': HELP_SECTIONS})

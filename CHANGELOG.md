@@ -1,6 +1,12 @@
 # Changelog
 
-Versión actual: **1.0.71**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.72**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.72 — 2026-11-12
+
+- Menú «Ayuda» (debajo de «Acerca de»): explica cada proceso de Community SH, desde crear y gestionar instancias, accesos y contraseñas, código y módulos, dominios, backups, demos, contactos, IA, contenedores y limpieza de Docker hasta tareas, API/MCP, usuarios y actualizaciones del panel, con índice. Se actualiza con cada cambio.
+- Dashboard: botón «Limpiar» (administradores) antes de «Nueva instancia». Pone en cola la misma limpieza que sigue a cada instancia nueva (contenedores detenidos ajenos, imágenes sin usar, caché de build y redes sin uso; nunca volúmenes), con confirmación; si ya hay una en cola no añade otra.
+- Instancias: la etiqueta de la columna Estado («En ejecución») ya no se parte en dos líneas.
 
 ## 1.0.71 — 2026-11-12
 

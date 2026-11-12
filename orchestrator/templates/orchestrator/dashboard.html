@@ -8,12 +8,24 @@
             <h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
             <p class="mt-1 text-muted-foreground">{% if user.is_superuser %}{% translate "Todo Community SH de un vistazo: pulsa una cifra para ir a su página." %}{% else %}{% translate "Tus proyectos de un vistazo: pulsa una cifra para ir a su página." %}{% endif %}</p>
         </div>
+        <div class="flex flex-wrap items-center gap-2">
+        {% if user.is_superuser %}
+        <form action="{% url 'docker-cleanup-unused' %}" method="post"
+            onsubmit="return confirm('{% translate "¿Limpiar lo que Docker no usa? Contenedores detenidos que no son de ninguna instancia, imágenes sin usar, caché de build y redes sin uso. Nunca toca las instancias ni los volúmenes." %}')">
+            {% csrf_token %}
+            <button type="submit" title="{% translate "Libera disco: lo mismo que se hace tras crear cada instancia" %}"
+                class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                <i data-lucide="sparkles" class="mr-2 h-4 w-4"></i> {% translate "Limpiar" %}
+            </button>
+        </form>
+        {% endif %}
         {% if not user_is_client %}
         <a href="{% url 'instance-create' %}"
             class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
             <i data-lucide="plus" class="mr-2 h-4 w-4"></i> {% translate "Nueva instancia" %}
         </a>
         {% endif %}
+        </div>
     </div>
 
     {% for group in groups %}

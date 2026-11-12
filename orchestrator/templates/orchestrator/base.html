@@ -271,6 +271,10 @@
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'about' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="info" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "About" %}</span>
                         </a>
+                        <a href="{% url 'help' %}" title="{% translate "Ayuda" %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'help' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="life-buoy" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Ayuda" %}</span>
+                        </a>
                     </nav>
                 </div>
             </div>
