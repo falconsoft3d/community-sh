@@ -6,6 +6,7 @@ from django.conf import settings
 from ..models import Instance
 from ..task_log import progress
 from .docker_helpers import (
+    log_config,
     ODOO_DATA_DIR,
     RESTART_POLICY,
     postgres_image,
@@ -95,6 +96,7 @@ class CopyMixin:
                     network=network_name,
                     detach=True,
                     restart_policy=RESTART_POLICY,
+                    log_config=log_config(),
                 )
                 
                 print("Waiting for new database to be ready...")

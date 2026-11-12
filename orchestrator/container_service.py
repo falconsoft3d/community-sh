@@ -2,6 +2,7 @@ import docker
 from django.conf import settings
 import os
 from .template_services import get_template_loader
+from .services.docker_helpers import log_config
 
 # Docker names a user container must never take: the panel's own services (Docker DNS on the
 # shared "web" network would send them part of the panel's traffic) and its compose project
@@ -123,7 +124,8 @@ class ContainerService:
                 labels=labels,
                 user=user_config,
                 detach=True,
-                restart_policy={'Name': 'unless-stopped'}
+                restart_policy={'Name': 'unless-stopped'},
+                log_config=log_config(),
             )
             
             if extra_network:

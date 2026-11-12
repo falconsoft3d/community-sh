@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.87'
+VERSION = '1.0.88'
 
 CHANGELOG = [
+    {
+        'version': '1.0.88',
+        'date': '2026-11-12',
+        'notes': [
+            'Logs con tope: cada contenedor que crea el panel (Odoo, su PostgreSQL, las copias y las apps) y los servicios del propio panel (docker-compose) guardan como mucho 20 MB × 3 ficheros de log, para que un error en bucle no llene el disco. Los contenedores existentes lo reciben al recrearse (al redesplegar).',
+        ],
+    },
     {
         'version': '1.0.87',
         'date': '2026-11-12',

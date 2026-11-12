@@ -181,6 +181,7 @@ updates its section here (and the index) in the same commit.
                     <li><strong>Botón «Limpiar»</strong> del Dashboard (administradores): lanza esa misma limpieza cuando quieras.</li>
                     <li><strong>Docker → Limpieza</strong>: muestra qué y cuánto se libera y deja elegir; los <strong>volúmenes</strong> sin uso solo se borran aquí, escribiendo BORRAR.</li>
                     <li>Nunca se tocan el panel, las instancias (aunque estén paradas), sus filestores, bases y redes, ni los contenedores del panel y sus volúmenes. Una imagen borrada se vuelve a descargar en el próximo despliegue que la necesite.</li>
+                    <li>Los <strong>logs</strong> de cada contenedor (Odoo, PostgreSQL, apps y el propio panel) tienen un tope de 20 MB × 3 ficheros, para que un error en bucle no llene el disco. En los contenedores que ya existían se aplica al volver a crearlos (al redesplegar).</li>
                     <li>El servidor tiene memoria limitada: detén las instancias de prueba cuando acabes.</li>
                 </ul>
             </section>

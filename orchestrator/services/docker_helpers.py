@@ -160,3 +160,9 @@ def postgres_image(odoo_version):
     if major <= 17:
         return 'postgres:15'
     return 'postgres:16'
+
+
+def log_config():
+    """Docker logs of every container the panel creates are capped (20 MB x 3 files): a looping error can't fill the disk."""
+    import docker
+    return docker.types.LogConfig(type='json-file', config={'max-size': '20m', 'max-file': '3'})

@@ -1,5 +1,13 @@
+# Logs of the panel's own services are capped too (a looping error can't fill the disk)
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "3"
+
 services:
   traefik:
+    logging: *default-logging
     image: "traefik:v2.5"
     command:
       - "--providers.docker=false"
@@ -25,6 +33,7 @@ services:
     restart: unless-stopped
 
   db:
+    logging: *default-logging
     image: postgres:15
     # Back after a reboot or a restart of Docker: without it the panel answers 500 (no database)
     restart: always
@@ -44,6 +53,7 @@ services:
       - backend
 
   app:
+    logging: *default-logging
     build: .
     image: community-sh-app
     restart: always
@@ -86,6 +96,7 @@ services:
   # Runs queued tasks (deploys, backups, restores) and the scheduled backups.
   # Keep a single worker: it marks tasks left running by a previous worker as failed.
   worker:
+    logging: *default-logging
     image: community-sh-app
     # Built by the app service: never look for it on Docker Hub
     pull_policy: never
@@ -118,6 +129,7 @@ services:
   # Builds the images of generic containers from their repository (minutes for a large app)
   # without holding up deploys and backups.
   build-worker:
+    logging: *default-logging
     image: community-sh-app
     # Built by the app service: never look for it on Docker Hub
     pull_policy: never
@@ -146,6 +158,7 @@ services:
   # Runs the long jobs that don't touch Docker (AI assistant requests, migrations from another
   # Odoo) without holding up deploys and backups. Edits the instances' addons folders.
   ai-worker:
+    logging: *default-logging
     image: community-sh-app
     # Built by the app service: never look for it on Docker Hub
     pull_policy: never

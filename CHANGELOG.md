@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.87**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.88**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.88 — 2026-11-12
+
+- Logs con tope: cada contenedor que crea el panel (Odoo, su PostgreSQL, las copias y las apps) y los servicios del propio panel (docker-compose) guardan como mucho 20 MB × 3 ficheros de log, para que un error en bucle no llene el disco. Los contenedores existentes lo reciben al recrearse (al redesplegar).
 
 ## 1.0.87 — 2026-11-12
 

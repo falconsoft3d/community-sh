@@ -181,6 +181,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                     <li><strong>«Clean up» button</strong> on the Dashboard (administrators): runs that same cleanup whenever you want.</li>
                     <li><strong>Docker → Cleanup</strong>: shows what and how much is freed and lets you choose; unused <strong>volumes</strong> are only removed here, by typing BORRAR.</li>
                     <li>The panel, instances (even stopped ones), their filestores, databases and networks, and the panel's containers and volumes are never touched. A removed image is pulled again on the next deploy that needs it.</li>
+                    <li>The <strong>logs</strong> of every container (Odoo, PostgreSQL, apps and the panel itself) are capped at 20 MB × 3 files, so a looping error can't fill the disk. Containers that already existed get it when they're recreated (on redeploy).</li>
                     <li>The server has limited memory: stop test instances when you're done.</li>
                 </ul>
             </section>

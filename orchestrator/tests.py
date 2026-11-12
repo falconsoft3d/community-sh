@@ -303,6 +303,9 @@ class DockerServiceTests(TestCase):
         self.assertIn('http_interface = 0.0.0.0', conf)
         db_call = [c for c in self.client.containers.run.call_args_list if c.args[0].startswith('postgres:')][0]
         self.assertEqual(db_call.args[0], 'postgres:15')  # default instance version is 17.0
+        # Logs capped on both, so a looping error can't fill the disk
+        for call in (odoo_call, db_call):
+            self.assertEqual(call.kwargs['log_config']['Config'], {'max-size': '20m', 'max-file': '3'})
         self.instance.refresh_from_db()
         self.assertEqual(self.instance.data_volume, 'odoo_data_acme')
         # Published on an explicit port (kept across restarts), stored on the instance

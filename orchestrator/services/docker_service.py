@@ -18,6 +18,7 @@ from .docker_helpers import (  # noqa: F401
     RESTART_POLICY,
     admin_login_secret,
     host_path,
+    log_config,
     memory_options,
     odoo_command,
     odoo_config_target,
@@ -188,6 +189,7 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
             network=network_name,
             detach=True,
             restart_policy=RESTART_POLICY,
+            log_config=log_config(),
         )
 
     def _ensure_image(self, image):
@@ -485,6 +487,7 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
                 ports={'8069/tcp': (published_ip(), port)},
                 detach=True,
                 restart_policy=RESTART_POLICY,
+                log_config=log_config(),
                 **memory_options(instance),
                 labels={
                     "traefik.enable": "true",
