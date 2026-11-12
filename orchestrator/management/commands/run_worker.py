@@ -65,6 +65,20 @@ class Command(BaseCommand):
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Daily repository update failed: {e}'))
                 try:
+                    from orchestrator.services.health import check_instances
+                    for name, state in check_instances():
+                        self.stdout.write(f'Health: {name} is {state}')
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Health check failed: {e}'))
+                try:
+                    from django.core.cache import cache
+                    from orchestrator.services import alerts
+                    alerts.check_server_usage()
+                    if cache.add('certificate-check-run', 1, 3600):
+                        alerts.check_certificates()
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Alert checks failed: {e}'))
+                try:
                     from orchestrator.services.trials import expire_demos
                     for line in expire_demos():
                         self.stdout.write(line)

@@ -433,6 +433,25 @@
                         </div>
                     </div>
 
+                    <div class="space-y-4">
+                        <h4 class="text-sm font-medium">Alertas</h4>
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="alerts_enabled" name="alerts_enabled" {% if config.alerts_enabled %}checked{% endif %}
+                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
+                            <label for="alerts_enabled" class="text-sm font-medium leading-none cursor-pointer">Enviar alertas</label>
+                        </div>
+                        <p class="text-sm text-muted-foreground">
+                            Cuando falla una tarea (despliegue, backup, restauración…), una instancia deja de responder o vuelve, el disco o la memoria pasan del 90 % o falta el certificado HTTPS de una instancia. Van por email a los de arriba (o, si está vacío, a los administradores) con el servidor de la pestaña Email. La misma alerta no se repite en 6 horas.
+                        </p>
+                        <div class="space-y-2">
+                            <label for="alert_webhook_url" class="text-sm font-medium leading-none">Webhook de alertas (opcional)</label>
+                            <input type="url" id="alert_webhook_url" name="alert_webhook_url" value="{{ config.alert_webhook_url|default:'' }}"
+                                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                placeholder="https://hooks.slack.com/services/…">
+                            <p class="text-sm text-muted-foreground">Recibe cada alerta como JSON (<code class="font-mono">text</code>, <code class="font-mono">content</code>, <code class="font-mono">subject</code>, <code class="font-mono">body</code>): vale para Slack, Discord, Google Chat, Mattermost o n8n.</p>
+                        </div>
+                    </div>
+
                     <div class="flex items-center gap-4 pt-4">
                         <button type="submit" name="section" value="general"
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">

@@ -190,6 +190,11 @@ updates its section here (and the index) in the same commit.
                     <li>Cada tarea guarda su log completo con la hora y una barra de progreso que avanza en directo, en la pestaña «Tareas recientes» de la instancia y en el menú <strong>Actividad</strong> (filtros por estado, tipo e instancia).</li>
                     <li>Estados: En cola, En curso, Completada y Fallida (con el error). Si el worker se reinicia a mitad, la tarea queda como fallida.</li>
                 </ul>
+                <h3>Disponibilidad y alertas</h3>
+                <ul>
+                    <li>Cada 5 minutos el worker pide la página de login de cada instancia en marcha (salvo las que tienen una tarea en curso). Tras dos fallos seguidos la marca como <strong>No responde</strong> (en la lista y en Information, con el motivo); si contesta, muestra el tiempo de respuesta.</li>
+                    <li><strong>Alertas</strong> (Configuración → General): cuando falla una tarea, una instancia deja de responder o vuelve, el disco pasa del 90 %, la memoria lleva 5 minutos por encima del 90 % o falta el certificado HTTPS de una instancia (se revisa cada hora). Van por email a los «Emails para notificaciones» (o a los administradores) con el servidor de Configuración → Email, y opcionalmente a un <strong>webhook</strong> (Slack, Discord, Google Chat, n8n…). La misma alerta no se repite en 6 horas (la de certificado, en 24).</li>
+                </ul>
             </section>
 
             <section id="panel" class="rounded-xl border bg-card p-6 scroll-mt-24">

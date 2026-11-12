@@ -163,6 +163,8 @@ ES_TO_EN = {
     'Editar': 'Edit',
     'Nueva instancia': 'New instance',
     'Ayuda': 'Help',
+    'No responde': 'Not responding',
+    'Tiempo de respuesta en la última comprobación': 'Response time in the last check',
     'Neutralizar la copia (recomendado)': 'Neutralize the copy (recommended)',
     'Antes de arrancar la copia se desactivan los servidores de correo entrante y saliente, las tareas programadas (salvo la limpieza automática), los métodos de pago y las claves API, y se cambia el UUID de la base. Así una copia de producción no escribe a tus clientes ni cobra. Desmárcalo solo si la copia va a sustituir a la original.':
         "Before the copy starts, its incoming and outgoing mail servers, scheduled actions (except the automatic cleanup), payment methods and API keys are switched off, and the database UUID is changed. That way a copy of production doesn't write to your customers or take payments. Untick it only if the copy will replace the original.",

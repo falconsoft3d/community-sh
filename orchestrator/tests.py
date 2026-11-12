@@ -3659,6 +3659,118 @@ class TaskSecretsTests(BaseTestCase):
         self.assertEqual(failed.params['password'], REDACTED)
 
 
+class AlertsAndHealthTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+        cache.clear()
+        self.config.smtp_enabled, self.config.smtp_host, self.config.smtp_from_email = True, 'smtp.example.com', 'panel@example.com'
+        self.config.notification_emails = 'ops@example.com'
+        self.config.save()
+
+    def test_alert_channels_cooldown_and_switch(self):
+        from .services import alerts
+        with mock.patch('orchestrator.services.mail.send', return_value=(True, '')) as send, \
+                mock.patch('orchestrator.services.alerts.urllib.request.urlopen') as urlopen:
+            self.assertTrue(alerts.alert('k', 'Algo pasa', 'detalle'))
+            self.assertEqual(send.call_args.args[2], ['ops@example.com'])
+            self.assertEqual(send.call_args.args[0], '[Community SH] Algo pasa')
+            urlopen.assert_not_called()  # no webhook configured
+            self.assertFalse(alerts.alert('k', 'Algo pasa', 'otra vez'))  # cooldown
+            alerts.clear('k')
+            self.config.alert_webhook_url = 'https://hooks.example.com/x'
+            self.config.save()
+            self.assertTrue(alerts.alert('k', 'Algo pasa', 'detalle'))
+            import json
+            payload = json.loads(urlopen.call_args.args[0].data)
+            self.assertEqual(payload['subject'], '[Community SH] Algo pasa')
+            self.assertIn('detalle', payload['content'])
+            self.config.alerts_enabled = False
+            self.config.save()
+            self.assertFalse(alerts.alert('other', 'x', 'y', cooldown=0))
+
+    def test_failed_tasks_alert(self):
+        from .task_models import Task
+        from .tasks import HANDLERS, enqueue, run_task
+        with mock.patch('orchestrator.services.alerts.alert') as alert, \
+                mock.patch.dict(HANDLERS, {Task.Kind.BACKUP: mock.Mock(side_effect=Exception('disco lleno'))}):
+            run_task(enqueue(Task.Kind.BACKUP, self.alice_instance, self.alice))
+        self.assertIn('alice-odoo', alert.call_args.args[1])
+        self.assertIn('disco lleno', alert.call_args.args[2])
+
+    def test_probe(self):
+        import urllib.error
+        from .services.health import probe
+        with mock.patch('orchestrator.services.health.urllib.request.urlopen') as urlopen:
+            urlopen.return_value.__enter__.return_value.status = 200
+            self.assertEqual(probe(self.alice_instance)[0], True)
+            self.assertEqual(urlopen.call_args.args[0].full_url, 'http://odoo_alice-odoo:8069/web/login')
+            urlopen.side_effect = urllib.error.HTTPError('u', 404, 'nf', {}, None)
+            self.assertTrue(probe(self.alice_instance)[0])
+            urlopen.side_effect = urllib.error.HTTPError('u', 502, 'bad gateway', {}, None)
+            self.assertEqual(probe(self.alice_instance)[::2], (False, 'HTTP 502'))
+            urlopen.side_effect = urllib.error.URLError('connection refused')
+            self.assertEqual(probe(self.alice_instance), (False, None, 'connection refused'))
+
+    def test_down_after_two_failures_and_back_up(self):
+        from .services.health import check_instances
+        from .task_models import Task
+        Instance.objects.filter(pk=self.alice_instance.pk).update(status=Instance.Status.RUNNING)
+        with mock.patch('orchestrator.services.health.probe', return_value=(False, None, 'refused')), \
+                mock.patch('orchestrator.services.alerts.alert') as alert:
+            self.assertEqual(check_instances(force=True), [])
+            alert.assert_not_called()  # one failure is not enough
+            self.assertEqual(check_instances(force=True), [('alice-odoo', 'down')])
+            self.assertIn('no responde', alert.call_args.args[1])
+            check_instances(force=True)
+            self.assertEqual(alert.call_count, 1)  # once while it stays down
+        self.assertEqual(Instance.objects.get(pk=self.alice_instance.pk).health, 'down')
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get('/instances/'), 'No responde')
+        with mock.patch('orchestrator.services.health.probe', return_value=(True, 120, '')), \
+                mock.patch('orchestrator.services.alerts.alert') as alert:
+            self.assertEqual(check_instances(force=True), [('alice-odoo', 'up')])
+            self.assertIn('vuelve a responder', alert.call_args.args[1])
+        instance = Instance.objects.get(pk=self.alice_instance.pk)
+        self.assertEqual((instance.health, instance.health_ms, instance.health_failures), ('up', 120, 0))
+        self.assertContains(self.client.get(f'/instance/{instance.pk}/'), 'Responde en 120 ms')
+        # An instance with a task in the queue (a deploy...) isn't checked
+        Task.objects.create(kind=Task.Kind.DEPLOY, instance=instance)
+        with mock.patch('orchestrator.services.health.probe') as probe:
+            check_instances(force=True)
+            probe.assert_not_called()
+        # And it runs at most every few minutes
+        self.assertEqual(check_instances(), [])
+        Task.objects.all().delete()
+        with mock.patch('orchestrator.services.health.probe') as probe:
+            check_instances()
+            probe.assert_not_called()
+
+    def test_server_usage(self):
+        from django.utils import timezone
+        from .metrics_models import MetricSample
+        from .services import alerts
+        with mock.patch('psutil.disk_usage', return_value=mock.Mock(percent=95.0)), \
+                mock.patch('orchestrator.services.alerts.alert') as alert:
+            alerts.check_server_usage()
+            self.assertEqual(alert.call_args.args[0], 'disk-high')
+        for minute in range(5):
+            MetricSample.objects.create(timestamp=timezone.now() - timezone.timedelta(minutes=minute), cpu_percent=10, memory_percent=93)
+        with mock.patch('psutil.disk_usage', return_value=mock.Mock(percent=40.0)), \
+                mock.patch('orchestrator.services.alerts.alert') as alert:
+            alerts.check_server_usage()
+            self.assertEqual([c.args[0] for c in alert.call_args_list], ['memory-high'])
+
+    def test_settings_save_alerts(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse('settings'), {'section': 'general', 'alert_webhook_url': 'https://hooks.example.com/a'})
+        self.config.refresh_from_db()
+        self.assertEqual((self.config.alerts_enabled, self.config.alert_webhook_url), (False, 'https://hooks.example.com/a'))
+        self.client.post(reverse('settings'), {'section': 'general', 'alerts_enabled': 'on', 'alert_webhook_url': ''})
+        self.config.refresh_from_db()
+        self.assertEqual((self.config.alerts_enabled, self.config.alert_webhook_url), (True, ''))
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

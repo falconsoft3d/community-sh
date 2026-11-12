@@ -302,6 +302,17 @@
                     <div class="text-sm text-muted-foreground">{{ object.odoo_version }}</div>
                 </div>
 
+                {% if object.health_checked_at %}
+                <div class="space-y-1">
+                    <label class="text-sm font-medium leading-none">Disponibilidad</label>
+                    <div class="text-sm {% if object.health == 'down' %}text-red-600 font-medium{% else %}text-muted-foreground{% endif %}">
+                        {% if object.health == 'down' %}No responde{% if object.health_error %} ({{ object.health_error }}){% endif %}{% elif object.health == 'up' %}Responde en {{ object.health_ms }} ms{% else %}Sin comprobar{% endif %}
+                        · comprobado hace {{ object.health_checked_at|timesince }}
+                    </div>
+                    <p class="text-xs text-muted-foreground">El worker pide la página de login de Odoo cada 5 minutos; tras dos fallos seguidos avisa por las alertas de Configuración → General.</p>
+                </div>
+                {% endif %}
+
                 {% if object.trial %}
                 <div class="space-y-1">
                     <label class="text-sm font-medium leading-none">Demo</label>

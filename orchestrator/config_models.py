@@ -20,6 +20,9 @@ class GitHubConfig(models.Model):
     # Email notifications
     email_notifications_enabled = models.BooleanField(default=False, help_text="Enable email notifications for instance operations")
     notification_emails = models.TextField(blank=True, help_text="Comma-separated list of emails to receive notifications")
+    # Alerts: failed tasks, instances that stop answering, full disk or memory, missing certificates
+    alerts_enabled = models.BooleanField(default=True, help_text="Send alerts by email (and to the webhook)")
+    alert_webhook_url = models.URLField(blank=True, help_text="Optional: Slack, Discord, Google Chat, n8n... receives each alert as JSON")
     
     # Automatic backups configuration
     auto_backup_enabled = models.BooleanField(default=False, help_text="Enable automatic backups for all instances")

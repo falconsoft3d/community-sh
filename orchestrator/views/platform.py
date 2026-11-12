@@ -68,6 +68,13 @@ def settings_view(request):
             config.email_notifications_enabled = request.POST.get('email_notifications_enabled') == 'on'
         if 'notification_emails' in request.POST:
             config.notification_emails = request.POST.get('notification_emails', '')
+        if request.POST.get('section') == 'general':
+            config.alerts_enabled = 'alerts_enabled' in request.POST
+            webhook = request.POST.get('alert_webhook_url', '').strip()
+            if webhook and not webhook.startswith(('https://', 'http://')):
+                messages.error(request, 'El webhook de alertas debe ser una URL http(s)')
+            else:
+                config.alert_webhook_url = webhook
         
         # Update automatic backups configuration if present
         if 'auto_backup_enabled' in request.POST or request.POST.get('auto_backup_enabled') == 'on':

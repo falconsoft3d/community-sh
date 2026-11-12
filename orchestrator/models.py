@@ -64,6 +64,18 @@ class Instance(models.Model):
     # Cap of the Odoo container: one runaway instance can't take the memory of the server (and of the others)
     memory_limit_mb = models.PositiveIntegerField(default=1536, validators=[validate_memory_limit], help_text="Memory limit of the Odoo container in MB (0: no limit)")
 
+    # Health check of the worker (every few minutes): does Odoo answer over HTTP?
+    class Health(models.TextChoices):
+        UNKNOWN = '', 'Sin comprobar'
+        UP = 'up', 'Responde'
+        DOWN = 'down', 'No responde'
+
+    health = models.CharField(max_length=10, choices=Health.choices, default=Health.UNKNOWN, blank=True)
+    health_ms = models.PositiveIntegerField(null=True, blank=True, help_text="Response time of the last check")
+    health_checked_at = models.DateTimeField(null=True, blank=True)
+    health_failures = models.PositiveSmallIntegerField(default=0, help_text="Failed checks in a row")
+    health_error = models.CharField(max_length=255, blank=True, default='')
+
     # The administrator the panel created (database created from the panel/API/MCP, demo), shown to who manages it
     admin_login = models.CharField(max_length=100, blank=True, default='', help_text="Login of the administrator the panel created")
     admin_password = models.CharField(max_length=64, blank=True, default='', help_text="Password of the administrator the panel created")

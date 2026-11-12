@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 14:05+0000\n"
+"POT-Creation-Date: 2026-11-12 14:26+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,13 +17,13 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: orchestrator/models.py:22 orchestrator/templates/orchestrator/home.html:196
-#: orchestrator/templates/orchestrator/instance_list.html:94
+#: orchestrator/models.py:30 orchestrator/templates/orchestrator/home.html:196
+#: orchestrator/templates/orchestrator/instance_list.html:100
 #: orchestrator/templates/orchestrator/metrics.html:144
 msgid "Deploying"
 msgstr ""
 
-#: orchestrator/models.py:23 orchestrator/templates/orchestrator/home.html:188
+#: orchestrator/models.py:31 orchestrator/templates/orchestrator/home.html:188
 #: orchestrator/templates/orchestrator/home.html:204
 #: orchestrator/templates/orchestrator/instance_list.html:90
 #: orchestrator/templates/orchestrator/metrics.html:140
@@ -31,12 +31,12 @@ msgstr ""
 msgid "Running"
 msgstr ""
 
-#: orchestrator/models.py:24
+#: orchestrator/models.py:32
 #: orchestrator/templates/orchestrator/metrics.html:148
 msgid "Stopped"
 msgstr ""
 
-#: orchestrator/models.py:25
+#: orchestrator/models.py:33
 msgid "Error"
 msgstr ""
 
@@ -916,35 +916,43 @@ msgstr ""
 msgid "Duplicado"
 msgstr "Duplicate"
 
-#: orchestrator/templates/orchestrator/instance_list.html:116
+#: orchestrator/templates/orchestrator/instance_list.html:93
+msgid "No responde"
+msgstr "Not responding"
+
+#: orchestrator/templates/orchestrator/instance_list.html:95
+msgid "Tiempo de respuesta en la última comprobación"
+msgstr "Response time in the last check"
+
+#: orchestrator/templates/orchestrator/instance_list.html:122
 msgid "Primary"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_list.html:126
+#: orchestrator/templates/orchestrator/instance_list.html:132
 msgid "Entrar como admin"
 msgstr "Log in as admin"
 
-#: orchestrator/templates/orchestrator/instance_list.html:171
+#: orchestrator/templates/orchestrator/instance_list.html:177
 msgid "Confirm Action"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_list.html:173
+#: orchestrator/templates/orchestrator/instance_list.html:179
 msgid "Are you sure you want to"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_list.html:173
+#: orchestrator/templates/orchestrator/instance_list.html:179
 msgid "the instance"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_list.html:178
+#: orchestrator/templates/orchestrator/instance_list.html:184
 msgid "Cancel"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_list.html:183
+#: orchestrator/templates/orchestrator/instance_list.html:189
 msgid "Confirm"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_list.html:192
+#: orchestrator/templates/orchestrator/instance_list.html:198
 msgid "Pagination"
 msgstr ""
 

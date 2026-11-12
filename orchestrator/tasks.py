@@ -99,6 +99,9 @@ def run_task(task):
     task.save(update_fields=fields)
     if task.status == Task.Status.DONE and _creates_instance(task):
         enqueue_auto_cleanup(task.created_by)
+    if task.status == Task.Status.FAILED:
+        from .services import alerts
+        alerts.task_failed(task)
     return task
 
 

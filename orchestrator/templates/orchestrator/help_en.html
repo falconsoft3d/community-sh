@@ -190,6 +190,11 @@ its section here and in help.html (and the index in views/public.py) in the same
                     <li>Every task keeps its full timestamped log and a live progress bar, in the instance's «Tareas recientes» tab and in the <strong>Activity</strong> menu (filters by status, kind and instance).</li>
                     <li>Statuses: Queued, Running, Done and Failed (with the error). If the worker restarts mid-task, the task is marked as failed.</li>
                 </ul>
+                <h3>Availability and alerts</h3>
+                <ul>
+                    <li>Every 5 minutes the worker requests the login page of each running instance (except those with a task in progress). After two failures in a row it marks it as <strong>Not responding</strong> (in the list and in Information, with the reason); when it answers, the response time is shown.</li>
+                    <li><strong>Alerts</strong> (Settings → General): when a task fails, an instance stops responding or comes back, the disk goes over 90 %, memory stays over 90 % for 5 minutes or an instance has no HTTPS certificate (checked hourly). They go by email to the «Emails para notificaciones» (or to the administrators) through the server in Settings → Email, and optionally to a <strong>webhook</strong> (Slack, Discord, Google Chat, n8n…). The same alert isn't repeated within 6 hours (24 for certificates).</li>
+                </ul>
             </section>
 
             <section id="panel" class="rounded-xl border bg-card p-6 scroll-mt-24">

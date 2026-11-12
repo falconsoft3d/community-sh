@@ -88,6 +88,12 @@
                         <div
                             class="inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-100 text-green-800">
                             {% translate "Running" %}</div>
+                        {% if instance.health == 'down' %}
+                        <div class="mt-1 inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold bg-red-100 text-red-800"
+                            title="{{ instance.health_error }}">{% translate "No responde" %}</div>
+                        {% elif instance.health == 'up' and instance.health_ms is not None %}
+                        <div class="mt-1 text-xs text-muted-foreground tabular-nums" title="{% translate "Tiempo de respuesta en la última comprobación" %}">{{ instance.health_ms }} ms</div>
+                        {% endif %}
                         {% elif instance.status == 'deploying' %}
                         <div
                             class="inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-yellow-100 text-yellow-800">

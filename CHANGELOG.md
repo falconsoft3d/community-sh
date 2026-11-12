@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.79**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.80**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.80 — 2026-11-12
+
+- Disponibilidad: cada 5 minutos el worker pide la página de login de cada instancia en marcha (por la red de Docker, saltando las que tienen una tarea en curso). Tras dos fallos seguidos la marca como «No responde» en la lista y en Information (con el motivo); si responde, muestra el tiempo de respuesta (migración 0069).
+- Alertas (Configuración → General, activadas por defecto): tarea fallida, instancia que deja de responder o vuelve, disco por encima del 90 %, memoria 5 minutos por encima del 90 % y falta de certificado HTTPS (revisado cada hora). Por email a los «Emails para notificaciones» o a los administradores, con el SMTP de Configuración → Email, y opcionalmente a un webhook (Slack, Discord, Google Chat, n8n…). La misma alerta no se repite en 6 horas (24 la de certificado).
 
 ## 1.0.79 — 2026-11-12
 
