@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.76'
+VERSION = '1.0.77'
 
 CHANGELOG = [
+    {
+        'version': '1.0.77',
+        'date': '2026-11-12',
+        'notes': [
+            'Límite de memoria: no se aplica en marcha a una instancia que ya usa más del 90 % del nuevo tope (el sistema cortaría Odoo); queda pendiente y se reintenta cada minuto, o se aplica en el próximo despliegue.',
+        ],
+    },
     {
         'version': '1.0.76',
         'date': '2026-11-12',

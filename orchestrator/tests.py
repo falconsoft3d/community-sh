@@ -3567,8 +3567,16 @@ class MemoryLimitTests(BaseTestCase):
         loose.name = 'odoo_bob-odoo'
         stranger = mock.Mock(attrs={'HostConfig': {'Memory': 0}})
         stranger.name = 'odoo_unknown'
+        loose.stats.return_value = {'memory_stats': {'usage': 400 * 1024 * 1024}}
         service.client.containers.list.return_value = [capped, loose, stranger]
+        # Using almost all of it now: not lowered yet
+        busy = Instance.objects.create(name='busy-odoo', project=self.alice_project, owner=self.alice)
+        heavy = mock.Mock(attrs={'HostConfig': {'Memory': 0}})
+        heavy.name = 'odoo_busy-odoo'
+        heavy.stats.return_value = {'memory_stats': {'usage': 1500 * 1024 * 1024}}
+        service.client.containers.list.return_value.append(heavy)
         self.assertEqual(service.apply_memory_limits(), ['bob-odoo'])
+        heavy.update.assert_not_called()
         loose.update.assert_called_once_with(mem_limit=1536 * 1024 * 1024, memswap_limit=1536 * 1024 * 1024)
         capped.update.assert_not_called()
         stranger.update.assert_not_called()

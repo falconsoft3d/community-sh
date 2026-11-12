@@ -443,6 +443,12 @@ class DockerService:
             name = container.name[len('odoo_'):]
             if name not in wanted or container.attrs.get('HostConfig', {}).get('Memory') == wanted[name]:
                 continue
+            # Lowering the cap below what it uses now would make the kernel kill Odoo: wait (retried every minute)
+            usage = (container.stats(stream=False).get('memory_stats') or {}).get('usage') or 0
+            if usage > wanted[name] * 0.9:
+                print(f'Límite de memoria de {name} pendiente: usa {usage // 1048576} MB, cerca del tope '
+                      f'{wanted[name] // 1048576} MB (súbelo o se aplicará cuando baje)')
+                continue
             try:
                 container.update(mem_limit=wanted[name], memswap_limit=wanted[name])
                 changed.append(name)

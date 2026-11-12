@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.76**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.77**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.77 — 2026-11-12
+
+- Límite de memoria: no se aplica en marcha a una instancia que ya usa más del 90 % del nuevo tope (el sistema cortaría Odoo); queda pendiente y se reintenta cada minuto, o se aplica en el próximo despliegue.
 
 ## 1.0.76 — 2026-11-12
 
