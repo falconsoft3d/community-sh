@@ -358,6 +358,37 @@
                 </div>
                 {% endif %}
 
+                {% if can_manage and object.admin_password %}
+                <div class="space-y-1" x-data="{ show: false }">
+                    <label class="text-sm font-medium leading-none">Administrador</label>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-muted-foreground">Usuario</span>
+                        <code class="text-sm text-muted-foreground flex-1 truncate">{{ object.admin_login|default:"admin" }}</code>
+                        <button type="button" onclick="navigator.clipboard.writeText('{{ object.admin_login|default:"admin"|escapejs }}')"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                            title="Copiar usuario">
+                            <i data-lucide="copy" class="h-3 w-3"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-muted-foreground">Contraseña</span>
+                        <code class="text-sm text-muted-foreground flex-1 truncate"
+                            x-text="show ? '{{ object.admin_password|escapejs }}' : '••••••••••••'">••••••••••••</code>
+                        <button type="button" @click="show = !show"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                            title="Mostrar/ocultar">
+                            <i data-lucide="eye" class="h-3 w-3"></i>
+                        </button>
+                        <button type="button" onclick="navigator.clipboard.writeText('{{ object.admin_password|escapejs }}')"
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                            title="Copiar contraseña">
+                            <i data-lucide="copy" class="h-3 w-3"></i>
+                        </button>
+                    </div>
+                    <p class="text-xs text-muted-foreground mt-1">El administrador de Odoo que creó la plataforma{% if object.admin_database %} (base de datos {{ object.admin_database }}){% endif %}, para compartirlo. Si se cambia la contraseña dentro de Odoo, esta deja de valer.</p>
+                </div>
+                {% endif %}
+
                 <div class="space-y-1">
                     <label class="text-sm font-medium leading-none">Source</label>
                     <div class="text-sm text-muted-foreground">

@@ -3474,6 +3474,28 @@ class ApiDatabaseAndModuleTests(BaseTestCase):
         self.assertEqual(odoo.exec_run.call_args.kwargs['environment'], {'DB': 'bim18'})
         set_password.assert_called_once_with(self.alice_instance, 'Secret-123', databases=['bim18'])
 
+    def test_the_created_administrator_is_shown_to_who_manages_the_instance(self):
+        from .task_models import Task
+        from . import tasks
+        task = Task.objects.create(kind=Task.Kind.CREATE_DATABASE, instance=self.alice_instance, created_by=self.alice,
+                                   params={'name': 'bim18', 'password': 'SharedPass123'})
+        with mock.patch('orchestrator.tasks.DockerService') as service:
+            service.return_value.create_database.return_value = 'admin'
+            tasks.create_database(task)
+        instance = Instance.objects.get(pk=self.alice_instance.pk)
+        self.assertEqual((instance.admin_login, instance.admin_password, instance.admin_database), ('admin', 'SharedPass123', 'bim18'))
+        self.client.force_login(self.alice)
+        page = self.client.get(f'/instance/{instance.pk}/')
+        self.assertContains(page, 'SharedPass123')
+        self.assertContains(page, 'base de datos bim18')
+        self.assertEqual(self.client.get(f'/api/instances/{instance.pk}/').json()['admin_password'], 'SharedPass123')
+        # Clients of the project don't see it
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        self.assertNotContains(self.client.get(f'/instance/{instance.pk}/'), 'SharedPass123')
+        self.assertNotIn('admin_password', self.client.get(f'/api/instances/{instance.pk}/').json())
+
 
 class ProjectColorTagsMoveTests(BaseTestCase):
     def test_colour_and_tags_from_the_form_and_the_filter(self):

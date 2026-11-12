@@ -16,10 +16,11 @@ class InstanceSerializer(serializers.ModelSerializer):
         model = Instance
         fields = ('id', 'name', 'project', 'owner', 'odoo_version', 'status', 'origin', 'github_repo', 'github_branch',
                   'database_name', 'demo_default_db', 'custom_domain', 'ssl_enabled', 'browser', 'subdomain', 'url',
-                  'port', 'container_id', 'master_password', 'description', 'auto_update', 'env_vars', 'env_keys',
+                  'port', 'container_id', 'master_password', 'admin_login', 'admin_password', 'admin_database', 'description', 'auto_update', 'env_vars', 'env_keys',
                   'created_at', 'updated_at')
         read_only_fields = ('owner', 'status', 'origin', 'ssl_enabled', 'browser', 'subdomain', 'url', 'port',
-                            'container_id', 'master_password', 'created_at', 'updated_at')
+                            'container_id', 'master_password', 'admin_login', 'admin_password', 'admin_database',
+                            'created_at', 'updated_at')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -39,7 +40,8 @@ class InstanceSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         request = self.context.get('request')
         if request is not None and not can_manage(request.user, instance):
-            data.pop('master_password', None)
+            for secret in ('master_password', 'admin_login', 'admin_password', 'admin_database'):
+                data.pop(secret, None)
         return data
 
     def get_env_keys(self, instance):

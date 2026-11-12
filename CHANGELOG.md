@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.67**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.68**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.68 — 2026-11-12
+
+- Ficha de la instancia: nuevo bloque «Administrador» con el usuario y la contraseña del administrador de Odoo que creó la plataforma (base de datos creada desde la API/MCP o demo de «Modo test»), con botones para mostrar y copiar, para compartirlo. Solo lo ve quien gestiona la instancia (como la Master Password), también en la API (admin_login, admin_password, admin_database). Las copias lo heredan y la migración 0065 lo recupera de las bases de datos y demos ya creadas.
 
 ## 1.0.67 — 2026-11-07
 

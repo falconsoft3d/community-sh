@@ -53,6 +53,10 @@ class Instance(models.Model):
     container_id = models.CharField(max_length=100, blank=True, null=True)
     data_volume = models.CharField(max_length=255, blank=True, default='', help_text="Docker volume holding /var/lib/odoo (filestore)")
     master_password = models.CharField(max_length=64, default=generate_master_password, help_text="Odoo master password (database manager)")
+    # The administrator the panel created (database created from the panel/API/MCP, demo), shown to who manages it
+    admin_login = models.CharField(max_length=100, blank=True, default='', help_text="Login of the administrator the panel created")
+    admin_password = models.CharField(max_length=64, blank=True, default='', help_text="Password of the administrator the panel created")
+    admin_database = models.CharField(max_length=100, blank=True, default='', help_text="Database of that administrator")
     port = models.IntegerField(unique=True, null=True, blank=True)
     
     # Custom Domain & SSL

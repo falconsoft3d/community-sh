@@ -848,6 +848,10 @@ class DockerService:
             github_branch=new_name if create_branch else instance.github_branch,
             database_name=instance.database_name,
             demo_default_db=instance.demo_default_db,
+            # Same databases, same administrator (a demo gets a new password right after)
+            admin_login=instance.admin_login,
+            admin_password=instance.admin_password,
+            admin_database=instance.admin_database,
             # A copy runs the same code with the same configuration; a demo for a prospect doesn't get it
             env_vars='' if origin == 'trial' else instance.env_vars,
             project=project or instance.project,

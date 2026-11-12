@@ -201,6 +201,9 @@ def build_demo(task):
         task_log.progress(93, 'Creando tu usuario administrador')
         password = secrets.token_urlsafe(9)
         login = service.set_admin_password(instance, password)
+        instance.admin_login, instance.admin_password = login, password
+        instance.admin_database = instance.demo_default_db or instance.database_name or ''
+        instance.save(update_fields=['admin_login', 'admin_password', 'admin_database'])
         service.restart_instance(instance)  # Odoo caches the system parameters that changed
         task_log.progress(96, 'Publicando la dirección segura (HTTPS)')
         ok, message = TraefikService.generate_instance_config(instance)

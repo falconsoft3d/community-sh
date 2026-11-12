@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.67'
+VERSION = '1.0.68'
 
 CHANGELOG = [
+    {
+        'version': '1.0.68',
+        'date': '2026-11-12',
+        'notes': [
+            'Ficha de la instancia: nuevo bloque «Administrador» con el usuario y la contraseña del administrador de Odoo que creó la plataforma (base de datos creada desde la API/MCP o demo de «Modo test»), con botones para mostrar y copiar, para compartirlo. Solo lo ve quien gestiona la instancia (como la Master Password), también en la API (admin_login, admin_password, admin_database). Las copias lo heredan y la migración 0065 lo recupera de las bases de datos y demos ya creadas.',
+        ],
+    },
     {
         'version': '1.0.67',
         'date': '2026-11-07',

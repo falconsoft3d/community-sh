@@ -185,9 +185,13 @@ def trial(task):
 @handler(Task.Kind.CREATE_DATABASE)
 def create_database(task):
     params = task.params
-    login = DockerService().create_database(task.instance, params['name'], params['password'],
+    instance = task.instance
+    login = DockerService().create_database(instance, params['name'], params['password'],
                                             params.get('lang', ''), params.get('demo', False))
-    return f"Base de datos {params['name']} creada · usuario {login} · la contraseña está en los parámetros de la tarea"
+    # Shown in the instance page (Administrador), to share it
+    instance.admin_login, instance.admin_password, instance.admin_database = login, params['password'], params['name']
+    instance.save(update_fields=['admin_login', 'admin_password', 'admin_database'])
+    return f"Base de datos {params['name']} creada · usuario {login} · la contraseña se ve en la ficha de la instancia"
 
 
 @handler(Task.Kind.RENAME)
