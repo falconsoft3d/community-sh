@@ -236,8 +236,18 @@ its section here and in help.html (and the index in views/public.py) in the same
                 </ul>
             </section>
 
+            <section id="seguridad" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>17. Server security</h2>
+                <ul>
+                    <li><strong>Filtered Docker for the web</strong>: the panel's web container no longer has the Docker socket (which amounts to root on the server). It talks to Docker through the <code>docker-proxy</code> service, which lets through what the panel does (logs, console and pip, start, stop and restart, the Docker page, creating app containers) and refuses what would give the server away: privileged containers, extra capabilities or host namespaces, mounting host folders outside <code>instances/</code>, the Docker socket, entering, copying files from or removing the panel's own containers, its volumes and its internal network. Deploys, backups and other tasks still run in the workers.</li>
+                    <li>An app container that needs another host folder (administrators only): add it to <code>DOCKER_PROXY_ALLOWED_BINDS</code> in <code>.env</code> (comma separated) and redeploy. Mounting the Docker socket (e.g. Portainer) is no longer possible from the web.</li>
+                    <li><strong>Read-only code</strong>: the web container mounts the code without write access (it only writes to media, backups, instances, letsencrypt, traefik, staticfiles and ai_attachments), so a bug in a page can't change the code the workers run. SQLite installs keep it writable (<code>PANEL_CODE_MOUNT=rw</code>).</li>
+                    <li><strong>Port 8000</strong>: with a domain the panel is only served through Traefik (HTTPS). The deploy adds <code>PANEL_BIND=127.0.0.1</code> to <code>.env</code> when missing, so plain-HTTP port 8000 isn't open to the internet.</li>
+                </ul>
+            </section>
+
             <section id="actualizaciones" class="rounded-xl border bg-card p-6 scroll-mt-24">
-                <h2>17. Panel updates</h2>
+                <h2>18. Panel updates</h2>
                 <ul>
                     <li>Every change to the panel bumps the version and is documented in <a href="{% url 'about' %}">About</a> and in this Help.</li>
                     <li>A push to the main branch runs the tests on GitHub Actions (on PostgreSQL 16, the same engine as production) and, if they pass, deploys to the server: it waits for running tasks, saves a copy of the panel's database, frees space if less than 5 GB is left, builds and, once started, <strong>opens the main pages as an administrator</strong> (<code>manage.py smoke_check</code>). If the build fails, the panel doesn't answer or a page fails, it goes back to the previous version.</li>

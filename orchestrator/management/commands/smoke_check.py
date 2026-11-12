@@ -49,6 +49,14 @@ class Command(BaseCommand):
                     self.stdout.write(f'  {status} {url}')
         finally:
             client.logout()  # the session it opened
+        # Docker as the web container reaches it (through the docker-proxy service in production)
+        try:
+            import docker
+            client = docker.from_env(timeout=20)
+            client.ping()
+            self.stdout.write(f'  Docker OK ({len(client.containers.list())} containers running)')
+        except Exception as e:
+            failures.append(f'Docker: {type(e).__name__}: {e}'[:400])
         if failures:
             raise CommandError('Pages that fail:\n' + '\n'.join(failures))
         self.stdout.write(self.style.SUCCESS(f'{len(urls)} pages OK'))

@@ -120,6 +120,12 @@ LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
 # Where the panel's port 8000 listens: 127.0.0.1 = only through Traefik (HTTPS)
 PANEL_BIND=${PANEL_BIND}
 
+# The web container mounts the code read-only (the workers keep it writable)
+PANEL_CODE_MOUNT=ro
+
+# Extra host folders generic containers may mount through the Docker proxy (comma separated)
+DOCKER_PROXY_ALLOWED_BINDS=
+
 # Server IP: ${PUBLIC_IP}
 # Main Domain: ${MAIN_DOMAIN}
 # To restrict access, edit ALLOWED_HOSTS above
@@ -140,6 +146,7 @@ touch letsencrypt/acme.json
 chmod 600 letsencrypt/acme.json
 
 sudo docker compose down --remove-orphans 2>/dev/null || true
+sudo mkdir -p media backups instances letsencrypt traefik staticfiles ai_attachments
 sudo docker compose up -d --build
 
 # Wait for services

@@ -135,6 +135,7 @@ HELP_SECTIONS = [
     ('panel', 'Dashboard, Metrics y Todo', 'Dashboard, Metrics and Todo'),
     ('api', 'API y MCP', 'API and MCP'),
     ('cuenta', 'Usuarios y configuración', 'Users and settings'),
+    ('seguridad', 'Seguridad del servidor', 'Server security'),
     ('actualizaciones', 'Actualizaciones del panel', 'Panel updates'),
 ]
 

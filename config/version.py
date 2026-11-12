@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.98'
+VERSION = '1.0.99'
 
 CHANGELOG = [
+    {
+        'version': '1.0.99',
+        'date': '2026-11-12',
+        'notes': [
+            'Seguridad: el contenedor web del panel ya no tiene el socket de Docker (equivale a root en el servidor). Habla con Docker a través del nuevo servicio docker-proxy (scripts/docker_proxy.py, ejecutado desde la imagen), que deja pasar lo que hace el panel (logs, consola, arrancar/parar/reiniciar, página Docker, contenedores de apps) y rechaza contenedores privilegiados, con capacidades extra o espacios del host, montar carpetas del host fuera de instances/ (más en DOCKER_PROXY_ALLOWED_BINDS), el socket de Docker, y entrar, copiar archivos o borrar los contenedores, volúmenes y red interna del propio panel. Una conexión por petición, para que nada se cuele tras la primera. Los workers mantienen el socket.',
+            'Seguridad: el contenedor web monta el código en solo lectura (escribe solo en media, backups, instances, letsencrypt, traefik, staticfiles y ai_attachments); con SQLite queda escribible (PANEL_CODE_MOUNT=rw). Con dominio, el despliegue añade PANEL_BIND=127.0.0.1 al .env si falta, para que el puerto 8000 en HTTP plano no quede abierto. El chequeo tras desplegar comprueba también Docker a través del proxy. Nueva sección Seguridad del servidor en la Ayuda.',
+        ],
+    },
     {
         'version': '1.0.98',
         'date': '2026-11-12',

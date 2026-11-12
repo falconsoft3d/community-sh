@@ -1,6 +1,12 @@
 import os
 from unittest import mock
 
+# The tests never reach the real Docker: a call nobody mocked fails at once instead of acting on this machine's
+# containers and images (a queued auto-cleanup once removed real unused images during a run)
+os.environ['DOCKER_HOST'] = 'tcp://127.0.0.1:9'
+os.environ.pop('DOCKER_TLS_VERIFY', None)
+os.environ.pop('DOCKER_CERT_PATH', None)
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
@@ -495,7 +501,10 @@ class TaskQueueTests(BaseTestCase):
         self.assertEqual(self.alice_instance.name, 'alice-odoo')
 
         self.docker.return_value.copy_instance.side_effect = lambda source, name, **kw: Instance.objects.create(name=name)
-        self.run_worker()
+        # The duplicate queues the automatic cleanup, which the worker runs right after
+        with mock.patch('orchestrator.services.docker_admin.cleanup', return_value={}) as cleanup:
+            self.run_worker()
+        cleanup.assert_called_once()
         # The form's checkbox was left unticked: not neutralized
         self.assertIsNone(self.docker.return_value.copy_instance.call_args.kwargs['neutralize'])
 
@@ -3974,6 +3983,94 @@ class SmokeCheckTests(BaseTestCase):
                 mock.patch('orchestrator.views.public.render', side_effect=Exception('no such column')):
             with self.assertRaisesMessage(CommandError, '/help/: Exception: no such column'):
                 call_command('smoke_check', stdout=StringIO())
+        with mock.patch('docker.from_env', side_effect=Exception('proxy down')), \
+                mock.patch('orchestrator.services.metrics.collect_metrics', return_value={}):
+            with self.assertRaisesMessage(CommandError, 'Docker: Exception: proxy down'):
+                call_command('smoke_check', stdout=StringIO())
+
+
+class DockerProxyPolicyTests(TestCase):
+    """scripts/docker_proxy.py: what the web container may ask Docker (the integration run is in its docstring)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        import importlib.util
+        from django.conf import settings
+        spec = importlib.util.spec_from_file_location('docker_proxy', settings.BASE_DIR / 'scripts' / 'docker_proxy.py')
+        cls.proxy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.proxy)
+
+    def policy(self):
+        panel = {'Config': {'Labels': {'com.docker.compose.project': 'community-sh'}}, 'HostConfig': {}, 'Mounts': []}
+        objects = {
+            ('containers', 'community-sh-app-1'): panel,
+            ('containers', 'odoo_demo'): {'Config': {'Labels': {}}, 'HostConfig': {}, 'Mounts': []},
+            ('containers', 'portainer'): {'Config': {'Labels': {}}, 'HostConfig': {},
+                                          'Mounts': [{'Source': '/var/run/docker.sock'}]},
+            ('volumes', 'community-sh_postgres_data'): {'Labels': {'com.docker.compose.project': 'community-sh'}},
+            ('volumes', 'odoo_data_demo'): {'Labels': {}},
+            ('networks', 'community-sh_backend'): {'Labels': {'com.docker.compose.project': 'community-sh',
+                                                              'com.docker.compose.network': 'backend'}},
+            ('networks', 'community-sh_web'): {'Labels': {'com.docker.compose.project': 'community-sh',
+                                                          'com.docker.compose.network': 'web'}},
+        }
+
+        async def lookup(kind, ident):
+            return objects.get((kind, ident))
+        return self.proxy.Policy(lookup, 'community-sh', ['/opt/community-sh/instances'])
+
+    def check(self, method, path, body=None):
+        import asyncio
+        asyncio.run(self.policy().check(method, path, body))
+
+    def denied(self, method, path, body=None):
+        with self.assertRaises(self.proxy.Denied):
+            self.check(method, path, body)
+
+    def test_what_the_panel_does_is_allowed(self):
+        for method, path, body in [
+            ('GET', '/v1.44/containers/json?all=1', None), ('GET', '/containers/odoo_demo/logs?tail=200', None),
+            ('POST', '/v1.44/containers/odoo_demo/restart', None), ('POST', '/containers/community-sh-traefik-1/stop', None),
+            ('POST', '/containers/odoo_demo/exec', {'Cmd': ['pip', 'install', 'x']}), ('POST', '/exec/abc/start', {}),
+            ('PUT', '/containers/odoo_demo/archive?path=/tmp', None), ('POST', '/images/create?fromImage=odoo&tag=17', None),
+            ('POST', '/images/prune', None), ('DELETE', '/volumes/odoo_data_demo', None),
+            ('POST', '/networks/community-sh_web/connect', {'Container': 'odoo_demo'}),
+            ('POST', '/containers/create?name=redis', {'Image': 'redis', 'HostConfig': {
+                'Binds': ['redis_data:/data', '/opt/community-sh/instances/demo/addons:/mnt/extra-addons:rw'],
+                'NetworkMode': 'community-sh_web', 'RestartPolicy': {'Name': 'unless-stopped'}}}),
+        ]:
+            with self.subTest(path=path):
+                self.check(method, path, body)
+
+    def test_what_gives_the_server_away_is_refused(self):
+        create = lambda **host: {'Image': 'alpine', 'HostConfig': host}
+        for method, path, body in [
+            ('POST', '/containers/create', create(Privileged=True)),
+            ('POST', '/containers/create', create(Binds=['/:/host'])),
+            ('POST', '/containers/create', create(Binds=['/var/run/docker.sock:/s'])),
+            ('POST', '/containers/create', create(Binds=['/opt/community-sh/instances/../.env:/e'])),
+            ('POST', '/containers/create', create(Mounts=[{'Type': 'bind', 'Source': '/etc', 'Target': '/e'}])),
+            ('POST', '/containers/create', create(Binds=['community-sh_postgres_data:/pg'])),
+            ('POST', '/containers/create', create(CapAdd=['SYS_ADMIN'])),
+            ('POST', '/containers/create', create(PidMode='host')),
+            ('POST', '/containers/create', create(NetworkMode='community-sh_backend')),
+            ('POST', '/containers/create', create(SecurityOpt=['seccomp=unconfined'])),
+            ('POST', '/containers/community-sh-app-1/exec', {'Cmd': ['sh']}),
+            ('POST', '/containers/portainer/exec', {'Cmd': ['sh']}),
+            ('POST', '/containers/odoo_demo/exec', {'Cmd': ['sh'], 'Privileged': True}),
+            ('GET', '/containers/community-sh-app-1/archive?path=/app/.env', None),
+            ('PUT', '/containers/community-sh-app-1/archive?path=/app', None),
+            ('DELETE', '/containers/community-sh-app-1?force=1', None),
+            ('DELETE', '/volumes/community-sh_postgres_data', None),
+            ('POST', '/networks/community-sh_backend/connect', {'Container': 'odoo_demo'}),
+            ('POST', '/volumes/create', {'Name': 'x', 'DriverOpts': {'o': 'bind', 'device': '/'}}),
+            ('POST', '/build?t=x', None), ('POST', '/images/alpine/tag?repo=traefik', None),
+            ('POST', '/images/create?fromSrc=-', None), ('POST', '/swarm/init', None), ('POST', '/plugins/pull', None),
+            ('GET', '/containers/%2e%2e/x', None),
+        ]:
+            with self.subTest(path=path, body=body):
+                self.denied(method, path, body)
 
 
 class EncryptedSecretsTests(BaseTestCase):

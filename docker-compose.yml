@@ -74,13 +74,21 @@ services:
       - MAIN_DOMAIN=${MAIN_DOMAIN:-}
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-}
       - TICKETPROO_API_TOKEN=${TICKETPROO_API_TOKEN:-}
+      # Docker through the filtering proxy, never the raw socket (see the docker-proxy service)
+      - DOCKER_HOST=tcp://docker-proxy:2375
     volumes:
-      - ./:/app
+      # The code is read-only here: a bug in a page can't change the code the workers (which do have
+      # the Docker socket) run. Only the data folders are writable. PANEL_CODE_MOUNT=rw for SQLite installs
+      # (db.sqlite3 lives in the project folder); scripts/deploy.sh sets it.
+      - ./:/app:${PANEL_CODE_MOUNT:-ro}
       - ./media:/app/media
       - ./backups:/app/backups
       - ./instances:/app/instances
+      - ./letsencrypt:/app/letsencrypt
       - ./letsencrypt:/opt/community-sh/letsencrypt
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik:/app/traefik
+      - ./staticfiles:/app/staticfiles
+      - ./ai_attachments:/app/ai_attachments
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.app.rule=Host(`localhost`)"
@@ -89,9 +97,43 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      docker-proxy:
+        condition: service_healthy
     networks:
       - web
       - backend
+      - docker-api
+
+  # The web container's only way to Docker: lets through what the panel does (logs, console, start/stop,
+  # generic containers, the Docker page) and refuses what would give the server away (privileged containers,
+  # host folders outside instances/, entering the panel's own containers...). scripts/docker_proxy.py,
+  # run from the image (not the mounted code, which the web container could otherwise change).
+  docker-proxy:
+    logging: *default-logging
+    image: community-sh-app
+    # Built by the app service: never look for it on Docker Hub
+    pull_policy: never
+    restart: always
+    entrypoint: ["python", "/app/scripts/docker_proxy.py"]
+    environment:
+      - HOST_WORKDIR=${HOST_WORKDIR}
+      # Extra host folders generic containers may mount (comma separated), e.g. /srv/data
+      - DOCKER_PROXY_ALLOWED_BINDS=${DOCKER_PROXY_ALLOWED_BINDS:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # At their host path, read-only: to see symlinks planted in a folder before letting it be mounted
+      - ./instances:${HOST_WORKDIR:-/opt/community-sh}/instances:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 2375), 2)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Internal network only: just the web container reaches it
+    networks:
+      - docker-api
 
   # Runs queued tasks (deploys, backups, restores) and the scheduled backups.
   # Keep a single worker: it marks tasks left running by a previous worker as failed.
@@ -184,6 +226,9 @@ networks:
   web:
     driver: bridge
   backend:
+    driver: bridge
+    internal: true
+  docker-api:
     driver: bridge
     internal: true
 

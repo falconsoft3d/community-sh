@@ -111,6 +111,25 @@ restore_acme() {
 }
 restore_acme
 
+# Settings added over time that older .env files lack: appended once, never changed afterwards
+ensure_env() {
+    if ! grep -q "^$1=" .env 2>/dev/null; then
+        printf '\n%s=%s\n' "$1" "$2" >> .env
+        log "Added $1=$2 to .env"
+    fi
+}
+if [ -f .env ]; then
+    main_domain="$(grep -E '^MAIN_DOMAIN=' .env | tail -1 | cut -d= -f2- | tr -d "\"' ")"
+    if [ -n "$main_domain" ] && [ "$main_domain" != "localhost" ]; then
+        # With a domain the panel is served by Traefik over HTTPS: its plain-HTTP port stays on the server
+        ensure_env PANEL_BIND 127.0.0.1
+    fi
+    # The web container mounts the code read-only; SQLite keeps the panel's data in the project folder
+    if grep -q '^DATABASE_URL=postgres' .env; then ensure_env PANEL_CODE_MOUNT ro; else ensure_env PANEL_CODE_MOUNT rw; fi
+fi
+# The writable folders mounted inside the read-only code must exist before the containers start
+mkdir -p media backups instances letsencrypt traefik staticfiles ai_attachments
+
 panel_answers() {
     for _ in $(seq 1 36); do
         code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/accounts/login/ || true)"

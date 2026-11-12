@@ -202,6 +202,7 @@ Settings → API lists every endpoint (also `/api/settings/` for the mail server
 
 ## 🔒 Security
 
+- The web container reaches Docker only through the `docker-proxy` service (`scripts/docker_proxy.py`), which refuses privileged containers, host folders outside `instances/` (more in `DOCKER_PROXY_ALLOWED_BINDS`) and entering or removing the panel's own containers; it also mounts the code read-only (`PANEL_CODE_MOUNT=rw` for SQLite installs). The workers keep the socket.
 - With a domain and HTTPS everything goes through Traefik: keep `PANEL_BIND=127.0.0.1` in `.env` (the installer sets it) so port 8000 is not public; Odoo ports then listen on `127.0.0.1` too (applied on the next deploy of each instance; `ODOO_PUBLISH_IP` overrides it). Cookies are HTTPS-only with HSTS, and the panel only answers its domain and the server IP.
 - The installer creates the `admin` user with a random password (printed once): change it and enable 2FA.
 - The REST API never writes internal fields (volumes, subdomain, certificates, master password); repositories are cloned over HTTPS only and branches are validated.

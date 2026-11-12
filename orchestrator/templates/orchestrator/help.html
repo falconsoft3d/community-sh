@@ -236,8 +236,18 @@ updates its section here (and the index) in the same commit.
                 </ul>
             </section>
 
+            <section id="seguridad" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>17. Seguridad del servidor</h2>
+                <ul>
+                    <li><strong>Docker filtrado para la web</strong>: el contenedor web del panel ya no tiene el socket de Docker (que equivale a ser root en el servidor). Habla con Docker a través del servicio <code>docker-proxy</code>, que deja pasar lo que hace el panel (logs, consola y pip, arrancar, parar y reiniciar, la página Docker, crear contenedores de apps) y rechaza lo que daría el servidor: contenedores privilegiados, con capacidades extra o con los espacios del host, montar carpetas del host fuera de <code>instances/</code>, el socket de Docker, entrar, copiar archivos o borrar los contenedores del propio panel, sus volúmenes y su red interna. Los despliegues, backups y demás tareas siguen en los workers.</li>
+                    <li>Un contenedor de apps que necesite otra carpeta del host (solo administradores): añádela a <code>DOCKER_PROXY_ALLOWED_BINDS</code> en el <code>.env</code> (separadas por comas) y redespliega. Montar el socket de Docker (p. ej. Portainer) ya no se puede desde la web.</li>
+                    <li><strong>Código de solo lectura</strong>: el contenedor web monta el código sin permiso de escritura (solo escribe en media, backups, instances, letsencrypt, traefik, staticfiles y ai_attachments), así que un fallo en una página no puede cambiar el código que ejecutan los workers. En instalaciones con SQLite queda escribible (<code>PANEL_CODE_MOUNT=rw</code>).</li>
+                    <li><strong>Puerto 8000</strong>: con un dominio, el panel solo se sirve por Traefik (HTTPS). El despliegue añade <code>PANEL_BIND=127.0.0.1</code> al <code>.env</code> si falta, así el puerto 8000 en HTTP plano no queda abierto a internet.</li>
+                </ul>
+            </section>
+
             <section id="actualizaciones" class="rounded-xl border bg-card p-6 scroll-mt-24">
-                <h2>17. Actualizaciones del panel</h2>
+                <h2>18. Actualizaciones del panel</h2>
                 <ul>
                     <li>Cada cambio del panel sube la versión y se documenta en <a href="{% url 'about' %}">Acerca de</a> y en esta Ayuda.</li>
                     <li>Un push a la rama principal pasa los tests en GitHub Actions (con PostgreSQL 16, el mismo motor que producción) y, si van bien, se despliega en el servidor: espera a las tareas en curso, guarda una copia de la base del panel, libera espacio si quedan menos de 5 GB, construye y, tras arrancar, <strong>abre las páginas principales como administrador</strong> (<code>manage.py smoke_check</code>). Si el build falla, el panel no responde o alguna página da error, vuelve a la versión anterior.</li>
