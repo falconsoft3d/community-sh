@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.92**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.93**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.93 — 2026-11-12
+
+- Backups: restaurar desde S3 dentro del panel (pestaña Backups → Copias en S3 → Ver copias → Restaurar, como tarea con su log y en la Auditoría) y comprobación semanal del último backup de cada instancia (ZIP entero, volcado de PostgreSQL válido y misma talla en S3), también a mano con «Comprobar backups ahora»; si algo falla, alerta. Migración 0074.
 
 ## 1.0.92 — 2026-11-12
 

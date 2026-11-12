@@ -28,6 +28,8 @@ class Task(models.Model):
         RESET_ADMIN_PASSWORD = 'reset_admin_password', 'Restablecer contraseña del administrador'
         OFFSITE_UPLOAD = 'offsite_upload', 'Copiar backup fuera (S3)'
         PANEL_BACKUP = 'panel_backup', 'Copia del panel fuera (S3)'
+        OFFSITE_RESTORE = 'offsite_restore', 'Restaurar desde S3'
+        BACKUP_VERIFY = 'backup_verify', 'Comprobar backups'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

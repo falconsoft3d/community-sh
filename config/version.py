@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.92'
+VERSION = '1.0.93'
 
 CHANGELOG = [
+    {
+        'version': '1.0.93',
+        'date': '2026-11-12',
+        'notes': [
+            'Backups: restaurar desde S3 dentro del panel (pestaña Backups → Copias en S3 → Ver copias → Restaurar, como tarea con su log y en la Auditoría) y comprobación semanal del último backup de cada instancia (ZIP entero, volcado de PostgreSQL válido y misma talla en S3), también a mano con «Comprobar backups ahora»; si algo falla, alerta. Migración 0074.',
+        ],
+    },
     {
         'version': '1.0.92',
         'date': '2026-11-12',

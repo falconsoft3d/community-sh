@@ -843,6 +843,40 @@
     <!-- Backups Tab -->
 {% endif %}
     <div x-show="activeTab === 'backups'" class="space-y-6">
+        {% if can_manage and offsite_enabled %}
+        <!-- Copies in the S3 bucket -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6" x-data="{ copies: null, error: '', open: false }">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="font-semibold leading-none tracking-tight flex items-center gap-2"><i data-lucide="cloud" class="h-4 w-4"></i> {% translate "Copias en S3" %}</h3>
+                    <p class="text-sm text-muted-foreground mt-1">{% translate "Los backups de esta instancia guardados fuera del servidor. Restaurar uno sustituye la base de datos y los adjuntos actuales." %}</p>
+                </div>
+                <button type="button" x-show="!open" @click="open = true; fetch('{% url 'instance-offsite' object.pk %}').then(r => r.json()).then(d => { copies = d.copies; error = d.error || ''; })"
+                    class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                    <i data-lucide="list" class="mr-2 h-4 w-4"></i> {% translate "Ver copias" %}
+                </button>
+            </div>
+            <div x-show="open" x-cloak class="mt-4">
+                <p x-show="copies === null" class="text-sm text-muted-foreground">{% translate "Cargando…" %}</p>
+                <p x-show="error" class="text-sm text-red-600" x-text="error"></p>
+                <p x-show="copies && copies.length === 0" class="text-sm text-muted-foreground">{% translate "No hay copias de esta instancia en el bucket." %}</p>
+                {% translate "¿Restaurar esta copia sobre la instancia? Se sustituyen su base de datos y sus adjuntos actuales." as offsite_confirm %}
+                <ul class="divide-y rounded-lg border text-sm" x-show="copies && copies.length">
+                    <template x-for="copy in (copies || [])" :key="copy.key">
+                        <li class="flex flex-wrap items-center gap-3 px-4 py-2">
+                            <span class="font-mono text-xs flex-1 truncate" x-text="copy.name"></span>
+                            <span class="text-xs text-muted-foreground tabular-nums" x-text="(copy.size / 1048576).toFixed(1) + ' MB · ' + new Date(copy.modified).toLocaleString()"></span>
+                            <form method="post" action="{% url 'instance-offsite-restore' object.pk %}" onsubmit="return confirm('{{ offsite_confirm|escapejs }}')">
+                                {% csrf_token %}
+                                <input type="hidden" name="key" :value="copy.key">
+                                <button type="submit" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent">{% translate "Restaurar" %}</button>
+                            </form>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
         <!-- Create Backup Actions -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
             <h3 class="font-semibold leading-none tracking-tight mb-4">{% translate "Create New Backup" %}</h3>

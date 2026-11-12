@@ -67,8 +67,9 @@ class Command(BaseCommand):
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Daily repository update failed: {e}'))
                 try:
-                    from orchestrator.services.offsite import queue_daily_panel_backup
+                    from orchestrator.services.offsite import queue_daily_panel_backup, queue_weekly_verification
                     queue_daily_panel_backup()
+                    queue_weekly_verification()
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Panel backup failed: {e}'))
                 try:

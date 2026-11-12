@@ -177,6 +177,14 @@ ES_TO_EN = {
     'Sin eventos': 'No events',
     'No responde': 'Not responding',
     'Uso por instancia': 'Usage by instance',
+    'Copias en S3': 'Copies in S3',
+    'Cargando…': 'Loading…',
+    'Los backups de esta instancia guardados fuera del servidor. Restaurar uno sustituye la base de datos y los adjuntos actuales.':
+        "This instance's backups stored off the server. Restoring one replaces the current database and attachments.",
+    'Ver copias': 'Show copies',
+    'No hay copias de esta instancia en el bucket.': 'There are no copies of this instance in the bucket.',
+    '¿Restaurar esta copia sobre la instancia? Se sustituyen su base de datos y sus adjuntos actuales.':
+        'Restore this copy over the instance? Its current database and attachments are replaced.',
     'Qué instancia consume qué: CPU y RAM de su Odoo y su PostgreSQL ahora, y disco de sus datos, su código y sus backups. Pulsa una cabecera para ordenar.':
         'Which instance uses what: CPU and RAM of its Odoo and PostgreSQL now, and disk of its data, code and backups. Click a header to sort.',
     'Midiendo el disco…': 'Measuring the disk…',

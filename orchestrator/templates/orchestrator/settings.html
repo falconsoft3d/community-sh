@@ -579,10 +579,17 @@
                                 <input type="number" name="offsite_retention_days" min="0" value="{{ config.offsite_retention_days }}" class="w-full px-3 py-2 rounded-md border bg-background">
                                 <span class="text-xs text-muted-foreground">Las copias más antiguas se borran del bucket; 0 = conservarlas todas.</span></label>
                         </div>
-                        <button type="submit" formaction="{% url 'offsite-test' %}" formnovalidate
-                            class="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">
-                            <i data-lucide="plug-zap" class="h-4 w-4 mr-2"></i> Probar conexión
-                        </button>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="submit" formaction="{% url 'offsite-test' %}" formnovalidate
+                                class="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">
+                                <i data-lucide="plug-zap" class="h-4 w-4 mr-2"></i> Probar conexión
+                            </button>
+                            <button type="submit" formaction="{% url 'backups-verify' %}" formnovalidate
+                                class="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">
+                                <i data-lucide="shield-check" class="h-4 w-4 mr-2"></i> Comprobar backups ahora
+                            </button>
+                        </div>
+                        <p class="text-xs text-muted-foreground">Cada semana se comprueba solo el último backup de cada instancia: que el ZIP está entero, que lleva un volcado de PostgreSQL válido y que la copia en S3 mide lo mismo. Si algo falla, llega una alerta.</p>
                     </div>
 
                     <!-- Información adicional -->

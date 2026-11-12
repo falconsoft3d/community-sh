@@ -72,6 +72,8 @@ from .instances import (
     instance_reset_admin_password,
     instance_update_memory,
     instance_usage,
+    instance_offsite_copies,
+    instance_offsite_restore,
     instance_secret,
     instance_move,
     instance_delete,
@@ -98,6 +100,7 @@ from .platform import (
     settings_email_test,
     run_auto_backups_view,
     offsite_test,
+    backups_verify_now,
     generate_ssl_certificate,
 )
 from .users import (
@@ -170,6 +173,8 @@ __all__ = [
     'instance_reset_admin_password',
     'instance_update_memory',
     'instance_usage',
+    'instance_offsite_copies',
+    'instance_offsite_restore',
     'instance_secret',
     'instance_move',
     'instance_delete',
@@ -192,6 +197,7 @@ __all__ = [
     'settings_email_test',
     'run_auto_backups_view',
     'offsite_test',
+    'backups_verify_now',
     'generate_ssl_certificate',
     'user_list',
     'user_create',

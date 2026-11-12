@@ -116,6 +116,8 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
         if context['can_manage']:
             from ..permissions import managed_projects_for
             context['move_projects'] = managed_projects_for(self.request.user).order_by('name')
+            from ..services.offsite import offsite_config
+            context['offsite_enabled'] = offsite_config() is not None
             from .webhooks import hook_url
             context['webhook_url'] = hook_url(self.object)
             context['auto_update_choices'] = Instance.AutoUpdate.choices
@@ -776,6 +778,36 @@ def instance_secret(request, pk, kind):
     response = JsonResponse({'value': value})
     response['Cache-Control'] = 'no-store'
     return response
+
+
+@login_required
+def instance_offsite_copies(request, pk):
+    """The copies of the instance in the S3 bucket (its Backups tab)."""
+    from ..services import offsite
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    try:
+        return JsonResponse({'copies': offsite.instance_copies(instance)})
+    except Exception as e:
+        return JsonResponse({'copies': [], 'error': str(e)[:300]}, status=502)
+
+
+@login_required
+@require_POST
+def instance_offsite_restore(request, pk):
+    """Restore one of its copies in the bucket over the instance, as a task."""
+    from django.urls import reverse
+    from ..audit import record
+    from ..services.offsite import offsite_config, prefix
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    key = request.POST.get('key', '')
+    config = offsite_config()
+    if config is None or not key.startswith(f'{prefix(config)}{instance.name}/'):
+        messages.error(request, 'Esa copia no es de esta instancia')
+        return redirect(reverse('instance-detail', args=[pk]) + '#backups')
+    enqueue(Task.Kind.OFFSITE_RESTORE, instance, request.user, key=key)
+    record(request, 'offsite_restore', instance.name, key)
+    messages.success(request, 'Restauración desde S3 en cola: sigue el progreso en «Tareas recientes»')
+    return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
 
 
 @login_required

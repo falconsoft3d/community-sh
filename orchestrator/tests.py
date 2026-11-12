@@ -4067,6 +4067,79 @@ class PanelBackupTests(BaseTestCase):
         self.assertIsNone(offsite.queue_daily_panel_backup())
 
 
+class BackupRecoveryTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+        cache.clear()
+        self.config.offsite_enabled = True
+        self.config.s3_bucket, self.config.s3_access_key, self.config.s3_secret_key = 'bk', 'AK', 'SK'
+        self.config.save()
+
+    def panel_zip(self, dump=b'PGDMP' + b'0' * 2000):
+        import tempfile
+        import zipfile
+        path = tempfile.mktemp(suffix='.zip')
+        with zipfile.ZipFile(path, 'w') as zf:
+            zf.writestr('database.dump', dump)
+            zf.writestr('metadata.json', '{}')
+        self.addCleanup(lambda: os.path.exists(path) and os.remove(path))
+        return Backup.objects.create(instance=self.alice_instance, filename=os.path.basename(path), file_path=path,
+                                     file_size=os.path.getsize(path))
+
+    def test_list_and_restore_a_copy_from_the_bucket(self):
+        from datetime import datetime, timezone as tz
+        from .task_models import Task
+        s3 = mock.Mock()
+        s3.get_paginator.return_value.paginate.return_value = [{'Contents': [
+            {'Key': 'community-sh/alice-odoo/a.zip', 'Size': 10, 'LastModified': datetime(2026, 11, 1, tzinfo=tz.utc)},
+            {'Key': 'community-sh/alice-odoo/b.zip', 'Size': 20, 'LastModified': datetime(2026, 11, 2, tzinfo=tz.utc)}]}]
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get(f'/instance/{self.alice_instance.pk}/'), reverse('instance-offsite', args=[self.alice_instance.pk]))
+        with mock.patch('orchestrator.services.offsite.client', return_value=s3):
+            copies = self.client.get(reverse('instance-offsite', args=[self.alice_instance.pk])).json()['copies']
+        self.assertEqual([c['name'] for c in copies], ['b.zip', 'a.zip'])
+        url = reverse('instance-offsite-restore', args=[self.alice_instance.pk])
+        self.client.post(url, {'key': 'community-sh/bob-odoo/x.zip'})  # another instance's: refused
+        self.assertFalse(Task.objects.filter(kind=Task.Kind.OFFSITE_RESTORE).exists())
+        self.client.post(url, {'key': 'community-sh/alice-odoo/b.zip'})
+        task = Task.objects.get(kind=Task.Kind.OFFSITE_RESTORE)
+        from . import tasks
+        with mock.patch('orchestrator.services.offsite.client', return_value=s3), \
+                mock.patch('orchestrator.services.docker_service.DockerService') as service:
+            tasks.offsite_restore(task)
+        self.assertEqual(s3.download_file.call_args.args[:2], ('bk', 'community-sh/alice-odoo/b.zip'))
+        downloaded = service.return_value.restore_instance.call_args.args[1]
+        self.assertFalse(os.path.exists(downloaded))  # the temporary download is removed
+
+    def test_verification_finds_broken_backups_and_alerts(self):
+        from . import tasks
+        from .task_models import Task
+        good = self.panel_zip()
+        with mock.patch('orchestrator.services.offsite.client') as client:
+            client.return_value.head_object.return_value = {'ContentLength': good.file_size}
+            good.offsite_key = 'community-sh/alice-odoo/x.zip'
+            good.save()
+            self.assertIn('✓ alice-odoo', tasks.backup_verify(Task(kind=Task.Kind.BACKUP_VERIFY)))
+            client.return_value.head_object.return_value = {'ContentLength': 1}
+            with mock.patch('orchestrator.services.alerts.alert') as alert:
+                with self.assertRaisesMessage(Exception, 'la copia en S3 mide 1 bytes'):
+                    tasks.backup_verify(Task(kind=Task.Kind.BACKUP_VERIFY))
+                self.assertIn('backups con problemas', alert.call_args.args[1])
+        self.panel_zip(dump=b'not a dump' * 200)  # the newest one now
+        with mock.patch('orchestrator.services.alerts.alert'), self.assertRaisesMessage(Exception, 'no es un volcado de PostgreSQL'):
+            tasks.backup_verify(Task(kind=Task.Kind.BACKUP_VERIFY))
+
+    def test_weekly_and_on_demand(self):
+        from .services import offsite
+        from .task_models import Task
+        self.assertIsNotNone(offsite.queue_weekly_verification())
+        self.assertIsNone(offsite.queue_weekly_verification())
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.post(reverse('backups-verify'))['Location'], reverse('settings') + '#backups')
+        self.assertEqual(Task.objects.filter(kind=Task.Kind.BACKUP_VERIFY).count(), 2)
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

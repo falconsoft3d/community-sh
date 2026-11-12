@@ -182,3 +182,113 @@ def queue_daily_panel_backup():
     if offsite_config() is None or not cache.add('panel-backup-day', 1, 23 * 3600):
         return None
     return enqueue(Task.Kind.PANEL_BACKUP)
+
+
+def instance_copies(instance):
+    """The copies of this instance in the bucket, newest first: [{'key', 'name', 'size', 'modified'}]."""
+    config = offsite_config()
+    if config is None:
+        return []
+    s3 = client(config)
+    folder = f'{prefix(config)}{instance.name}/'
+    items = []
+    for page in s3.get_paginator('list_objects_v2').paginate(Bucket=config.s3_bucket, Prefix=folder):
+        items += [{'key': o['Key'], 'name': o['Key'][len(folder):], 'size': o['Size'], 'modified': o['LastModified'].isoformat()}
+                  for o in page.get('Contents', []) if not o['Key'].endswith('/')]
+    return sorted(items, key=lambda item: item['modified'], reverse=True)
+
+
+def restore_from_bucket(instance, key, progress=None):
+    """Download a copy of this instance from the bucket and restore it over the instance. Returns notes."""
+    import tempfile
+    from django.conf import settings
+    from .docker_service import DockerService
+    config = offsite_config()
+    if config is None:
+        raise Exception('La copia fuera del servidor no está configurada')
+    if not key.startswith(f'{prefix(config)}{instance.name}/'):
+        raise Exception('Esa copia no es de esta instancia')
+    folder = os.path.join(settings.BASE_DIR, 'backups', 'tmp')
+    os.makedirs(folder, exist_ok=True)
+    path = tempfile.NamedTemporaryFile(dir=folder, suffix='.zip', delete=False).name
+    try:
+        if progress:
+            progress(10, f'Descargando {os.path.basename(key)} del bucket')
+        client(config).download_file(config.s3_bucket, key, path)
+        if progress:
+            progress(40, 'Restaurando')
+        DockerService().restore_instance(instance, path)
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
+    return [f'Restaurado desde s3://{config.s3_bucket}/{key}']
+
+
+def check_backup(backup, s3=None, config=None):
+    """Problems of one backup file (empty list: it looks restorable)."""
+    import zipfile
+    from .docker_helpers import read_backup_metadata
+    if not os.path.exists(backup.file_path):
+        return ['el archivo ya no está en el servidor']
+    problems = []
+    try:
+        info = read_backup_metadata(backup.file_path)
+    except Exception as e:
+        return [f'no se reconoce: {e}']
+    if zipfile.is_zipfile(backup.file_path):
+        with zipfile.ZipFile(backup.file_path) as zf:
+            broken = zf.testzip()
+            if broken:
+                problems.append(f'archivo dañado dentro del ZIP: {broken}')
+            dump = 'database.dump' if info['format'] == 'panel' else 'dump.sql'
+            with zf.open(dump) as f:
+                head = f.read(5)
+            if info['format'] == 'panel' and head != b'PGDMP':
+                problems.append('database.dump no es un volcado de PostgreSQL')
+            if zf.getinfo(dump).file_size < 1024:
+                problems.append(f'{dump} casi vacío ({zf.getinfo(dump).file_size} bytes)')
+    if backup.offsite_key and s3 is not None:
+        try:
+            size = s3.head_object(Bucket=config.s3_bucket, Key=backup.offsite_key)['ContentLength']
+            if size != os.path.getsize(backup.file_path):
+                problems.append(f'la copia en S3 mide {size} bytes y la local {os.path.getsize(backup.file_path)}')
+        except Exception as e:
+            problems.append(f'la copia en S3 no se encuentra: {e}')
+    return problems
+
+
+def verify_backups(progress=None):
+    """The latest backup of every instance: intact ZIP, a real database dump and (with S3) the same size there."""
+    from ..backup_models import Backup
+    from ..models import Instance
+    from . import alerts
+    config = offsite_config()
+    s3 = client(config) if config else None
+    notes, failures = [], []
+    instances = list(Instance.objects.all())
+    for index, instance in enumerate(instances):
+        backup = Backup.objects.filter(instance=instance).order_by('-created_at').first()
+        if backup is None:
+            continue
+        if progress:
+            progress(5 + 90 * index // max(len(instances), 1), f'Comprobando {backup.filename}')
+        problems = check_backup(backup, s3, config)
+        if problems:
+            failures.append(f'{instance.name} · {backup.filename}: ' + '; '.join(problems))
+        else:
+            notes.append(f'✓ {instance.name} · {backup.filename}')
+    if failures:
+        alerts.alert('backups-verify', f'{len(failures)} backups con problemas',
+                     'La comprobación de los backups ha encontrado problemas:\n\n' + '\n'.join(failures), cooldown=0)
+        raise Exception('Backups con problemas:\n' + '\n'.join(failures) + ('\n\nCorrectos:\n' + '\n'.join(notes) if notes else ''))
+    return notes or ['No hay backups que comprobar']
+
+
+def queue_weekly_verification():
+    """Called by the worker every minute: once a week."""
+    from django.core.cache import cache
+    from ..task_models import Task
+    from ..tasks import enqueue
+    if not cache.add('backups-verify-week', 1, 7 * 24 * 3600):
+        return None
+    return enqueue(Task.Kind.BACKUP_VERIFY)

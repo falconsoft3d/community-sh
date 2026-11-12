@@ -358,6 +358,18 @@ def backup(task):
         f' · copia fuera del servidor en cola (tarea #{copy.pk})' if copy else '')
 
 
+@handler(Task.Kind.OFFSITE_RESTORE)
+def offsite_restore(task):
+    from .services import offsite
+    return '\n'.join(offsite.restore_from_bucket(task.instance, task.params['key'], progress=task_log.progress))
+
+
+@handler(Task.Kind.BACKUP_VERIFY)
+def backup_verify(task):
+    from .services import offsite
+    return '\n'.join(offsite.verify_backups(progress=task_log.progress))
+
+
 @handler(Task.Kind.PANEL_BACKUP)
 def panel_backup(task):
     from .services import offsite

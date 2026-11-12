@@ -222,6 +222,19 @@ def _read_offsite_fields(request, config):
 @login_required
 @superuser_required
 @require_POST
+def backups_verify_now(request):
+    """Settings → Respaldos → Comprobar backups ahora."""
+    from django.contrib import messages
+    from ..audit import record
+    task = enqueue(Task.Kind.BACKUP_VERIFY, user=request.user)
+    record(request, 'backups_verify')
+    messages.info(request, f'Comprobación de backups en cola (tarea #{task.pk}); el resultado estará en Actividad')
+    return redirect(reverse('settings') + '#backups')
+
+
+@login_required
+@superuser_required
+@require_POST
 def offsite_test(request):
     """Settings → Respaldos → Probar conexión: with what the form says now (not saved yet)."""
     from django.contrib import messages
