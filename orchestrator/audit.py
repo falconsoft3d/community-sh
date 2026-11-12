@@ -35,6 +35,7 @@ ACTIONS = {
     'backup_downloaded': 'Descargar backup',
     'backup_restored': 'Restaurar backup',
     'backups_verify': 'Comprobar backups',
+    'db_manager': 'Abrir/cerrar el gestor de bases de datos de Odoo',
 }
 
 

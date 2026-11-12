@@ -7,11 +7,15 @@ import yaml
 from django.conf import settings
 
 
+# Odoo's database manager: its pages and the XML-RPC "db" service
+ODOO_DB_MANAGER_PATHS = ('/web/database', '/xmlrpc/2/db', '/xmlrpc/db')
+
+
 class TraefikService:
     """Service for managing Traefik dynamic configuration"""
     
     @staticmethod
-    def _routes(prefix, hosts, backend, certificate=None):
+    def _routes(prefix, hosts, backend, certificate=None, blocked_paths=()):
         """
         One router per host, so a host whose DNS isn't ready yet doesn't hold back the
         certificates of the others. HTTPS uses the given certbot files, else Let's Encrypt
@@ -36,8 +40,24 @@ class TraefikService:
                     'rule': f'Host(`{host}`)', 'entryPoints': ['websecure'], 'service': service, 'priority': 100,
                     'tls': {} if certificate else {'certResolver': ACME_RESOLVER},
                 }
+        # Paths answered 403 for everyone (an allow-list with only the loopback), ahead of the host's router
+        deny = f'{prefix}-deny'
+        if blocked_paths and hosts:
+            paths = ' || '.join(f'PathPrefix(`{path}`)' for path in blocked_paths)
+            for index, host in enumerate(hosts):
+                for suffix, entry_point in (('', 'web'), ('-secure', 'websecure')) if https else (('', 'web'),):
+                    router = {'rule': f'Host(`{host}`) && ({paths})', 'entryPoints': [entry_point], 'service': service,
+                              'priority': 200, 'middlewares': [deny]}
+                    if suffix:
+                        router['tls'] = {} if certificate else {'certResolver': ACME_RESOLVER}
+                    config['http']['routers'][f'{prefix}-{index}-blocked{suffix}'] = router
+        middlewares = {}
         if https:
-            config['http']['middlewares'] = {redirect: {'redirectScheme': {'scheme': 'https', 'permanent': True}}}
+            middlewares[redirect] = {'redirectScheme': {'scheme': 'https', 'permanent': True}}
+        if blocked_paths and hosts:
+            middlewares[deny] = {'ipWhiteList': {'sourceRange': ['127.0.0.1/32']}}
+        if middlewares:
+            config['http']['middlewares'] = middlewares
         if certificate:
             config['tls'] = {'certificates': [{'certFile': certificate[0], 'keyFile': certificate[1]}]}
         return config
@@ -103,7 +123,8 @@ class TraefikService:
             if instance.ssl_enabled:
                 certificate = TraefikService._certbot_certificate(instance.ssl_certificate_path, instance.ssl_key_path)
             config = TraefikService._routes(f'instance-{instance.name}', hosts,
-                                            f'http://odoo_{instance.name}:8069', certificate)
+                                            f'http://odoo_{instance.name}:8069', certificate,
+                                            blocked_paths=() if instance.odoo_db_manager else ODOO_DB_MANAGER_PATHS)
             TraefikService._write(name, config)
             return True, f"Configuración de Traefik generada para instancia {instance.name}"
         except Exception as e:

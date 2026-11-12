@@ -83,6 +83,10 @@ class Instance(models.Model):
     schedule_start = models.TimeField(null=True, blank=True, help_text="Start it every day at this time (UTC)")
     schedule_stop = models.TimeField(null=True, blank=True, help_text="Stop it every day at this time (UTC)")
 
+    # Odoo's database manager (/web/database/*: create, duplicate, drop, back up, restore with the Master Password).
+    # Closed by default: blocked at Traefik right away and list_db = False in odoo.conf on the next deploy
+    odoo_db_manager = models.BooleanField(default=False, help_text="Odoo's database manager reachable from the internet")
+
     # The instance this one is a copy of (duplicate, demo): the default source to refresh its data from
     copied_from = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='copies')
 

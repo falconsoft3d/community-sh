@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 17:10+0000\n"
+"POT-Creation-Date: 2026-11-12 21:37+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -158,29 +158,29 @@ msgid "BD + filestore"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:90
-#: orchestrator/templates/orchestrator/instance_detail.html:1022
+#: orchestrator/templates/orchestrator/instance_detail.html:1050
 msgid "Solo BD"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:98
 #: orchestrator/templates/orchestrator/backup_list.html:100
-#: orchestrator/templates/orchestrator/instance_detail.html:1029
+#: orchestrator/templates/orchestrator/instance_detail.html:1057
 msgid "Descargar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:106
 #: orchestrator/templates/orchestrator/backup_list.html:108
-#: orchestrator/templates/orchestrator/instance_detail.html:950
-#: orchestrator/templates/orchestrator/instance_detail.html:986
-#: orchestrator/templates/orchestrator/instance_detail.html:1042
+#: orchestrator/templates/orchestrator/instance_detail.html:978
+#: orchestrator/templates/orchestrator/instance_detail.html:1014
+#: orchestrator/templates/orchestrator/instance_detail.html:1070
 msgid "Restaurar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:114
 #: orchestrator/templates/orchestrator/contact_detail.html:35
 #: orchestrator/templates/orchestrator/instance_detail.html:80
-#: orchestrator/templates/orchestrator/instance_detail.html:1051
-#: orchestrator/templates/orchestrator/instance_detail.html:1559
+#: orchestrator/templates/orchestrator/instance_detail.html:1079
+#: orchestrator/templates/orchestrator/instance_detail.html:1587
 #: orchestrator/templates/orchestrator/project_detail.html:42
 #: orchestrator/templates/orchestrator/todo_list.html:93
 msgid "Eliminar"
@@ -279,8 +279,8 @@ msgstr ""
 #: orchestrator/templates/orchestrator/contact_form.html:9
 #: orchestrator/templates/orchestrator/instance_detail.html:215
 #: orchestrator/templates/orchestrator/instance_detail.html:347
-#: orchestrator/templates/orchestrator/instance_detail.html:411
-#: orchestrator/templates/orchestrator/instance_detail.html:443
+#: orchestrator/templates/orchestrator/instance_detail.html:439
+#: orchestrator/templates/orchestrator/instance_detail.html:471
 #: orchestrator/templates/orchestrator/project_detail.html:34
 #: orchestrator/templates/orchestrator/project_form.html:12
 #: orchestrator/templates/orchestrator/todo_list.html:86
@@ -359,11 +359,11 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/contact_form.html:27
 #: orchestrator/templates/orchestrator/instance_detail.html:358
-#: orchestrator/templates/orchestrator/instance_detail.html:432
-#: orchestrator/templates/orchestrator/instance_detail.html:451
-#: orchestrator/templates/orchestrator/instance_detail.html:497
-#: orchestrator/templates/orchestrator/instance_detail.html:919
-#: orchestrator/templates/orchestrator/instance_detail.html:1527
+#: orchestrator/templates/orchestrator/instance_detail.html:460
+#: orchestrator/templates/orchestrator/instance_detail.html:479
+#: orchestrator/templates/orchestrator/instance_detail.html:525
+#: orchestrator/templates/orchestrator/instance_detail.html:947
+#: orchestrator/templates/orchestrator/instance_detail.html:1555
 #: orchestrator/templates/orchestrator/project_detail.html:64
 #: orchestrator/templates/orchestrator/project_form.html:100
 #: orchestrator/templates/orchestrator/todo_list.html:48
@@ -492,6 +492,7 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:63
 #: orchestrator/templates/orchestrator/includes/language_switcher.html:2
+#: orchestrator/templates/orchestrator/instance_detail.html:405
 msgid "Idioma"
 msgstr ""
 
@@ -789,8 +790,8 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:392
 #: orchestrator/templates/orchestrator/home.html:584
-#: orchestrator/templates/orchestrator/instance_detail.html:773
-#: orchestrator/templates/orchestrator/instance_detail.html:778
+#: orchestrator/templates/orchestrator/instance_detail.html:801
+#: orchestrator/templates/orchestrator/instance_detail.html:806
 #: orchestrator/templates/orchestrator/project_detail.html:240
 #: orchestrator/templates/orchestrator/project_detail.html:252
 #: orchestrator/templates/orchestrator/project_detail.html:293
@@ -1011,7 +1012,7 @@ msgid "Modules"
 msgstr "Módulos"
 
 #: orchestrator/templates/orchestrator/instance_detail.html:152
-#: orchestrator/templates/orchestrator/instance_detail.html:1111
+#: orchestrator/templates/orchestrator/instance_detail.html:1139
 msgid "Migrar"
 msgstr ""
 
@@ -1136,10 +1137,10 @@ msgid "Qué incluye esta versión"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:357
-#: orchestrator/templates/orchestrator/instance_detail.html:431
-#: orchestrator/templates/orchestrator/instance_detail.html:450
-#: orchestrator/templates/orchestrator/instance_detail.html:754
-#: orchestrator/templates/orchestrator/instance_detail.html:816
+#: orchestrator/templates/orchestrator/instance_detail.html:459
+#: orchestrator/templates/orchestrator/instance_detail.html:478
+#: orchestrator/templates/orchestrator/instance_detail.html:782
+#: orchestrator/templates/orchestrator/instance_detail.html:844
 #: orchestrator/templates/orchestrator/todo_list.html:82
 msgid "Guardar"
 msgstr ""
@@ -1155,13 +1156,13 @@ msgid "Master Password"
 msgstr "Contraseña maestra"
 
 #: orchestrator/templates/orchestrator/instance_detail.html:373
-#: orchestrator/templates/orchestrator/instance_detail.html:473
-#: orchestrator/templates/orchestrator/instance_detail.html:777
+#: orchestrator/templates/orchestrator/instance_detail.html:501
+#: orchestrator/templates/orchestrator/instance_detail.html:805
 msgid "Mostrar/ocultar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:378
-#: orchestrator/templates/orchestrator/instance_detail.html:477
+#: orchestrator/templates/orchestrator/instance_detail.html:505
 msgid "Copiar contraseña"
 msgstr ""
 
@@ -1171,83 +1172,130 @@ msgid ""
 "al redesplegar."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:389
-msgid "Uso ahora"
+#: orchestrator/templates/orchestrator/instance_detail.html:386
+msgid "Gestor de bases de datos de Odoo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:391
-msgid "Midiendo…"
+#: orchestrator/templates/orchestrator/instance_detail.html:390
+msgid "Abierto a internet"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:392
-msgid "No está en marcha"
+msgid "Cerrar"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:394
+msgid "Cerrado"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:396
+msgid ""
+"¿Abrir el gestor de bases de datos de Odoo a internet? Cualquiera con la "
+"Master Password podrá crear, copiar, descargar o borrar bases de datos."
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:397
-msgid "de su límite"
+#: orchestrator/templates/orchestrator/project_detail.html:150
+#: orchestrator/templates/orchestrator/project_detail.html:212
+msgid "Abrir"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:405
-msgid "Ahorro de memoria"
+#: orchestrator/templates/orchestrator/instance_detail.html:400
+msgid ""
+"Cerrado, /web/database/* responde 403 en el dominio al momento y, al "
+"redesplegar, Odoo también lo rechaza (list_db = False). Con varias bases de "
+"datos se entra con ?db=nombre. Crea la base de datos desde aquí:"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:403
+msgid "Nombre de la base de datos"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:406
+msgid "Datos de demo"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:408
+msgid "Crear base de datos"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:417
+msgid "Uso ahora"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:419
+msgid "Midiendo…"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:420
+msgid "No está en marcha"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:425
+msgid "de su límite"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:433
+msgid "Ahorro de memoria"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:436
 #, python-format
 msgid "Se detiene si nadie entra en %(days)s días"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:408
+#: orchestrator/templates/orchestrator/instance_detail.html:436
 msgid "No se detiene sola"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:408
+#: orchestrator/templates/orchestrator/instance_detail.html:436
 msgid "horario"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:416
+#: orchestrator/templates/orchestrator/instance_detail.html:444
 msgid "Detener si nadie entra en"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:418
+#: orchestrator/templates/orchestrator/instance_detail.html:446
 msgid "nunca"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:419
-#: orchestrator/templates/orchestrator/instance_detail.html:420
-#: orchestrator/templates/orchestrator/instance_detail.html:421
-#: orchestrator/templates/orchestrator/instance_detail.html:422
+#: orchestrator/templates/orchestrator/instance_detail.html:447
+#: orchestrator/templates/orchestrator/instance_detail.html:448
+#: orchestrator/templates/orchestrator/instance_detail.html:449
+#: orchestrator/templates/orchestrator/instance_detail.html:450
 #: orchestrator/templates/orchestrator/project_detail.html:229
 msgid "días"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:425
+#: orchestrator/templates/orchestrator/instance_detail.html:453
 msgid "Horario (UTC): arrancar a las"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:427
+#: orchestrator/templates/orchestrator/instance_detail.html:455
 msgid "y detener a las"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:435
+#: orchestrator/templates/orchestrator/instance_detail.html:463
 msgid ""
 "Para instancias de prueba: el día antes de detenerla por no usarse llega una "
 "alerta. Deja las horas vacías para no usar horario."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:439
+#: orchestrator/templates/orchestrator/instance_detail.html:467
 #: orchestrator/templates/orchestrator/metrics.html:272
 msgid "Memory Limit"
 msgstr "Límite de memoria"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:441
+#: orchestrator/templates/orchestrator/instance_detail.html:469
 msgid "Sin límite"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:448
+#: orchestrator/templates/orchestrator/instance_detail.html:476
 msgid "Límite de memoria en MB"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:453
+#: orchestrator/templates/orchestrator/instance_detail.html:481
 msgid ""
 "Tope de RAM del contenedor de Odoo, para que una instancia no deje sin "
 "memoria al servidor ni a las demás. Se aplica en marcha, sin reiniciar; 0 = "
@@ -1255,25 +1303,25 @@ msgid ""
 "el proceso y Docker lo vuelve a arrancar."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:459
+#: orchestrator/templates/orchestrator/instance_detail.html:487
 msgid "Administrador"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:462
+#: orchestrator/templates/orchestrator/instance_detail.html:490
 #: orchestrator/templates/registration/login.html:19
 msgid "Username"
 msgstr "Usuario"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:465
+#: orchestrator/templates/orchestrator/instance_detail.html:493
 msgid "Copiar usuario"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:470
+#: orchestrator/templates/orchestrator/instance_detail.html:498
 #: orchestrator/templates/registration/login.html:25
 msgid "Password"
 msgstr "Contraseña"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:481
+#: orchestrator/templates/orchestrator/instance_detail.html:509
 #, python-format
 msgid ""
 "El administrador de Odoo que creó la plataforma (base de datos "
@@ -1281,244 +1329,244 @@ msgid ""
 "esta deja de valer."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:481
+#: orchestrator/templates/orchestrator/instance_detail.html:509
 msgid ""
 "El administrador de Odoo que creó la plataforma, para compartirlo. Si se "
 "cambia la contraseña dentro de Odoo, esta deja de valer."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:483
+#: orchestrator/templates/orchestrator/instance_detail.html:511
 msgid ""
 "Contraseña desconocida: la base de datos no la creó la plataforma. "
 "Restablécela para verla y compartirla."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:486
+#: orchestrator/templates/orchestrator/instance_detail.html:514
 msgid "Restablecer contraseña"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:488
+#: orchestrator/templates/orchestrator/instance_detail.html:516
 msgid ""
 "¿Cambiar la contraseña del administrador de Odoo? La actual dejará de "
 "funcionar y se cerrarán sus sesiones abiertas."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:492
+#: orchestrator/templates/orchestrator/instance_detail.html:520
 msgid "Vacío: se genera una aleatoria"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:493
+#: orchestrator/templates/orchestrator/instance_detail.html:521
 msgid "Nueva contraseña del administrador"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:493
+#: orchestrator/templates/orchestrator/instance_detail.html:521
 msgid "8-64 letras, números, «_» o «-»"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:496
+#: orchestrator/templates/orchestrator/instance_detail.html:524
 msgid "Restablecer"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:499
+#: orchestrator/templates/orchestrator/instance_detail.html:527
 #, python-format
 msgid ""
 "Se aplica al usuario administrador de la base de datos %(database)s. La "
 "instancia tiene que estar desplegada."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:499
+#: orchestrator/templates/orchestrator/instance_detail.html:527
 msgid ""
 "Se aplica al usuario administrador de todas las bases de datos de la "
 "instancia. La instancia tiene que estar desplegada."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:505
+#: orchestrator/templates/orchestrator/instance_detail.html:533
 msgid "Source"
 msgstr "Origen"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:531
+#: orchestrator/templates/orchestrator/instance_detail.html:559
 msgid "Dominio & SSL"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:532
+#: orchestrator/templates/orchestrator/instance_detail.html:560
 msgid "Configurar dominio personalizado"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:540
+#: orchestrator/templates/orchestrator/instance_detail.html:568
 msgid "Certificado pendiente"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:544
+#: orchestrator/templates/orchestrator/instance_detail.html:572
 #, python-format
 msgid ""
 "Let's Encrypt ha alcanzado su límite semanal de certificados para este "
 "dominio. Se reintenta solo, no antes de %(retry)s UTC."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:544
+#: orchestrator/templates/orchestrator/instance_detail.html:572
 msgid ""
 "Let's Encrypt ha alcanzado su límite semanal de certificados para este "
 "dominio. Se reintenta solo."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:546
+#: orchestrator/templates/orchestrator/instance_detail.html:574
 msgid ""
 "Let's Encrypt no pudo comprobar el dominio: revisa que su DNS apunte a este "
 "servidor."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:548
+#: orchestrator/templates/orchestrator/instance_detail.html:576
 msgid ""
 "Let's Encrypt no pudo emitir el certificado: revisa el DNS del dominio y los "
 "registros de Traefik."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:550
+#: orchestrator/templates/orchestrator/instance_detail.html:578
 msgid "El certificado se está solicitando."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:552
+#: orchestrator/templates/orchestrator/instance_detail.html:580
 msgid ""
 "Mientras tanto la instancia funciona, pero el navegador mostrará un aviso de "
 "seguridad."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:568
+#: orchestrator/templates/orchestrator/instance_detail.html:596
 msgid "SSL Activo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:574
+#: orchestrator/templates/orchestrator/instance_detail.html:602
 msgid "Sin SSL"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:583
+#: orchestrator/templates/orchestrator/instance_detail.html:611
 msgid "Generar Certificado SSL"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:590
+#: orchestrator/templates/orchestrator/instance_detail.html:618
 msgid "Email para notificaciones"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:591
+#: orchestrator/templates/orchestrator/instance_detail.html:619
 msgid "tu@email.com"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:597
+#: orchestrator/templates/orchestrator/instance_detail.html:625
 msgid "Confirmar y Generar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:604
+#: orchestrator/templates/orchestrator/instance_detail.html:632
 #, python-format
 msgid "Certificado: %(path)s"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:616
+#: orchestrator/templates/orchestrator/instance_detail.html:644
 msgid "Cambiar dominio"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:625
+#: orchestrator/templates/orchestrator/instance_detail.html:653
 msgid "Dominio Personalizado"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:627
+#: orchestrator/templates/orchestrator/instance_detail.html:655
 msgid "ejemplo.com o www.ejemplo.com"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:630
+#: orchestrator/templates/orchestrator/instance_detail.html:658
 msgid "Asegúrate de que tu dominio apunte a este servidor"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:636
+#: orchestrator/templates/orchestrator/instance_detail.html:664
 msgid "Guardar Dominio"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:650
+#: orchestrator/templates/orchestrator/instance_detail.html:678
 msgid "Navegador (WhatsApp Web)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:652
+#: orchestrator/templates/orchestrator/instance_detail.html:680
 msgid ""
 "Google Chrome dentro del contenedor de Odoo, para los módulos que lo "
 "necesitan, como WhatsApp Web. Ocupa unos 450 MB y se reinstala solo en cada "
 "despliegue (menos de un minuto más)."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:658
+#: orchestrator/templates/orchestrator/instance_detail.html:686
 msgid "Instalado"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:660
+#: orchestrator/templates/orchestrator/instance_detail.html:688
 msgid "¿Dejar de instalar Google Chrome? Desaparece en el próximo despliegue."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:662
-#: orchestrator/templates/orchestrator/instance_detail.html:710
-#: orchestrator/templates/orchestrator/instance_detail.html:1309
+#: orchestrator/templates/orchestrator/instance_detail.html:690
+#: orchestrator/templates/orchestrator/instance_detail.html:738
+#: orchestrator/templates/orchestrator/instance_detail.html:1337
 msgid "Quitar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:666
+#: orchestrator/templates/orchestrator/instance_detail.html:694
 msgid "Instalar Google Chrome"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:676
+#: orchestrator/templates/orchestrator/instance_detail.html:704
 msgid "Repositorios de addons"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:677
+#: orchestrator/templates/orchestrator/instance_detail.html:705
 msgid ""
 "Cada repositorio se clona y se añade al addons_path de Odoo. «Pull» trae los "
 "últimos cambios de todos y reinicia Odoo, sin redesplegar."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:682
+#: orchestrator/templates/orchestrator/instance_detail.html:710
 msgid ""
 "Descarga los últimos commits de cada repositorio y reinicia Odoo. Si cambian "
 "vistas o datos, actualiza el módulo en Odoo."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:690
+#: orchestrator/templates/orchestrator/instance_detail.html:718
 msgid "¿Quitar este repositorio?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:697
+#: orchestrator/templates/orchestrator/instance_detail.html:725
 #, python-format
 msgid "rama %(branch)s · principal (/mnt/extra-addons)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:706
+#: orchestrator/templates/orchestrator/instance_detail.html:734
 #, python-format
 msgid "rama %(branch)s · /mnt/repos/%(slug)s"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:716
+#: orchestrator/templates/orchestrator/instance_detail.html:744
 msgid "Sin repositorios"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:721
+#: orchestrator/templates/orchestrator/instance_detail.html:749
 msgid "URL del repositorio"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:723
+#: orchestrator/templates/orchestrator/instance_detail.html:751
 msgid "Rama"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:726
+#: orchestrator/templates/orchestrator/instance_detail.html:754
 #: orchestrator/templates/orchestrator/todo_list.html:50
 msgid "Añadir"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:729
+#: orchestrator/templates/orchestrator/instance_detail.html:757
 msgid ""
 "Los repos privados usan el token de GitHub del dueño de la instancia "
 "(Settings → GitHub)."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:738
+#: orchestrator/templates/orchestrator/instance_detail.html:766
 msgid "Actualización automática al hacer push"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:739
+#: orchestrator/templates/orchestrator/instance_detail.html:767
 msgid ""
 "Cada push a la rama de uno de los repositorios de esta instancia (el "
 "principal o los de addons) la actualiza sola, como tarea con su log en "
@@ -1526,31 +1574,31 @@ msgid ""
 "tenga webhook. Solo se reinicia Odoo si el código cambió."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:741
+#: orchestrator/templates/orchestrator/instance_detail.html:769
 #: orchestrator/templates/orchestrator/project_detail.html:275
 msgid "Activa"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:747
+#: orchestrator/templates/orchestrator/instance_detail.html:775
 msgid "Al recibir un push"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:756
+#: orchestrator/templates/orchestrator/instance_detail.html:784
 msgid ""
 "«Actualizar todos los módulos» ejecuta <code class=\"font-mono\">-u all</"
 "code> en cada base de datos (campos, vistas y datos nuevos de los módulos) y "
 "tarda más; «Pull» solo trae el código y reinicia Odoo."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:761
+#: orchestrator/templates/orchestrator/instance_detail.html:789
 msgid "Webhook de GitHub"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:765
+#: orchestrator/templates/orchestrator/instance_detail.html:793
 msgid "Crear webhook en GitHub"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:769
+#: orchestrator/templates/orchestrator/instance_detail.html:797
 msgid ""
 "Un webhook por repositorio basta: el push actualiza todas las instancias en "
 "marcha que usan ese repositorio y rama con la actualización automática "
@@ -1561,41 +1609,41 @@ msgid ""
 "Settings → Webhooks → Add webhook:"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:779
+#: orchestrator/templates/orchestrator/instance_detail.html:807
 msgid "Eventos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:781
+#: orchestrator/templates/orchestrator/instance_detail.html:809
 msgid ""
 "¿Generar un secreto nuevo? Los webhooks con el actual dejarán de funcionar "
 "hasta actualizarlos."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:784
+#: orchestrator/templates/orchestrator/instance_detail.html:812
 msgid "Generar un secreto nuevo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:797
-#: orchestrator/templates/orchestrator/instance_detail.html:811
+#: orchestrator/templates/orchestrator/instance_detail.html:825
+#: orchestrator/templates/orchestrator/instance_detail.html:839
 msgid "Variables de entorno"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:798
+#: orchestrator/templates/orchestrator/instance_detail.html:826
 msgid ""
 "Se pasan al contenedor de Odoo de esta instancia en cada despliegue (los "
 "módulos las leen con <code class=\"font-mono\">os.environ</code>). Solo las "
 "ve quien gestiona la instancia."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:806
+#: orchestrator/templates/orchestrator/instance_detail.html:834
 msgid "Ver y editar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:815
+#: orchestrator/templates/orchestrator/instance_detail.html:843
 msgid "Redesplegar ahora para aplicarlas"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:819
+#: orchestrator/templates/orchestrator/instance_detail.html:847
 msgid ""
 "Una por línea, <code class=\"font-mono\">NOMBRE=valor</code>; se ignoran las "
 "líneas vacías y las que empiezan por <code class=\"font-mono\">#</code>. "
@@ -1603,277 +1651,277 @@ msgid ""
 "instancia las heredan; las demos de «Modo test» no."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:829
+#: orchestrator/templates/orchestrator/instance_detail.html:857
 msgid "Instalar un módulo disponible"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:830
+#: orchestrator/templates/orchestrator/instance_detail.html:858
 msgid ""
 "Instala o actualiza en todas las bases de datos de la instancia un módulo "
 "que ya está en sus addons (el tema, los de tus repositorios o los de Odoo). "
 "La instancia necesita tener al menos una base de datos."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:836
+#: orchestrator/templates/orchestrator/instance_detail.html:864
 msgid "Instalar el tema Community SH"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:843
+#: orchestrator/templates/orchestrator/instance_detail.html:871
 msgid "Nombre técnico"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:847
+#: orchestrator/templates/orchestrator/instance_detail.html:875
 msgid "Actualizar (-u) en vez de instalar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:848
+#: orchestrator/templates/orchestrator/instance_detail.html:876
 msgid "Instalar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:856
+#: orchestrator/templates/orchestrator/instance_detail.html:884
 msgid "Instalar Módulo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:857
+#: orchestrator/templates/orchestrator/instance_detail.html:885
 msgid "Agregar al repositorio y desplegar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:863
+#: orchestrator/templates/orchestrator/instance_detail.html:891
 msgid ""
 "Esta instancia no tiene un repositorio de GitHub configurado. Los módulos "
 "solo se pueden instalar en instancias con repositorio."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:871
+#: orchestrator/templates/orchestrator/instance_detail.html:899
 msgid "Archivo del Módulo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:876
+#: orchestrator/templates/orchestrator/instance_detail.html:904
 #, python-format
 msgid ""
 "El módulo se agregará a <strong>%(repo)s</strong> y se desplegará "
 "automáticamente"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:882
+#: orchestrator/templates/orchestrator/instance_detail.html:910
 msgid "Subir e Instalar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:898
+#: orchestrator/templates/orchestrator/instance_detail.html:926
 msgid "Refrescar datos desde otra instancia"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:899
+#: orchestrator/templates/orchestrator/instance_detail.html:927
 msgid ""
 "Para una staging: sustituye las bases de datos y los adjuntos de esta "
 "instancia por los de otra (producción). Su código, su rama y su "
 "configuración no cambian."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:902
+#: orchestrator/templates/orchestrator/instance_detail.html:930
 msgid "Refrescar…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:907
+#: orchestrator/templates/orchestrator/instance_detail.html:935
 msgid "Copiar los datos de"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:909
+#: orchestrator/templates/orchestrator/instance_detail.html:937
 msgid "su original"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:913
+#: orchestrator/templates/orchestrator/instance_detail.html:941
 msgid ""
 "Neutralizar (correo, tareas programadas, pagos y claves API desactivados), "
 "recomendado"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:915
+#: orchestrator/templates/orchestrator/instance_detail.html:943
 #, python-format
 msgid "Escribe «%(name)s» para confirmar: sus datos actuales se pierden"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:918
+#: orchestrator/templates/orchestrator/instance_detail.html:946
 msgid "Refrescar ahora"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:929
+#: orchestrator/templates/orchestrator/instance_detail.html:957
 msgid "Copias en S3"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:930
+#: orchestrator/templates/orchestrator/instance_detail.html:958
 msgid ""
 "Los backups de esta instancia guardados fuera del servidor. Restaurar uno "
 "sustituye la base de datos y los adjuntos actuales."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:934
+#: orchestrator/templates/orchestrator/instance_detail.html:962
 msgid "Ver copias"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:938
+#: orchestrator/templates/orchestrator/instance_detail.html:966
 msgid "Cargando…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:940
+#: orchestrator/templates/orchestrator/instance_detail.html:968
 msgid "No hay copias de esta instancia en el bucket."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:941
+#: orchestrator/templates/orchestrator/instance_detail.html:969
 msgid ""
 "¿Restaurar esta copia sobre la instancia? Se sustituyen su base de datos y "
 "sus adjuntos actuales."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:960
+#: orchestrator/templates/orchestrator/instance_detail.html:988
 msgid "Create New Backup"
 msgstr "Crear un backup"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:965
+#: orchestrator/templates/orchestrator/instance_detail.html:993
 msgid "Full Backup (with filestore)"
 msgstr "Backup completo (con filestore)"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:971
+#: orchestrator/templates/orchestrator/instance_detail.html:999
 msgid "Database Only"
 msgstr "Solo base de datos"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:974
+#: orchestrator/templates/orchestrator/instance_detail.html:1002
 msgid "Este proyecto no permite crear backups a su cliente."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:978
+#: orchestrator/templates/orchestrator/instance_detail.html:1006
 msgid "Restaurar desde un archivo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:979
+#: orchestrator/templates/orchestrator/instance_detail.html:1007
 msgid ""
 "Sustituye la base de datos y el filestore de esta instancia. Acepta backups "
 "del panel, del gestor de bases de datos de Odoo (.zip) o un volcado .dump."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:980
+#: orchestrator/templates/orchestrator/instance_detail.html:1008
 msgid "Se sobrescribirán la base de datos y el filestore actuales. ¿Continuar?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:995
+#: orchestrator/templates/orchestrator/instance_detail.html:1023
 msgid "Available Backups"
 msgstr "Backups disponibles"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:996
+#: orchestrator/templates/orchestrator/instance_detail.html:1024
 msgid "List of all created backups"
 msgstr "Todos los backups creados"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1000
+#: orchestrator/templates/orchestrator/instance_detail.html:1028
 msgid ""
 "ADVERTENCIA: Esto sobrescribirá la base de datos y archivos actuales. ¿Estás "
 "seguro de que quieres restaurar este backup?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1001
+#: orchestrator/templates/orchestrator/instance_detail.html:1029
 msgid "¿Estás seguro de que quieres eliminar este backup?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1019
+#: orchestrator/templates/orchestrator/instance_detail.html:1047
 #, python-format
 msgid "Copiado fuera del servidor: %(key)s"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1022
+#: orchestrator/templates/orchestrator/instance_detail.html:1050
 msgid "With filestore"
 msgstr "Con filestore"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1034
+#: orchestrator/templates/orchestrator/instance_detail.html:1062
 #: orchestrator/templates/orchestrator/instance_list.html:18
 msgid "New Instance"
 msgstr "Nueva instancia"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1062
+#: orchestrator/templates/orchestrator/instance_detail.html:1090
 msgid "No backups available"
 msgstr "No hay backups disponibles"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1063
+#: orchestrator/templates/orchestrator/instance_detail.html:1091
 msgid "Create a backup using the buttons above"
 msgstr "Crea un backup con los botones de arriba"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1076
+#: orchestrator/templates/orchestrator/instance_detail.html:1104
 msgid "Migrar desde otro Odoo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1077
+#: orchestrator/templates/orchestrator/instance_detail.html:1105
 msgid ""
 "Copia por XML-RPC los datos de cualquier Odoo (versión 8 o posterior, en tu "
 "servidor o en Internet) a esta instancia. Se puede repetir: lo ya copiado no "
 "se duplica y continúa donde se quedó."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1083
+#: orchestrator/templates/orchestrator/instance_detail.html:1111
 #: orchestrator/templates/orchestrator/instance_list.html:30
 msgid "Origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1084
+#: orchestrator/templates/orchestrator/instance_detail.html:1112
 msgid "URL del Odoo de origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1085
-#: orchestrator/templates/orchestrator/instance_detail.html:1093
+#: orchestrator/templates/orchestrator/instance_detail.html:1113
+#: orchestrator/templates/orchestrator/instance_detail.html:1121
 msgid "Base de datos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1085
+#: orchestrator/templates/orchestrator/instance_detail.html:1113
 msgid "Base de datos de origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1087
+#: orchestrator/templates/orchestrator/instance_detail.html:1115
 msgid "Usuario de origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1088
+#: orchestrator/templates/orchestrator/instance_detail.html:1116
 msgid "Contraseña o clave API"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1088
+#: orchestrator/templates/orchestrator/instance_detail.html:1116
 msgid "Contraseña de origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1092
+#: orchestrator/templates/orchestrator/instance_detail.html:1120
 #, python-format
 msgid "Destino: %(name)s (Odoo %(version)s)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1093
+#: orchestrator/templates/orchestrator/instance_detail.html:1121
 msgid "Base de datos de destino"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1095
+#: orchestrator/templates/orchestrator/instance_detail.html:1123
 msgid "Usuario de destino"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1096
+#: orchestrator/templates/orchestrator/instance_detail.html:1124
 msgid "Contraseña del administrador"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1096
+#: orchestrator/templates/orchestrator/instance_detail.html:1124
 msgid "Contraseña de destino"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1098
+#: orchestrator/templates/orchestrator/instance_detail.html:1126
 msgid ""
 "Instala antes en el destino Ventas, Compras y Facturación si vas a migrar "
 "esos datos. Las contraseñas no se guardan: solo se usan durante la migración."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1101
+#: orchestrator/templates/orchestrator/instance_detail.html:1129
 msgid "Qué migrar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1109
+#: orchestrator/templates/orchestrator/instance_detail.html:1137
 msgid ""
 "Haz un backup de esta instancia antes de migrar. Los impuestos, monedas, "
 "países y unidades se buscan por nombre o código en el destino."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1116
+#: orchestrator/templates/orchestrator/instance_detail.html:1144
 #, python-format
 msgid ""
 "La migración escribe en esta instancia con el modelo de facturación de Odoo "
@@ -1881,114 +1929,114 @@ msgid ""
 "a ella (el origen puede ser cualquier versión desde la 8)."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1122
+#: orchestrator/templates/orchestrator/instance_detail.html:1150
 #, python-format
 msgid "Última migración · %(source)s"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1125
+#: orchestrator/templates/orchestrator/instance_detail.html:1153
 msgid "En cola…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1139
+#: orchestrator/templates/orchestrator/instance_detail.html:1167
 msgid "Live Logs"
 msgstr "Logs en vivo"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1140
+#: orchestrator/templates/orchestrator/instance_detail.html:1168
 msgid "Real-time output from container."
 msgstr "Salida del contenedor en tiempo real."
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1165
+#: orchestrator/templates/orchestrator/instance_detail.html:1193
 msgid "Consola Interactiva"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1166
+#: orchestrator/templates/orchestrator/instance_detail.html:1194
 msgid "Ejecuta comandos dentro del contenedor."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1171
+#: orchestrator/templates/orchestrator/instance_detail.html:1199
 msgid "Instalar desde requirements.txt"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1200
+#: orchestrator/templates/orchestrator/instance_detail.html:1228
 msgid "Ingresa un comando (ej: pip install requests)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1205
+#: orchestrator/templates/orchestrator/instance_detail.html:1233
 msgid "Ejecutar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1216
+#: orchestrator/templates/orchestrator/instance_detail.html:1244
 msgid "hechos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1216
+#: orchestrator/templates/orchestrator/instance_detail.html:1244
 msgid "Deshacer estos cambios"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1216
+#: orchestrator/templates/orchestrator/instance_detail.html:1244
 msgid "archivo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1216
+#: orchestrator/templates/orchestrator/instance_detail.html:1244
 msgid "archivos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1217
+#: orchestrator/templates/orchestrator/instance_detail.html:1245
 msgid "Solo lectura (repositorio): la IA lo extenderá con un módulo nuevo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1222
+#: orchestrator/templates/orchestrator/instance_detail.html:1250
 msgid "Suelta aquí los PDF, imágenes o archivos de texto"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1226
+#: orchestrator/templates/orchestrator/instance_detail.html:1254
 msgid "Asistente de IA"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1227
+#: orchestrator/templates/orchestrator/instance_detail.html:1255
 #, python-format
 msgid ""
 "Crea y modifica módulos de Odoo %(version)s en la carpeta de addons de esta "
 "instancia y los instala."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1230
+#: orchestrator/templates/orchestrator/instance_detail.html:1258
 msgid "Nueva conversación"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1236
+#: orchestrator/templates/orchestrator/instance_detail.html:1264
 msgid ""
 "Pídele, por ejemplo: «Crea un módulo que añada un campo \"Código interno\" a "
 "los contactos y lo muestre en el formulario»."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1282
+#: orchestrator/templates/orchestrator/instance_detail.html:1310
 msgid "Cambios deshechos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1292
+#: orchestrator/templates/orchestrator/instance_detail.html:1320
 msgid "Detener"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1316
+#: orchestrator/templates/orchestrator/instance_detail.html:1344
 msgid "Adjuntar PDF, imágenes o archivos de texto"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1316
+#: orchestrator/templates/orchestrator/instance_detail.html:1344
 msgid "Adjuntar archivos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1333
+#: orchestrator/templates/orchestrator/instance_detail.html:1361
 msgid ""
 "Describe el módulo o el cambio que quieres… Usa @ para etiquetar un módulo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1340
+#: orchestrator/templates/orchestrator/instance_detail.html:1368
 msgid "Enviar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1349
+#: orchestrator/templates/orchestrator/instance_detail.html:1377
 msgid ""
 "También desde Odoo: un administrador escribe <code class=\"font-mono\">/ia …"
 "</code> en el chatter de cualquier registro (p. ej. «/ia añade una columna "
@@ -1997,7 +2045,7 @@ msgid ""
 "desplegar."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1352
+#: orchestrator/templates/orchestrator/instance_detail.html:1380
 msgid ""
 "Puedes adjuntar PDF con capturas o especificaciones: en peticiones largas la "
 "IA arma un plan y lo va completando paso a paso (puedes cerrar la página, "
@@ -2005,123 +2053,123 @@ msgid ""
 "recientes». Haz un backup antes de cambios grandes."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1354
+#: orchestrator/templates/orchestrator/instance_detail.html:1382
 msgid "Adjunta como máximo 5 archivos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1354
+#: orchestrator/templates/orchestrator/instance_detail.html:1382
 msgid "supera los 20 MB"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1354
+#: orchestrator/templates/orchestrator/instance_detail.html:1382
 #: orchestrator/templates/orchestrator/trial_page.html:95
 msgid "Enviando…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1355
+#: orchestrator/templates/orchestrator/instance_detail.html:1383
 msgid "Pensando y trabajando en los archivos…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1355
+#: orchestrator/templates/orchestrator/instance_detail.html:1383
 #, python-brace-format
 msgid "Paso {step} de {total}"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1356
+#: orchestrator/templates/orchestrator/instance_detail.html:1384
 msgid ""
 "Se restaurarán los archivos como estaban antes de esta petición (y se "
 "deshacen también las posteriores). ¿Continuar?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1357
+#: orchestrator/templates/orchestrator/instance_detail.html:1385
 msgid "¿Borrar la conversación?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1499
+#: orchestrator/templates/orchestrator/instance_detail.html:1527
 msgid "¿Eliminar Instancia?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1500
+#: orchestrator/templates/orchestrator/instance_detail.html:1528
 msgid "Esta acción no se puede deshacer"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1506
+#: orchestrator/templates/orchestrator/instance_detail.html:1534
 msgid "Se eliminará permanentemente:"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1510
+#: orchestrator/templates/orchestrator/instance_detail.html:1538
 #, python-format
 msgid ""
 "El contenedor Docker <strong class=\"text-foreground\">%(name)s</strong>"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1514
+#: orchestrator/templates/orchestrator/instance_detail.html:1542
 msgid "Todos los datos y configuraciones"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1518
+#: orchestrator/templates/orchestrator/instance_detail.html:1546
 msgid "Los addons personalizados"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1531
+#: orchestrator/templates/orchestrator/instance_detail.html:1559
 msgid "Continuar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1539
+#: orchestrator/templates/orchestrator/instance_detail.html:1567
 msgid "Confirmar Eliminación"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1541
+#: orchestrator/templates/orchestrator/instance_detail.html:1569
 #, python-format
 msgid ""
 "Escribe <strong class=\"text-foreground\">%(name)s</strong> para confirmar:"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1544
+#: orchestrator/templates/orchestrator/instance_detail.html:1572
 msgid "Escribe el nombre de la instancia"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1552
+#: orchestrator/templates/orchestrator/instance_detail.html:1580
 msgid "Atrás"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1568
+#: orchestrator/templates/orchestrator/instance_detail.html:1596
 msgid "Ejecutando..."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1568
+#: orchestrator/templates/orchestrator/instance_detail.html:1596
 msgid "(sin salida)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1568
+#: orchestrator/templates/orchestrator/instance_detail.html:1596
 msgid "Error desconocido"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1568
+#: orchestrator/templates/orchestrator/instance_detail.html:1596
 msgid "Error de conexión"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1569
+#: orchestrator/templates/orchestrator/instance_detail.html:1597
 msgid "Consola limpiada"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1569
+#: orchestrator/templates/orchestrator/instance_detail.html:1597
 msgid "Instalando dependencias desde"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1569
+#: orchestrator/templates/orchestrator/instance_detail.html:1597
 msgid "Leyendo archivo y ejecutando pip install..."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1570
+#: orchestrator/templates/orchestrator/instance_detail.html:1598
 msgid "Instalación completada"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1570
+#: orchestrator/templates/orchestrator/instance_detail.html:1598
 msgid "Error en la instalación"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1725
+#: orchestrator/templates/orchestrator/instance_detail.html:1753
 msgid "No se pudo obtener"
 msgstr ""
 
@@ -2432,11 +2480,6 @@ msgstr ""
 #: orchestrator/templates/orchestrator/project_detail.html:132
 #: orchestrator/templates/orchestrator/project_detail.html:345
 msgid "se elimina en"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/project_detail.html:150
-#: orchestrator/templates/orchestrator/project_detail.html:212
-msgid "Abrir"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/project_detail.html:174
@@ -2840,3 +2883,1276 @@ msgstr "Crear cuenta"
 #: orchestrator/templates/registration/register.html:50
 msgid "Already have an account? Sign In"
 msgstr "¿Ya tienes cuenta? Inicia sesión"
+
+#: venv/lib/python3.14/site-packages/django/contrib/messages/apps.py:16
+#, fuzzy
+#| msgid "Memory Usage"
+msgid "Messages"
+msgstr "Memoria"
+
+#: venv/lib/python3.14/site-packages/django/contrib/sitemaps/apps.py:8
+msgid "Site Maps"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/contrib/staticfiles/apps.py:9
+msgid "Static Files"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/contrib/syndication/apps.py:7
+msgid "Syndication"
+msgstr ""
+
+#. Translators: String used to replace omitted page numbers in elided page
+#. range generated by paginators, e.g. [1, 2, '…', 5, 6, 7, '…', 9, 10].
+#: venv/lib/python3.14/site-packages/django/core/paginator.py:33
+msgid "…"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/paginator.py:35
+msgid "That page number is not an integer"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/paginator.py:36
+msgid "That page number is less than 1"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/paginator.py:37
+msgid "That page contains no results"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:22
+msgid "Enter a valid value."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:70
+msgid "Enter a valid domain name."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:153
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:774
+msgid "Enter a valid URL."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:200
+msgid "Enter a valid integer."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:211
+msgid "Enter a valid email address."
+msgstr ""
+
+#. Translators: "letters" means latin letters: a-z and A-Z.
+#: venv/lib/python3.14/site-packages/django/core/validators.py:289
+msgid ""
+"Enter a valid “slug” consisting of letters, numbers, underscores or hyphens."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:297
+msgid ""
+"Enter a valid “slug” consisting of Unicode letters, numbers, underscores, or "
+"hyphens."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:309
+#: venv/lib/python3.14/site-packages/django/core/validators.py:318
+#: venv/lib/python3.14/site-packages/django/core/validators.py:332
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2220
+#, python-format
+msgid "Enter a valid %(protocol)s address."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:311
+msgid "IPv4"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:320
+#: venv/lib/python3.14/site-packages/django/utils/ipv6.py:43
+msgid "IPv6"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:334
+msgid "IPv4 or IPv6"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:375
+msgid "Enter only digits separated by commas."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:381
+#, python-format
+msgid "Ensure this value is %(limit_value)s (it is %(show_value)s)."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:416
+#, python-format
+msgid "Ensure this value is less than or equal to %(limit_value)s."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:425
+#, python-format
+msgid "Ensure this value is greater than or equal to %(limit_value)s."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:434
+#, python-format
+msgid "Ensure this value is a multiple of step size %(limit_value)s."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:441
+#, python-format
+msgid ""
+"Ensure this value is a multiple of step size %(limit_value)s, starting from "
+"%(offset)s, e.g. %(offset)s, %(valid_value1)s, %(valid_value2)s, and so on."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:473
+#, python-format
+msgid ""
+"Ensure this value has at least %(limit_value)d character (it has "
+"%(show_value)d)."
+msgid_plural ""
+"Ensure this value has at least %(limit_value)d characters (it has "
+"%(show_value)d)."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:491
+#, python-format
+msgid ""
+"Ensure this value has at most %(limit_value)d character (it has "
+"%(show_value)d)."
+msgid_plural ""
+"Ensure this value has at most %(limit_value)d characters (it has "
+"%(show_value)d)."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:514
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:365
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:404
+msgid "Enter a number."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:516
+#, python-format
+msgid "Ensure that there are no more than %(max)s digit in total."
+msgid_plural "Ensure that there are no more than %(max)s digits in total."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:521
+#, python-format
+msgid "Ensure that there are no more than %(max)s decimal place."
+msgid_plural "Ensure that there are no more than %(max)s decimal places."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:526
+#, python-format
+msgid ""
+"Ensure that there are no more than %(max)s digit before the decimal point."
+msgid_plural ""
+"Ensure that there are no more than %(max)s digits before the decimal point."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:597
+#, python-format
+msgid ""
+"File extension “%(extension)s” is not allowed. Allowed extensions are: "
+"%(allowed_extensions)s."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/core/validators.py:659
+msgid "Null characters are not allowed."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/base.py:1631
+#: venv/lib/python3.14/site-packages/django/forms/models.py:932
+msgid "and"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/base.py:1633
+#, python-format
+msgid "%(model_name)s with this %(field_labels)s already exists."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/constraints.py:20
+#, python-format
+msgid "Constraint “%(name)s” is violated."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:134
+#, python-format
+msgid "Value %(value)r is not a valid choice."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:135
+msgid "This field cannot be null."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:136
+msgid "This field cannot be blank."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:137
+#, python-format
+msgid "%(model_name)s with this %(field_label)s already exists."
+msgstr ""
+
+#. Translators: The 'lookup_type' is one of 'date', 'year' or
+#. 'month'. Eg: "Title must be unique for pub_date year"
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:141
+#, python-format
+msgid ""
+"%(field_label)s must be unique for %(date_field_label)s %(lookup_type)s."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:180
+#, python-format
+msgid "Field of type: %(field_type)s"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1161
+#, python-format
+msgid "“%(value)s” value must be either True or False."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1162
+#, python-format
+msgid "“%(value)s” value must be either True, False, or None."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1164
+msgid "Boolean (Either True or False)"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1214
+#, python-format
+msgid "String (up to %(max_length)s)"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1216
+msgid "String (unlimited)"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1325
+msgid "Comma-separated integers"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1426
+#, python-format
+msgid ""
+"“%(value)s” value has an invalid date format. It must be in YYYY-MM-DD "
+"format."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1430
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1565
+#, python-format
+msgid ""
+"“%(value)s” value has the correct format (YYYY-MM-DD) but it is an invalid "
+"date."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1434
+msgid "Date (without time)"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1561
+#, python-format
+msgid ""
+"“%(value)s” value has an invalid format. It must be in YYYY-MM-DD "
+"HH:MM[:ss[.uuuuuu]][TZ] format."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1569
+#, python-format
+msgid ""
+"“%(value)s” value has the correct format (YYYY-MM-DD HH:MM[:ss[.uuuuuu]]"
+"[TZ]) but it is an invalid date/time."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1574
+msgid "Date (with time)"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1701
+#, python-format
+msgid "“%(value)s” value must be a decimal number."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1703
+msgid "Decimal number"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1864
+#, python-format
+msgid ""
+"“%(value)s” value has an invalid format. It must be in [DD] "
+"[[HH:]MM:]ss[.uuuuuu] format."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1868
+#, fuzzy
+#| msgid "Information"
+msgid "Duration"
+msgstr "Información"
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1920
+msgid "Email address"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:1945
+msgid "File path"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2023
+#, python-format
+msgid "“%(value)s” value must be a float."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2025
+msgid "Floating point number"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2065
+#, python-format
+msgid "“%(value)s” value must be an integer."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2067
+msgid "Integer"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2163
+msgid "Big (8 byte) integer"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2180
+msgid "Small integer"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2188
+msgid "IPv4 address"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2219
+msgid "IP address"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2310
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2311
+#, python-format
+msgid "“%(value)s” value must be either None, True or False."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2313
+msgid "Boolean (Either True, False or None)"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2364
+msgid "Positive big integer"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2379
+msgid "Positive integer"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2394
+msgid "Positive small integer"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2410
+#, python-format
+msgid "Slug (up to %(max_length)s)"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2446
+msgid "Text"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2526
+#, python-format
+msgid ""
+"“%(value)s” value has an invalid format. It must be in HH:MM[:ss[.uuuuuu]] "
+"format."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2530
+#, python-format
+msgid ""
+"“%(value)s” value has the correct format (HH:MM[:ss[.uuuuuu]]) but it is an "
+"invalid time."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2534
+msgid "Time"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2642
+msgid "URL"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2666
+msgid "Raw binary data"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2731
+#, python-format
+msgid "“%(value)s” is not a valid UUID."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/__init__.py:2733
+msgid "Universally unique identifier"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/files.py:244
+msgid "File"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/files.py:420
+#, fuzzy
+#| msgid "Images"
+msgid "Image"
+msgstr "Imágenes"
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/json.py:24
+msgid "A JSON object"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/json.py:26
+msgid "Value must be valid JSON."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/related.py:978
+#, python-format
+msgid "%(model)s instance with %(field)s %(value)r is not a valid choice."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/related.py:981
+msgid "Foreign Key (type determined by related field)"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/related.py:1275
+msgid "One-to-one relationship"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/related.py:1332
+#, python-format
+msgid "%(from)s-%(to)s relationship"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/related.py:1334
+#, python-format
+msgid "%(from)s-%(to)s relationships"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/db/models/fields/related.py:1382
+msgid "Many-to-many relationship"
+msgstr ""
+
+#. Translators: If found as last label character, these punctuation
+#. characters will prevent the default label_suffix to be appended to
+#. the label
+#: venv/lib/python3.14/site-packages/django/forms/boundfield.py:188
+msgid ":?.!"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:92
+msgid "This field is required."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:314
+msgid "Enter a whole number."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:485
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:1251
+msgid "Enter a valid date."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:508
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:1252
+msgid "Enter a valid time."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:535
+msgid "Enter a valid date/time."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:569
+msgid "Enter a valid duration."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:570
+#, python-brace-format
+msgid "The number of days must be between {min_days} and {max_days}."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:639
+msgid "No file was submitted. Check the encoding type on the form."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:640
+msgid "No file was submitted."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:641
+msgid "The submitted file is empty."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:643
+#, python-format
+msgid "Ensure this filename has at most %(max)d character (it has %(length)d)."
+msgid_plural ""
+"Ensure this filename has at most %(max)d characters (it has %(length)d)."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:648
+msgid "Please either submit a file or check the clear checkbox, not both."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:716
+msgid ""
+"Upload a valid image. The file you uploaded was either not an image or a "
+"corrupted image."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:872
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:959
+#: venv/lib/python3.14/site-packages/django/forms/models.py:1621
+#, python-format
+msgid "Select a valid choice. %(value)s is not one of the available choices."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:961
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:1080
+#: venv/lib/python3.14/site-packages/django/forms/models.py:1619
+msgid "Enter a list of values."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:1081
+msgid "Enter a complete value."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:1323
+msgid "Enter a valid UUID."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/fields.py:1353
+msgid "Enter a valid JSON."
+msgstr ""
+
+#. Translators: This is the default suffix added to form field labels
+#: venv/lib/python3.14/site-packages/django/forms/forms.py:97
+msgid ":"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/forms.py:239
+#, python-format
+msgid "(Hidden field %(name)s) %(error)s"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/formsets.py:61
+#, python-format
+msgid ""
+"ManagementForm data is missing or has been tampered with. Missing fields: "
+"%(field_names)s. You may need to file a bug report if the issue persists."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/formsets.py:65
+#, python-format
+msgid "Please submit at most %(num)d form."
+msgid_plural "Please submit at most %(num)d forms."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/forms/formsets.py:70
+#, python-format
+msgid "Please submit at least %(num)d form."
+msgid_plural "Please submit at least %(num)d forms."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/forms/formsets.py:484
+#: venv/lib/python3.14/site-packages/django/forms/formsets.py:491
+msgid "Order"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/formsets.py:499
+msgid "Delete"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/models.py:925
+#, python-format
+msgid "Please correct the duplicate data for %(field)s."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/models.py:930
+#, python-format
+msgid "Please correct the duplicate data for %(field)s, which must be unique."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/models.py:937
+#, python-format
+msgid ""
+"Please correct the duplicate data for %(field_name)s which must be unique "
+"for the %(lookup)s in %(date_field)s."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/models.py:946
+msgid "Please correct the duplicate values below."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/models.py:1383
+msgid "The inline value did not match the parent instance."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/models.py:1474
+msgid "Select a valid choice. That choice is not one of the available choices."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/models.py:1623
+#, python-format
+msgid "“%(pk)s” is not a valid value."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/utils.py:229
+#, python-format
+msgid ""
+"%(datetime)s couldn’t be interpreted in time zone %(current_timezone)s; it "
+"may be ambiguous or it may not exist."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/widgets.py:528
+msgid "Clear"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/widgets.py:529
+msgid "Currently"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/widgets.py:530
+msgid "Change"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/widgets.py:869
+msgid "Unknown"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/widgets.py:870
+msgid "Yes"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/forms/widgets.py:871
+msgid "No"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/tasks/base.py:34
+msgctxt "Task"
+msgid "Ready"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/tasks/base.py:36
+msgctxt "Task"
+msgid "Running"
+msgstr "En ejecución"
+
+#: venv/lib/python3.14/site-packages/django/tasks/base.py:38
+msgctxt "Task"
+msgid "Failed"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/tasks/base.py:40
+msgctxt "Task"
+msgid "Successful"
+msgstr ""
+
+#. Translators: Please do not add spaces around commas.
+#: venv/lib/python3.14/site-packages/django/template/defaultfilters.py:878
+msgid "yes,no,maybe"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/template/defaultfilters.py:908
+#: venv/lib/python3.14/site-packages/django/template/defaultfilters.py:925
+#, python-format
+msgid "%(size)d byte"
+msgid_plural "%(size)d bytes"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/template/defaultfilters.py:927
+#, python-format
+msgid "%s KB"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/template/defaultfilters.py:929
+#, python-format
+msgid "%s MB"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/template/defaultfilters.py:931
+#, python-format
+msgid "%s GB"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/template/defaultfilters.py:933
+#, python-format
+msgid "%s TB"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/template/defaultfilters.py:935
+#, python-format
+msgid "%s PB"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dateformat.py:74
+msgid "p.m."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dateformat.py:75
+msgid "a.m."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dateformat.py:80
+msgid "PM"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dateformat.py:81
+msgid "AM"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dateformat.py:153
+msgid "midnight"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dateformat.py:155
+msgid "noon"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:7
+msgid "Monday"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:8
+msgid "Tuesday"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:9
+msgid "Wednesday"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:10
+msgid "Thursday"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:11
+msgid "Friday"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:12
+msgid "Saturday"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:13
+msgid "Sunday"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:16
+msgid "Mon"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:17
+msgid "Tue"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:18
+msgid "Wed"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:19
+msgid "Thu"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:20
+msgid "Fri"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:21
+#, fuzzy
+#| msgid "Status"
+msgid "Sat"
+msgstr "Estado"
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:22
+msgid "Sun"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:25
+msgid "January"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:26
+msgid "February"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:27
+msgid "March"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:28
+msgid "April"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:29
+msgid "May"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:30
+msgid "June"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:31
+msgid "July"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:32
+msgid "August"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:33
+msgid "September"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:34
+msgid "October"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:35
+msgid "November"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:36
+msgid "December"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:39
+msgid "jan"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:40
+msgid "feb"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:41
+#, fuzzy
+#| msgid "Primary"
+msgid "mar"
+msgstr "Principal"
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:42
+msgid "apr"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:43
+#, fuzzy
+#| msgid "Primary"
+msgid "may"
+msgstr "Principal"
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:44
+msgid "jun"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:45
+msgid "jul"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:46
+msgid "aug"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:47
+msgid "sep"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:48
+msgid "oct"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:49
+msgid "nov"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:50
+msgid "dec"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:53
+msgctxt "abbrev. month"
+msgid "Jan."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:54
+msgctxt "abbrev. month"
+msgid "Feb."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:55
+msgctxt "abbrev. month"
+msgid "March"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:56
+msgctxt "abbrev. month"
+msgid "April"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:57
+msgctxt "abbrev. month"
+msgid "May"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:58
+msgctxt "abbrev. month"
+msgid "June"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:59
+msgctxt "abbrev. month"
+msgid "July"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:60
+msgctxt "abbrev. month"
+msgid "Aug."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:61
+msgctxt "abbrev. month"
+msgid "Sept."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:62
+msgctxt "abbrev. month"
+msgid "Oct."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:63
+msgctxt "abbrev. month"
+msgid "Nov."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:64
+msgctxt "abbrev. month"
+msgid "Dec."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:67
+msgctxt "alt. month"
+msgid "January"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:68
+msgctxt "alt. month"
+msgid "February"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:69
+msgctxt "alt. month"
+msgid "March"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:70
+msgctxt "alt. month"
+msgid "April"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:71
+msgctxt "alt. month"
+msgid "May"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:72
+msgctxt "alt. month"
+msgid "June"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:73
+msgctxt "alt. month"
+msgid "July"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:74
+msgctxt "alt. month"
+msgid "August"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:75
+msgctxt "alt. month"
+msgid "September"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:76
+msgctxt "alt. month"
+msgid "October"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:77
+msgctxt "alt. month"
+msgid "November"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/dates.py:78
+msgctxt "alt. month"
+msgid "December"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/ipv6.py:20
+msgid "This is not a valid IPv6 address."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/text.py:76
+#, python-format
+msgctxt "String to return when truncating text"
+msgid "%(truncated_text)s…"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/text.py:287
+msgid "or"
+msgstr ""
+
+#. Translators: This string is used as a separator between list elements
+#: venv/lib/python3.14/site-packages/django/utils/text.py:306
+#: venv/lib/python3.14/site-packages/django/utils/timesince.py:135
+msgid ", "
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/utils/timesince.py:8
+#, python-format
+msgid "%(num)d year"
+msgid_plural "%(num)d years"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/utils/timesince.py:9
+#, python-format
+msgid "%(num)d month"
+msgid_plural "%(num)d months"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/utils/timesince.py:10
+#, python-format
+msgid "%(num)d week"
+msgid_plural "%(num)d weeks"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/utils/timesince.py:11
+#, python-format
+msgid "%(num)d day"
+msgid_plural "%(num)d days"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/utils/timesince.py:12
+#, python-format
+msgid "%(num)d hour"
+msgid_plural "%(num)d hours"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/utils/timesince.py:13
+#, python-format
+msgid "%(num)d minute"
+msgid_plural "%(num)d minutes"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: venv/lib/python3.14/site-packages/django/views/csrf.py:29
+msgid "Forbidden"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/csrf.py:30
+msgid "CSRF verification failed. Request aborted."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/csrf.py:34
+msgid ""
+"You are seeing this message because this HTTPS site requires a “Referer "
+"header” to be sent by your web browser, but none was sent. This header is "
+"required for security reasons, to ensure that your browser is not being "
+"hijacked by third parties."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/csrf.py:40
+msgid ""
+"If you have configured your browser to disable “Referer” headers, please re-"
+"enable them, at least for this site, or for HTTPS connections, or for “same-"
+"origin” requests."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/csrf.py:45
+msgid ""
+"If you are using the <meta name=\"referrer\" content=\"no-referrer\"> tag or "
+"including the “Referrer-Policy: no-referrer” header, please remove them. The "
+"CSRF protection requires the “Referer” header to do strict referer checking. "
+"If you’re concerned about privacy, use alternatives like <a "
+"rel=\"noreferrer\" …> for links to third-party sites."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/csrf.py:54
+msgid ""
+"You are seeing this message because this site requires a CSRF cookie when "
+"submitting forms. This cookie is required for security reasons, to ensure "
+"that your browser is not being hijacked by third parties."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/csrf.py:60
+msgid ""
+"If you have configured your browser to disable cookies, please re-enable "
+"them, at least for this site, or for “same-origin” requests."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/csrf.py:66
+msgid "More information is available with DEBUG=True."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:44
+msgid "No year specified"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:64
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:115
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:214
+msgid "Date out of range"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:94
+msgid "No month specified"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:147
+msgid "No day specified"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:194
+msgid "No week specified"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:353
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:384
+#, fuzzy, python-format
+#| msgid "No backups available"
+msgid "No %(verbose_name_plural)s available"
+msgstr "No hay backups disponibles"
+
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:680
+#, python-format
+msgid ""
+"Future %(verbose_name_plural)s not available because "
+"%(class_name)s.allow_future is False."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/dates.py:720
+#, python-format
+msgid "Invalid date string “%(datestr)s” given format “%(format)s”"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/detail.py:56
+#, python-format
+msgid "No %(verbose_name)s found matching the query"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/list.py:70
+msgid "Page is not “last”, nor can it be converted to an int."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/list.py:77
+#, python-format
+msgid "Invalid page (%(page_number)s): %(message)s"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/generic/list.py:173
+#, python-format
+msgid "Empty list and “%(class_name)s.allow_empty” is False."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/static.py:49
+msgid "Directory indexes are not allowed here."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/static.py:51
+#, python-format
+msgid "“%(path)s” does not exist"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/static.py:68
+#: venv/lib/python3.14/site-packages/django/views/templates/directory_index.html:8
+#: venv/lib/python3.14/site-packages/django/views/templates/directory_index.html:11
+#, python-format
+msgid "Index of %(directory)s"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:7
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:204
+msgid "The install worked successfully! Congratulations!"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:206
+#, python-format
+msgid ""
+"View <a href=\"https://docs.djangoproject.com/en/%(version)s/releases/\" "
+"target=\"_blank\" rel=\"noopener\">release notes</a> for Django %(version)s"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:208
+#, python-format
+msgid ""
+"You are seeing this page because <a href=\"https://docs.djangoproject.com/en/"
+"%(version)s/ref/settings/#debug\" target=\"_blank\" "
+"rel=\"noopener\">DEBUG=True</a> is in your settings file and you have not "
+"configured any URLs."
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:217
+msgid "Django Documentation"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:218
+msgid "Topics, references, &amp; how-to’s"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:226
+msgid "Tutorial: A Polling App"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:227
+msgid "Get started with Django"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:235
+msgid "Django Community"
+msgstr ""
+
+#: venv/lib/python3.14/site-packages/django/views/templates/default_urlconf.html:236
+msgid "Connect, get help, or contribute"
+msgstr ""

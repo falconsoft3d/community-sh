@@ -75,7 +75,10 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
         # the chatter hook once the module is installed in the database)
         # Demos: /?name opens the database name; without it, the default one, and the list of databases stays hidden
         demo = bool(instance.demo_default_db) and odoo_major(instance.odoo_version) >= DEMO_MIN_VERSION
-        demo_lines = f"community_sh_demo_default = {instance.demo_default_db}\nlist_db = False\n" if demo else ''
+        demo_lines = f"community_sh_demo_default = {instance.demo_default_db}\n" if demo else ''
+        # list_db = False: Odoo refuses its database manager (web and RPC: create, drop, dump, restore...)
+        if demo or not instance.odoo_db_manager:
+            demo_lines += "list_db = False\n"
         panel_login = (f"server_wide_modules = {server_wide},community_sh_login,community_sh_ai"
                        f"{',community_sh_demo' if demo else ''}\n{demo_lines}"
                        f"community_sh_secret = {admin_login_secret(instance)}\n"

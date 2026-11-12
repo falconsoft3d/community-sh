@@ -2076,7 +2076,8 @@ class DomainTests(BaseTestCase):
     def test_http_routes_without_certificates(self):
         self.assertEqual(self.alice_instance.url, 'http://acme-17-alice-odoo.hosting.example.com')
         routers = self.routes(self.alice_instance)['http']['routers']
-        self.assertEqual([r['rule'] for r in routers.values()], ['Host(`acme-17-alice-odoo.hosting.example.com`)'])
+        # (plus the routers that close Odoo's database manager: OdooDatabaseManagerTests)
+        self.assertEqual([r['rule'] for k, r in routers.items() if '-blocked' not in k], ['Host(`acme-17-alice-odoo.hosting.example.com`)'])
 
     @mock.patch.dict(os.environ, {'MAIN_DOMAIN': 'hosting.example.com', 'LETSENCRYPT_EMAIL': 'ops@example.com'})
     def test_lets_encrypt_per_host_and_redirect(self):
@@ -2084,12 +2085,12 @@ class DomainTests(BaseTestCase):
         self.alice_instance.save()
         self.assertEqual(self.alice_instance.url, 'https://erp.acme.com')
         config = self.routes(self.alice_instance)['http']
-        secure = {k: v for k, v in config['routers'].items() if k.endswith('-secure')}
+        secure = {k: v for k, v in config['routers'].items() if k.endswith('-secure') and '-blocked' not in k}
         self.assertEqual(sorted(r['rule'] for r in secure.values()), [
             'Host(`acme-17-alice-odoo.hosting.example.com`)', 'Host(`erp.acme.com`)', 'Host(`www.erp.acme.com`)'])
         self.assertTrue(all(r['tls'] == {'certResolver': 'letsencrypt'} for r in secure.values()))
         self.assertTrue(all(r['middlewares'] == ['instance-alice-odoo-redirect-https']
-                            for k, r in config['routers'].items() if not k.endswith('-secure')))
+                            for k, r in config['routers'].items() if not k.endswith('-secure') and '-blocked' not in k))
         self.assertEqual(config['services']['instance-alice-odoo-service']['loadBalancer']['servers'],
                          [{'url': 'http://odoo_alice-odoo:8069'}])
 
@@ -3987,6 +3988,86 @@ class SmokeCheckTests(BaseTestCase):
                 mock.patch('orchestrator.services.metrics.collect_metrics', return_value={}):
             with self.assertRaisesMessage(CommandError, 'Docker: Exception: proxy down'):
                 call_command('smoke_check', stdout=StringIO())
+
+
+class OdooDatabaseManagerTests(BaseTestCase):
+    def test_closed_by_default_blocked_at_traefik_and_in_odoo_conf(self):
+        import tempfile
+        from .services.docker_service import DockerService
+        from .traefik_service import TraefikService
+        instance = Instance.objects.create(name='closed-odoo', owner=self.alice, project=self.alice_instance.project)
+        self.assertFalse(instance.odoo_db_manager)
+        written = {}
+        with mock.patch.object(TraefikService, '_write', side_effect=lambda name, config: written.update({name: config})), \
+                mock.patch('orchestrator.services.domains.instance_hosts', return_value=['closed.example.com']), \
+                mock.patch('orchestrator.services.domains.acme_enabled', return_value=True):
+            TraefikService.generate_instance_config(instance)
+            routers = written['instance-closed-odoo.yml']['http']['routers']
+            blocked = routers['instance-closed-odoo-0-blocked-secure']
+            self.assertIn('PathPrefix(`/web/database`)', blocked['rule'])
+            self.assertIn('PathPrefix(`/xmlrpc/2/db`)', blocked['rule'])
+            self.assertGreater(blocked['priority'], routers['instance-closed-odoo-0-secure']['priority'])
+            deny = blocked['middlewares'][0]
+            self.assertEqual(written['instance-closed-odoo.yml']['http']['middlewares'][deny], {'ipWhiteList': {'sourceRange': ['127.0.0.1/32']}})
+            instance.odoo_db_manager = True
+            TraefikService.generate_instance_config(instance)
+            self.assertFalse([r for r in written['instance-closed-odoo.yml']['http']['routers'] if 'blocked' in r])
+
+        service = DockerService.__new__(DockerService)
+        with tempfile.TemporaryDirectory() as workspace:
+            for manager, expected in ((False, True), (True, False)):
+                instance.odoo_db_manager = manager
+                path = service._write_odoo_config(instance, workspace)
+                conf = open(path if isinstance(path, str) and path.endswith('.conf') else
+                            os.path.join(workspace, 'conf', os.listdir(os.path.join(workspace, 'conf'))[0])).read()
+                self.assertEqual('list_db = False' in conf, expected)
+
+    def test_existing_instances_keep_it_open(self):
+        # The migration adds the column with True for the rows already there, then defaults new ones to False
+        import importlib
+        migration = importlib.import_module('orchestrator.migrations.0079_odoo_db_manager').Migration
+        self.assertTrue(migration.operations[0].field.default)
+        self.assertFalse(migration.operations[1].field.default)
+
+    def test_toggle_and_create_database_from_the_page(self):
+        from .audit_models import AuditEvent
+        from .task_models import Task
+        url = reverse('instance-db-manager', args=[self.alice_instance.pk])
+        self.client.force_login(self.bob)
+        self.assertIn(self.client.post(url, {'open': '1'}).status_code, (403, 404))
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.traefik_service.TraefikService.generate_instance_config') as routes:
+            self.client.post(url, {'open': '1'})
+        self.alice_instance.refresh_from_db()
+        self.assertTrue(self.alice_instance.odoo_db_manager)
+        routes.assert_called_once()
+        self.assertTrue(AuditEvent.objects.filter(action='db_manager', target=self.alice_instance.name, details='Abierto').exists())
+        with mock.patch('orchestrator.traefik_service.TraefikService.generate_instance_config'):
+            self.client.post(url, {'open': '0'})
+        self.alice_instance.refresh_from_db()
+        self.assertFalse(self.alice_instance.odoo_db_manager)
+        page = self.client.get(reverse('instance-detail', args=[self.alice_instance.pk])).content.decode()
+        self.assertIn(reverse('instance-create-database', args=[self.alice_instance.pk]), page)
+
+        create = reverse('instance-create-database', args=[self.alice_instance.pk])
+        self.client.post(create, {'name': 'bad name;', 'lang': 'es_ES'})
+        self.assertFalse(Task.objects.filter(kind='create_database').exists())
+        self.client.post(create, {'name': 'acme', 'lang': 'es_ES', 'demo': '1'})
+        task = Task.objects.get(kind='create_database')
+        self.assertEqual((task.params['name'], task.params['lang'], task.params['demo']), ('acme', 'es_ES', True))
+        self.assertRegex(task.params['password'], r'^[A-Za-z0-9_-]{8,64}$')
+        self.client.post(create, {'name': 'acme2'})
+        self.assertEqual(Task.objects.filter(kind='create_database').count(), 1)
+
+    def test_bridge_lists_databases_from_postgres_when_closed(self):
+        from .services import odoo_bridge
+        self.alice_instance.database_name = ''
+        self.alice_instance.odoo_db_manager = False
+        with mock.patch('orchestrator.services.docker_service.DockerService') as docker_service, \
+                mock.patch('urllib.request.urlopen') as urlopen:
+            docker_service.return_value._list_user_databases.return_value = ['acme']
+            self.assertEqual(odoo_bridge.databases(self.alice_instance), ['acme'])
+        urlopen.assert_not_called()
 
 
 class DockerProxyPolicyTests(TestCase):

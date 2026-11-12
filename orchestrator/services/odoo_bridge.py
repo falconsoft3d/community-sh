@@ -57,8 +57,8 @@ def _post(instance, path, data, timeout=30, retries=0):
 def databases(instance):
     if instance.database_name:
         return [instance.database_name]
-    if instance.demo_default_db:
-        # Demos hide the list of databases: ask Postgres
+    if instance.demo_default_db or not instance.odoo_db_manager:
+        # Demos and a closed database manager hide the list of databases (list_db = False): ask Postgres
         from .docker_service import DockerService
         service = DockerService()
         return service._list_user_databases(service._get_container(f'db_{instance.name}'))

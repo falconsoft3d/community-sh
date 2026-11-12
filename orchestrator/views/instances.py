@@ -807,6 +807,54 @@ def instance_secret(request, pk, kind):
 
 @login_required
 @require_POST
+def instance_db_manager(request, pk):
+    """Information → Gestor de bases de datos de Odoo: open or close it (Traefik now, list_db on the next deploy)."""
+    from django.urls import reverse
+    from ..audit import record
+    from ..traefik_service import TraefikService
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    instance.odoo_db_manager = request.POST.get('open') == '1'
+    instance.save(update_fields=['odoo_db_manager'])
+    TraefikService.generate_instance_config(instance)
+    record(request, 'db_manager', instance.name, 'Abierto' if instance.odoo_db_manager else 'Cerrado')
+    if instance.odoo_db_manager:
+        messages.warning(request, 'Gestor de bases de datos abierto a internet: protegido solo por la Master Password. '
+                                  'Ciérralo cuando acabes. Odoo lo permite del todo tras redesplegar.')
+    else:
+        messages.success(request, 'Gestor de bases de datos cerrado: bloqueado ya en el dominio; al redesplegar, '
+                                  'Odoo también lo rechaza (list_db = False).')
+    return redirect(reverse('instance-detail', args=[pk]))
+
+
+@login_required
+@require_POST
+def instance_create_database(request, pk):
+    """Information → Crear base de datos: the CREATE_DATABASE task (as the API), with a random admin password."""
+    import secrets
+    from django.urls import reverse
+    from ..permissions import DATABASE_NAME_RE
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    back = redirect(reverse('instance-detail', args=[pk]))
+    name = (request.POST.get('name') or instance.name).strip()
+    if not DATABASE_NAME_RE.match(name):
+        messages.error(request, 'Nombre de base de datos no válido: letras, números, «_», «.» o «-»')
+        return back
+    lang = request.POST.get('lang', '').strip()
+    if lang and not re.fullmatch(r'[a-z]{2,3}(_[A-Z]{2})?(@[a-z]+)?', lang):
+        messages.error(request, 'Idioma no válido (p. ej. es_ES)')
+        return back
+    if instance.tasks.filter(kind=Task.Kind.CREATE_DATABASE, status__in=[Task.Status.PENDING, Task.Status.RUNNING]).exists():
+        messages.info(request, 'Ya se está creando una base de datos en esta instancia')
+        return back
+    enqueue(Task.Kind.CREATE_DATABASE, instance, request.user, name=name, password=secrets.token_urlsafe(12), lang=lang,
+            demo=request.POST.get('demo') == '1')
+    messages.success(request, f'Creando la base de datos {name}: el usuario y la contraseña del administrador '
+                              'aparecerán en Administrador al terminar')
+    return back
+
+
+@login_required
+@require_POST
 def instance_update_power(request, pk):
     """Information → Ahorro de memoria: stop when unused for N days, and a daily schedule (UTC)."""
     from datetime import time

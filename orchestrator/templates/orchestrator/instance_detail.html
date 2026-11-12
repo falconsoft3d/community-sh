@@ -381,6 +381,34 @@
                     </div>
                     <p class="text-xs text-muted-foreground mt-1">{% translate "Para el gestor de bases de datos de Odoo (/web/database/manager). Se aplica al redesplegar." %}</p>
                 </div>
+
+                <div class="space-y-1">
+                    <label class="text-sm font-medium leading-none">{% translate "Gestor de bases de datos de Odoo" %}</label>
+                    <form action="{% url 'instance-db-manager' object.pk %}" method="post" class="flex flex-wrap items-center gap-2">
+                        {% csrf_token %}
+                        {% if object.odoo_db_manager %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"><i data-lucide="lock-open" class="h-3 w-3"></i> {% translate "Abierto a internet" %}</span>
+                        <input type="hidden" name="open" value="0">
+                        <button type="submit" class="text-xs text-primary hover:underline">{% translate "Cerrar" %}</button>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800"><i data-lucide="lock" class="h-3 w-3"></i> {% translate "Cerrado" %}</span>
+                        <input type="hidden" name="open" value="1">
+                        {% translate "¿Abrir el gestor de bases de datos de Odoo a internet? Cualquiera con la Master Password podrá crear, copiar, descargar o borrar bases de datos." as confirm_open %}
+                        <button type="submit" class="text-xs text-primary hover:underline" onclick="return confirm('{{ confirm_open|escapejs }}')">{% translate "Abrir" %}</button>
+                        {% endif %}
+                    </form>
+                    <p class="text-xs text-muted-foreground">{% translate "Cerrado, /web/database/* responde 403 en el dominio al momento y, al redesplegar, Odoo también lo rechaza (list_db = False). Con varias bases de datos se entra con ?db=nombre. Crea la base de datos desde aquí:" %}</p>
+                    <form action="{% url 'instance-create-database' object.pk %}" method="post" class="flex flex-wrap items-center gap-2 pt-1">
+                        {% csrf_token %}
+                        <input name="name" value="{{ object.name }}" required pattern="[a-zA-Z0-9][a-zA-Z0-9_.\-]{0,62}" aria-label="{% translate "Nombre de la base de datos" %}"
+                            class="h-8 w-40 rounded-md border border-input bg-background px-2 text-sm">
+                        <input name="lang" value="es_ES" placeholder="es_ES" aria-label="{% translate "Idioma" %}" class="h-8 w-20 rounded-md border border-input bg-background px-2 text-sm">
+                        <label class="flex items-center gap-1 text-xs"><input type="checkbox" name="demo" value="1"> {% translate "Datos de demo" %}</label>
+                        <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">
+                            <i data-lucide="database" class="mr-1 h-3 w-3"></i> {% translate "Crear base de datos" %}
+                        </button>
+                    </form>
+                </div>
                 {% endif %}
 
                 {% if can_manage %}

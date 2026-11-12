@@ -536,6 +536,24 @@ ES_TO_EN = {
     'Instalación completada': 'Installation completed',
     'Error en la instalación': 'Installation failed',
     'No se pudo obtener': 'Could not retrieve it',
+    'Gestor de bases de datos de Odoo':
+        'Odoo database manager',
+    'Abierto a internet':
+        'Open to the internet',
+    'Cerrar':
+        'Close',
+    'Cerrado':
+        'Closed',
+    '¿Abrir el gestor de bases de datos de Odoo a internet? Cualquiera con la Master Password podrá crear, copiar, descargar o borrar bases de datos.':
+        "Open Odoo's database manager to the internet? Anyone with the Master Password will be able to create, copy, download or delete databases.",
+    'Cerrado, /web/database/* responde 403 en el dominio al momento y, al redesplegar, Odoo también lo rechaza (list_db = False). Con varias bases de datos se entra con ?db=nombre. Crea la base de datos desde aquí:':
+        'When closed, /web/database/* answers 403 on the domain right away and, after a redeploy, Odoo refuses it too (list_db = False). With several databases, log in with ?db=name. Create the database from here:',
+    'Nombre de la base de datos':
+        'Database name',
+    'Datos de demo':
+        'Demo data',
+    'Crear base de datos':
+        'Create database',
 }
 
 # Strings written in English in the code -> Spanish

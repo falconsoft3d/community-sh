@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.99'
+VERSION = '1.0.100'
 
 CHANGELOG = [
+    {
+        'version': '1.0.100',
+        'date': '2026-11-12',
+        'notes': [
+            'Seguridad: el gestor de bases de datos de Odoo (/web/database/*, con el que la Master Password basta para descargar o borrar una base) queda cerrado por defecto en las instancias nuevas; las que ya existían siguen abiertas hasta que se cierre. Information → Gestor de bases de datos de Odoo: cerrado, /web/database/* y el servicio XML-RPC db responden 403 en los dominios de la instancia al momento (Traefik) y, al redesplegar, Odoo también lo rechaza con list_db = False (también por el puerto directo). Abrirlo pide confirmación y queda en la Auditoría. Nuevo: Information → Crear base de datos (nombre, idioma, datos de demo), que guarda el usuario y la contraseña del administrador, como la API. El asistente de IA lista las bases en PostgreSQL cuando el gestor está cerrado. En la API el campo odoo_db_manager es de solo lectura. Migración 0079.',
+        ],
+    },
     {
         'version': '1.0.99',
         'date': '2026-11-12',
