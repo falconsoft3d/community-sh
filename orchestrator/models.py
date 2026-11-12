@@ -9,6 +9,14 @@ from django.dispatch import receiver
 from .permissions import validate_resource_name, validate_domain, validate_database_name, validate_git_branch, validate_repo_url
 from .instance_env import validate_env_vars
 
+MEMORY_LIMIT_MIN_MB, MEMORY_LIMIT_MAX_MB = 256, 32768
+
+
+def validate_memory_limit(value):
+    from django.core.exceptions import ValidationError
+    if value and not MEMORY_LIMIT_MIN_MB <= value <= MEMORY_LIMIT_MAX_MB:
+        raise ValidationError(f'Entre {MEMORY_LIMIT_MIN_MB} y {MEMORY_LIMIT_MAX_MB} MB, o 0 para no limitar')
+
 
 def generate_master_password():
     return secrets.token_urlsafe(18)
@@ -53,6 +61,9 @@ class Instance(models.Model):
     container_id = models.CharField(max_length=100, blank=True, null=True)
     data_volume = models.CharField(max_length=255, blank=True, default='', help_text="Docker volume holding /var/lib/odoo (filestore)")
     master_password = models.CharField(max_length=64, default=generate_master_password, help_text="Odoo master password (database manager)")
+    # Cap of the Odoo container: one runaway instance can't take the memory of the server (and of the others)
+    memory_limit_mb = models.PositiveIntegerField(default=1536, validators=[validate_memory_limit], help_text="Memory limit of the Odoo container in MB (0: no limit)")
+
     # The administrator the panel created (database created from the panel/API/MCP, demo), shown to who manages it
     admin_login = models.CharField(max_length=100, blank=True, default='', help_text="Login of the administrator the panel created")
     admin_password = models.CharField(max_length=64, blank=True, default='', help_text="Password of the administrator the panel created")

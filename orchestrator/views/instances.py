@@ -756,6 +756,32 @@ def instance_install_named_module(request, pk):
 
 @login_required
 @require_POST
+def instance_update_memory(request, pk):
+    """Memory cap of the Odoo container: applied right away to a running one (and checked every minute by the worker)."""
+    from django.urls import reverse
+    from ..models import validate_memory_limit
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    try:
+        value = int(request.POST.get('memory_limit_mb', ''))
+        validate_memory_limit(value)
+    except (ValueError, ValidationError) as e:
+        messages.error(request, getattr(e, 'messages', ['Escribe un número de MB'])[0])
+        return redirect(reverse('instance-detail', args=[pk]))
+    instance.memory_limit_mb = value
+    instance.save(update_fields=['memory_limit_mb'])
+    if value:
+        try:
+            DockerService().apply_memory_limits([instance])
+        except Exception:
+            pass  # the worker applies it within a minute
+        messages.success(request, f'Límite de memoria: {value} MB, aplicado sin reiniciar')
+    else:
+        messages.success(request, 'Sin límite de memoria: se aplica en el próximo despliegue')
+    return redirect(reverse('instance-detail', args=[pk]))
+
+
+@login_required
+@require_POST
 def instance_reset_admin_password(request, pk):
     """A new password for the Odoo administrator (the one given, or a random one), shown afterwards in the instance page."""
     from django.urls import reverse

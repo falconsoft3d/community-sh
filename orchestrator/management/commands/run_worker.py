@@ -51,6 +51,13 @@ class Command(BaseCommand):
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Port sync failed: {e}'))
                 try:
+                    from orchestrator.services.docker_service import DockerService
+                    capped = DockerService().apply_memory_limits()
+                    if capped:
+                        self.stdout.write(f"Memory limit applied to: {', '.join(capped)}")
+                except Exception as e:
+                    self.stdout.write(self.style.ERROR(f'Memory limits failed: {e}'))
+                try:
                     from orchestrator.services.webhooks import queue_daily_updates
                     queued = queue_daily_updates()
                     if queued:

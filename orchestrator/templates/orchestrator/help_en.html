@@ -77,6 +77,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                     <li><strong>Deploy</strong>: deploys again (recreates the containers with the current configuration; data is kept).</li>
                     <li><strong>Restart / Stop</strong>: restarting first starts the database if it was stopped. A stopped instance loses its Traefik route (no certificates spent) and gets it back when restarted. After a server reboot, instances come back on their own except the ones you stopped.</li>
                     <li><strong>Rename</strong> (moves containers and volumes), <strong>Move</strong> to another of your projects (the address doesn't change) and <strong>Delete</strong> (removes containers, volumes, workspace, routes and its backups).</li>
+                    <li><strong>Memory limit</strong> (Information, 1536 MB by default): RAM cap of the Odoo container so one instance can't leave the server and the others without memory. Applied live, without a restart (the worker checks it every minute); 0 = no limit, on the next deploy. If Odoo reaches it, the system kills the process and Docker starts it again: raise it if an instance keeps restarting on its own.</li>
                     <li><strong>Description (demos)</strong>: text shown next to the instance on its project's demo page.</li>
                     <li>Odoo <strong>Logs</strong> and a <strong>Console</strong> to run commands in the container.</li>
                 </ul>

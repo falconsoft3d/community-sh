@@ -77,6 +77,7 @@ updates its section here (and the index) in the same commit.
                     <li><strong>Deploy</strong>: vuelve a desplegar (recrea los contenedores con la configuración actual; los datos se conservan).</li>
                     <li><strong>Restart / Stop</strong>: reiniciar arranca antes la base de datos si estaba parada. Una instancia parada pierde su ruta en Traefik (no gasta certificados) y la recupera al reiniciarla. Tras reiniciar el servidor, las instancias vuelven solas salvo las que paraste tú.</li>
                     <li><strong>Renombrar</strong> (mueve contenedores y volúmenes), <strong>Mover</strong> a otro de tus proyectos (la dirección no cambia) y <strong>Eliminar</strong> (borra contenedores, volúmenes, workspace, rutas y sus backups).</li>
+                    <li><strong>Límite de memoria</strong> (Information, 1536 MB por defecto): tope de RAM del contenedor de Odoo para que una instancia no deje sin memoria al servidor ni a las demás. Se aplica en marcha, sin reiniciar (el worker lo revisa cada minuto); 0 = sin límite, en el próximo despliegue. Si Odoo lo alcanza, el sistema corta el proceso y Docker lo vuelve a arrancar: súbelo si una instancia se reinicia sola.</li>
                     <li><strong>Descripción (demos)</strong>: texto que acompaña a la instancia en la página de demos de su proyecto.</li>
                     <li><strong>Logs</strong> de Odoo y <strong>Console</strong> para ejecutar comandos en el contenedor.</li>
                 </ul>

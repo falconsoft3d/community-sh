@@ -3553,6 +3553,46 @@ class InstallNamedModuleTests(BaseTestCase):
         self.assertEqual(self.client.post(f'/instance/{self.alice_instance.pk}/install-named-module/', {'module': 'x_y'}).status_code, 403)
 
 
+class MemoryLimitTests(BaseTestCase):
+    def test_options_and_live_update(self):
+        from .services.docker_service import DockerService, memory_options
+        self.assertEqual(memory_options(Instance(memory_limit_mb=1536)), {'mem_limit': '1536m', 'memswap_limit': '1536m'})
+        self.assertEqual(memory_options(Instance(memory_limit_mb=0)), {})
+        self.assertEqual(Instance.objects.get(pk=self.alice_instance.pk).memory_limit_mb, 1536)
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        capped = mock.Mock(attrs={'HostConfig': {'Memory': 1536 * 1024 * 1024}})
+        capped.name = 'odoo_alice-odoo'
+        loose = mock.Mock(attrs={'HostConfig': {'Memory': 0}})
+        loose.name = 'odoo_bob-odoo'
+        stranger = mock.Mock(attrs={'HostConfig': {'Memory': 0}})
+        stranger.name = 'odoo_unknown'
+        service.client.containers.list.return_value = [capped, loose, stranger]
+        self.assertEqual(service.apply_memory_limits(), ['bob-odoo'])
+        loose.update.assert_called_once_with(mem_limit=1536 * 1024 * 1024, memswap_limit=1536 * 1024 * 1024)
+        capped.update.assert_not_called()
+        stranger.update.assert_not_called()
+
+    def test_edit_from_the_page_and_the_api(self):
+        url = reverse('instance-update-memory', args=[self.alice_instance.pk])
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get(f'/instance/{self.alice_instance.pk}/'), url)
+        with mock.patch('orchestrator.views.instances.DockerService') as service:
+            self.client.post(url, {'memory_limit_mb': '2048'})
+            self.assertEqual(service.return_value.apply_memory_limits.call_args.args[0][0].pk, self.alice_instance.pk)
+            self.client.post(url, {'memory_limit_mb': '100'})  # too low: kept
+            self.client.post(url, {'memory_limit_mb': 'lots'})
+        self.assertEqual(Instance.objects.get(pk=self.alice_instance.pk).memory_limit_mb, 2048)
+        api = f'/api/instances/{self.alice_instance.pk}/'
+        self.assertEqual(self.client.patch(api, {'memory_limit_mb': 50}, content_type='application/json').status_code, 400)
+        self.assertEqual(self.client.patch(api, {'memory_limit_mb': 0}, content_type='application/json').json()['memory_limit_mb'], 0)
+        # Clients of the project can't change it
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        self.assertIn(self.client.post(url, {'memory_limit_mb': '4096'}).status_code, (403, 404))
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

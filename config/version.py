@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.75'
+VERSION = '1.0.76'
 
 CHANGELOG = [
+    {
+        'version': '1.0.76',
+        'date': '2026-11-12',
+        'notes': [
+            'Límite de memoria por instancia (Information, 1536 MB por defecto; 0 sin límite): tope de RAM del contenedor de Odoo para que una instancia no deje sin memoria al servidor ni a las demás. Se aplica en marcha con docker update, sin reiniciar: al guardarlo y cada minuto desde el worker, también a las instancias que ya estaban desplegadas (migración 0067). También por la API (memory_limit_mb, entre 256 y 32768 MB o 0).',
+        ],
+    },
     {
         'version': '1.0.75',
         'date': '2026-11-12',

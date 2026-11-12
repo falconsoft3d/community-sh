@@ -13,7 +13,7 @@ API_ENDPOINTS = [
     ('GET', '/api/instances/', 'Instancias (estado, versión, proyecto, URL)'),
     ('POST', '/api/instances/', 'Crear y desplegar instancia (name, odoo_version, project; opcionales github_repo, github_branch, '
                                 'database_name, custom_domain, description); devuelve task_id'),
-    ('GET · PATCH', '/api/instances/{id}/', 'Ver o editar una instancia (description, github_branch, auto_update, '
+    ('GET · PATCH', '/api/instances/{id}/', 'Ver o editar una instancia (description, github_branch, auto_update, memory_limit_mb: tope de RAM en MB, 0 sin límite, '
                                             'env_vars: NOMBRE=valor por línea, se aplican en el próximo despliegue)'),
     ('POST', '/api/instances/{id}/deploy/', 'Desplegar (devuelve task_id)'),
     ('POST', '/api/instances/{id}/restart/', 'Reiniciar'),

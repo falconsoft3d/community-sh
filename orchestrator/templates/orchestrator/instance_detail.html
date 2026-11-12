@@ -359,6 +359,26 @@
                 {% endif %}
 
                 {% if can_manage %}
+                <div class="space-y-1" x-data="{ editingMemory: false }">
+                    <label class="text-sm font-medium leading-none">Límite de memoria</label>
+                    <div x-show="!editingMemory" class="flex items-center gap-2">
+                        <span class="text-sm text-muted-foreground">{% if object.memory_limit_mb %}{{ object.memory_limit_mb }} MB{% else %}Sin límite{% endif %}</span>
+                        <button @click="editingMemory = true" class="text-xs text-primary hover:underline flex items-center gap-1">
+                            <i data-lucide="pencil" class="h-3 w-3"></i> Editar
+                        </button>
+                    </div>
+                    <form x-show="editingMemory" x-cloak action="{% url 'instance-update-memory' object.pk %}" method="post" class="flex flex-wrap items-center gap-2">
+                        {% csrf_token %}
+                        <input name="memory_limit_mb" type="number" min="0" max="32768" step="128" value="{{ object.memory_limit_mb }}" aria-label="Límite de memoria en MB"
+                            class="h-8 w-28 rounded-md border border-input bg-background px-3 text-sm"> <span class="text-sm text-muted-foreground">MB</span>
+                        <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">Guardar</button>
+                        <button type="button" @click="editingMemory = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">Cancelar</button>
+                    </form>
+                    <p class="text-xs text-muted-foreground">Tope de RAM del contenedor de Odoo, para que una instancia no deje sin memoria al servidor ni a las demás. Se aplica en marcha, sin reiniciar; 0 = sin límite (en el próximo despliegue). Si Odoo lo alcanza, el sistema corta el proceso y Docker lo vuelve a arrancar.</p>
+                </div>
+                {% endif %}
+
+                {% if can_manage %}
                 <div class="space-y-1" x-data="{ show: false, resetting: false }">
                     <label class="text-sm font-medium leading-none">Administrador</label>
                     {% if object.admin_password %}

@@ -80,6 +80,14 @@ DEMO_MIN_VERSION = 18
 PANEL_INTERNAL_URL = 'http://app:8000'
 
 
+def memory_options(instance):
+    """docker run options for the memory cap of the Odoo container (no swap beyond it)."""
+    if not instance.memory_limit_mb:
+        return {}
+    limit = f'{instance.memory_limit_mb}m'
+    return {'mem_limit': limit, 'memswap_limit': limit}
+
+
 def admin_login_secret(instance):
     """Key the panel and the instance's community_sh_login module share to sign admin links."""
     import hashlib
@@ -420,6 +428,29 @@ class DockerService:
         except Exception as e:
             print(f"Warning: could not install {self.AI_MODULE}: {e}")
 
+    def apply_memory_limits(self, instances=None):
+        """
+        Apply the memory cap of each instance to its running Odoo container, live (docker update, no restart).
+        "No limit" (0) is applied on the next deploy. Returns the names of the instances whose cap changed.
+        """
+        from ..models import Instance
+        queryset = Instance.objects.filter(memory_limit_mb__gt=0)
+        if instances is not None:
+            queryset = queryset.filter(pk__in=[i.pk for i in instances])
+        wanted = {instance.name: instance.memory_limit_mb * 1024 * 1024 for instance in queryset}
+        changed = []
+        for container in self.client.containers.list(filters={'name': 'odoo_'}):
+            name = container.name[len('odoo_'):]
+            if name not in wanted or container.attrs.get('HostConfig', {}).get('Memory') == wanted[name]:
+                continue
+            try:
+                container.update(mem_limit=wanted[name], memswap_limit=wanted[name])
+                changed.append(name)
+            except docker.errors.APIError as e:
+                # Below what it uses right now, for example: it stays as it was and is retried
+                print(f'Límite de memoria de {name}: {getattr(e, "explanation", None) or e}')
+        return changed
+
     def sync_published_ports(self):
         """
         Store the host port each running Odoo container actually publishes. Containers
@@ -581,6 +612,7 @@ class DockerService:
                 ports={'8069/tcp': (published_ip(), port)},
                 detach=True,
                 restart_policy=RESTART_POLICY,
+                **memory_options(instance),
                 labels={
                     "traefik.enable": "true",
                     "traefik.docker.network": "community-sh_web",
