@@ -4140,6 +4140,60 @@ class BackupRecoveryTests(BaseTestCase):
         self.assertEqual(Task.objects.filter(kind=Task.Kind.BACKUP_VERIFY).count(), 2)
 
 
+class RefreshDataTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.prod = Instance.objects.create(name='acme-prod', owner=self.alice, project=self.alice_project, odoo_version='17.0',
+                                            admin_login='admin', admin_password='Prod-pass-1')
+        self.staging = Instance.objects.create(name='acme-staging', owner=self.alice, project=self.alice_project,
+                                               odoo_version='17.0', copied_from=self.prod)
+        Instance.objects.create(name='other-version', owner=self.alice, project=self.alice_project, odoo_version='16.0')
+
+    def test_form_offers_same_version_instances_and_needs_the_name(self):
+        from .task_models import Task
+        url = reverse('instance-refresh-data', args=[self.staging.pk])
+        self.client.force_login(self.alice)
+        page = self.client.get(f'/instance/{self.staging.pk}/').content.decode()
+        self.assertIn('acme-prod · su original', page)
+        self.assertNotIn('other-version', page)
+        self.client.post(url, {'source': self.prod.pk, 'confirm': 'wrong', 'neutralize': '1'})
+        self.client.post(url, {'source': self.bob_instance.pk, 'confirm': 'acme-staging'})  # not Alice's
+        self.assertFalse(Task.objects.filter(kind=Task.Kind.REFRESH_DATA).exists())
+        self.client.post(url, {'source': self.prod.pk, 'confirm': 'acme-staging', 'neutralize': '1'})
+        task = Task.objects.get(kind=Task.Kind.REFRESH_DATA)
+        self.assertEqual((task.instance, task.params), (self.staging, {'source': self.prod.pk, 'neutralize': True}))
+
+    def test_refresh_replaces_databases_and_filestore(self):
+        from .services.docker_service import DockerService
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        source_db, target_db, odoo = mock.Mock(), mock.Mock(), mock.Mock(status='running')
+        source_db.exec_run.return_value = mock.Mock(exit_code=0, output=b'')
+        source_db.get_archive.return_value = (iter([b'dump']), {})
+        target_db.exec_run.return_value = mock.Mock(exit_code=0, output=b'')
+        sql = []
+        with mock.patch.object(service, '_start_db_container', side_effect=lambda i: source_db if i.name == 'acme-prod' else target_db), \
+                mock.patch.object(service, '_get_container', return_value=odoo), \
+                mock.patch.object(service, '_wait_for_postgres'), \
+                mock.patch.object(service, '_list_user_databases', return_value=['acme']), \
+                mock.patch.object(service, '_psql', side_effect=lambda c, d, q, check=True: sql.append(q)), \
+                mock.patch.object(service, 'neutralize_databases', return_value=['acme: neutralizada']) as neutralize, \
+                mock.patch.object(service, '_copy_filestore') as copy_filestore, \
+                mock.patch.object(service, 'restart_instance') as restart:
+            notes = service.refresh_from(self.staging, self.prod)
+            with self.assertRaisesMessage(Exception, 'sí misma'):
+                service.refresh_from(self.prod, self.prod)
+        odoo.stop.assert_called_once()
+        self.assertIn('DROP DATABASE "acme"', sql)
+        target_db.put_archive.assert_called_once_with('/tmp', b'dump')
+        neutralize.assert_called_once_with(self.staging, crons=True)
+        copy_filestore.assert_called_once_with('odoo_acme-prod', 'odoo_acme-staging')
+        restart.assert_called_once_with(self.staging)
+        self.assertIn('acme: neutralizada', notes)
+        self.staging.refresh_from_db()
+        self.assertEqual(self.staging.admin_password, 'Prod-pass-1')
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

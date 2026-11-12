@@ -63,6 +63,7 @@ updates its section here (and the index) in the same commit.
                 <h3>Otras formas de crear una instancia</h3>
                 <ul>
                     <li><strong>Duplicar</strong> una instancia: copia la base de datos, el filestore, los repositorios y las variables de entorno. Por defecto la copia se <strong>neutraliza</strong> antes de arrancar: correo entrante y saliente, tareas programadas (salvo la limpieza automática), métodos de pago y claves API desactivados y UUID de la base nuevo (en Odoo 16+ se ve la cinta «neutralizada»). Desmarca «Neutralizar la copia» (o envía <code>neutralize: false</code> por la API) solo si la copia va a sustituir a la original.</li>
+                    <li><strong>Refrescar una staging</strong>: en la pestaña Backups de la copia, «Refrescar datos desde otra instancia» sustituye sus bases de datos y adjuntos por los de otra de la misma versión (por defecto, su original) sin tocar su código, rama ni configuración, y la neutraliza (recomendado). Hay que escribir su nombre para confirmar; queda en la Auditoría.</li>
                     <li><strong>Desde un backup</strong>: Backups → «Importar un backup y crear una instancia» (detecta la versión y la base).</li>
                     <li><strong>Por la API o el MCP</strong>: crear una instancia también la despliega (ver <a href="#api">API y MCP</a>).</li>
                     <li><strong>Demos</strong> del «Modo test» (ver <a href="#demos">Demos</a>).</li>

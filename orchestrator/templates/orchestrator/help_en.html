@@ -63,6 +63,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                 <h3>Other ways to create an instance</h3>
                 <ul>
                     <li><strong>Duplicate</strong> an instance: copies the database, filestore, repositories and environment variables. By default the copy is <strong>neutralized</strong> before it starts: incoming and outgoing mail, scheduled actions (except the automatic cleanup), payment methods and API keys switched off and a new database UUID (Odoo 16+ shows the «neutralized» ribbon). Untick «Neutralize the copy» (or send <code>neutralize: false</code> through the API) only if the copy will replace the original.</li>
+                    <li><strong>Refresh a staging copy</strong>: in the copy's Backups tab, «Refresh data from another instance» replaces its databases and attachments with those of another of the same version (by default, its original) without touching its code, branch or configuration, and neutralizes it (recommended). You type its name to confirm; it's recorded in the audit log.</li>
                     <li><strong>From a backup</strong>: Backups → «Import a backup and create an instance» (detects the version and the database).</li>
                     <li><strong>Through the API or MCP</strong>: creating an instance also deploys it (see <a href="#api">API and MCP</a>).</li>
                     <li><strong>Demos</strong> from «Test mode» (see <a href="#demos">Demos</a>).</li>

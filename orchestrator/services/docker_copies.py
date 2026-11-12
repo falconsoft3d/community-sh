@@ -44,6 +44,7 @@ class CopyMixin:
             project=project or instance.project,
             status=Instance.Status.DEPLOYING,
             origin=origin,
+            copied_from=instance,
         )
         for repository in instance.repositories.all():
             new_instance.repositories.create(url=repository.url, branch=repository.branch)
@@ -241,3 +242,55 @@ class CopyMixin:
             print(f"Filestore copied from {source_name} to {target_name}")
         except docker.errors.NotFound:
             print(f"No filestore found in {source_name}")
+
+    def refresh_from(self, instance, source, neutralize=True):
+        """
+        Replace the data of `instance` (a staging copy) with that of `source` (production): its databases and its
+        filestore. Its code, branch, configuration and passwords of the panel stay. Odoo is stopped meanwhile and,
+        with neutralize, the copy is neutralized before it starts again. Returns notes for the log.
+        """
+        if source.pk == instance.pk:
+            raise Exception('Una instancia no se puede refrescar desde sí misma')
+        notes = []
+        source_db = self._start_db_container(source)
+        target_db = self._start_db_container(instance)
+        if source_db is None or target_db is None:
+            raise Exception('Las dos instancias tienen que estar desplegadas')
+        odoo = self._get_container(f'odoo_{instance.name}')
+        progress(5, f'Deteniendo Odoo de {instance.name}')
+        if odoo is not None and odoo.status == 'running':
+            odoo.stop()
+        progress(15, f'Copiando las bases de datos de {source.name}')
+        self._wait_for_postgres(source_db)
+        dump = source_db.exec_run('pg_dumpall -U odoo -f /tmp/db_dump.sql', environment={'PGPASSWORD': 'odoo'})
+        if dump.exit_code != 0:
+            raise Exception(f'No se pudo copiar la base de datos de {source.name}: {dump.output.decode(errors="replace")[-300:]}')
+        stream, _ = source_db.get_archive('/tmp/db_dump.sql')
+        data = b''.join(stream)
+        self._wait_for_postgres(target_db)
+        progress(35, f'Sustituyendo las bases de datos de {instance.name}')
+        for database in self._list_user_databases(target_db):
+            self._psql(target_db, 'postgres', f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{database}' "
+                                              f"AND pid <> pg_backend_pid()", check=False)
+            self._psql(target_db, 'postgres', f'DROP DATABASE "{database}"')
+        target_db.put_archive('/tmp', data)
+        restore = target_db.exec_run('psql -U odoo -d postgres -q -f /tmp/db_dump.sql', environment={'PGPASSWORD': 'odoo'})
+        if restore.exit_code == 2:
+            raise Exception(f'No se pudo restaurar: {restore.output.decode(errors="replace")[-300:]}')
+        notes.append(f"Bases de datos copiadas de {source.name}: {', '.join(self._list_user_databases(target_db)) or 'ninguna'}")
+        if neutralize:
+            progress(55, 'Neutralizando (correo, tareas programadas, pagos)')
+            notes += self.neutralize_databases(instance, crons=True)
+        progress(65, 'Copiando los adjuntos (filestore)')
+        if odoo is not None:
+            odoo.start()
+            odoo.exec_run(['rm', '-rf', f'{ODOO_DATA_DIR}/filestore'], user='root')
+            self._copy_filestore(f'odoo_{source.name}', f'odoo_{instance.name}')
+            odoo.exec_run(['chown', '-R', 'odoo:odoo', f'{ODOO_DATA_DIR}/filestore'], user='root')
+        # Same databases: same administrator as the source
+        instance.admin_login, instance.admin_password = source.admin_login, source.admin_password
+        instance.admin_database = source.admin_database
+        instance.save(update_fields=['admin_login', 'admin_password', 'admin_database'])
+        progress(90, 'Reiniciando Odoo')
+        self.restart_instance(instance)
+        return notes

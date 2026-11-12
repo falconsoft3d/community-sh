@@ -77,6 +77,9 @@ class Instance(models.Model):
     health_failures = models.PositiveSmallIntegerField(default=0, help_text="Failed checks in a row")
     health_error = models.CharField(max_length=255, blank=True, default='')
 
+    # The instance this one is a copy of (duplicate, demo): the default source to refresh its data from
+    copied_from = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='copies')
+
     # The administrator the panel created (database created from the panel/API/MCP, demo), shown to who manages it
     admin_login = models.CharField(max_length=100, blank=True, default='', help_text="Login of the administrator the panel created")
     admin_password = EncryptedCharField(max_length=64, blank=True, default='', help_text="Password of the administrator the panel created")

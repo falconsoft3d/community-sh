@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.93**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.94**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.94 — 2026-11-12
+
+- Staging: «Refrescar datos desde otra instancia» (pestaña Backups) sustituye las bases de datos y los adjuntos de una instancia por los de otra de la misma versión (por defecto, la que copió) sin tocar su código, rama ni configuración; Odoo se detiene mientras, se neutraliza (recomendado) y toma el administrador de la original. Se confirma escribiendo el nombre y queda en la Auditoría. Las copias recuerdan de qué instancia salieron. Migración 0075.
 
 ## 1.0.93 — 2026-11-12
 

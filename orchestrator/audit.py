@@ -26,6 +26,7 @@ ACTIONS = {
     'instance_memory': 'Cambiar límite de memoria',
     'instance_env_vars': 'Cambiar variables de entorno',
     'offsite_restore': 'Restaurar desde S3',
+    'refresh_data': 'Refrescar datos desde otra instancia',
     'backups_verify': 'Comprobar backups',
 }
 

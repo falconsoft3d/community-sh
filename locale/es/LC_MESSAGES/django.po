@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 16:45+0000\n"
+"POT-Creation-Date: 2026-11-12 16:50+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -158,29 +158,29 @@ msgid "BD + filestore"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:90
-#: orchestrator/templates/orchestrator/instance_detail.html:944
+#: orchestrator/templates/orchestrator/instance_detail.html:975
 msgid "Solo BD"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:97
 #: orchestrator/templates/orchestrator/backup_list.html:99
-#: orchestrator/templates/orchestrator/instance_detail.html:951
+#: orchestrator/templates/orchestrator/instance_detail.html:982
 msgid "Descargar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:105
 #: orchestrator/templates/orchestrator/backup_list.html:107
-#: orchestrator/templates/orchestrator/instance_detail.html:872
-#: orchestrator/templates/orchestrator/instance_detail.html:908
-#: orchestrator/templates/orchestrator/instance_detail.html:963
+#: orchestrator/templates/orchestrator/instance_detail.html:903
+#: orchestrator/templates/orchestrator/instance_detail.html:939
+#: orchestrator/templates/orchestrator/instance_detail.html:994
 msgid "Restaurar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:113
 #: orchestrator/templates/orchestrator/contact_detail.html:35
 #: orchestrator/templates/orchestrator/instance_detail.html:69
-#: orchestrator/templates/orchestrator/instance_detail.html:971
-#: orchestrator/templates/orchestrator/instance_detail.html:1477
+#: orchestrator/templates/orchestrator/instance_detail.html:1002
+#: orchestrator/templates/orchestrator/instance_detail.html:1508
 #: orchestrator/templates/orchestrator/project_detail.html:42
 #: orchestrator/templates/orchestrator/todo_list.html:93
 msgid "Eliminar"
@@ -360,7 +360,8 @@ msgstr ""
 #: orchestrator/templates/orchestrator/instance_detail.html:345
 #: orchestrator/templates/orchestrator/instance_detail.html:404
 #: orchestrator/templates/orchestrator/instance_detail.html:450
-#: orchestrator/templates/orchestrator/instance_detail.html:1445
+#: orchestrator/templates/orchestrator/instance_detail.html:872
+#: orchestrator/templates/orchestrator/instance_detail.html:1476
 #: orchestrator/templates/orchestrator/project_detail.html:64
 #: orchestrator/templates/orchestrator/project_form.html:89
 #: orchestrator/templates/orchestrator/todo_list.html:48
@@ -1006,7 +1007,7 @@ msgid "Modules"
 msgstr "Módulos"
 
 #: orchestrator/templates/orchestrator/instance_detail.html:139
-#: orchestrator/templates/orchestrator/instance_detail.html:1031
+#: orchestrator/templates/orchestrator/instance_detail.html:1062
 msgid "Migrar"
 msgstr ""
 
@@ -1399,7 +1400,7 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:615
 #: orchestrator/templates/orchestrator/instance_detail.html:663
-#: orchestrator/templates/orchestrator/instance_detail.html:1227
+#: orchestrator/templates/orchestrator/instance_detail.html:1258
 msgid "Quitar"
 msgstr ""
 
@@ -1606,178 +1607,216 @@ msgid "Subir e Instalar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:851
-msgid "Copias en S3"
+msgid "Refrescar datos desde otra instancia"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:852
+msgid ""
+"Para una staging: sustituye las bases de datos y los adjuntos de esta "
+"instancia por los de otra (producción). Su código, su rama y su "
+"configuración no cambian."
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:855
+msgid "Refrescar…"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:860
+msgid "Copiar los datos de"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:862
+msgid "su original"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:866
+msgid ""
+"Neutralizar (correo, tareas programadas, pagos y claves API desactivados), "
+"recomendado"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:868
+#, python-format
+msgid "Escribe «%(name)s» para confirmar: sus datos actuales se pierden"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:871
+msgid "Refrescar ahora"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:882
+msgid "Copias en S3"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:883
 msgid ""
 "Los backups de esta instancia guardados fuera del servidor. Restaurar uno "
 "sustituye la base de datos y los adjuntos actuales."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:856
+#: orchestrator/templates/orchestrator/instance_detail.html:887
 msgid "Ver copias"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:860
+#: orchestrator/templates/orchestrator/instance_detail.html:891
 msgid "Cargando…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:862
+#: orchestrator/templates/orchestrator/instance_detail.html:893
 msgid "No hay copias de esta instancia en el bucket."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:863
+#: orchestrator/templates/orchestrator/instance_detail.html:894
 msgid ""
 "¿Restaurar esta copia sobre la instancia? Se sustituyen su base de datos y "
 "sus adjuntos actuales."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:882
+#: orchestrator/templates/orchestrator/instance_detail.html:913
 msgid "Create New Backup"
 msgstr "Crear un backup"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:887
+#: orchestrator/templates/orchestrator/instance_detail.html:918
 msgid "Full Backup (with filestore)"
 msgstr "Backup completo (con filestore)"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:893
+#: orchestrator/templates/orchestrator/instance_detail.html:924
 msgid "Database Only"
 msgstr "Solo base de datos"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:900
+#: orchestrator/templates/orchestrator/instance_detail.html:931
 msgid "Restaurar desde un archivo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:901
+#: orchestrator/templates/orchestrator/instance_detail.html:932
 msgid ""
 "Sustituye la base de datos y el filestore de esta instancia. Acepta backups "
 "del panel, del gestor de bases de datos de Odoo (.zip) o un volcado .dump."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:902
+#: orchestrator/templates/orchestrator/instance_detail.html:933
 msgid "Se sobrescribirán la base de datos y el filestore actuales. ¿Continuar?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:917
+#: orchestrator/templates/orchestrator/instance_detail.html:948
 msgid "Available Backups"
 msgstr "Backups disponibles"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:918
+#: orchestrator/templates/orchestrator/instance_detail.html:949
 msgid "List of all created backups"
 msgstr "Todos los backups creados"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:922
+#: orchestrator/templates/orchestrator/instance_detail.html:953
 msgid ""
 "ADVERTENCIA: Esto sobrescribirá la base de datos y archivos actuales. ¿Estás "
 "seguro de que quieres restaurar este backup?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:923
+#: orchestrator/templates/orchestrator/instance_detail.html:954
 msgid "¿Estás seguro de que quieres eliminar este backup?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:941
+#: orchestrator/templates/orchestrator/instance_detail.html:972
 #, python-format
 msgid "Copiado fuera del servidor: %(key)s"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:944
+#: orchestrator/templates/orchestrator/instance_detail.html:975
 msgid "With filestore"
 msgstr "Con filestore"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:956
+#: orchestrator/templates/orchestrator/instance_detail.html:987
 #: orchestrator/templates/orchestrator/instance_list.html:18
 msgid "New Instance"
 msgstr "Nueva instancia"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:982
+#: orchestrator/templates/orchestrator/instance_detail.html:1013
 msgid "No backups available"
 msgstr "No hay backups disponibles"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:983
+#: orchestrator/templates/orchestrator/instance_detail.html:1014
 msgid "Create a backup using the buttons above"
 msgstr "Crea un backup con los botones de arriba"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:996
+#: orchestrator/templates/orchestrator/instance_detail.html:1027
 msgid "Migrar desde otro Odoo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:997
+#: orchestrator/templates/orchestrator/instance_detail.html:1028
 msgid ""
 "Copia por XML-RPC los datos de cualquier Odoo (versión 8 o posterior, en tu "
 "servidor o en Internet) a esta instancia. Se puede repetir: lo ya copiado no "
 "se duplica y continúa donde se quedó."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1003
+#: orchestrator/templates/orchestrator/instance_detail.html:1034
 #: orchestrator/templates/orchestrator/instance_list.html:30
 msgid "Origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1004
+#: orchestrator/templates/orchestrator/instance_detail.html:1035
 msgid "URL del Odoo de origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1005
-#: orchestrator/templates/orchestrator/instance_detail.html:1013
+#: orchestrator/templates/orchestrator/instance_detail.html:1036
+#: orchestrator/templates/orchestrator/instance_detail.html:1044
 msgid "Base de datos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1005
+#: orchestrator/templates/orchestrator/instance_detail.html:1036
 msgid "Base de datos de origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1007
+#: orchestrator/templates/orchestrator/instance_detail.html:1038
 msgid "Usuario de origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1008
+#: orchestrator/templates/orchestrator/instance_detail.html:1039
 msgid "Contraseña o clave API"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1008
+#: orchestrator/templates/orchestrator/instance_detail.html:1039
 msgid "Contraseña de origen"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1012
+#: orchestrator/templates/orchestrator/instance_detail.html:1043
 #, python-format
 msgid "Destino: %(name)s (Odoo %(version)s)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1013
+#: orchestrator/templates/orchestrator/instance_detail.html:1044
 msgid "Base de datos de destino"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1015
+#: orchestrator/templates/orchestrator/instance_detail.html:1046
 msgid "Usuario de destino"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1016
+#: orchestrator/templates/orchestrator/instance_detail.html:1047
 msgid "Contraseña del administrador"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1016
+#: orchestrator/templates/orchestrator/instance_detail.html:1047
 msgid "Contraseña de destino"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1018
+#: orchestrator/templates/orchestrator/instance_detail.html:1049
 msgid ""
 "Instala antes en el destino Ventas, Compras y Facturación si vas a migrar "
 "esos datos. Las contraseñas no se guardan: solo se usan durante la migración."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1021
+#: orchestrator/templates/orchestrator/instance_detail.html:1052
 msgid "Qué migrar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1029
+#: orchestrator/templates/orchestrator/instance_detail.html:1060
 msgid ""
 "Haz un backup de esta instancia antes de migrar. Los impuestos, monedas, "
 "países y unidades se buscan por nombre o código en el destino."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1036
+#: orchestrator/templates/orchestrator/instance_detail.html:1067
 #, python-format
 msgid ""
 "La migración escribe en esta instancia con el modelo de facturación de Odoo "
@@ -1785,114 +1824,114 @@ msgid ""
 "a ella (el origen puede ser cualquier versión desde la 8)."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1042
+#: orchestrator/templates/orchestrator/instance_detail.html:1073
 #, python-format
 msgid "Última migración · %(source)s"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1045
+#: orchestrator/templates/orchestrator/instance_detail.html:1076
 msgid "En cola…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1058
+#: orchestrator/templates/orchestrator/instance_detail.html:1089
 msgid "Live Logs"
 msgstr "Logs en vivo"
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1059
+#: orchestrator/templates/orchestrator/instance_detail.html:1090
 msgid "Real-time output from container."
 msgstr "Salida del contenedor en tiempo real."
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1083
+#: orchestrator/templates/orchestrator/instance_detail.html:1114
 msgid "Consola Interactiva"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1084
+#: orchestrator/templates/orchestrator/instance_detail.html:1115
 msgid "Ejecuta comandos dentro del contenedor."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1089
+#: orchestrator/templates/orchestrator/instance_detail.html:1120
 msgid "Instalar desde requirements.txt"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1118
+#: orchestrator/templates/orchestrator/instance_detail.html:1149
 msgid "Ingresa un comando (ej: pip install requests)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1123
+#: orchestrator/templates/orchestrator/instance_detail.html:1154
 msgid "Ejecutar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1134
+#: orchestrator/templates/orchestrator/instance_detail.html:1165
 msgid "hechos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1134
+#: orchestrator/templates/orchestrator/instance_detail.html:1165
 msgid "Deshacer estos cambios"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1134
+#: orchestrator/templates/orchestrator/instance_detail.html:1165
 msgid "archivo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1134
+#: orchestrator/templates/orchestrator/instance_detail.html:1165
 msgid "archivos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1135
+#: orchestrator/templates/orchestrator/instance_detail.html:1166
 msgid "Solo lectura (repositorio): la IA lo extenderá con un módulo nuevo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1140
+#: orchestrator/templates/orchestrator/instance_detail.html:1171
 msgid "Suelta aquí los PDF, imágenes o archivos de texto"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1144
+#: orchestrator/templates/orchestrator/instance_detail.html:1175
 msgid "Asistente de IA"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1145
+#: orchestrator/templates/orchestrator/instance_detail.html:1176
 #, python-format
 msgid ""
 "Crea y modifica módulos de Odoo %(version)s en la carpeta de addons de esta "
 "instancia y los instala."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1148
+#: orchestrator/templates/orchestrator/instance_detail.html:1179
 msgid "Nueva conversación"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1154
+#: orchestrator/templates/orchestrator/instance_detail.html:1185
 msgid ""
 "Pídele, por ejemplo: «Crea un módulo que añada un campo \"Código interno\" a "
 "los contactos y lo muestre en el formulario»."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1200
+#: orchestrator/templates/orchestrator/instance_detail.html:1231
 msgid "Cambios deshechos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1210
+#: orchestrator/templates/orchestrator/instance_detail.html:1241
 msgid "Detener"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1234
+#: orchestrator/templates/orchestrator/instance_detail.html:1265
 msgid "Adjuntar PDF, imágenes o archivos de texto"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1234
+#: orchestrator/templates/orchestrator/instance_detail.html:1265
 msgid "Adjuntar archivos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1251
+#: orchestrator/templates/orchestrator/instance_detail.html:1282
 msgid ""
 "Describe el módulo o el cambio que quieres… Usa @ para etiquetar un módulo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1258
+#: orchestrator/templates/orchestrator/instance_detail.html:1289
 msgid "Enviar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1267
+#: orchestrator/templates/orchestrator/instance_detail.html:1298
 msgid ""
 "También desde Odoo: un administrador escribe <code class=\"font-mono\">/ia …"
 "</code> en el chatter de cualquier registro (p. ej. «/ia añade una columna "
@@ -1901,7 +1940,7 @@ msgid ""
 "desplegar."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1270
+#: orchestrator/templates/orchestrator/instance_detail.html:1301
 msgid ""
 "Puedes adjuntar PDF con capturas o especificaciones: en peticiones largas la "
 "IA arma un plan y lo va completando paso a paso (puedes cerrar la página, "
@@ -1909,123 +1948,123 @@ msgid ""
 "recientes». Haz un backup antes de cambios grandes."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1272
+#: orchestrator/templates/orchestrator/instance_detail.html:1303
 msgid "Adjunta como máximo 5 archivos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1272
+#: orchestrator/templates/orchestrator/instance_detail.html:1303
 msgid "supera los 20 MB"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1272
+#: orchestrator/templates/orchestrator/instance_detail.html:1303
 #: orchestrator/templates/orchestrator/trial_page.html:95
 msgid "Enviando…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1273
+#: orchestrator/templates/orchestrator/instance_detail.html:1304
 msgid "Pensando y trabajando en los archivos…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1273
+#: orchestrator/templates/orchestrator/instance_detail.html:1304
 #, python-brace-format
 msgid "Paso {step} de {total}"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1274
+#: orchestrator/templates/orchestrator/instance_detail.html:1305
 msgid ""
 "Se restaurarán los archivos como estaban antes de esta petición (y se "
 "deshacen también las posteriores). ¿Continuar?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1275
+#: orchestrator/templates/orchestrator/instance_detail.html:1306
 msgid "¿Borrar la conversación?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1417
+#: orchestrator/templates/orchestrator/instance_detail.html:1448
 msgid "¿Eliminar Instancia?"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1418
+#: orchestrator/templates/orchestrator/instance_detail.html:1449
 msgid "Esta acción no se puede deshacer"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1424
+#: orchestrator/templates/orchestrator/instance_detail.html:1455
 msgid "Se eliminará permanentemente:"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/instance_detail.html:1428
-#, python-format
-msgid ""
-"El contenedor Docker <strong class=\"text-foreground\">%(name)s</strong>"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/instance_detail.html:1432
-msgid "Todos los datos y configuraciones"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/instance_detail.html:1436
-msgid "Los addons personalizados"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/instance_detail.html:1449
-msgid "Continuar"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/instance_detail.html:1457
-msgid "Confirmar Eliminación"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:1459
 #, python-format
 msgid ""
+"El contenedor Docker <strong class=\"text-foreground\">%(name)s</strong>"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:1463
+msgid "Todos los datos y configuraciones"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:1467
+msgid "Los addons personalizados"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:1480
+msgid "Continuar"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:1488
+msgid "Confirmar Eliminación"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_detail.html:1490
+#, python-format
+msgid ""
 "Escribe <strong class=\"text-foreground\">%(name)s</strong> para confirmar:"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1462
+#: orchestrator/templates/orchestrator/instance_detail.html:1493
 msgid "Escribe el nombre de la instancia"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1470
+#: orchestrator/templates/orchestrator/instance_detail.html:1501
 msgid "Atrás"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1486
+#: orchestrator/templates/orchestrator/instance_detail.html:1517
 msgid "Ejecutando..."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1486
+#: orchestrator/templates/orchestrator/instance_detail.html:1517
 msgid "(sin salida)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1486
+#: orchestrator/templates/orchestrator/instance_detail.html:1517
 msgid "Error desconocido"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1486
+#: orchestrator/templates/orchestrator/instance_detail.html:1517
 msgid "Error de conexión"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1487
+#: orchestrator/templates/orchestrator/instance_detail.html:1518
 msgid "Consola limpiada"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1487
+#: orchestrator/templates/orchestrator/instance_detail.html:1518
 msgid "Instalando dependencias desde"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1487
+#: orchestrator/templates/orchestrator/instance_detail.html:1518
 msgid "Leyendo archivo y ejecutando pip install..."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1488
+#: orchestrator/templates/orchestrator/instance_detail.html:1519
 msgid "Instalación completada"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1488
+#: orchestrator/templates/orchestrator/instance_detail.html:1519
 msgid "Error en la instalación"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/instance_detail.html:1643
+#: orchestrator/templates/orchestrator/instance_detail.html:1674
 msgid "No se pudo obtener"
 msgstr ""
 

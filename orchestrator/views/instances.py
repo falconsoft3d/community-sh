@@ -118,6 +118,7 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
             context['move_projects'] = managed_projects_for(self.request.user).order_by('name')
             from ..services.offsite import offsite_config
             context['offsite_enabled'] = offsite_config() is not None
+            context['refresh_sources'] = refresh_sources(self.request.user, self.object)
             from .webhooks import hook_url
             context['webhook_url'] = hook_url(self.object)
             context['auto_update_choices'] = Instance.AutoUpdate.choices
@@ -778,6 +779,36 @@ def instance_secret(request, pk, kind):
     response = JsonResponse({'value': value})
     response['Cache-Control'] = 'no-store'
     return response
+
+
+def refresh_sources(user, instance):
+    """Instances whose data this one can take: the same Odoo version, managed by the user, not itself."""
+    sources = [i for i in instances_for(user).filter(odoo_version=instance.odoo_version).exclude(pk=instance.pk)
+               .select_related('project').order_by('name') if can_manage(user, i)]
+    # The one it was copied from first
+    return sorted(sources, key=lambda i: i.pk != instance.copied_from_id)
+
+
+@login_required
+@require_POST
+def instance_refresh_data(request, pk):
+    """Replace this instance's data with another's (staging from production), as a task."""
+    from django.urls import reverse
+    from ..audit import record
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    back = redirect(reverse('instance-detail', args=[pk]) + '#backups')
+    source = next((i for i in refresh_sources(request.user, instance) if str(i.pk) == request.POST.get('source')), None)
+    if source is None:
+        messages.error(request, 'Elige una instancia de la misma versión de Odoo que gestiones')
+        return back
+    if request.POST.get('confirm', '').strip() != instance.name:
+        messages.error(request, f'Para confirmar escribe el nombre de esta instancia: {instance.name}')
+        return back
+    neutralize = request.POST.get('neutralize') == '1'
+    enqueue(Task.Kind.REFRESH_DATA, instance, request.user, source=source.pk, neutralize=neutralize)
+    record(request, 'refresh_data', instance.name, f'Desde {source.name}' + ('' if neutralize else ' · sin neutralizar'))
+    messages.success(request, f'Refrescando {instance.name} con los datos de {source.name}: sigue el progreso en «Tareas recientes»')
+    return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
 
 
 @login_required

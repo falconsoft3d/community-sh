@@ -178,6 +178,15 @@ ES_TO_EN = {
     'No responde': 'Not responding',
     'Uso por instancia': 'Usage by instance',
     'Copias en S3': 'Copies in S3',
+    'Refrescar datos desde otra instancia': 'Refresh data from another instance',
+    'Para una staging: sustituye las bases de datos y los adjuntos de esta instancia por los de otra (producción). Su código, su rama y su configuración no cambian.':
+        "For a staging copy: replaces this instance's databases and attachments with another's (production). Its code, branch and configuration don't change.",
+    'Refrescar…': 'Refresh…',
+    'Copiar los datos de': 'Copy the data of',
+    'su original': 'its original',
+    'Neutralizar (correo, tareas programadas, pagos y claves API desactivados), recomendado': 'Neutralize (mail, scheduled actions, payments and API keys off), recommended',
+    'Escribe «%(name)s» para confirmar: sus datos actuales se pierden': 'Type «%(name)s» to confirm: its current data is lost',
+    'Refrescar ahora': 'Refresh now',
     'Cargando…': 'Loading…',
     'Los backups de esta instancia guardados fuera del servidor. Restaurar uno sustituye la base de datos y los adjuntos actuales.':
         "This instance's backups stored off the server. Restoring one replaces the current database and attachments.",

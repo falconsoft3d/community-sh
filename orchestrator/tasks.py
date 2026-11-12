@@ -358,6 +358,13 @@ def backup(task):
         f' · copia fuera del servidor en cola (tarea #{copy.pk})' if copy else '')
 
 
+@handler(Task.Kind.REFRESH_DATA)
+def refresh_data(task):
+    source = Instance.objects.get(pk=task.params['source'])
+    notes = DockerService().refresh_from(task.instance, source, neutralize=task.params.get('neutralize', True))
+    return '\n'.join(notes + [f'{task.instance.name} tiene ahora los datos de {source.name}'])
+
+
 @handler(Task.Kind.OFFSITE_RESTORE)
 def offsite_restore(task):
     from .services import offsite

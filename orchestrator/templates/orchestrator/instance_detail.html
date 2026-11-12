@@ -843,6 +843,37 @@
     <!-- Backups Tab -->
 {% endif %}
     <div x-show="activeTab === 'backups'" class="space-y-6">
+        {% if can_manage and refresh_sources %}
+        <!-- Staging: take the data of another instance (production) -->
+        <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6" x-data="{ open: false }">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 class="font-semibold leading-none tracking-tight flex items-center gap-2"><i data-lucide="refresh-ccw" class="h-4 w-4"></i> {% translate "Refrescar datos desde otra instancia" %}</h3>
+                    <p class="text-sm text-muted-foreground mt-1">{% translate "Para una staging: sustituye las bases de datos y los adjuntos de esta instancia por los de otra (producción). Su código, su rama y su configuración no cambian." %}</p>
+                </div>
+                <button type="button" x-show="!open" @click="open = true" class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                    <i data-lucide="refresh-ccw" class="mr-2 h-4 w-4"></i> {% translate "Refrescar…" %}
+                </button>
+            </div>
+            <form x-show="open" x-cloak method="post" action="{% url 'instance-refresh-data' object.pk %}" class="mt-4 space-y-3">
+                {% csrf_token %}
+                <label class="block space-y-1 text-sm"><span class="font-medium">{% translate "Copiar los datos de" %}</span>
+                    <select name="source" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        {% for source in refresh_sources %}<option value="{{ source.pk }}">{% if source.project %}{{ source.project.name }} / {% endif %}{{ source.name }}{% if source.pk == object.copied_from_id %} · {% translate "su original" %}{% endif %}</option>{% endfor %}
+                    </select></label>
+                <label class="flex items-start gap-2 text-sm">
+                    <input type="checkbox" name="neutralize" value="1" checked class="mt-1 h-4 w-4 rounded border-input">
+                    <span>{% translate "Neutralizar (correo, tareas programadas, pagos y claves API desactivados), recomendado" %}</span>
+                </label>
+                <label class="block space-y-1 text-sm"><span class="font-medium">{% blocktranslate with name=object.name %}Escribe «{{ name }}» para confirmar: sus datos actuales se pierden{% endblocktranslate %}</span>
+                    <input name="confirm" autocomplete="off" required class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"></label>
+                <div class="flex gap-2">
+                    <button type="submit" class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">{% translate "Refrescar ahora" %}</button>
+                    <button type="button" @click="open = false" class="inline-flex h-9 items-center rounded-md border border-input bg-background px-4 text-sm hover:bg-accent">{% translate "Cancelar" %}</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
         {% if can_manage and offsite_enabled %}
         <!-- Copies in the S3 bucket -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6" x-data="{ copies: null, error: '', open: false }">

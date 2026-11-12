@@ -30,6 +30,7 @@ class Task(models.Model):
         PANEL_BACKUP = 'panel_backup', 'Copia del panel fuera (S3)'
         OFFSITE_RESTORE = 'offsite_restore', 'Restaurar desde S3'
         BACKUP_VERIFY = 'backup_verify', 'Comprobar backups'
+        REFRESH_DATA = 'refresh_data', 'Refrescar datos desde otra instancia'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

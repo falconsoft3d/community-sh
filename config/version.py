@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.93'
+VERSION = '1.0.94'
 
 CHANGELOG = [
+    {
+        'version': '1.0.94',
+        'date': '2026-11-12',
+        'notes': [
+            'Staging: «Refrescar datos desde otra instancia» (pestaña Backups) sustituye las bases de datos y los adjuntos de una instancia por los de otra de la misma versión (por defecto, la que copió) sin tocar su código, rama ni configuración; Odoo se detiene mientras, se neutraliza (recomendado) y toma el administrador de la original. Se confirma escribiendo el nombre y queda en la Auditoría. Las copias recuerdan de qué instancia salieron. Migración 0075.',
+        ],
+    },
     {
         'version': '1.0.93',
         'date': '2026-11-12',
