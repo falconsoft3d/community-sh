@@ -97,9 +97,9 @@ def run_task(task):
     return task
 
 
-# Every new instance is followed by a cleanup of what Docker no longer uses. Not volumes (they may hold data,
-# the manual cleanup asks to type BORRAR) nor tagged images (the next instance of that version would pull them again)
-AUTO_CLEANUP_KINDS = ['containers', 'images', 'build_cache', 'networks']
+# Every new instance is followed by a cleanup of what Docker no longer uses, images no container uses included (a deploy
+# pulls them again when needed). Not volumes: they may hold data (the manual cleanup asks to type BORRAR)
+AUTO_CLEANUP_KINDS = ['containers', 'images', 'unused_images', 'build_cache', 'networks']
 
 
 def _creates_instance(task):

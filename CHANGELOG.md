@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.70**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.71**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.71 — 2026-11-12
+
+- Limpieza automática tras crear una instancia: ahora también borra las imágenes etiquetadas que no usa ningún contenedor (por ejemplo odoo:16.0 si ya no queda ninguna instancia 16; las instancias detenidas conservan las suyas). Si luego se crea una instancia de esa versión, el despliegue la descarga otra vez. Los volúmenes siguen sin tocarse.
 
 ## 1.0.70 — 2026-11-12
 

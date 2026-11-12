@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.70'
+VERSION = '1.0.71'
 
 CHANGELOG = [
+    {
+        'version': '1.0.71',
+        'date': '2026-11-12',
+        'notes': [
+            'Limpieza automática tras crear una instancia: ahora también borra las imágenes etiquetadas que no usa ningún contenedor (por ejemplo odoo:16.0 si ya no queda ninguna instancia 16; las instancias detenidas conservan las suyas). Si luego se crea una instancia de esa versión, el despliegue la descarga otra vez. Los volúmenes siguen sin tocarse.',
+        ],
+    },
     {
         'version': '1.0.70',
         'date': '2026-11-12',

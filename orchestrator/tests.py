@@ -995,6 +995,7 @@ class DockerAdminTests(BaseTestCase):
         cleanup = cleanups.get()
         self.assertEqual(cleanup.params, {'kinds': AUTO_CLEANUP_KINDS, 'auto': True})
         self.assertNotIn('volumes', AUTO_CLEANUP_KINDS)
+        self.assertIn('unused_images', AUTO_CLEANUP_KINDS)
         # A failed creation doesn't queue one; once it ran, the next instance queues another
         with mock.patch('orchestrator.services.docker_admin.cleanup', return_value={'images': (2, 300)}) as docker_cleanup:
             self.assertEqual(run_task(cleanup).status, Task.Status.DONE)
