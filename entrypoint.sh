@@ -7,7 +7,8 @@ chmod 600 /app/letsencrypt/acme.json
 
 # Only the app service prepares the database; cron and others set RUN_MIGRATIONS=false
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
-    python manage.py migrate --noinput
+    # Without its migrations the code fails on every page: better not to start (the deploy then goes back)
+    python manage.py migrate --noinput || exit 1
     python manage.py createcachetable
     # One-time copy of db.sqlite3 into Postgres for installs that predate DATABASE_URL support
     python manage.py migrate_from_sqlite

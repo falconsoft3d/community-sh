@@ -22,3 +22,11 @@ db.sqlite3
 media/
 backups/
 db.sqlite3.*.bak
+# Mounted at runtime (./:/app): never part of the image. instances/ holds every Odoo workspace with its git
+# history (gigabytes) and letsencrypt/ the certificates' private keys
+instances/
+letsencrypt/
+ai_attachments/
+staticfiles/
+traefik/
+*.backup

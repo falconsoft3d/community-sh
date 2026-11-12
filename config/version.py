@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.85'
+VERSION = '1.0.86'
 
 CHANGELOG = [
+    {
+        'version': '1.0.86',
+        'date': '2026-11-12',
+        'notes': [
+            'Despliegue: el disco del servidor se llenó porque cada build copiaba en la imagen del panel todas las carpetas instances/ (el código de cada Odoo con su historial git); al fallar el build, el código nuevo quedaba en disco sin migrar y el panel daba Error 500 de forma intermitente. Ahora instances/, letsencrypt/ (claves de los certificados), ai_attachments/, staticfiles/ y traefik/ quedan fuera de la imagen (se montan al arrancar); el despliegue limpia la caché de build y las imágenes sin etiqueta si quedan menos de 5 GB libres, vuelve al código anterior si el build falla, y el panel no arranca si sus migraciones fallan (así el despliegue vuelve atrás en lugar de dejarlo a medias).',
+        ],
+    },
     {
         'version': '1.0.85',
         'date': '2026-11-12',

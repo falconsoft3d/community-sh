@@ -27,6 +27,17 @@ if ! flock -w 600 9; then
     log "Another deploy is still running"; exit 1
 fi
 
+# A full disk breaks everything (the panel's database can't write, builds fail half-way): below
+# MIN_FREE_GB, drop Docker's build cache and untagged images first (never volumes or tagged images)
+MIN_FREE_GB="${MIN_FREE_GB:-5}"
+free_gb() { df -P -BG / | awk 'NR==2 { gsub("G", "", $4); print $4 }'; }
+if [ "$(free_gb)" -lt "$MIN_FREE_GB" ]; then
+    log "Only $(free_gb) GB free: cleaning Docker's build cache and untagged images"
+    docker builder prune -af >/dev/null 2>&1 || true
+    docker image prune -f >/dev/null 2>&1 || true
+    log "Now $(free_gb) GB free"
+fi
+
 running_tasks() {
     docker compose exec -T app python manage.py shell -c \
         "from orchestrator.task_models import Task; print(Task.objects.filter(status='running').exclude(kind='ai_chat').count())" \
@@ -114,7 +125,15 @@ build_and_start() {
 }
 
 log "Building and restarting the panel..."
-build_and_start
+# The panel runs the code of this folder (mounted): a failed build must not leave the new code
+# on disk under the old containers, whose next restart would run it against an unmigrated database
+if ! docker compose build --quiet; then
+    log "The build failed ($(free_gb) GB free): going back to ${PREVIOUS:0:7}"
+    git checkout --quiet --force -B "$BRANCH" "$PREVIOUS"
+    restore_acme
+    exit 1
+fi
+docker compose up -d
 if panel_answers; then
     log "Panel up at ${TARGET:0:7}"
     docker image prune -f >/dev/null 2>&1 || true
