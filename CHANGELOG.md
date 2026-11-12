@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.96**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.97**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.97 — 2026-11-12
+
+- Arreglo: al editar un proyecto, un administrador puede dejar vacías las cuotas (vacío = sin límite); antes el formulario las exigía.
 
 ## 1.0.96 — 2026-11-12
 

@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.96'
+VERSION = '1.0.97'
 
 CHANGELOG = [
+    {
+        'version': '1.0.97',
+        'date': '2026-11-12',
+        'notes': [
+            'Arreglo: al editar un proyecto, un administrador puede dejar vacías las cuotas (vacío = sin límite); antes el formulario las exigía.',
+        ],
+    },
     {
         'version': '1.0.96',
         'date': '2026-11-12',

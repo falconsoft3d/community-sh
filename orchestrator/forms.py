@@ -176,8 +176,9 @@ class ProjectForm(forms.ModelForm):
         self.fields['trial_target_project'].queryset = siblings.order_by('name')
         self.fields['trial_target_project'].empty_label = '-- Selecciona un proyecto --'
         # Empty (or not sent): the default of the model
-        for name in ('trial_days', 'trial_max_active'):
-            self.fields[name].required = False
+        for name in ('trial_days', 'trial_max_active', 'max_instances', 'max_memory_mb'):
+            if name in self.fields:
+                self.fields[name].required = False
         self.fields['trial_days'].widget.attrs.update({'min': 1, 'max': 365})
         self.fields['trial_max_active'].widget.attrs.update({'min': 1, 'max': 50})
         for name, field in self.fields.items():
@@ -189,6 +190,12 @@ class ProjectForm(forms.ModelForm):
                 'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring '
                 'focus-visible:ring-offset-2' + (' h-10' if not isinstance(field.widget, forms.Textarea) else '')
             )
+
+    def clean_max_instances(self):
+        return self.cleaned_data.get('max_instances') or 0
+
+    def clean_max_memory_mb(self):
+        return self.cleaned_data.get('max_memory_mb') or 0
 
     @property
     def main_fields(self):
