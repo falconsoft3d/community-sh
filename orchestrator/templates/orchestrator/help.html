@@ -235,7 +235,7 @@ updates its section here (and the index) in the same commit.
                 <h2>17. Actualizaciones del panel</h2>
                 <ul>
                     <li>Cada cambio del panel sube la versión y se documenta en <a href="{% url 'about' %}">Acerca de</a> y en esta Ayuda.</li>
-                    <li>Un push a la rama principal pasa los tests en GitHub Actions y, si van bien, se despliega en el servidor: espera a las tareas en curso, guarda una copia de la base del panel, libera espacio si quedan menos de 5 GB, construye y, tras arrancar, <strong>abre las páginas principales como administrador</strong> (<code>manage.py smoke_check</code>). Si el build falla, el panel no responde o alguna página da error, vuelve a la versión anterior.</li>
+                    <li>Un push a la rama principal pasa los tests en GitHub Actions (con PostgreSQL 16, el mismo motor que producción) y, si van bien, se despliega en el servidor: espera a las tareas en curso, guarda una copia de la base del panel, libera espacio si quedan menos de 5 GB, construye y, tras arrancar, <strong>abre las páginas principales como administrador</strong> (<code>manage.py smoke_check</code>). Si el build falla, el panel no responde o alguna página da error, vuelve a la versión anterior.</li>
                 </ul>
             </section>
         </div>

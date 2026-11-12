@@ -2,7 +2,7 @@ import time
 
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
-from django.db import close_old_connections
+from django.db import close_old_connections, connection
 
 from orchestrator.tasks import claim_next_task, recover_interrupted_tasks, run_task
 
@@ -28,7 +28,9 @@ class Command(BaseCommand):
 
         last_schedule_check = None
         while True:
-            close_old_connections()
+            # Inside a transaction (tests) the connection is not the worker's to close
+            if not connection.in_atomic_block:
+                close_old_connections()
 
             if not options['once'] and not only and (
                 last_schedule_check is None or time.monotonic() - last_schedule_check >= SCHEDULE_CHECK_SECONDS

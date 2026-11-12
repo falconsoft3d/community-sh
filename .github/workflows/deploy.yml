@@ -28,6 +28,19 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # The same database engine as production: SQLite hides problems (migrations, connections) Postgres shows
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: community_sh
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,7 +53,8 @@ jobs:
         env:
           DEBUG: 'True'
           DJANGO_SECRET_KEY: ci-only-secret-key-not-used-in-production
-        run: python manage.py test orchestrator
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/community_sh
+        run: python manage.py test orchestrator --noinput
 
   deploy:
     needs: test

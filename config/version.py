@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.90'
+VERSION = '1.0.91'
 
 CHANGELOG = [
+    {
+        'version': '1.0.91',
+        'date': '2026-11-12',
+        'notes': [
+            'Tests en CI con PostgreSQL 16, el mismo motor que producción (antes SQLite, que oculta fallos de migraciones y conexiones). Arreglo que lo hizo posible: el worker ya no cierra la conexión a la base de datos dentro de una transacción; en producción no cambia nada y en PostgreSQL 56 tests fallaban por eso.',
+        ],
+    },
     {
         'version': '1.0.90',
         'date': '2026-11-12',

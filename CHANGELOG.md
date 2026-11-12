@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.90**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.91**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.91 — 2026-11-12
+
+- Tests en CI con PostgreSQL 16, el mismo motor que producción (antes SQLite, que oculta fallos de migraciones y conexiones). Arreglo que lo hizo posible: el worker ya no cierra la conexión a la base de datos dentro de una transacción; en producción no cambia nada y en PostgreSQL 56 tests fallaban por eso.
 
 ## 1.0.90 — 2026-11-12
 
