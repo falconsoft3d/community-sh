@@ -1,0 +1,53 @@
+{% extends "orchestrator/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div>
+        <h1 class="text-3xl font-bold tracking-tight">{% translate "Auditoría" %}</h1>
+        <p class="mt-1 text-muted-foreground">{% translate "Quién hizo qué en el panel: inicios de sesión, contraseñas vistas o copiadas, configuración, tokens, usuarios y cambios en las instancias." %}</p>
+    </div>
+
+    <form method="get" class="flex flex-wrap gap-2">
+        <select name="action" aria-label="{% translate "Acción" %}" class="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">{% translate "Todas las acciones" %}</option>
+            {% for code, label in actions.items %}<option value="{{ code }}" {% if code == action %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <select name="user" aria-label="{% translate "Usuario" %}" class="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="">{% translate "Todos los usuarios" %}</option>
+            {% for name in usernames %}<option value="{{ name }}" {% if name == username %}selected{% endif %}>{{ name }}</option>{% endfor %}
+        </select>
+        <input name="q" value="{{ query }}" placeholder="{% translate "Instancia, usuario…" %}" aria-label="{% translate "Buscar" %}"
+            class="h-10 min-w-[12rem] rounded-md border border-input bg-background px-3 text-sm">
+        <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">{% translate "Filtrar" %}</button>
+    </form>
+
+    <div class="rounded-xl border bg-card overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead><tr class="border-b text-left text-muted-foreground">
+                <th class="px-4 py-3 font-medium">{% translate "Fecha" %}</th>
+                <th class="px-4 py-3 font-medium">{% translate "Usuario" %}</th>
+                <th class="px-4 py-3 font-medium">{% translate "Acción" %}</th>
+                <th class="px-4 py-3 font-medium">{% translate "Sobre" %}</th>
+                <th class="px-4 py-3 font-medium">{% translate "Detalles" %}</th>
+                <th class="px-4 py-3 font-medium">IP</th>
+            </tr></thead>
+            <tbody>
+            {% for event in events %}
+            <tr class="border-b last:border-0">
+                <td class="px-4 py-3 whitespace-nowrap tabular-nums text-muted-foreground">{{ event.created_at|date:"d/m/Y H:i:s" }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">{{ event.username|default:"—" }}</td>
+                <td class="px-4 py-3 whitespace-nowrap {% if event.action == 'login_failed' %}text-red-600{% elif event.action|slice:':7' == 'secret_' %}text-amber-600{% endif %}">{{ event.label }}</td>
+                <td class="px-4 py-3">{{ event.target|default:"—" }}</td>
+                <td class="px-4 py-3 text-muted-foreground">{{ event.details }}</td>
+                <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{{ event.ip|default:"" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-4 py-10 text-center text-muted-foreground">{% translate "Sin eventos" %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "orchestrator/includes/pagination.html" with page=events %}
+</div>
+{% endblock %}

@@ -412,6 +412,8 @@ def instance_update_name(request, pk):
         return redirect('instance-detail', pk=pk)
     
     enqueue(Task.Kind.RENAME, instance, request.user, new_name=new_name)
+    from ..audit import record
+    record(request, 'instance_renamed', instance.name, f'Nuevo nombre: {new_name}')
     messages.info(request, f'Renombrado a "{new_name}" en cola')
     return redirect('instance-detail', pk=pk)
 
@@ -455,7 +457,9 @@ def instance_install_module(request, pk):
 def instance_delete(request, pk):
     instance = get_instance_for_user(request.user, pk, manage=True)
     if request.method == 'POST':
+        from ..audit import record
         from ..tasks import destroy_instance
+        record(request, 'instance_deleted', instance.name, f'Proyecto {instance.project.name if instance.project else "-"}')
         destroy_instance(instance, request.user)
         return redirect('instance-list')
     return redirect('instance-detail', pk=pk)
@@ -730,6 +734,8 @@ def instance_admin_login(request, pk):
             messages.error(request, 'La instancia todavía no tiene base de datos: créala primero desde Odoo')
             return redirect('instance-detail', pk=pk)
         database = databases[0]
+    from ..audit import record
+    record(request, 'admin_login', instance.name, f'Base de datos {database}')
     expires, nonce = str(int(time.time()) + 60), secrets.token_urlsafe(16)
     signature = hmac.new(admin_login_secret(instance).encode(), f'{database}:{expires}:{nonce}'.encode(), hashlib.sha256).hexdigest()
     query = urlencode({'db': database, 'exp': expires, 'nonce': nonce, 'sig': signature})
@@ -752,6 +758,24 @@ def instance_install_named_module(request, pk):
     messages.success(request, f'{"Actualizando" if upgrade else "Instalando"} {module} en todas las bases de la instancia: '
                               'sigue el progreso en «Tareas recientes»')
     return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
+
+
+@login_required
+@require_POST
+def instance_secret(request, pk, kind):
+    """A password of the instance, asked when shown or copied on its page (each time goes to the audit log)."""
+    from ..audit import record
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    if kind == 'master':
+        value = instance.master_password
+    elif kind == 'admin':
+        value = instance.admin_password
+    else:
+        return JsonResponse({'error': 'unknown'}, status=404)
+    record(request, f'secret_{kind}_password', instance.name)
+    response = JsonResponse({'value': value})
+    response['Cache-Control'] = 'no-store'
+    return response
 
 
 @login_required
@@ -779,6 +803,8 @@ def instance_update_memory(request, pk):
     except (ValueError, ValidationError) as e:
         messages.error(request, getattr(e, 'messages', ['Escribe un número de MB'])[0])
         return redirect(reverse('instance-detail', args=[pk]))
+    from ..audit import record
+    record(request, 'instance_memory', instance.name, f'{instance.memory_limit_mb} → {value} MB')
     instance.memory_limit_mb = value
     instance.save(update_fields=['memory_limit_mb'])
     if value:
@@ -798,9 +824,11 @@ def instance_reset_admin_password(request, pk):
     """A new password for the Odoo administrator (the one given, or a random one), shown afterwards in the instance page."""
     from django.urls import reverse
     instance = get_instance_for_user(request.user, pk, manage=True)
+    from ..audit import record
     from ..tasks import queue_admin_password_reset
     try:
         queue_admin_password_reset(instance, request.user, request.POST.get('password', ''))
+        record(request, 'reset_admin_password', instance.name)
     except ValueError as e:
         messages.error(request, str(e))
         return redirect(reverse('instance-detail', args=[pk]))
@@ -818,6 +846,8 @@ def instance_move(request, pk):
     if target is None:
         messages.error(request, 'Elige uno de tus proyectos')
     elif target.pk != instance.project_id:
+        from ..audit import record
+        record(request, 'instance_moved', instance.name, f'De {instance.project.name if instance.project else "-"} a {target.name}')
         instance.project = target
         instance.save(update_fields=['project'])
         messages.success(request, f'Instancia movida al proyecto «{target.name}». Su dirección no cambia.')

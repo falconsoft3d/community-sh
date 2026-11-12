@@ -49,6 +49,8 @@ def settings_view(request):
             config.default_organization = request.POST.get('default_organization', '')
             config.webhook_secret = request.POST.get('webhook_secret', '')
 
+        from ..audit import record
+        record(request, 'settings', request.POST.get('section') or 'github')
         # The remaining sections are platform-wide: only superusers may change them
         if not request.user.is_superuser:
             config.save()

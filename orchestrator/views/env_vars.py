@@ -24,6 +24,8 @@ def instance_env_vars(request, pk):
     instance.env_vars = text
     instance.save(update_fields=['env_vars', 'updated_at'])
     names = ', '.join(sorted(variables)) or 'ninguna'
+    from ..audit import record
+    record(request, 'instance_env_vars', instance.name, f'Variables: {names}')
     if request.POST.get('redeploy'):
         enqueue(Task.Kind.DEPLOY, instance, request.user)
         messages.success(request, f'Variables de entorno guardadas ({names}). Redesplegando la instancia para aplicarlas.')

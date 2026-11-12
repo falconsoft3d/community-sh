@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 14:30+0000\n"
+"POT-Creation-Date: 2026-11-12 14:40+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -48,6 +48,69 @@ msgstr "Error"
 msgid "Actividad"
 msgstr ""
 
+#: orchestrator/templates/orchestrator/audit_list.html:7
+#: orchestrator/templates/orchestrator/base.html:263
+#: orchestrator/templates/orchestrator/base.html:265
+msgid "Auditoría"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:8
+msgid ""
+"Quién hizo qué en el panel: inicios de sesión, contraseñas vistas o "
+"copiadas, configuración, tokens, usuarios y cambios en las instancias."
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:12
+#: orchestrator/templates/orchestrator/audit_list.html:30
+msgid "Acción"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:13
+msgid "Todas las acciones"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:16
+#: orchestrator/templates/orchestrator/audit_list.html:29
+#: orchestrator/templates/orchestrator/trial_status.html:53
+msgid "Usuario"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:17
+msgid "Todos los usuarios"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:20
+msgid "Instancia, usuario…"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:20
+#: orchestrator/templates/orchestrator/contact_list.html:42
+msgid "Buscar"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:22
+msgid "Filtrar"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:28
+#: orchestrator/templates/orchestrator/backup_list.html:71
+msgid "Fecha"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:31
+msgid "Sobre"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:32
+#: orchestrator/templates/orchestrator/todo_list.html:45
+#: orchestrator/templates/orchestrator/todo_list.html:78
+msgid "Detalles"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/audit_list.html:46
+msgid "Sin eventos"
+msgstr ""
+
 #: orchestrator/templates/orchestrator/backup_list.html:7
 #: orchestrator/templates/orchestrator/base.html:250
 #: orchestrator/templates/orchestrator/base.html:252
@@ -81,10 +144,6 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:70
 msgid "Tamaño"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/backup_list.html:71
-msgid "Fecha"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:72
@@ -175,26 +234,26 @@ msgstr ""
 msgid "Usuarios"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:265
-#: orchestrator/templates/orchestrator/base.html:267
+#: orchestrator/templates/orchestrator/base.html:269
+#: orchestrator/templates/orchestrator/base.html:271
 msgid "Settings"
 msgstr "Configuración"
 
-#: orchestrator/templates/orchestrator/base.html:270
-#: orchestrator/templates/orchestrator/base.html:272
+#: orchestrator/templates/orchestrator/base.html:274
+#: orchestrator/templates/orchestrator/base.html:276
 msgid "About"
 msgstr "Acerca de"
 
-#: orchestrator/templates/orchestrator/base.html:274
-#: orchestrator/templates/orchestrator/base.html:276
+#: orchestrator/templates/orchestrator/base.html:278
+#: orchestrator/templates/orchestrator/base.html:280
 msgid "Ayuda"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:312
+#: orchestrator/templates/orchestrator/base.html:316
 msgid "Mi Perfil"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/base.html:319
+#: orchestrator/templates/orchestrator/base.html:323
 msgid "Logout"
 msgstr "Cerrar sesión"
 
@@ -322,10 +381,6 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/contact_list.html:34
 msgid "Todos los países"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/contact_list.html:42
-msgid "Buscar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/contact_list.html:59
@@ -1384,11 +1439,6 @@ msgstr ""
 msgid "Detalles (opcional)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/todo_list.html:45
-#: orchestrator/templates/orchestrator/todo_list.html:78
-msgid "Detalles"
-msgstr ""
-
 #: orchestrator/templates/orchestrator/todo_list.html:50
 msgid "Añadir"
 msgstr ""
@@ -1498,10 +1548,6 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/trial_status.html:46
 msgid "Dirección"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/trial_status.html:53
-msgid "Usuario"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/trial_status.html:60

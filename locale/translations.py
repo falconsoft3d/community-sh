@@ -163,6 +163,18 @@ ES_TO_EN = {
     'Editar': 'Edit',
     'Nueva instancia': 'New instance',
     'Ayuda': 'Help',
+    'Auditoría': 'Audit log',
+    'Quién hizo qué en el panel: inicios de sesión, contraseñas vistas o copiadas, configuración, tokens, usuarios y cambios en las instancias.':
+        'Who did what in the panel: sign-ins, passwords shown or copied, settings, tokens, users and instance changes.',
+    'Acción': 'Action',
+    'Todas las acciones': 'All actions',
+    'Todos los usuarios': 'All users',
+    'Instancia, usuario…': 'Instance, user…',
+    'Buscar': 'Search',
+    'Filtrar': 'Filter',
+    'Sobre': 'On',
+    'Detalles': 'Details',
+    'Sin eventos': 'No events',
     'No responde': 'Not responding',
     'Uso por instancia': 'Usage by instance',
     'Su Odoo y su PostgreSQL juntos, de la que más memoria usa a la que menos. Útil para saber cuál parar cuando falta memoria.':

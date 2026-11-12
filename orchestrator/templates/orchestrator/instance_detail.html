@@ -349,17 +349,17 @@
                 </div>
 
                 {% if can_manage %}
-                <div class="space-y-1" x-data="{ show: false }">
+                <div class="space-y-1" x-data="revealField('{% url 'instance-secret' object.pk 'master' %}')">
                     <label class="text-sm font-medium leading-none">Master Password</label>
                     <div class="flex items-center gap-2">
                         <code class="text-sm text-muted-foreground flex-1 truncate"
-                            x-text="show ? '{{ object.master_password|escapejs }}' : '••••••••••••'">••••••••••••</code>
-                        <button type="button" @click="show = !show"
+                            x-text="show && value ? value : '••••••••••••'">••••••••••••</code>
+                        <button type="button" @click="toggle()"
                             class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
                             title="Mostrar/ocultar">
                             <i data-lucide="eye" class="h-3 w-3"></i>
                         </button>
-                        <button type="button" onclick="navigator.clipboard.writeText('{{ object.master_password|escapejs }}')"
+                        <button type="button" @click="copy()"
                             class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
                             title="Copiar contraseña">
                             <i data-lucide="copy" class="h-3 w-3"></i>
@@ -407,7 +407,7 @@
                 {% endif %}
 
                 {% if can_manage %}
-                <div class="space-y-1" x-data="{ show: false, resetting: false }">
+                <div class="space-y-1" x-data="Object.assign(revealField('{% url 'instance-secret' object.pk 'admin' %}'), { resetting: false })">
                     <label class="text-sm font-medium leading-none">Administrador</label>
                     {% if object.admin_password %}
                     <div class="flex items-center gap-2">
@@ -421,11 +421,11 @@
                     <div class="flex items-center gap-2">
                         <span class="text-sm text-muted-foreground">Contraseña</span>
                         <code class="text-sm text-muted-foreground flex-1 truncate"
-                            x-text="show ? '{{ object.admin_password|escapejs }}' : '••••••••••••'">••••••••••••</code>
-                        <button type="button" @click="show = !show" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Mostrar/ocultar">
+                            x-text="show && value ? value : '••••••••••••'">••••••••••••</code>
+                        <button type="button" @click="toggle()" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Mostrar/ocultar">
                             <i data-lucide="eye" class="h-3 w-3"></i>
                         </button>
-                        <button type="button" onclick="navigator.clipboard.writeText('{{ object.admin_password|escapejs }}')"
+                        <button type="button" @click="copy()"
                             class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Copiar contraseña">
                             <i data-lucide="copy" class="h-3 w-3"></i>
                         </button>
@@ -1587,6 +1587,31 @@
 
         // Reset file input
         event.target.value = '';
+    }
+</script>
+
+<script>
+    // Passwords aren't in the page: they're fetched when shown or copied (each time is recorded in Auditoría)
+    function revealField(url) {
+        const csrf = () => '{{ csrf_token }}';
+        const load = () => fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf() } })
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => d.value);
+        return {
+            show: false, value: '',
+            toggle() {
+                if (this.show) { this.show = false; return; }
+                load().then(v => { this.value = v; this.show = true; }).catch(() => alert('No se pudo obtener'));
+            },
+            copy() {
+                // ClipboardItem with a promise keeps the click's permission while it loads (Safari)
+                if (window.ClipboardItem && navigator.clipboard.write) {
+                    navigator.clipboard.write([new ClipboardItem({ 'text/plain': load().then(v => new Blob([v], { type: 'text/plain' })) })])
+                        .catch(() => load().then(v => navigator.clipboard.writeText(v)));
+                } else {
+                    load().then(v => navigator.clipboard.writeText(v));
+                }
+            },
+        };
     }
 </script>
 {% endblock %}

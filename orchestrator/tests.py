@@ -3866,6 +3866,41 @@ class OffsiteBackupTests(BaseTestCase):
         self.assertEqual(self.client.post(reverse('offsite-test')).status_code, 403)
 
 
+class AuditTests(BaseTestCase):
+    def test_secrets_shown_are_recorded_and_not_in_the_page(self):
+        from .audit_models import AuditEvent
+        self.client.force_login(self.alice)
+        page = self.client.get(f'/instance/{self.alice_instance.pk}/')
+        self.assertNotContains(page, self.alice_instance.master_password)
+        url = reverse('instance-secret', args=[self.alice_instance.pk, 'master'])
+        self.assertEqual(self.client.get(url).status_code, 405)
+        response = self.client.post(url)
+        self.assertEqual(response.json()['value'], self.alice_instance.master_password)
+        self.assertEqual(response['Cache-Control'], 'no-store')
+        event = AuditEvent.objects.get(action='secret_master_password')
+        self.assertEqual((event.username, event.target, event.ip), ('alice', 'alice-odoo', '127.0.0.1'))
+        self.assertEqual(self.client.post(reverse('instance-secret', args=[self.alice_instance.pk, 'other'])).status_code, 404)
+
+    def test_logins_settings_tokens_and_users_are_recorded(self):
+        from .audit_models import AuditEvent
+        self.client.post(reverse('login'), {'username': 'alice', 'password': 'wrong'})
+        self.client.force_login(self.admin)
+        self.client.post(reverse('settings'), {'section': 'general'})
+        self.client.post(reverse('mcp-token-create'), {'name': 'cli', 'tab': 'api'})
+        self.client.post(reverse('instance-update-memory', args=[self.alice_instance.pk]), {'memory_limit_mb': '2048'})
+        actions = set(AuditEvent.objects.values_list('action', flat=True))
+        self.assertTrue({'login_failed', 'settings', 'token_created', 'instance_memory'} <= actions, actions)
+        self.assertEqual(AuditEvent.objects.get(action='login_failed').target, 'alice')
+        # The page, with filters, for administrators only
+        page = self.client.get(reverse('audit') + '?action=token_created')
+        self.assertContains(page, '">Crear token</td>')
+        self.assertNotContains(page, '">Inicio de sesión fallido</td>')
+        self.assertContains(self.client.get('/dashboard/'), reverse('audit'))
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('audit')).status_code, 403)
+        self.assertNotContains(self.client.get('/dashboard/'), reverse('audit'))
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task
@@ -3940,8 +3975,10 @@ class ApiDatabaseAndModuleTests(BaseTestCase):
         self.assertEqual((instance.admin_login, instance.admin_password, instance.admin_database), ('admin', 'SharedPass123', 'bim18'))
         self.client.force_login(self.alice)
         page = self.client.get(f'/instance/{instance.pk}/')
-        self.assertContains(page, 'SharedPass123')
+        self.assertNotContains(page, 'SharedPass123')  # asked when shown or copied, not in the page
         self.assertContains(page, 'base de datos bim18')
+        secret = reverse('instance-secret', args=[instance.pk, 'admin'])
+        self.assertEqual(self.client.post(secret).json()['value'], 'SharedPass123')
         self.assertEqual(self.client.get(f'/api/instances/{instance.pk}/').json()['admin_password'], 'SharedPass123')
         # Clients of the project don't see it
         self.alice_project.client = self.bob
@@ -3949,6 +3986,7 @@ class ApiDatabaseAndModuleTests(BaseTestCase):
         self.client.force_login(self.bob)
         self.assertNotContains(self.client.get(f'/instance/{instance.pk}/'), 'SharedPass123')
         self.assertNotIn('admin_password', self.client.get(f'/api/instances/{instance.pk}/').json())
+        self.assertIn(self.client.post(secret).status_code, (403, 404))
 
     def test_reset_admin_password_from_the_instance_page(self):
         from .task_models import Task

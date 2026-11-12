@@ -62,6 +62,8 @@ def mcp_token_create(request):
     tab = _token_tab(request)
     name = request.POST.get('name', '').strip()[:100] or ('API' if tab == 'api' else 'Claude')
     _record, token = MCPToken.issue(request.user, name)
+    from ..audit import record
+    record(request, 'token_created', name, 'Pestaña ' + tab)
     # Shown once on the next settings page (with a copy button), then dropped
     request.session['new_personal_token'] = {'name': name, 'token': token}
     return redirect(reverse('settings') + f'#{tab}')
@@ -70,6 +72,9 @@ def mcp_token_create(request):
 @login_required
 @require_POST
 def mcp_token_revoke(request, token_id):
+    from ..audit import record
+    for token in MCPToken.objects.filter(pk=token_id, user=request.user):
+        record(request, 'token_revoked', token.name, f'…{token.hint}')
     MCPToken.objects.filter(pk=token_id, user=request.user).delete()
     messages.success(request, 'Token revocado')
     return redirect(reverse('settings') + f'#{_token_tab(request)}')
@@ -86,6 +91,8 @@ def api_token_markdown(request):
         return redirect(reverse('settings') + '#api')
     name = request.POST.get('name', '').strip()[:100] or f'IA {timezone.localtime():%d/%m/%Y %H:%M}'
     _record, token = MCPToken.issue(request.user, name)
+    from ..audit import record
+    record(request, 'token_created', name, 'Fichero .md para una IA')
     config = get_global_config()
     mcp_url = request.build_absolute_uri(reverse('mcp')) if config and config.mcp_enabled else ''
     content = api_markdown(request.user, request.build_absolute_uri('/api/'), token, name, mcp_url=mcp_url)

@@ -3,9 +3,17 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.82'
+VERSION = '1.0.83'
 
 CHANGELOG = [
+    {
+        'version': '1.0.83',
+        'date': '2026-11-12',
+        'notes': [
+            'Auditoría (menú, administradores): registro de quién hizo qué y desde qué IP, con filtros por acción, usuario y texto: inicios y cierres de sesión (también los fallidos), cada vez que se muestra o copia la Master Password o la contraseña del administrador, «Entrar como admin», restablecer la contraseña, cambios de configuración, tokens creados y revocados (también el .md para IA), usuarios creados, editados o eliminados y cambios en instancias (eliminar, renombrar, mover, límite de memoria, variables de entorno). Migración 0071.',
+            'Seguridad: la Master Password y la contraseña del administrador ya no van dentro del HTML de la ficha; se piden al servidor al pulsar mostrar o copiar (y quedan en la Auditoría).',
+        ],
+    },
     {
         'version': '1.0.82',
         'date': '2026-11-12',

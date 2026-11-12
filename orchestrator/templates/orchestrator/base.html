@@ -260,6 +260,10 @@
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'users' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="users" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Usuarios" %}</span>{% if nav_counts.users != None and nav_counts.users != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.users }}</span>{% endif %}
                         </a>
+                        <a href="{% url 'audit' %}" title="{% translate "Auditoría" %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'audit' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="shield-check" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Auditoría" %}</span>
+                        </a>
                         {% endif %}
                         {% if not user_is_client %}
                         <a href="{% url 'settings' %}" title="{% translate "Settings" %}"

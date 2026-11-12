@@ -55,6 +55,8 @@ def user_create(request):
         user.is_superuser = is_superuser
         user.is_staff = is_staff
         user.save()
+        from ..audit import record
+        record(request, 'user_created', username, 'Administrador' if is_superuser else '')
         # A client only sees and operates the projects assigned to it
         user.profile.is_client = request.POST.get('is_client') == 'on' and not is_superuser
         user.profile.company = request.POST.get('company', '').strip()
@@ -98,6 +100,10 @@ def user_edit(request, user_id):
         user_to_edit.profile.company = request.POST.get('company', '').strip()
         user_to_edit.profile.save()
         
+        from ..audit import record
+        record(request, 'user_edited', user_to_edit.username,
+               ('Administrador' if user_to_edit.is_superuser else 'Cliente' if user_to_edit.profile.is_client else 'Usuario')
+               + (' · contraseña cambiada' if new_password else ''))
         messages.success(request, f'Usuario "{user_to_edit.username}" actualizado exitosamente')
         return redirect('user-list')
     
@@ -122,6 +128,8 @@ def user_delete(request, user_id):
             return redirect('user-list')
         
         username = user_to_delete.username
+        from ..audit import record
+        record(request, 'user_deleted', username)
         user_to_delete.delete()
         messages.success(request, f'Usuario "{username}" eliminado exitosamente')
     

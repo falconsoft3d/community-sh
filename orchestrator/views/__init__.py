@@ -1,4 +1,5 @@
 """Web and API views, grouped by area."""
+from .audit import audit_list
 from .api import (
     InstanceViewSet,
 )
@@ -71,6 +72,7 @@ from .instances import (
     instance_reset_admin_password,
     instance_update_memory,
     instance_usage,
+    instance_secret,
     instance_move,
     instance_delete,
     instance_duplicate,
@@ -137,6 +139,7 @@ __all__ = [
     'blog_detail',
     'about',
     'help_page',
+    'audit_list',
     'dashboard',
     'InstanceListView',
     'InstanceCreateView',
@@ -166,6 +169,7 @@ __all__ = [
     'instance_reset_admin_password',
     'instance_update_memory',
     'instance_usage',
+    'instance_secret',
     'instance_move',
     'instance_delete',
     'instance_duplicate',
