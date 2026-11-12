@@ -238,6 +238,13 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = ['id', 'kind', 'status', 'instance', 'params', 'result', 'log', 'progress', 'step',
                   'created_at', 'started_at', 'finished_at']
 
+    def to_representation(self, task):
+        # Passwords given to a task are never read back (a waiting task still holds them for the worker)
+        from .task_models import redact_params
+        data = super().to_representation(task)
+        data['params'] = redact_params(data.get('params'))
+        return data
+
 
 class TodoSerializer(serializers.ModelSerializer):
     class Meta:

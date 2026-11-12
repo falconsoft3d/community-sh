@@ -15,7 +15,7 @@ from . import task_log
 from .models import Instance
 from .services import DockerService
 from .services.github import create_branch
-from .task_models import Task
+from .task_models import SECRET_PARAMS, Task, redact_params
 from .traefik_service import TraefikService
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,12 @@ def run_task(task):
         if task.result and task.status == Task.Status.DONE:
             log.line(task.result)
     task.finished_at = timezone.now()
-    task.save(update_fields=['status', 'result', 'finished_at'])
+    fields = ['status', 'result', 'finished_at']
+    # A password given to the task is no longer needed (it's kept where it belongs, e.g. the instance's administrator)
+    if any(key in SECRET_PARAMS for key in task.params or {}):
+        task.params = redact_params(task.params)
+        fields.append('params')
+    task.save(update_fields=fields)
     if task.status == Task.Status.DONE and _creates_instance(task):
         enqueue_auto_cleanup(task.created_by)
     return task

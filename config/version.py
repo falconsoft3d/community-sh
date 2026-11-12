@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.77'
+VERSION = '1.0.78'
 
 CHANGELOG = [
+    {
+        'version': '1.0.78',
+        'date': '2026-11-12',
+        'notes': [
+            'Seguridad: las contraseñas que recibe una tarea (crear una base de datos, restablecer la del administrador) ya no se ven al consultar tareas por la API (/api/tasks/ las muestra como ••••••) y se borran de la tarea en cuanto termina, bien o mal; la del administrador queda en la ficha de la instancia. La migración 0068 las borra de las tareas ya terminadas.',
+        ],
+    },
     {
         'version': '1.0.77',
         'date': '2026-11-12',

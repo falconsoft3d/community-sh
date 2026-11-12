@@ -208,6 +208,7 @@ updates its section here (and the index) in the same commit.
                     <li><strong>Para una IA</strong>: Configuración → API → «Generar token y descargar .md» crea un token nuevo y descarga <code>community-sh-api.md</code> con el token, la URL base y toda la documentación (endpoints, tareas, errores, ejemplos y, si está activo, cómo conectar el MCP). Pásaselo a Claude, ChatGPT… para que use la API por ti. Guárdalo como una contraseña; el token se revoca en «Tus tokens».</li>
                     <li><strong>MCP</strong> (Configuración → MCP): conecta Claude con <code>/mcp/</code> y un token personal; actúa con los permisos de su usuario.</li>
                     <li>Los tokens se muestran una sola vez y exigen 2FA cuando es obligatorio.</li>
+                    <li>Las contraseñas que recibe una tarea (crear una base de datos, restablecer la del administrador) nunca se devuelven al consultar tareas (salen como ••••••) y se borran de la tarea al terminar; la del administrador queda en la ficha de la instancia.</li>
                 </ul>
             </section>
 

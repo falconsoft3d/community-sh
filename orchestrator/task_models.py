@@ -81,3 +81,12 @@ class Task(models.Model):
     def bar_percent(self):
         """What the bar shows: full once it finished, whatever the last step said."""
         return 100 if self.status in (self.Status.DONE, self.Status.FAILED) else self.progress
+
+
+# Task parameters that are secrets: the worker reads them, but they're never shown and are dropped when the task ends
+SECRET_PARAMS = ('password',)
+REDACTED = '••••••'
+
+
+def redact_params(params):
+    return {key: (REDACTED if key in SECRET_PARAMS and value else value) for key, value in (params or {}).items()}

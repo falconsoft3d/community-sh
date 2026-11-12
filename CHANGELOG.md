@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.77**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.78**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.78 — 2026-11-12
+
+- Seguridad: las contraseñas que recibe una tarea (crear una base de datos, restablecer la del administrador) ya no se ven al consultar tareas por la API (/api/tasks/ las muestra como ••••••) y se borran de la tarea en cuanto termina, bien o mal; la del administrador queda en la ficha de la instancia. La migración 0068 las borra de las tareas ya terminadas.
 
 ## 1.0.77 — 2026-11-12
 

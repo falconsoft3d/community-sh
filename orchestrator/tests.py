@@ -3601,6 +3601,31 @@ class MemoryLimitTests(BaseTestCase):
         self.assertIn(self.client.post(url, {'memory_limit_mb': '4096'}).status_code, (403, 404))
 
 
+class TaskSecretsTests(BaseTestCase):
+    def test_passwords_are_never_read_back_and_are_dropped_when_the_task_ends(self):
+        from .task_models import Task, REDACTED
+        from .tasks import HANDLERS, run_task
+        self.client.force_login(self.alice)
+        response = self.client.post(f'/api/instances/{self.alice_instance.pk}/create-database/', {'name': 'shop', 'password': 'Visible-123'},
+                                    content_type='application/json')
+        self.assertEqual(response.json()['password'], 'Visible-123')  # who asked for it gets it once
+        task = Task.objects.get(pk=response.json()['task_id'])
+        self.assertEqual(task.params['password'], 'Visible-123')  # the worker still needs it
+        api = self.client.get(f'/api/tasks/{task.pk}/').json()
+        self.assertEqual(api['params']['password'], REDACTED)
+        self.assertNotIn('Visible-123', self.client.get('/api/tasks/').content.decode())
+        with mock.patch.dict(HANDLERS, {Task.Kind.CREATE_DATABASE: lambda task: 'ok'}):
+            run_task(task)
+        task.refresh_from_db()
+        self.assertEqual(task.params, {'name': 'shop', 'password': REDACTED, 'lang': '', 'demo': False})
+        # A failed one too
+        failed = Task.objects.create(kind=Task.Kind.RESET_ADMIN_PASSWORD, instance=self.alice_instance, params={'password': 'Other-456'})
+        with mock.patch.dict(HANDLERS, {Task.Kind.RESET_ADMIN_PASSWORD: mock.Mock(side_effect=Exception('down'))}):
+            run_task(failed)
+        failed.refresh_from_db()
+        self.assertEqual(failed.params['password'], REDACTED)
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task
