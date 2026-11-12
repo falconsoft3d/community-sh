@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.78**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.79**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.79 — 2026-11-12
+
+- API y MCP: restablecer la contraseña del administrador de Odoo (POST /api/instances/{id}/reset-admin-password/ y la herramienta reset_admin_password), con la contraseña dada o una aleatoria que se devuelve al momento; solo para quien gestiona la instancia. get_instance del MCP incluye el administrador (usuario y contraseña) para quien gestiona la instancia.
 
 ## 1.0.78 — 2026-11-12
 

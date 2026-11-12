@@ -26,7 +26,8 @@ TOOLS = [
      'inputSchema': _schema()},
     {'name': 'list_instances', 'description': 'List Odoo instances with status, version, project and URL.',
      'inputSchema': _schema({'project': {'type': 'string', 'description': 'Optional project name to filter by'}})},
-    {'name': 'get_instance', 'description': 'Details of one instance: status, URL, Odoo version, project, repositories and recent tasks.',
+    {'name': 'get_instance', 'description': 'Details of one instance: status, URL, Odoo version, project, repositories, recent tasks '
+                                            'and, for who manages it, the Odoo administrator the platform set up (login and password).',
      'inputSchema': _schema(INSTANCE, ['instance'])},
     {'name': 'get_instance_logs', 'description': 'Last lines of the Odoo container logs.',
      'inputSchema': _schema({**INSTANCE, 'lines': {'type': 'integer', 'minimum': 1, 'maximum': 1000, 'default': 100}}, ['instance'])},
@@ -40,6 +41,11 @@ TOOLS = [
     {'name': 'remove_instance_repository',
      'description': 'Remove an extra addons repository from the instance (by its URL). Applied on the next deploy.',
      'inputSchema': _schema({**INSTANCE, 'url': {'type': 'string'}}, ['instance', 'url'])},
+    {'name': 'reset_admin_password',
+     'description': 'Give the Odoo administrator of the instance a new password (the one given, or a random one) and return it. '
+                    'Only who manages the instance. Runs as a task: when get_task says done, get_instance shows the login.',
+     'inputSchema': _schema({**INSTANCE, 'password': {'type': 'string', 'description': 'Optional: 8-64 letters, digits, "_" or "-"'}},
+                            ['instance'])},
     {'name': 'restart_instance', 'description': 'Restart the Odoo container of the instance.',
      'inputSchema': _schema(INSTANCE, ['instance'])},
     {'name': 'stop_instance', 'description': 'Stop the Odoo container of the instance.',
@@ -105,6 +111,10 @@ def call_tool(user, name, arguments):
         info['recent_tasks'] = [
             {'id': t.id, 'kind': t.kind, 'status': t.status, 'result': t.result[-500:]} for t in instance.tasks.all()[:5]
         ]
+        from ..permissions import can_manage
+        if instance.admin_password and can_manage(user, instance):
+            info['administrator'] = {'login': instance.admin_login or 'admin', 'password': instance.admin_password,
+                                     'database': instance.admin_database or None}
         return info
     if name == 'get_instance_logs':
         instance = _instance(user, arguments['instance'])
@@ -132,6 +142,18 @@ def call_tool(user, name, arguments):
             raise ToolError('That repository is not in the instance')
         repository.delete()
         return {'removed': repository.url, 'note': 'Removed: deploy the instance to apply it'}
+    if name == 'reset_admin_password':
+        from ..permissions import can_manage
+        from ..tasks import queue_admin_password_reset
+        instance = _instance(user, arguments['instance'])
+        if not can_manage(user, instance):
+            raise ToolError('Only who manages the instance can change its administrator password')
+        try:
+            task, password = queue_admin_password_reset(instance, user, arguments.get('password') or '')
+        except ValueError as e:
+            raise ToolError(str(e))
+        return {'task_id': task.id, 'status': task.status, 'password': password,
+                'note': 'Applied by the task: follow it with get_task; get_instance then shows the login'}
     if name in ('restart_instance', 'stop_instance'):
         instance = _instance(user, arguments['instance'])
         service = DockerService()

@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.78'
+VERSION = '1.0.79'
 
 CHANGELOG = [
+    {
+        'version': '1.0.79',
+        'date': '2026-11-12',
+        'notes': [
+            'API y MCP: restablecer la contraseña del administrador de Odoo (POST /api/instances/{id}/reset-admin-password/ y la herramienta reset_admin_password), con la contraseña dada o una aleatoria que se devuelve al momento; solo para quien gestiona la instancia. get_instance del MCP incluye el administrador (usuario y contraseña) para quien gestiona la instancia.',
+        ],
+    },
     {
         'version': '1.0.78',
         'date': '2026-11-12',

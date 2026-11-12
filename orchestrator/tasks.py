@@ -220,6 +220,22 @@ def create_database(task):
     return f"Base de datos {params['name']} creada · usuario {login} · la contraseña se ve en la ficha de la instancia"
 
 
+ADMIN_PASSWORD_RE = r'[A-Za-z0-9_-]{8,64}'
+
+
+def queue_admin_password_reset(instance, user, password=''):
+    """
+    The page, the API and the MCP: a new password for the Odoo administrator (the one given, or a random one).
+    Returns (task, password); ValueError if the given one has other characters (it goes into SQL).
+    """
+    import re
+    import secrets
+    password = (password or '').strip() or secrets.token_urlsafe(12)
+    if not re.fullmatch(ADMIN_PASSWORD_RE, password):
+        raise ValueError('La contraseña debe tener entre 8 y 64 letras, números, «_» o «-»')
+    return enqueue(Task.Kind.RESET_ADMIN_PASSWORD, instance, user, password=password), password
+
+
 @handler(Task.Kind.RESET_ADMIN_PASSWORD)
 def reset_admin_password(task):
     """A new password for the Odoo administrator (also when its database was made outside the panel), kept in the instance."""

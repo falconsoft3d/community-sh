@@ -1437,6 +1437,39 @@ class MCPServerTests(BaseTestCase):
         self.assertFalse(removed['isError'])
         self.assertFalse(self.alice_instance.repositories.exists())
 
+    def test_reset_admin_password_through_mcp_and_api(self):
+        import json
+        from .task_models import Task
+        result = self.rpc('tools/call', {'name': 'reset_admin_password', 'arguments': {'instance': 'alice-odoo'}}).json()['result']
+        data = json.loads(result['content'][0]['text'])
+        self.assertGreaterEqual(len(data['password']), 12)
+        self.assertEqual(Task.objects.get(pk=data['task_id']).params['password'], data['password'])
+        bad = self.rpc('tools/call', {'name': 'reset_admin_password', 'arguments': {'instance': 'alice-odoo', 'password': "x' or 1=1"}})
+        self.assertTrue(bad.json()['result']['isError'])
+        # get_instance shows the administrator to who manages it
+        Instance.objects.filter(pk=self.alice_instance.pk).update(admin_login='admin', admin_password='Known-pass-1')
+        info = json.loads(self.rpc('tools/call', {'name': 'get_instance', 'arguments': {'instance': 'alice-odoo'}}).json()['result']['content'][0]['text'])
+        self.assertEqual(info['administrator']['password'], 'Known-pass-1')
+        # API
+        import json as _json
+        response = self.client.post(f'/api/instances/{self.alice_instance.pk}/reset-admin-password/', _json.dumps({'password': 'Chosen_pass-9'}),
+                                    content_type='application/json', HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()['password'], 'Chosen_pass-9')
+        self.assertEqual(self.client.post(f'/api/instances/{self.alice_instance.pk}/reset-admin-password/', _json.dumps({'password': 'short'}),
+                                          content_type='application/json', HTTP_AUTHORIZATION=f'Bearer {self.token}').status_code, 400)
+        # Clients of the project can't, and don't see the administrator
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        from .mcp_models import MCPToken
+        _, bob_token = MCPToken.issue(self.bob, 'bob')
+        denied = self.rpc('tools/call', {'name': 'reset_admin_password', 'arguments': {'instance': 'alice-odoo'}}, token=bob_token)
+        self.assertTrue(denied.json()['result']['isError'])
+        info = json.loads(self.rpc('tools/call', {'name': 'get_instance', 'arguments': {'instance': 'alice-odoo'}}, token=bob_token).json()['result']['content'][0]['text'])
+        self.assertNotIn('administrator', info)
+        self.assertEqual(self.client.post(f'/api/instances/{self.alice_instance.pk}/reset-admin-password/', '{}',
+                                          content_type='application/json', HTTP_AUTHORIZATION=f'Bearer {bob_token}').status_code, 403)
+
     def test_tools_respect_permissions(self):
         import json
         result = self.rpc('tools/call', {'name': 'list_instances', 'arguments': {}}).json()['result']

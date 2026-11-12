@@ -111,6 +111,19 @@ class InstanceDatabaseMixin:
         return Response({'task_id': task.pk, 'status': task.status, 'database': name, 'login': 'admin',
                          'password': password}, status=status.HTTP_202_ACCEPTED)
 
+    @action(detail=True, methods=['post'], url_path='reset-admin-password')
+    def reset_admin_password(self, request, pk=None):
+        """A new password for the Odoo administrator (given, or random): returned now, applied by the task."""
+        from ..tasks import queue_admin_password_reset
+        instance = self._managed(request)
+        try:
+            task, password = queue_admin_password_reset(instance, request.user, str(request.data.get('password') or ''))
+        except ValueError:
+            return Response({'password': ['8-64 letters, digits, "_" or "-"']}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'task_id': task.pk, 'status': task.status, 'password': password,
+                         'database': instance.admin_database or instance.database_name or None},
+                        status=status.HTTP_202_ACCEPTED)
+
     @action(detail=True, methods=['post'], url_path='install-module')
     def install_module(self, request, pk=None):
         import re as _re

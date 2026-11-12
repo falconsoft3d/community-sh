@@ -22,6 +22,9 @@ API_ENDPOINTS = [
     ('POST', '/api/instances/{id}/duplicate/', 'Duplicar (new_name)'),
     ('POST', '/api/instances/{id}/create-database/', 'Crear una base de datos (name, password opcional, lang como es_ES, demo); '
                                                       'devuelve task_id, usuario y contraseña del admin'),
+    ('POST', '/api/instances/{id}/reset-admin-password/', 'Nueva contraseña para el administrador de Odoo (password opcional: '
+                                                           'sin ella se genera); devuelve task_id y la contraseña, y la ficha la '
+                                                           'muestra al terminar'),
     ('POST', '/api/instances/{id}/install-module/', 'Instalar o actualizar un módulo en todas sus bases (module, upgrade), '
                                                      'p. ej. community_sh_theme; devuelve task_id'),
     ('GET · POST', '/api/instances/{id}/repositories/', 'Repositorios de módulos extra (OCA, enterprise…); POST añade uno '
