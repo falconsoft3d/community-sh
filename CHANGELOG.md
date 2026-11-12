@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.89**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.90**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.90 — 2026-11-12
+
+- Seguridad: los secretos se guardan cifrados en la base de datos (Fernet, de la librería cryptography): token de GitHub, secreto del webhook, clave de OpenAI, contraseña SMTP y secret key de S3, y en cada instancia la Master Password, la contraseña del administrador, el secreto de su webhook y sus variables de entorno. Se cifran al guardar y se descifran al leer, sin cambiar nada más; la migración 0072 cifra los valores que ya había. La clave es FIELD_ENCRYPTION_KEY del .env o, sin ella, una derivada de DJANGO_SECRET_KEY: no cambiarla.
 
 ## 1.0.89 — 2026-11-12
 

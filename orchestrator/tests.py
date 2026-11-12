@@ -3976,6 +3976,43 @@ class SmokeCheckTests(BaseTestCase):
                 call_command('smoke_check', stdout=StringIO())
 
 
+class EncryptedSecretsTests(BaseTestCase):
+    def raw(self, table, column, pk):
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute(f'SELECT {column} FROM {table} WHERE id = %s', [pk])
+            return cursor.fetchone()[0]
+
+    def test_secrets_are_encrypted_at_rest_and_read_in_clear(self):
+        self.config.smtp_password, self.config.s3_secret_key = 'smtp-Secret-1', 's3-Secret-2'
+        self.config.save()
+        Instance.objects.filter(pk=self.alice_instance.pk).update(admin_password='Admin-Secret-3', env_vars='API_KEY=xyz')
+        stored = self.raw('orchestrator_githubconfig', 'smtp_password', self.config.pk)
+        self.assertTrue(stored.startswith('enc:'))
+        self.assertNotIn('smtp-Secret-1', stored)
+        for column in ('admin_password', 'env_vars', 'master_password'):
+            self.assertTrue(self.raw('orchestrator_instance', column, self.alice_instance.pk).startswith('enc:'), column)
+        from .config_models import GitHubConfig
+        config = GitHubConfig.objects.get(pk=self.config.pk)
+        self.assertEqual((config.smtp_password, config.s3_secret_key), ('smtp-Secret-1', 's3-Secret-2'))
+        instance = Instance.objects.get(pk=self.alice_instance.pk)
+        self.assertEqual((instance.admin_password, instance.env_vars), ('Admin-Secret-3', 'API_KEY=xyz'))
+        self.assertEqual(self.raw('orchestrator_githubconfig', 'openai_api_key', self.config.pk), '')  # empty stays empty
+
+    def test_plain_values_from_before_and_a_changed_key(self):
+        from django.db import connection
+        from .fields import decrypt, encrypt
+        with connection.cursor() as cursor:
+            cursor.execute('UPDATE orchestrator_githubconfig SET smtp_password = %s WHERE id = %s', ['legacy-plain', self.config.pk])
+        from .config_models import GitHubConfig
+        self.assertEqual(GitHubConfig.objects.get(pk=self.config.pk).smtp_password, 'legacy-plain')
+        token = encrypt('x')
+        self.assertEqual(decrypt(token), 'x')
+        self.assertEqual(encrypt(token), token)  # never twice
+        with mock.patch.dict('os.environ', {'FIELD_ENCRYPTION_KEY': 'A' * 43 + '='}):
+            self.assertEqual(decrypt(token), '')  # another key: unreadable, empty rather than garbage
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

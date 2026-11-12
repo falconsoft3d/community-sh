@@ -1,12 +1,14 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+from .fields import EncryptedCharField
+
 class GitHubConfig(models.Model):
     """Configuration for GitHub integration"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='github_config')
-    personal_access_token = models.CharField(max_length=255, blank=True, help_text="GitHub Personal Access Token")
+    personal_access_token = EncryptedCharField(max_length=255, blank=True, help_text="GitHub Personal Access Token")
     default_organization = models.CharField(max_length=255, blank=True, help_text="Default GitHub organization")
-    webhook_secret = models.CharField(max_length=255, blank=True, help_text="Webhook secret for GitHub")
+    webhook_secret = EncryptedCharField(max_length=255, blank=True, help_text="Webhook secret for GitHub")
     registration_enabled = models.BooleanField(default=False, help_text="Allow new user registrations")
     public_website_enabled = models.BooleanField(default=True, help_text="Enable public website and blog")
     two_factor_required = models.BooleanField(default=False, help_text="Require two-factor authentication for all users")
@@ -39,7 +41,7 @@ class GitHubConfig(models.Model):
     
     # AI assistant (OpenAI / ChatGPT)
     ai_enabled = models.BooleanField(default=False, help_text="Enable the AI assistant in instances")
-    openai_api_key = models.CharField(max_length=255, blank=True, help_text="OpenAI API key")
+    openai_api_key = EncryptedCharField(max_length=255, blank=True, help_text="OpenAI API key")
     openai_model = models.CharField(max_length=100, blank=True, help_text="OpenAI model used by the assistant")
     ai_instructions = models.TextField(blank=True, help_text="Extra instructions added to the assistant's system prompt")
     
@@ -50,7 +52,7 @@ class GitHubConfig(models.Model):
     smtp_security = models.CharField(max_length=10, default='starttls',
                                      choices=[('starttls', 'STARTTLS'), ('ssl', 'SSL/TLS'), ('none', 'Ninguna')])
     smtp_username = models.CharField(max_length=255, blank=True)
-    smtp_password = models.CharField(max_length=255, blank=True)
+    smtp_password = EncryptedCharField(max_length=255, blank=True)
     smtp_from_email = models.EmailField(blank=True, help_text="Sender address")
     smtp_from_name = models.CharField(max_length=100, blank=True, default='Community SH')
 
@@ -64,7 +66,7 @@ class GitHubConfig(models.Model):
     s3_region = models.CharField(max_length=50, blank=True)
     s3_bucket = models.CharField(max_length=255, blank=True)
     s3_access_key = models.CharField(max_length=255, blank=True)
-    s3_secret_key = models.CharField(max_length=255, blank=True)
+    s3_secret_key = EncryptedCharField(max_length=255, blank=True)
     s3_prefix = models.CharField(max_length=255, blank=True, default='community-sh')
     offsite_retention_days = models.PositiveIntegerField(default=30, help_text="Copies older than this are deleted from the bucket (0: kept)")
 

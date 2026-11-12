@@ -8,6 +8,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .permissions import validate_resource_name, validate_domain, validate_database_name, validate_git_branch, validate_repo_url
 from .instance_env import validate_env_vars
+from .fields import EncryptedCharField, EncryptedTextField
 
 MEMORY_LIMIT_MIN_MB, MEMORY_LIMIT_MAX_MB = 256, 32768
 
@@ -60,7 +61,7 @@ class Instance(models.Model):
     # Docker info
     container_id = models.CharField(max_length=100, blank=True, null=True)
     data_volume = models.CharField(max_length=255, blank=True, default='', help_text="Docker volume holding /var/lib/odoo (filestore)")
-    master_password = models.CharField(max_length=64, default=generate_master_password, help_text="Odoo master password (database manager)")
+    master_password = EncryptedCharField(max_length=64, default=generate_master_password, help_text="Odoo master password (database manager)")
     # Cap of the Odoo container: one runaway instance can't take the memory of the server (and of the others)
     memory_limit_mb = models.PositiveIntegerField(default=1536, validators=[validate_memory_limit], help_text="Memory limit of the Odoo container in MB (0: no limit)")
 
@@ -78,7 +79,7 @@ class Instance(models.Model):
 
     # The administrator the panel created (database created from the panel/API/MCP, demo), shown to who manages it
     admin_login = models.CharField(max_length=100, blank=True, default='', help_text="Login of the administrator the panel created")
-    admin_password = models.CharField(max_length=64, blank=True, default='', help_text="Password of the administrator the panel created")
+    admin_password = EncryptedCharField(max_length=64, blank=True, default='', help_text="Password of the administrator the panel created")
     admin_database = models.CharField(max_length=100, blank=True, default='', help_text="Database of that administrator")
     port = models.IntegerField(unique=True, null=True, blank=True)
     
@@ -106,14 +107,14 @@ class Instance(models.Model):
 
     # On by default (pull): a push, and the daily pass, keep every instance on the last commit of its branches
     auto_update = models.CharField(max_length=10, choices=AutoUpdate.choices, default=AutoUpdate.PULL, blank=True)
-    webhook_secret = models.CharField(max_length=64, default=generate_webhook_secret,
+    webhook_secret = EncryptedCharField(max_length=64, default=generate_webhook_secret,
                                       help_text="Signs the GitHub webhook calls of this instance")
 
     # Shown next to the instance on the demo page of its project (test mode) and in the public API
     description = models.TextField(blank=True, default='', help_text="Public description for the demo page")
 
     # Environment variables of the Odoo container (NAME=value per line), applied on every deploy
-    env_vars = models.TextField(blank=True, default='', validators=[validate_env_vars],
+    env_vars = EncryptedTextField(blank=True, default='', validators=[validate_env_vars],
                                 help_text="Environment variables of the Odoo container: NAME=value, one per line")
 
     created_at = models.DateTimeField(auto_now_add=True)

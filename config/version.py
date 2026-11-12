@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.89'
+VERSION = '1.0.90'
 
 CHANGELOG = [
+    {
+        'version': '1.0.90',
+        'date': '2026-11-12',
+        'notes': [
+            'Seguridad: los secretos se guardan cifrados en la base de datos (Fernet, de la librería cryptography): token de GitHub, secreto del webhook, clave de OpenAI, contraseña SMTP y secret key de S3, y en cada instancia la Master Password, la contraseña del administrador, el secreto de su webhook y sus variables de entorno. Se cifran al guardar y se descifran al leer, sin cambiar nada más; la migración 0072 cifra los valores que ya había. La clave es FIELD_ENCRYPTION_KEY del .env o, sin ella, una derivada de DJANGO_SECRET_KEY: no cambiarla.',
+        ],
+    },
     {
         'version': '1.0.89',
         'date': '2026-11-12',
