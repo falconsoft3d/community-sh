@@ -226,7 +226,8 @@ class BackupMixin:
                 from .archives import GB, safe_extractall
                 # Filestores compress little: far more than 100x the archive is a zip bomb
                 limit = min(100 * GB, max(2 * GB, 100 * os.path.getsize(backup_file_path)))
-                safe_extractall(zipf, temp_dir, max_bytes=limit, max_files=2_000_000)
+                # Every entry is checked first (paths, count, size): services/archives.py
+                safe_extractall(zipf, temp_dir, max_bytes=limit, max_files=2_000_000)  # nosec B202
                 
                 # Read metadata (Odoo's own backups carry manifest.json instead)
                 metadata_path = os.path.join(temp_dir, 'metadata.json')

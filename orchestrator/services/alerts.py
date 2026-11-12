@@ -80,6 +80,55 @@ def task_failed(task):
           f'Su log completo está en Actividad.', cooldown=0)
 
 
+FAILED_LOGINS_BURST = 10          # failed sign-ins in FAILED_LOGINS_MINUTES, from anywhere: someone is guessing
+FAILED_LOGINS_MINUTES = 10
+# Audit actions that are always worth a message to whoever runs the platform
+ALWAYS_ALERT = {
+    'token_created': 'Token creado',
+    'two_factor_disabled': '2FA desactivado',
+    'user_created': 'Usuario creado',
+    'db_manager': 'Gestor de bases de datos de Odoo',
+    'offsite_restore': 'Restauración desde S3',
+}
+
+
+def security_event(event):
+    """After each audit event: alerts for what may be an attack or must not go unnoticed. Never raises."""
+    try:
+        _security_event(event)
+    except Exception:
+        logger.exception('Security alert for %s failed', event.action)
+
+
+def _security_event(event):
+    from datetime import timedelta
+    from django.utils import timezone
+    from ..audit_models import AuditEvent
+    who = event.username or 'alguien'
+    where = f' desde {event.ip}' if event.ip else ''
+    if event.action == 'login_failed':
+        since = timezone.now() - timedelta(minutes=FAILED_LOGINS_MINUTES)
+        failures = AuditEvent.objects.filter(action='login_failed', created_at__gte=since)
+        if failures.count() >= FAILED_LOGINS_BURST:
+            addresses = sorted({ip for ip in failures.values_list('ip', flat=True) if ip})
+            accounts = sorted({t for t in failures.values_list('target', flat=True) if t})
+            alert('login-failures', f'{failures.count()} inicios de sesión fallidos en {FAILED_LOGINS_MINUTES} minutos',
+                  f"Cuentas: {', '.join(accounts[:20]) or '—'}\nDirecciones: {', '.join(addresses[:20]) or '—'}\n\n"
+                  f'El acceso se bloquea 15 minutos tras varios fallos por cuenta y dirección. Detalle en Auditoría.',
+                  cooldown=3600)
+    elif event.action == 'login' and event.user_id and event.ip and (event.user.is_superuser or event.user.is_staff):
+        # An administrator from an address never seen for them (not on their first sign-in)
+        earlier = AuditEvent.objects.filter(action='login', user_id=event.user_id).exclude(pk=event.pk)
+        if earlier.exists() and not earlier.filter(ip=event.ip).exists():
+            alert(f'new-ip:{event.user_id}:{event.ip}', f'Administrador {who} entra desde una dirección nueva',
+                  f'{who} ha iniciado sesión{where}, una dirección que no había usado antes. Si no fue esa persona, '
+                  f'cambia su contraseña y revisa la Auditoría.', cooldown=30 * 86400)
+    elif event.action in ALWAYS_ALERT:
+        detail = f' ({event.target})' if event.target else ''
+        alert(f'audit:{event.pk}', f'{ALWAYS_ALERT[event.action]}{detail} por {who}',
+              f'{who}{where}: {ALWAYS_ALERT[event.action]}{detail}. {event.details}\n\nDetalle en Auditoría.', cooldown=0)
+
+
 def check_server_usage():
     """Disk or memory above 90 % (memory: in the last 5 samples of the minute, not a single spike)."""
     import psutil

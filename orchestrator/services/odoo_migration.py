@@ -8,7 +8,8 @@ the migration again skips what is already there and continues where it stopped. 
 data (countries, currencies, units, taxes, payment terms) is matched by natural key, never copied.
 """
 import logging
-import xmlrpc.client
+# The source Odoo is the one the user chose; Python's expat (2.4.1+) refuses entity-expansion bombs
+import xmlrpc.client  # nosec B411
 
 logger = logging.getLogger(__name__)
 

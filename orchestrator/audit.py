@@ -38,6 +38,9 @@ ACTIONS = {
     'db_manager': 'Abrir/cerrar el gestor de bases de datos de Odoo',
     'reauth': 'Confirmar la contraseña',
     'reauth_failed': 'Confirmación de contraseña fallida',
+    'two_factor_enabled': 'Activar el 2FA',
+    'two_factor_disabled': 'Desactivar el 2FA',
+    'recovery_codes': 'Generar códigos de recuperación del 2FA',
 }
 
 
@@ -49,10 +52,13 @@ def record(request, action, target='', details='', user=None):
         user = user or (getattr(request, 'user', None) if request is not None else None)
         if user is not None and not getattr(user, 'is_authenticated', False):
             user = None
-        AuditEvent.objects.create(
+        event = AuditEvent.objects.create(
             user=user, username=(user.get_username() if user else '')[:150], action=action,
             target=str(target or '')[:255], details=str(details or '')[:2000],
             ip=client_ip(request) if request is not None else None,
         )
     except Exception:
         logger.exception('Audit %s failed', action)
+        return
+    from .services.alerts import security_event
+    security_event(event)

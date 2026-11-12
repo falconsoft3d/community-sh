@@ -25,7 +25,7 @@ class ProjectTag(models.Model):
     def color(self):
         """Always the same colour for the same name."""
         import hashlib
-        return TAG_COLORS[int(hashlib.md5(self.name.lower().encode()).hexdigest(), 16) % len(TAG_COLORS)]
+        return TAG_COLORS[int(hashlib.md5(self.name.lower().encode(), usedforsecurity=False).hexdigest(), 16) % len(TAG_COLORS)]
 
 
 class Project(models.Model):

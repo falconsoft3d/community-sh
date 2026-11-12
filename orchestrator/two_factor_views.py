@@ -71,6 +71,8 @@ def two_factor_setup(request):
                 profile.save()
                 # Shown once on the next page, to keep somewhere else: they get in when the phone is lost
                 request.session['new_recovery_codes'] = new_recovery_codes(profile)
+                from .audit import record
+                record(request, 'two_factor_enabled')
                 messages.success(request, 'Autenticación de dos factores activada correctamente')
                 return redirect('two-factor-setup')
             else:
@@ -93,6 +95,8 @@ def two_factor_setup(request):
             profile.two_factor_secret = ''
             profile.two_factor_recovery_codes = []
             profile.save()
+            from .audit import record
+            record(request, 'two_factor_disabled')
             messages.success(request, 'Autenticación de dos factores desactivada')
             return redirect('user-profile')
     
@@ -102,6 +106,8 @@ def two_factor_setup(request):
                 return redirect('two-factor-setup')
             from .two_factor import new_recovery_codes
             request.session['new_recovery_codes'] = new_recovery_codes(profile)
+            from .audit import record
+            record(request, 'recovery_codes')
             messages.success(request, 'Códigos de recuperación nuevos: los anteriores ya no valen')
             return redirect('two-factor-setup')
 

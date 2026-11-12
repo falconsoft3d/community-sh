@@ -1,0 +1,32 @@
+# Security checks, apart from the deploy so a new advisory doesn't hold up an unrelated fix:
+# - pip-audit: known vulnerabilities in the pinned Python dependencies (requirements.txt)
+# - bandit: high-severity, high-confidence issues in the panel's code (justified exceptions carry "# nosec <id>")
+# On every push to main, every Monday (advisories appear without any change here) and by hand. A failed run
+# sends GitHub's usual email; the fix is usually raising a pin (Dependabot opens those pull requests too).
+name: Security
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the tools
+        run: pip install pip-audit==2.10.1 bandit==1.9.4
+      - name: Known vulnerabilities in the dependencies
+        run: pip-audit -r requirements.txt --desc
+      - name: Code analysis (high severity, high confidence)
+        run: bandit -r orchestrator config scripts -x orchestrator/tests.py,orchestrator/migrations,orchestrator/odoo_addons -lll -iii

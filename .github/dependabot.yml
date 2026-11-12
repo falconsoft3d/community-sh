@@ -1,0 +1,16 @@
+# Weekly pull requests that raise outdated or vulnerable pins. Nothing is merged by itself: merging one into main
+# runs the tests and deploys it like any other change (check the Security workflow and the changelog first).
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      python-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

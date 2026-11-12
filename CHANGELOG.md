@@ -1,6 +1,12 @@
 # Changelog
 
-Versión actual: **1.0.104**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.105**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.105 — 2026-11-12
+
+- Seguridad: dependencias actualizadas. pip-audit encontró 87 vulnerabilidades conocidas en 8 paquetes; ahora ninguna: Django 6.0 → 6.0.10 (misma serie), Django REST framework 3.16.1 → 3.18.3, cryptography 46.0.7 → 50.0.2, urllib3 2.6.2 → 2.8.0, requests 2.32.5 → 2.34.2, idna 3.11 → 3.20, certifi → 2026.10.23 y sqlparse 0.5.5 → 0.6.1. Tests completos en Python 3.12 (el de producción) con las versiones nuevas.
+- Seguridad: alertas por email y webhook (si las alertas están activas): 10 o más inicios de sesión fallidos en 10 minutos (con cuentas y direcciones; una vez por hora), un administrador que entra desde una dirección nueva, y cada token creado, 2FA desactivado, usuario creado, apertura o cierre del gestor de bases de datos y restauración desde S3. Activar/desactivar el 2FA y generar códigos de recuperación quedan en la Auditoría.
+- Seguridad: nuevo workflow Security de GitHub Actions (aparte del despliegue): pip-audit sobre requirements.txt y bandit (gravedad y confianza altas) en cada push a main, cada lunes y a mano; Dependabot semanal para las dependencias de Python y las acciones de GitHub. Los tres avisos de bandit eran falsos positivos y quedan justificados en el código.
 
 ## 1.0.104 — 2026-11-12
 

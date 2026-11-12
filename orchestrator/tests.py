@@ -4074,6 +4074,50 @@ class OdooDatabaseManagerTests(BaseTestCase):
         urlopen.assert_not_called()
 
 
+class SecurityAlertTests(BaseTestCase):
+    def test_bursts_new_addresses_and_sensitive_actions_alert(self):
+        from .audit import record
+        from django.test import RequestFactory
+        factory = RequestFactory()
+
+        def request(ip, user=None):
+            r = factory.get('/', REMOTE_ADDR=ip)
+            r.user = user or mock.Mock(is_authenticated=False)
+            return r
+
+        with mock.patch('orchestrator.services.alerts.alert') as alert:
+            for _ in range(9):
+                record(request('203.0.113.7'), 'login_failed', target='admin')
+            alert.assert_not_called()
+            record(request('203.0.113.8'), 'login_failed', target='root')
+            self.assertEqual(alert.call_args.args[0], 'login-failures')
+            self.assertIn('203.0.113.7, 203.0.113.8', alert.call_args.args[2])
+            self.assertIn('admin, root', alert.call_args.args[2])
+
+            alert.reset_mock()
+            record(request('198.51.100.1', self.admin), 'login', user=self.admin)  # first sign-in: nothing
+            record(request('198.51.100.1', self.admin), 'login', user=self.admin)  # known address: nothing
+            record(request('198.51.100.1', self.alice), 'login', user=self.alice)  # not an administrator
+            record(request('198.51.100.2', self.alice), 'login', user=self.alice)
+            alert.assert_not_called()
+            record(request('192.0.2.50', self.admin), 'login', user=self.admin)
+            self.assertEqual(alert.call_args.args[0], f'new-ip:{self.admin.pk}:192.0.2.50')
+
+            alert.reset_mock()
+            record(request('198.51.100.1', self.alice), 'token_created', 'ci', 'Pestaña api · 90 días')
+            self.assertIn('Token creado (ci) por alice', alert.call_args.args[1])
+            self.assertEqual(alert.call_args.kwargs['cooldown'], 0)
+            record(request('198.51.100.1', self.alice), 'reauth')
+            self.assertEqual(alert.call_count, 1)
+
+    def test_an_alert_failure_never_breaks_the_audit(self):
+        from .audit import record
+        from .audit_models import AuditEvent
+        with mock.patch('orchestrator.services.alerts._security_event', side_effect=Exception('smtp down')):
+            record(None, 'token_created', 'x', user=self.alice)
+        self.assertTrue(AuditEvent.objects.filter(action='token_created', target='x').exists())
+
+
 class BackupEncryptionTests(BaseTestCase):
     def setUp(self):
         super().setUp()
