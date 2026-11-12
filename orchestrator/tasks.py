@@ -194,6 +194,21 @@ def create_database(task):
     return f"Base de datos {params['name']} creada · usuario {login} · la contraseña se ve en la ficha de la instancia"
 
 
+@handler(Task.Kind.RESET_ADMIN_PASSWORD)
+def reset_admin_password(task):
+    """A new password for the Odoo administrator (also when its database was made outside the panel), kept in the instance."""
+    import secrets
+    instance = task.instance
+    password = task.params.get('password') or secrets.token_urlsafe(12)
+    database = instance.admin_database or instance.database_name or ''
+    task_log.progress(20, 'Cambiando la contraseña del administrador')
+    login = DockerService().set_admin_password(instance, password, databases=[database] if database else None)
+    instance.admin_login, instance.admin_password, instance.admin_database = login, password, database
+    instance.save(update_fields=['admin_login', 'admin_password', 'admin_database'])
+    where = f'la base de datos {database}' if database else 'todas las bases de datos'
+    return f'Contraseña del administrador ({login}) cambiada en {where}: se ve en la ficha de la instancia'
+
+
 @handler(Task.Kind.RENAME)
 def rename(task):
     instance = task.instance

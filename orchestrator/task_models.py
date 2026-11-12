@@ -25,6 +25,7 @@ class Task(models.Model):
         DOCKER_CLEANUP = 'docker_cleanup', 'Limpiar Docker'
         TRIAL = 'trial', 'Crear demo'
         CREATE_DATABASE = 'create_database', 'Crear base de datos'
+        RESET_ADMIN_PASSWORD = 'reset_admin_password', 'Restablecer contraseña del administrador'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

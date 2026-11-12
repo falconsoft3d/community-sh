@@ -3496,6 +3496,40 @@ class ApiDatabaseAndModuleTests(BaseTestCase):
         self.assertNotContains(self.client.get(f'/instance/{instance.pk}/'), 'SharedPass123')
         self.assertNotIn('admin_password', self.client.get(f'/api/instances/{instance.pk}/').json())
 
+    def test_reset_admin_password_from_the_instance_page(self):
+        from .task_models import Task
+        from . import tasks
+        url = f'/instance/{self.alice_instance.pk}/reset-admin-password/'
+        self.client.force_login(self.alice)
+        self.assertContains(self.client.get(f'/instance/{self.alice_instance.pk}/'), 'Contraseña desconocida')
+        self.client.post(url, {'password': "x' OR 1=1"})
+        self.assertFalse(Task.objects.filter(kind=Task.Kind.RESET_ADMIN_PASSWORD).exists())
+        self.client.post(url, {'password': 'MyChosen_pass'})
+        task = Task.objects.get(kind=Task.Kind.RESET_ADMIN_PASSWORD)
+        self.assertEqual(task.params, {'password': 'MyChosen_pass'})
+        self.alice_instance.database_name = 'acme'
+        self.alice_instance.save()
+        with mock.patch('orchestrator.tasks.DockerService') as service:
+            service.return_value.set_admin_password.return_value = 'admin@acme.com'
+            tasks.reset_admin_password(task)
+            service.return_value.set_admin_password.assert_called_once_with(self.alice_instance, 'MyChosen_pass', databases=['acme'])
+            # Empty: a random one, in every database when the instance has no fixed one
+            self.alice_instance.database_name = None
+            self.alice_instance.admin_database = ''
+            self.alice_instance.save()
+            tasks.reset_admin_password(Task.objects.create(kind=Task.Kind.RESET_ADMIN_PASSWORD, instance=self.alice_instance))
+            args = service.return_value.set_admin_password.call_args
+            self.assertIsNone(args.kwargs['databases'])
+        instance = Instance.objects.get(pk=self.alice_instance.pk)
+        self.assertEqual((instance.admin_login, instance.admin_password), ('admin@acme.com', args.args[1]))
+        self.assertGreaterEqual(len(instance.admin_password), 12)
+        # Clients of the project can't
+        self.alice_project.client = self.bob
+        self.alice_project.save()
+        self.client.force_login(self.bob)
+        self.assertNotContains(self.client.get(f'/instance/{instance.pk}/'), 'reset-admin-password')
+        self.assertIn(self.client.post(url).status_code, (403, 404))
+
 
 class ProjectColorTagsMoveTests(BaseTestCase):
     def test_colour_and_tags_from_the_form_and_the_filter(self):

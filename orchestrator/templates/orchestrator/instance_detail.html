@@ -358,15 +358,15 @@
                 </div>
                 {% endif %}
 
-                {% if can_manage and object.admin_password %}
-                <div class="space-y-1" x-data="{ show: false }">
+                {% if can_manage %}
+                <div class="space-y-1" x-data="{ show: false, resetting: false }">
                     <label class="text-sm font-medium leading-none">Administrador</label>
+                    {% if object.admin_password %}
                     <div class="flex items-center gap-2">
                         <span class="text-sm text-muted-foreground">Usuario</span>
                         <code class="text-sm text-muted-foreground flex-1 truncate">{{ object.admin_login|default:"admin" }}</code>
                         <button type="button" onclick="navigator.clipboard.writeText('{{ object.admin_login|default:"admin"|escapejs }}')"
-                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
-                            title="Copiar usuario">
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Copiar usuario">
                             <i data-lucide="copy" class="h-3 w-3"></i>
                         </button>
                     </div>
@@ -374,18 +374,33 @@
                         <span class="text-sm text-muted-foreground">Contraseña</span>
                         <code class="text-sm text-muted-foreground flex-1 truncate"
                             x-text="show ? '{{ object.admin_password|escapejs }}' : '••••••••••••'">••••••••••••</code>
-                        <button type="button" @click="show = !show"
-                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
-                            title="Mostrar/ocultar">
+                        <button type="button" @click="show = !show" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Mostrar/ocultar">
                             <i data-lucide="eye" class="h-3 w-3"></i>
                         </button>
                         <button type="button" onclick="navigator.clipboard.writeText('{{ object.admin_password|escapejs }}')"
-                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
-                            title="Copiar contraseña">
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Copiar contraseña">
                             <i data-lucide="copy" class="h-3 w-3"></i>
                         </button>
                     </div>
                     <p class="text-xs text-muted-foreground mt-1">El administrador de Odoo que creó la plataforma{% if object.admin_database %} (base de datos {{ object.admin_database }}){% endif %}, para compartirlo. Si se cambia la contraseña dentro de Odoo, esta deja de valer.</p>
+                    {% else %}
+                    <p class="text-sm text-muted-foreground">Contraseña desconocida: la base de datos no la creó la plataforma. Restablécela para verla y compartirla.</p>
+                    {% endif %}
+                    <button type="button" x-show="!resetting" @click="resetting = true" class="text-xs text-primary hover:underline flex items-center gap-1">
+                        <i data-lucide="key-round" class="h-3 w-3"></i> Restablecer contraseña
+                    </button>
+                    <form x-show="resetting" x-cloak action="{% url 'instance-reset-admin-password' object.pk %}" method="post" class="space-y-2"
+                        onsubmit="return confirm('¿Cambiar la contraseña del administrador de Odoo? La actual dejará de funcionar y se cerrarán sus sesiones abiertas.')">
+                        {% csrf_token %}
+                        <input name="password" type="text" autocomplete="off" pattern="[A-Za-z0-9_\-]{8,64}" placeholder="Vacío: se genera una aleatoria"
+                            aria-label="Nueva contraseña del administrador" title="8-64 letras, números, «_» o «-»"
+                            class="flex h-8 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        <div class="flex gap-2">
+                            <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">Restablecer</button>
+                            <button type="button" @click="resetting = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">Cancelar</button>
+                        </div>
+                        <p class="text-xs text-muted-foreground">Se aplica al usuario administrador de {% if object.admin_database or object.database_name %}la base de datos {{ object.admin_database|default:object.database_name }}{% else %}todas las bases de datos de la instancia{% endif %}. La instancia tiene que estar desplegada.</p>
+                    </form>
                 </div>
                 {% endif %}
 

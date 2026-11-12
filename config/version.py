@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.68'
+VERSION = '1.0.69'
 
 CHANGELOG = [
+    {
+        'version': '1.0.69',
+        'date': '2026-11-12',
+        'notes': [
+            'Ficha de la instancia → Administrador: botón «Restablecer contraseña» para quien gestiona la instancia. Pone una contraseña nueva al administrador de Odoo (la que se escriba, 8-64 letras, números, «_» o «-», o una aleatoria si se deja vacío) en su base de datos (o en todas si la instancia no tiene una fija) y la guarda para verla y copiarla. Sirve también cuando la base de datos se creó fuera de la plataforma y la contraseña era desconocida. Se ejecuta como tarea (migración 0066).',
+        ],
+    },
     {
         'version': '1.0.68',
         'date': '2026-11-12',

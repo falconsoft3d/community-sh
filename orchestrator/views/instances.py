@@ -756,6 +756,25 @@ def instance_install_named_module(request, pk):
 
 @login_required
 @require_POST
+def instance_reset_admin_password(request, pk):
+    """A new password for the Odoo administrator (the one given, or a random one), shown afterwards in the instance page."""
+    from django.urls import reverse
+    instance = get_instance_for_user(request.user, pk, manage=True)
+    password = request.POST.get('password', '').strip()
+    params = {}
+    if password:
+        # Goes into SQL: only the characters of secrets.token_urlsafe
+        if not re.fullmatch(r'[A-Za-z0-9_-]{8,64}', password):
+            messages.error(request, 'La contraseña debe tener entre 8 y 64 letras, números, «_» o «-»')
+            return redirect(reverse('instance-detail', args=[pk]))
+        params['password'] = password
+    enqueue(Task.Kind.RESET_ADMIN_PASSWORD, instance, request.user, **params)
+    messages.success(request, 'Cambiando la contraseña del administrador: sigue el progreso en «Tareas recientes»')
+    return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
+
+
+@login_required
+@require_POST
 def instance_move(request, pk):
     """Move the instance to another of your projects. Its address (subdomain) stays the same."""
     from ..permissions import managed_projects_for
