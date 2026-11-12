@@ -50,6 +50,14 @@ class InstanceForm(forms.ModelForm):
         self.fields['project'].help_text = 'Cliente o proyecto al que pertenece la instancia'
         if user:
             self.fields['project'].queryset = managed_projects_for(user)
+
+    def clean_project(self):
+        from .quotas import quota_problem
+        project = self.cleaned_data.get('project')
+        problem = quota_problem(project) if not self.instance.pk else None
+        if problem:
+            raise forms.ValidationError(problem)
+        return project
         
         # Get repositories from GitHub
         repos = [('', '-- Ninguno --')]
@@ -110,10 +118,11 @@ class ProjectForm(forms.ModelForm):
 
     class Meta:
         model = Project
-        fields = ['name', 'client', 'description', 'color', 'trial_enabled', 'trial_slug', 'trial_days',
+        fields = ['name', 'client', 'description', 'max_instances', 'max_memory_mb', 'color', 'trial_enabled', 'trial_slug', 'trial_days',
                   'trial_target_project', 'trial_message', 'trial_max_active']
         labels = {
             'name': 'Nombre', 'client': 'Cliente (usuario)', 'description': 'Descripción', 'color': 'Color de la tarjeta',
+            'max_instances': 'Cuota: instancias', 'max_memory_mb': 'Cuota: RAM (MB)',
             'trial_enabled': 'Modo test',
             'trial_slug': 'URL de la página de demos',
             'trial_days': 'Días de prueba',
@@ -122,6 +131,8 @@ class ProjectForm(forms.ModelForm):
             'trial_max_active': 'Demos a la vez',
         }
         help_texts = {
+            'max_instances': 'Máximo de instancias del proyecto (0: sin límite). Solo lo cambian los administradores.',
+            'max_memory_mb': 'Suma máxima de los límites de memoria de sus instancias (0: sin límite). Solo lo cambian los administradores.',
             'trial_enabled': 'Página pública donde cualquiera pide una demo de las instancias de este proyecto. Cada demo es una copia completa de la instancia elegida: usa plantillas sin datos reales de clientes. Al copiarla se desactivan el correo, las claves API y las contraseñas de los demás usuarios, y el asistente de IA no funciona en las demos.',
             'trial_slug': 'Por ejemplo bim: la página queda en https://tudominio/bim',
             'trial_days': 'Al vencer la demo se detiene, y se elimina 7 días después',
@@ -155,6 +166,9 @@ class ProjectForm(forms.ModelForm):
             self.fields['client'].label_from_instance = lambda u: f"{u.profile.company or u.get_full_name() or u.username} ({u.username})"
         else:
             del self.fields['client']
+            # Quotas are set by an administrator, never by who uses them
+            del self.fields['max_instances']
+            del self.fields['max_memory_mb']
         # The demos go to another project of the same owner
         siblings = Project.objects.filter(owner=self.owner) if self.owner else Project.objects.none()
         if self.instance.pk:

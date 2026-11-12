@@ -10,7 +10,10 @@
             <h1 class="text-3xl font-bold tracking-tight">{% translate "System Metrics" %}</h1>
             <p class="text-muted-foreground mt-2">{% translate "Server resource and status monitoring" %}</p>
         </div>
-        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+        <div class="flex items-center gap-4 text-sm text-muted-foreground">
+            <a href="{% url 'usage' %}" class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm text-foreground hover:bg-accent">
+                <i data-lucide="pie-chart" class="mr-2 h-4 w-4"></i> {% translate "Uso por proyecto" %}
+            </a>
             <span class="relative flex h-2.5 w-2.5">
                 <span class="absolute inline-flex h-full w-full rounded-full opacity-75" :class="error ? 'bg-red-500' : 'bg-green-500 animate-ping'"></span>
                 <span class="relative inline-flex h-2.5 w-2.5 rounded-full" :class="error ? 'bg-red-500' : 'bg-green-500'"></span>

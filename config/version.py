@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.95'
+VERSION = '1.0.96'
 
 CHANGELOG = [
+    {
+        'version': '1.0.96',
+        'date': '2026-11-12',
+        'notes': [
+            'Cuotas por proyecto (solo las ponen los administradores al editar el proyecto; en la API son de solo lectura): máximo de instancias y de RAM reservada (suma de los límites de memoria de sus instancias). Se comprueban al crear una instancia (formulario y API), duplicar, mover, crear desde backup, pedir una demo y subir un límite de memoria. Nueva página Metrics → Uso por proyecto (instancias, RAM reservada frente a la cuota, disco y backups) con CSV para facturar, y resumen por email el día 1 de cada mes. Migración 0077.',
+        ],
+    },
     {
         'version': '1.0.95',
         'date': '2026-11-12',

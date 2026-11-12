@@ -113,3 +113,29 @@ def check_certificates():
                   f"{', '.join(problem['hosts'])} no tiene certificado: {why}."
                   + (f" Se reintentará después de {problem['retry_after']}." if problem['retry_after'] else ''),
                   cooldown=24 * 3600)
+
+
+def monthly_usage_report(now=None):
+    """On the 1st of every month: the usage of each project, by email to the administrators (or notification addresses)."""
+    from django.utils import timezone
+    from ..permissions import get_global_config
+    from ..project_models import Project
+    from ..quotas import project_usage
+    from . import mail
+    now = now or timezone.now()
+    if now.day != 1 or not cache.add(f'usage-report:{now:%Y-%m}', 1, 40 * 86400):
+        return False
+    config = get_global_config()
+    recipients = _recipients(config) if config else []
+    if not recipients or mail.smtp_config() is None:
+        return False
+    lines = []
+    for row in project_usage(Project.objects.prefetch_related('instances')):
+        quota = f" (cuota {row['max_memory_mb']} MB)" if row['max_memory_mb'] else ''
+        disk = '' if row['disk_mb'] is None else f" · disco {row['disk_mb']} MB · backups {row['backups_mb']} MB"
+        lines.append(f"- {row['project'].name}: {row['instances']} instancias ({row['running']} en marcha) · "
+                     f"RAM reservada {row['memory_mb']} MB{quota}{disk}")
+    sent, _ = mail.send(f'[Community SH] Uso por proyecto · {now:%m/%Y}',
+                        'Uso de cada proyecto a día de hoy:\n\n' + '\n'.join(lines or ['(sin proyectos)'])
+                        + '\n\nEl detalle y el CSV están en Metrics → Uso por proyecto.', recipients)
+    return sent

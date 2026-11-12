@@ -88,6 +88,7 @@ class Command(BaseCommand):
                     from django.core.cache import cache
                     from orchestrator.services import alerts
                     alerts.check_server_usage()
+                    alerts.monthly_usage_report()
                     if cache.add('certificate-check-run', 1, 3600):
                         alerts.check_certificates()
                 except Exception as e:

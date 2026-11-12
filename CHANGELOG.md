@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.95**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.96**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.96 — 2026-11-12
+
+- Cuotas por proyecto (solo las ponen los administradores al editar el proyecto; en la API son de solo lectura): máximo de instancias y de RAM reservada (suma de los límites de memoria de sus instancias). Se comprueban al crear una instancia (formulario y API), duplicar, mover, crear desde backup, pedir una demo y subir un límite de memoria. Nueva página Metrics → Uso por proyecto (instancias, RAM reservada frente a la cuota, disco y backups) con CSV para facturar, y resumen por email el día 1 de cada mes. Migración 0077.
 
 ## 1.0.95 — 2026-11-12
 

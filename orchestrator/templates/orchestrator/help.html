@@ -34,6 +34,7 @@ updates its section here (and the index) in the same commit.
                 <h2>1. Conceptos y permisos</h2>
                 <ul>
                     <li><strong>Proyecto</strong>: agrupa instancias y contenedores (normalmente uno por cliente). Tiene color, etiquetas (para filtrar en «Proyectos») y, opcionalmente, un <em>cliente</em> y el «Modo test» para demos.</li>
+                    <li><strong>Cuotas</strong> (solo las ponen los administradores, al editar el proyecto): máximo de instancias y de RAM reservada (la suma de los límites de memoria de sus instancias). Se comprueban al crear, duplicar, mover, crear desde backup, pedir una demo y subir un límite de memoria. <strong>Metrics → Uso por proyecto</strong> muestra lo que ocupa cada uno frente a su cuota (también en CSV, para facturar) y el día 1 de cada mes llega el resumen por email.</li>
                     <li><strong>Instancia</strong>: un Odoo (versiones 8 a 20) con su propio PostgreSQL, su filestore, su red y su dirección. Se muestra como <em>proyecto / instancia</em>.</li>
                     <li><strong>Tarea</strong>: todo lo que tarda (desplegar, respaldar, restaurar, duplicar, instalar módulos, limpiar…) lo ejecuta un <em>worker</em> en segundo plano, de una en una, con su log y barra de progreso (ver <a href="#tareas">Tareas y Actividad</a>).</li>
                 </ul>

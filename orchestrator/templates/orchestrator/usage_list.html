@@ -1,0 +1,45 @@
+{% extends "orchestrator/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight">{% translate "Uso por proyecto" %}</h1>
+            <p class="mt-1 text-muted-foreground">{% translate "Lo que ocupa cada proyecto frente a su cuota: para repartir el servidor y para facturar. El disco es el de la última medición (Metrics → Recursos)." %}</p>
+        </div>
+        <a href="?format=csv" class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">
+            <i data-lucide="download" class="mr-2 h-4 w-4"></i> CSV
+        </a>
+    </div>
+    <div class="rounded-xl border bg-card overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead><tr class="border-b text-left text-muted-foreground">
+                <th class="px-4 py-3 font-medium">{% translate "Proyecto" %}</th>
+                <th class="px-4 py-3 font-medium">{% translate "Instancias" %}</th>
+                <th class="px-4 py-3 font-medium">{% translate "RAM reservada" %}</th>
+                <th class="px-4 py-3 font-medium">{% translate "Disco" %}</th>
+                <th class="px-4 py-3 font-medium">Backups</th>
+            </tr></thead>
+            <tbody>
+            {% for row in rows %}
+            <tr class="border-b last:border-0">
+                <td class="px-4 py-3">
+                    <a href="{% url 'project-detail' row.project.pk %}" class="font-medium hover:underline">{{ row.project.name }}</a>
+                    {% if row.project.client_display %}<div class="text-xs text-muted-foreground">{{ row.project.client_display }}</div>{% endif %}
+                </td>
+                <td class="px-4 py-3 tabular-nums">{{ row.instances }}{% if row.max_instances %} / {{ row.max_instances }}{% endif %}
+                    <div class="text-xs text-muted-foreground">{{ row.running }} {% translate "en marcha" %}</div></td>
+                <td class="px-4 py-3 tabular-nums {% if row.max_memory_mb and row.memory_mb >= row.max_memory_mb %}text-red-600 font-medium{% endif %}">
+                    {{ row.memory_mb }} MB{% if row.max_memory_mb %} / {{ row.max_memory_mb }} MB{% endif %}</td>
+                <td class="px-4 py-3 tabular-nums">{% if row.disk_mb is None %}—{% else %}{{ row.disk_mb }} MB{% endif %}</td>
+                <td class="px-4 py-3 tabular-nums">{% if row.backups_mb is None %}—{% else %}{{ row.backups_mb }} MB{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-4 py-10 text-center text-muted-foreground">{% translate "Sin proyectos" %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

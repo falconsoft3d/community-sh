@@ -76,6 +76,10 @@ class InstanceActionsMixin:
             return Response({'new_name': e.messages}, status=status.HTTP_400_BAD_REQUEST)
         if Instance.objects.filter(name=new_name).exists():
             return Response({'new_name': ['Already exists']}, status=status.HTTP_400_BAD_REQUEST)
+        from ..quotas import quota_problem
+        problem = quota_problem(instance.project, add_memory_mb=instance.memory_limit_mb or 1536)
+        if problem:
+            return Response({'project': [problem]}, status=status.HTTP_400_BAD_REQUEST)
         # Neutralized unless neutralize=false: the copy doesn't mail customers, run scheduled actions or take payments
         neutralize = str(request.data.get('neutralize', 'true')).lower() not in ('0', 'false', 'no')
         task = enqueue(Task.Kind.DUPLICATE, instance, request.user, new_name=new_name, neutralize=neutralize)

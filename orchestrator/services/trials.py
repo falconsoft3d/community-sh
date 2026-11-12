@@ -188,6 +188,10 @@ def build_demo(task):
         if psutil.virtual_memory().available < MIN_FREE_MEMORY:
             raise Exception('El servidor no tiene memoria libre para otra demo')
         name = demo_name(project, trial)
+        from ..quotas import quota_problem
+        problem = quota_problem(target, add_memory_mb=trial.source.memory_limit_mb or 1536)
+        if problem:
+            raise Exception(problem)
         task_log.line(f'Demo de {trial.source.name} ({trial.source.odoo_version}) para {trial.email} como {name}')
         service = DockerService()
         instance = service.copy_instance(trial.source, name, project=target, create_branch=False, origin='trial',

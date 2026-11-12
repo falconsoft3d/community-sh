@@ -178,6 +178,12 @@ ES_TO_EN = {
     'No responde': 'Not responding',
     'Uso por instancia': 'Usage by instance',
     'Copias en S3': 'Copies in S3',
+    'Uso por proyecto': 'Usage by project',
+    'Lo que ocupa cada proyecto frente a su cuota: para repartir el servidor y para facturar. El disco es el de la última medición (Metrics → Recursos).':
+        'What each project takes against its quota: to share the server and to bill. Disk is from the last measure (Metrics → Resources).',
+    'RAM reservada': 'Reserved RAM',
+    'en marcha': 'running',
+    'Sin proyectos': 'No projects',
     'Ahorro de memoria': 'Memory saving',
     'Se detiene si nadie entra en %(days)s días': 'Stops if nobody logs in for %(days)s days',
     'No se detiene sola': "Doesn't stop on its own",

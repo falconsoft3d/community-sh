@@ -1,5 +1,6 @@
 """Web and API views, grouped by area."""
 from .audit import audit_list
+from .usage import usage_list
 from .api import (
     InstanceViewSet,
 )
@@ -146,6 +147,7 @@ __all__ = [
     'about',
     'help_page',
     'audit_list',
+    'usage_list',
     'dashboard',
     'InstanceListView',
     'InstanceCreateView',

@@ -145,6 +145,11 @@ def backup_create_instance(request, backup_id):
             messages.error(request, f'No se pudo leer el respaldo: {e}')
             return redirect('instance-backups', pk=backup.instance.pk)
         
+        from ..quotas import quota_problem
+        problem = quota_problem(backup.instance.project)
+        if problem:
+            messages.error(request, problem)
+            return redirect('instance-backups', pk=backup.instance.pk)
         new_instance = Instance.objects.create(
             name=new_name,
             odoo_version=metadata.get('odoo_version') or backup.instance.odoo_version,
@@ -229,6 +234,11 @@ def backup_import(request):
         return redirect('backup-list')
     if not upload or project is None:
         messages.error(request, 'Elige un archivo y un proyecto')
+        return redirect('backup-list')
+    from ..quotas import quota_problem
+    problem = quota_problem(project)
+    if problem:
+        messages.error(request, problem)
         return redirect('backup-list')
     if Instance.objects.filter(name=name).exists():
         messages.error(request, f'Ya existe una instancia con el nombre "{name}"')

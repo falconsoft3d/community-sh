@@ -4270,6 +4270,69 @@ class PowerSavingTests(BaseTestCase):
         self.assertEqual(Instance.objects.get(pk=self.alice_instance.pk).auto_stop_days, 7)
 
 
+class ProjectQuotaTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.alice_project.max_instances, self.alice_project.max_memory_mb = 2, 4000
+        self.alice_project.save()
+
+    def test_quota_problem(self):
+        from .quotas import quota_problem
+        self.assertIsNone(quota_problem(self.alice_project))  # 1 of 2 instances, 1536 of 4000 MB
+        self.assertIn('RAM', quota_problem(self.alice_project, add_memory_mb=3000))
+        Instance.objects.create(name='second', project=self.alice_project, owner=self.alice, memory_limit_mb=1024)
+        self.assertIn('2 de las 2 instancias', quota_problem(self.alice_project))
+        self.assertIsNone(quota_problem(self.alice_project, add_instances=0, add_memory_mb=2048, exclude=self.alice_instance))
+        self.assertIsNone(quota_problem(self.bob_project))  # no quota
+
+    def test_enforced_when_creating_duplicating_and_raising_memory(self):
+        from .task_models import Task
+        Instance.objects.create(name='second', project=self.alice_project, owner=self.alice)
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/instances/', {'name': 'third', 'project': self.alice_project.pk}, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('cuota', str(response.json()))
+        self.client.post(reverse('instance-duplicate', args=[self.alice_instance.pk]), {'new_name': 'copy-x'})
+        self.assertFalse(Task.objects.filter(kind=Task.Kind.DUPLICATE).exists())
+        self.client.post(reverse('instance-update-memory', args=[self.alice_instance.pk]), {'memory_limit_mb': '3000'})
+        self.assertEqual(Instance.objects.get(pk=self.alice_instance.pk).memory_limit_mb, 1536)
+        self.assertEqual(self.client.patch(f'/api/instances/{self.alice_instance.pk}/', {'memory_limit_mb': 3000},
+                                           content_type='application/json').status_code, 400)
+
+    def test_only_administrators_set_quotas(self):
+        self.client.force_login(self.alice)
+        page = self.client.get(f'/project/{self.alice_project.pk}/edit/').content.decode()
+        self.assertNotIn('max_instances', page)
+        self.client.post(f'/project/{self.alice_project.pk}/edit/', {'name': 'ACME', 'color': '', 'max_instances': 99})
+        self.alice_project.refresh_from_db()
+        self.assertEqual(self.alice_project.max_instances, 2)
+        self.assertEqual(self.client.patch(f'/api/projects/{self.alice_project.pk}/', {'max_instances': 99},
+                                           content_type='application/json').json()['max_instances'], 2)
+        self.client.force_login(self.admin)
+        self.assertIn('max_instances', self.client.get(f'/project/{self.alice_project.pk}/edit/').content.decode())
+
+    def test_usage_page_csv_and_monthly_report(self):
+        from datetime import datetime, timezone as tz
+        from django.core.cache import cache
+        from .services import alerts
+        cache.clear()
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse('usage')), '1536 MB / 4000 MB')
+        csv_text = self.client.get(reverse('usage') + '?format=csv').content.decode()
+        self.assertIn('ACME,', csv_text)
+        self.assertIn(',1536,4000,', csv_text)
+        self.config.smtp_enabled, self.config.smtp_host, self.config.smtp_from_email = True, 'smtp.x', 'p@x.com'
+        self.config.notification_emails = 'ops@x.com'
+        self.config.save()
+        with mock.patch('orchestrator.services.mail.send', return_value=(True, '')) as send:
+            self.assertFalse(alerts.monthly_usage_report(datetime(2026, 12, 2, tzinfo=tz.utc)))
+            self.assertTrue(alerts.monthly_usage_report(datetime(2026, 12, 1, tzinfo=tz.utc)))
+            self.assertFalse(alerts.monthly_usage_report(datetime(2026, 12, 1, 5, tzinfo=tz.utc)))  # once a month
+        self.assertIn('ACME: 1 instancias', send.call_args.args[1])
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('usage')).status_code, 403)
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

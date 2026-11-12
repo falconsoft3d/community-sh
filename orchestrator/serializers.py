@@ -44,6 +44,21 @@ class InstanceSerializer(serializers.ModelSerializer):
                 data.pop(secret, None)
         return data
 
+    def validate(self, attrs):
+        from .quotas import quota_problem
+        if self.instance is None:
+            problem = quota_problem(attrs.get('project'), add_memory_mb=attrs.get('memory_limit_mb') or 1536)
+        elif 'memory_limit_mb' in attrs or 'project' in attrs:
+            project = attrs.get('project', self.instance.project)
+            problem = quota_problem(project, add_instances=0 if project == self.instance.project else 1,
+                                    add_memory_mb=attrs.get('memory_limit_mb', self.instance.memory_limit_mb) or 1536,
+                                    exclude=self.instance)
+        else:
+            problem = None
+        if problem:
+            raise serializers.ValidationError({'project': [problem]})
+        return attrs
+
     def get_env_keys(self, instance):
         from .instance_env import instance_environment
         return sorted(instance_environment(instance))
@@ -76,10 +91,10 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         from .project_models import Project
         model = Project
-        fields = ['id', 'name', 'client', 'description', 'owner', 'instances', 'color', 'tag_names',
+        fields = ['id', 'name', 'client', 'description', 'owner', 'instances', 'max_instances', 'max_memory_mb', 'color', 'tag_names',
                   'trial_enabled', 'trial_slug', 'trial_days', 'trial_target_project', 'trial_message', 'trial_max_active',
                   'trial_url', 'created_at', 'updated_at']
-        read_only_fields = ['owner', 'instances', 'trial_url', 'created_at', 'updated_at']
+        read_only_fields = ['owner', 'instances', 'max_instances', 'max_memory_mb', 'trial_url', 'created_at', 'updated_at']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

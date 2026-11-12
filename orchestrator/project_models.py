@@ -54,6 +54,9 @@ class Project(models.Model):
     trial_api_key_hash = models.CharField(max_length=64, blank=True, help_text="SHA-256 of the demo API key")
     trial_api_key_hint = models.CharField(max_length=8, blank=True, help_text="Last characters, to recognise it")
     trial_max_active = models.PositiveSmallIntegerField(default=3, validators=[MinValueValidator(1), MaxValueValidator(50)], help_text="Demos running at the same time (each one is an Odoo and a PostgreSQL)")
+    # Quotas, set by an administrator (0: no limit)
+    max_instances = models.PositiveSmallIntegerField(default=0, help_text="Instances the project can have (0: no limit)")
+    max_memory_mb = models.PositiveIntegerField(default=0, help_text="RAM its instances' memory limits can add up to, in MB (0: no limit)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

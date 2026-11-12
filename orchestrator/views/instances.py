@@ -491,6 +491,11 @@ def instance_duplicate(request, pk):
         messages.error(request, f'Ya existe una instancia con el nombre "{new_name}"')
         return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
     
+    from ..quotas import quota_problem
+    problem = quota_problem(instance.project, add_memory_mb=instance.memory_limit_mb or 1536)
+    if problem:
+        messages.error(request, problem)
+        return redirect('instance-detail', pk=pk)
     enqueue(Task.Kind.DUPLICATE, instance, request.user, new_name=new_name, neutralize=request.POST.get('neutralize') == '1')
     messages.info(request, f'Duplicación como "{new_name}" en cola. La nueva instancia aparecerá en la lista al terminar.')
     return redirect('instance-detail', pk=pk)
@@ -897,6 +902,11 @@ def instance_update_memory(request, pk):
         return redirect(reverse('instance-detail', args=[pk]))
     from ..audit import record
     record(request, 'instance_memory', instance.name, f'{instance.memory_limit_mb} → {value} MB')
+    from ..quotas import quota_problem
+    problem = quota_problem(instance.project, add_instances=0, add_memory_mb=value or 1536, exclude=instance)
+    if problem:
+        messages.error(request, problem)
+        return redirect(reverse('instance-detail', args=[pk]))
     instance.memory_limit_mb = value
     instance.save(update_fields=['memory_limit_mb'])
     if value:
@@ -935,9 +945,14 @@ def instance_move(request, pk):
     from ..permissions import managed_projects_for
     instance = get_instance_for_user(request.user, pk, manage=True)
     target = managed_projects_for(request.user).filter(pk=request.POST.get('project') or 0).first()
+    from ..quotas import quota_problem
+    moving = target is not None and target.pk != instance.project_id
+    problem = quota_problem(target, add_memory_mb=instance.memory_limit_mb or 1536) if moving else None
     if target is None:
         messages.error(request, 'Elige uno de tus proyectos')
-    elif target.pk != instance.project_id:
+    elif problem:
+        messages.error(request, problem)
+    elif moving:
         from ..audit import record
         record(request, 'instance_moved', instance.name, f'De {instance.project.name if instance.project else "-"} a {target.name}')
         instance.project = target

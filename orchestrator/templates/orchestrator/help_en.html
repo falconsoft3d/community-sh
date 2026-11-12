@@ -34,6 +34,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                 <h2>1. Concepts and permissions</h2>
                 <ul>
                     <li><strong>Project</strong>: groups instances and containers (usually one per customer). It has a colour, tags (to filter in «Projects») and, optionally, a <em>client</em> and «Test mode» for demos.</li>
+                    <li><strong>Quotas</strong> (set only by administrators, when editing the project): maximum instances and reserved RAM (the sum of its instances' memory limits). Checked when creating, duplicating, moving, creating from a backup, requesting a demo and raising a memory limit. <strong>Metrics → Usage by project</strong> shows what each one takes against its quota (also as CSV, for billing) and on the 1st of every month the summary arrives by email.</li>
                     <li><strong>Instance</strong>: an Odoo (versions 8 to 20) with its own PostgreSQL, filestore, network and address. Shown as <em>project / instance</em>.</li>
                     <li><strong>Task</strong>: anything that takes time (deploy, back up, restore, duplicate, install modules, clean up…) is run by a background <em>worker</em>, one at a time, with its log and progress bar (see <a href="#tareas">Tasks and Activity</a>).</li>
                 </ul>
