@@ -57,6 +57,7 @@
                                 <i data-lucide="hard-drive" class="h-3 w-3"></i>
                                 {{ backup.formatted_size }}
                             </span>
+                            {% if backup.offsite_at %}<span class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800" title="Copiado fuera del servidor: {{ backup.offsite_key }}"><i data-lucide="cloud" class="h-3 w-3"></i> S3</span>{% endif %}
                             <span
                                 class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors border-transparent {% if backup.include_filestore %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
                                 {% if backup.include_filestore %}With filestore{% else %}DB only{% endif %}

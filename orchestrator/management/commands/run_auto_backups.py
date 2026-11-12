@@ -39,3 +39,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"  - Backup created: {filename}"))
         for error in errors:
             self.stdout.write(self.style.ERROR(f"  - Failed: {error}"))
+        if errors:
+            from orchestrator.services import alerts
+            alerts.alert('auto-backup-failed', f'Backups automáticos: {len(errors)} con errores',
+                         'Algunos backups automáticos fallaron:\n\n' + '\n'.join(errors), cooldown=3600)

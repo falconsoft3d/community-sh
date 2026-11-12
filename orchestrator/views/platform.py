@@ -68,6 +68,8 @@ def settings_view(request):
             config.email_notifications_enabled = request.POST.get('email_notifications_enabled') == 'on'
         if 'notification_emails' in request.POST:
             config.notification_emails = request.POST.get('notification_emails', '')
+        if request.POST.get('section') == 'backups':
+            _read_offsite_fields(request, config)
         if request.POST.get('section') == 'general':
             config.alerts_enabled = 'alerts_enabled' in request.POST
             webhook = request.POST.get('alert_webhook_url', '').strip()
@@ -188,6 +190,37 @@ def settings_view(request):
         'api_url': request.build_absolute_uri('/api/'),
         'api_endpoints': API_ENDPOINTS,
     })
+
+
+def _read_offsite_fields(request, config):
+    """The S3 fields of Settings → Respaldos (an empty secret keeps the stored one)."""
+    config.offsite_enabled = 'offsite_enabled' in request.POST
+    for field in ('s3_endpoint_url', 's3_region', 's3_bucket', 's3_access_key', 's3_prefix'):
+        setattr(config, field, request.POST.get(field, '').strip())
+    if request.POST.get('s3_secret_key', '').strip():
+        config.s3_secret_key = request.POST['s3_secret_key'].strip()
+    try:
+        config.offsite_retention_days = max(int(request.POST.get('offsite_retention_days') or 0), 0)
+    except ValueError:
+        pass
+
+
+@login_required
+@superuser_required
+@require_POST
+def offsite_test(request):
+    """Settings → Respaldos → Probar conexión: with what the form says now (not saved yet)."""
+    from django.contrib import messages
+    from ..config_models import GitHubConfig
+    from ..services import offsite
+    config = GitHubConfig.objects.filter(user=request.user).first() or GitHubConfig(user=request.user)
+    _read_offsite_fields(request, config)
+    if not config.s3_bucket or not config.s3_access_key or not config.s3_secret_key:
+        messages.error(request, 'Rellena el bucket, la access key y la secret key')
+    else:
+        ok, message = offsite.test_connection(config)
+        (messages.success if ok else messages.error)(request, message)
+    return redirect(reverse('settings') + '#backups')
 
 
 @login_required

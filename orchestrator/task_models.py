@@ -26,6 +26,7 @@ class Task(models.Model):
         TRIAL = 'trial', 'Crear demo'
         CREATE_DATABASE = 'create_database', 'Crear base de datos'
         RESET_ADMIN_PASSWORD = 'reset_admin_password', 'Restablecer contraseña del administrador'
+        OFFSITE_UPLOAD = 'offsite_upload', 'Copiar backup fuera (S3)'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

@@ -549,6 +549,42 @@
                         </p>
                     </div>
 
+                    <!-- Copy off the server (S3) -->
+                    <div class="space-y-4 rounded-lg border p-4">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="offsite_enabled" name="offsite_enabled" {% if config.offsite_enabled %}checked{% endif %}
+                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary">
+                            <label for="offsite_enabled" class="font-medium text-sm cursor-pointer flex items-center gap-2">
+                                <i data-lucide="cloud" class="h-4 w-4"></i> Copiar cada backup fuera del servidor (S3)
+                            </label>
+                        </div>
+                        <p class="text-xs text-muted-foreground">Cada backup (manual o automático) se sube también a un bucket compatible con S3: AWS S3, Backblaze B2, Cloudflare R2, Wasabi, MinIO… Así, si se pierde el disco del servidor, los backups siguen a salvo. Se sube como una tarea propia («Copiar backup fuera (S3)») y, si falla, llega una alerta.</p>
+                        <div class="grid gap-3 md:grid-cols-2">
+                            <label class="space-y-1 text-sm"><span class="font-medium">Endpoint</span>
+                                <input type="url" name="s3_endpoint_url" value="{{ config.s3_endpoint_url }}" placeholder="Vacío para AWS · https://s3.eu-central-003.backblazeb2.com"
+                                    class="w-full px-3 py-2 rounded-md border bg-background"></label>
+                            <label class="space-y-1 text-sm"><span class="font-medium">Región</span>
+                                <input type="text" name="s3_region" value="{{ config.s3_region }}" placeholder="eu-west-1 · auto (R2)"
+                                    class="w-full px-3 py-2 rounded-md border bg-background"></label>
+                            <label class="space-y-1 text-sm"><span class="font-medium">Bucket</span>
+                                <input type="text" name="s3_bucket" value="{{ config.s3_bucket }}" class="w-full px-3 py-2 rounded-md border bg-background"></label>
+                            <label class="space-y-1 text-sm"><span class="font-medium">Carpeta (prefijo)</span>
+                                <input type="text" name="s3_prefix" value="{{ config.s3_prefix }}" class="w-full px-3 py-2 rounded-md border bg-background"></label>
+                            <label class="space-y-1 text-sm"><span class="font-medium">Access key</span>
+                                <input type="text" name="s3_access_key" value="{{ config.s3_access_key }}" autocomplete="off" class="w-full px-3 py-2 rounded-md border bg-background"></label>
+                            <label class="space-y-1 text-sm"><span class="font-medium">Secret key</span>
+                                <input type="password" name="s3_secret_key" value="" autocomplete="new-password"
+                                    placeholder="{% if config.s3_secret_key %}Guardada · vacío para no cambiarla{% endif %}" class="w-full px-3 py-2 rounded-md border bg-background"></label>
+                            <label class="space-y-1 text-sm"><span class="font-medium">Conservar en el bucket (días)</span>
+                                <input type="number" name="offsite_retention_days" min="0" value="{{ config.offsite_retention_days }}" class="w-full px-3 py-2 rounded-md border bg-background">
+                                <span class="text-xs text-muted-foreground">Las copias más antiguas se borran del bucket; 0 = conservarlas todas.</span></label>
+                        </div>
+                        <button type="submit" formaction="{% url 'offsite-test' %}" formnovalidate
+                            class="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent">
+                            <i data-lucide="plug-zap" class="h-4 w-4 mr-2"></i> Probar conexión
+                        </button>
+                    </div>
+
                     <!-- Información adicional -->
                     <div class="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
                         <div class="flex gap-3">

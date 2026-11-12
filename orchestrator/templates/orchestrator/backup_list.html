@@ -90,7 +90,7 @@
                         <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">{% translate "Solo BD" %}</span>
                         {% endif %}
                     </td>
-                    <td class="p-4">{{ backup.file_size|filesizeformat }}</td>
+                    <td class="p-4">{{ backup.file_size|filesizeformat }} {% if backup.offsite_at %}<span class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800" title="Copiado fuera del servidor: {{ backup.offsite_key }}"><i data-lucide="cloud" class="h-3 w-3"></i> S3</span>{% endif %}</td>
                     <td class="p-4 text-muted-foreground">{{ backup.created_at|date:"d M Y H:i" }}</td>
                     <td class="p-4">
                         <div class="flex items-center justify-end gap-2">

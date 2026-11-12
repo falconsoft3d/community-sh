@@ -3798,6 +3798,74 @@ class InstanceUsageTests(BaseTestCase):
         self.assertIn(self.client.get(url).status_code, (403, 404))
 
 
+class OffsiteBackupTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.config.offsite_enabled = True
+        self.config.s3_bucket, self.config.s3_access_key, self.config.s3_secret_key = 'bk', 'AK', 'SK'
+        self.config.save()
+
+    def backup(self):
+        import tempfile
+        path = tempfile.mktemp(suffix='.zip')
+        open(path, 'wb').write(b'zip')
+        self.addCleanup(lambda: os.path.exists(path) and os.remove(path))
+        return Backup.objects.create(instance=self.alice_instance, filename='alice.zip', file_path=path, file_size=3)
+
+    def test_upload_marks_the_backup_and_applies_the_retention(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .services import offsite
+        backup = self.backup()
+        s3 = mock.Mock()
+        s3.get_paginator.return_value.paginate.return_value = [{'Contents': [
+            {'Key': 'community-sh/alice-odoo/old.zip', 'LastModified': timezone.now() - timedelta(days=40)},
+            {'Key': 'community-sh/alice-odoo/alice.zip', 'LastModified': timezone.now()}]}]
+        with mock.patch('orchestrator.services.offsite.client', return_value=s3):
+            notes = offsite.upload([backup])
+        s3.upload_file.assert_called_once_with(backup.file_path, 'bk', 'community-sh/alice-odoo/alice.zip')
+        s3.delete_objects.assert_called_once_with(Bucket='bk', Delete={'Objects': [{'Key': 'community-sh/alice-odoo/old.zip'}]})
+        backup.refresh_from_db()
+        self.assertEqual(backup.offsite_key, 'community-sh/alice-odoo/alice.zip')
+        self.assertIsNotNone(backup.offsite_at)
+        self.assertIn('1 copias', notes[-1])
+
+    def test_a_backup_queues_its_copy(self):
+        from .task_models import Task
+        from . import tasks
+        backup = self.backup()
+        task = Task.objects.create(kind=Task.Kind.BACKUP, instance=self.alice_instance, created_by=self.alice)
+        with mock.patch('orchestrator.tasks.DockerService') as service:
+            service.return_value.backup_all_databases.return_value = [backup]
+            self.assertIn('copia fuera del servidor en cola', tasks.backup(task))
+        copy = Task.objects.get(kind=Task.Kind.OFFSITE_UPLOAD)
+        self.assertEqual(copy.params, {'backups': [backup.pk]})
+        with mock.patch('orchestrator.services.offsite.upload', return_value=['ok']) as upload:
+            self.assertEqual(tasks.offsite_upload(copy), 'ok')
+            self.assertEqual(upload.call_args.args[0], [backup])
+        # Switched off: nothing is queued
+        self.config.offsite_enabled = False
+        self.config.save()
+        from .services import offsite
+        self.assertIsNone(offsite.queue_upload([backup]))
+
+    def test_settings_keep_the_secret_and_test_the_connection(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse('settings'), {'section': 'backups', 'offsite_enabled': 'on', 's3_bucket': 'other',
+                                               's3_access_key': 'AK2', 's3_secret_key': '', 'offsite_retention_days': '15'})
+        self.config.refresh_from_db()
+        self.assertEqual((self.config.s3_bucket, self.config.s3_secret_key, self.config.offsite_retention_days), ('other', 'SK', 15))
+        with mock.patch('orchestrator.services.offsite.test_connection', return_value=(True, 'Conexión correcta')) as test:
+            response = self.client.post(reverse('offsite-test'), {'s3_bucket': 'tried', 's3_access_key': 'A', 's3_secret_key': ''})
+            self.assertEqual(test.call_args.args[0].s3_bucket, 'tried')
+            self.assertEqual(test.call_args.args[0].s3_secret_key, 'SK')  # the stored one
+        self.assertEqual(response['Location'], reverse('settings') + '#backups')
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.s3_bucket, 'other')  # testing doesn't save
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.post(reverse('offsite-test')).status_code, 403)
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

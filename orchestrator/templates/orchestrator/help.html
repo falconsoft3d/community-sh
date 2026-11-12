@@ -126,7 +126,8 @@ updates its section here (and the index) in the same commit.
                 <h2>7. Backups y restauraciones</h2>
                 <ul>
                     <li><strong>Crear backup</strong> (pestaña Backups): base de datos y, si quieres, filestore. Con varias bases se guarda una copia de cada una.</li>
-                    <li><strong>Backups automáticos</strong>: Configuración → Respaldos (activar, frecuencia y cuántas copias conservar por instancia).</li>
+                    <li><strong>Backups automáticos</strong>: Configuración → Respaldos (activar, frecuencia y cuántas copias conservar por instancia). Si alguno falla, llega una alerta.</li>
+                    <li><strong>Copia fuera del servidor (S3)</strong>: en Configuración → Respaldos, con un bucket compatible con S3 (AWS S3, Backblaze B2, Cloudflare R2, Wasabi, MinIO…), cada backup se sube también allí como tarea propia («Copiar backup fuera (S3)»), queda marcado con <strong>☁ S3</strong> y las copias más antiguas que los días indicados se borran del bucket. «Probar conexión» comprueba que se puede escribir sin guardar nada. Para recuperar uno, descárgalo del bucket y usa «Restaurar desde un archivo».</li>
                     <li><strong>Restaurar</strong> un backup sobre la instancia (detiene Odoo y cierra sus conexiones antes de recrear la base) o «Restaurar desde un archivo».</li>
                     <li><strong>Importar</strong>: además de los backups del panel, acepta los del gestor de Odoo (.zip con dump.sql y filestore) y volcados .dump.</li>
                     <li>Menú <strong>Backups</strong>: todos los respaldos, descargar e «Importar un backup y crear una instancia».</li>

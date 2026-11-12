@@ -58,6 +58,16 @@ class GitHubConfig(models.Model):
     trial_max_per_day = models.PositiveIntegerField(default=10, help_text="Demos that can be created per day (all projects)")
     trial_max_active_total = models.PositiveIntegerField(default=4, help_text="Demos running at once on the server")
 
+    # Copy of every backup off the server, in an S3-compatible bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO...)
+    offsite_enabled = models.BooleanField(default=False, help_text="Copy every backup to the S3 bucket")
+    s3_endpoint_url = models.URLField(blank=True, help_text="Empty for AWS; e.g. https://s3.eu-central-003.backblazeb2.com")
+    s3_region = models.CharField(max_length=50, blank=True)
+    s3_bucket = models.CharField(max_length=255, blank=True)
+    s3_access_key = models.CharField(max_length=255, blank=True)
+    s3_secret_key = models.CharField(max_length=255, blank=True)
+    s3_prefix = models.CharField(max_length=255, blank=True, default='community-sh')
+    offsite_retention_days = models.PositiveIntegerField(default=30, help_text="Copies older than this are deleted from the bucket (0: kept)")
+
     last_auto_backup_at = models.DateTimeField(null=True, blank=True, help_text="When the last automatic backup run started")
     
     created_at = models.DateTimeField(auto_now_add=True)

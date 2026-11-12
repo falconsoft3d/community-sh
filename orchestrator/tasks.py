@@ -161,6 +161,8 @@ def backup_all_instances(retention, user=None):
         try:
             backups = service.backup_all_databases(instance, include_filestore=True, user=user)
             successes += [backup.filename for backup in backups]
+            from .services import offsite
+            offsite.queue_upload(backups, user)
         except Exception as e:
             logger.exception('Backup of %s failed', instance.name)
             errors.append(f'{instance.name}: {e}')
@@ -347,10 +349,22 @@ def odoo_migration(task):
 
 @handler(Task.Kind.BACKUP)
 def backup(task):
+    from .services import offsite
     records = DockerService().backup_all_databases(
         task.instance, include_filestore=task.params.get('include_filestore', True), user=task.created_by,
     )
-    return f"Backup creado: {', '.join(record.filename for record in records)}"
+    copy = offsite.queue_upload(records, task.created_by)
+    return f"Backup creado: {', '.join(record.filename for record in records)}" + (
+        f' · copia fuera del servidor en cola (tarea #{copy.pk})' if copy else '')
+
+
+@handler(Task.Kind.OFFSITE_UPLOAD)
+def offsite_upload(task):
+    from .services import offsite
+    backups = list(Backup.objects.filter(pk__in=task.params.get('backups', [])).select_related('instance'))
+    if not backups:
+        return 'Los backups ya no existen'
+    return '\n'.join(offsite.upload(backups, progress=task_log.progress))
 
 
 @handler(Task.Kind.RESTORE)

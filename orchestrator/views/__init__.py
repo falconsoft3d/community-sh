@@ -94,6 +94,7 @@ from .platform import (
     settings_ai_test,
     settings_email_test,
     run_auto_backups_view,
+    offsite_test,
     generate_ssl_certificate,
 )
 from .users import (
@@ -184,6 +185,7 @@ __all__ = [
     'settings_ai_test',
     'settings_email_test',
     'run_auto_backups_view',
+    'offsite_test',
     'generate_ssl_certificate',
     'user_list',
     'user_create',

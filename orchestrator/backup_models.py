@@ -10,6 +10,9 @@ class Backup(models.Model):
     file_size = models.BigIntegerField(help_text="Size in bytes")
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    # Its copy off the server (S3), when there is one
+    offsite_key = models.CharField(max_length=512, blank=True, default='')
+    offsite_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         ordering = ['-created_at']

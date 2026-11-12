@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.81**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.82**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.82 — 2026-11-12
+
+- Backups fuera del servidor: en Configuración → Respaldos, con un bucket compatible con S3 (AWS S3, Backblaze B2, Cloudflare R2, Wasabi, MinIO…), cada backup manual o automático se sube también allí como tarea propia («Copiar backup fuera (S3)»), se marca con ☁ S3 en las listas y las copias más antiguas que los días indicados (30 por defecto) se borran del bucket. Botón «Probar conexión» (escribe, lee y borra un objeto de prueba sin guardar nada). La secret key no se muestra y, vacía, conserva la guardada. Nueva dependencia boto3; migración 0070.
+- Backups automáticos: si alguno falla, llega una alerta.
 
 ## 1.0.81 — 2026-11-12
 
