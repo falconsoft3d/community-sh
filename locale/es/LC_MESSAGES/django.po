@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 12:55+0000\n"
+"POT-Creation-Date: 2026-11-12 14:05+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -848,6 +848,19 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/includes/pagination.html:13
 msgid "Última página"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_duplicate.html:53
+msgid "Neutralizar la copia (recomendado)"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/instance_duplicate.html:54
+msgid ""
+"Antes de arrancar la copia se desactivan los servidores de correo entrante y "
+"saliente, las tareas programadas (salvo la limpieza automática), los métodos "
+"de pago y las claves API, y se cambia el UUID de la base. Así una copia de "
+"producción no escribe a tus clientes ni cobra. Desmárcalo solo si la copia "
+"va a sustituir a la original."
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_list.html:18

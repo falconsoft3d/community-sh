@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.74**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.75**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.75 — 2026-11-12
+
+- Duplicar: la copia se neutraliza por defecto antes de arrancar su Odoo: servidores de correo entrante y saliente, tareas programadas (salvo la limpieza automática), métodos de pago y claves API desactivados y UUID de la base nuevo; en Odoo 16+ muestra la cinta «neutralizada». Casilla «Neutralizar la copia» en el formulario (marcada) y neutralize en la API (true por defecto). Las demos se neutralizan igual antes de arrancar (antes el correo se apagaba con Odoo ya en marcha), pero conservan sus tareas programadas.
 
 ## 1.0.74 — 2026-11-12
 

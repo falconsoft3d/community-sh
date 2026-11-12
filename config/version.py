@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.74'
+VERSION = '1.0.75'
 
 CHANGELOG = [
+    {
+        'version': '1.0.75',
+        'date': '2026-11-12',
+        'notes': [
+            'Duplicar: la copia se neutraliza por defecto antes de arrancar su Odoo: servidores de correo entrante y saliente, tareas programadas (salvo la limpieza automática), métodos de pago y claves API desactivados y UUID de la base nuevo; en Odoo 16+ muestra la cinta «neutralizada». Casilla «Neutralizar la copia» en el formulario (marcada) y neutralize en la API (true por defecto). Las demos se neutralizan igual antes de arrancar (antes el correo se apagaba con Odoo ya en marcha), pero conservan sus tareas programadas.',
+        ],
+    },
     {
         'version': '1.0.74',
         'date': '2026-11-12',

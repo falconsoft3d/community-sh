@@ -484,7 +484,7 @@ def instance_duplicate(request, pk):
         messages.error(request, f'Ya existe una instancia con el nombre "{new_name}"')
         return render(request, 'orchestrator/instance_duplicate.html', {'instance': instance})
     
-    enqueue(Task.Kind.DUPLICATE, instance, request.user, new_name=new_name)
+    enqueue(Task.Kind.DUPLICATE, instance, request.user, new_name=new_name, neutralize=request.POST.get('neutralize') == '1')
     messages.info(request, f'Duplicación como "{new_name}" en cola. La nueva instancia aparecerá en la lista al terminar.')
     return redirect('instance-detail', pk=pk)
 

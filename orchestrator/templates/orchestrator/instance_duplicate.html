@@ -1,4 +1,5 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto py-8">
@@ -45,6 +46,14 @@
                         <li>Docker containers</li>
                     </ul>
                 </div>
+
+                <label class="flex items-start gap-3 rounded-lg border p-4 cursor-pointer">
+                    <input type="checkbox" name="neutralize" value="1" checked class="mt-1 h-4 w-4 rounded border-input">
+                    <span>
+                        <span class="text-sm font-medium">{% translate "Neutralizar la copia (recomendado)" %}</span>
+                        <span class="block text-sm text-muted-foreground mt-1">{% translate "Antes de arrancar la copia se desactivan los servidores de correo entrante y saliente, las tareas programadas (salvo la limpieza automática), los métodos de pago y las claves API, y se cambia el UUID de la base. Así una copia de producción no escribe a tus clientes ni cobra. Desmárcalo solo si la copia va a sustituir a la original." %}</span>
+                    </span>
+                </label>
 
                 <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
                     <div class="flex items-start gap-3">

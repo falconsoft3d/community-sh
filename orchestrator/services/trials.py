@@ -190,7 +190,8 @@ def build_demo(task):
         name = demo_name(project, trial)
         task_log.line(f'Demo de {trial.source.name} ({trial.source.odoo_version}) para {trial.email} como {name}')
         service = DockerService()
-        instance = service.copy_instance(trial.source, name, project=target, create_branch=False, origin='trial')
+        instance = service.copy_instance(trial.source, name, project=target, create_branch=False, origin='trial',
+                                         neutralize='mail')
         instance.owner = target.owner
         instance.save(update_fields=['owner'])
         Task.objects.filter(pk=task.pk).update(instance=instance)

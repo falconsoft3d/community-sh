@@ -491,8 +491,10 @@ class TaskQueueTests(BaseTestCase):
         self.alice_instance.refresh_from_db()
         self.assertEqual(self.alice_instance.name, 'alice-odoo')
 
-        self.docker.return_value.copy_instance.side_effect = lambda source, name: Instance.objects.create(name=name)
+        self.docker.return_value.copy_instance.side_effect = lambda source, name, **kw: Instance.objects.create(name=name)
         self.run_worker()
+        # The form's checkbox was left unticked: not neutralized
+        self.assertIsNone(self.docker.return_value.copy_instance.call_args.kwargs['neutralize'])
 
         rename_call = self.docker.return_value.rename_instance.call_args
         self.assertEqual((rename_call.args[0].name, rename_call.args[1]), ('alice-new', 'alice-odoo'))
@@ -2614,7 +2616,8 @@ class TrialTests(BaseTestCase):
         self.assertEqual(trial.status, 'ready')
         self.assertTrue(trial.instance.name.startswith('bim-constructora-sol-'))
         self.assertEqual((trial.instance.project, trial.instance.owner), (self.demos, self.alice))
-        self.assertEqual(service.copy_instance.call_args.kwargs, {'project': self.demos, 'create_branch': False, 'origin': 'trial'})
+        self.assertEqual(service.copy_instance.call_args.kwargs, {'project': self.demos, 'create_branch': False, 'origin': 'trial',
+                                                                  'neutralize': 'mail'})
         self.assertEqual(service.set_admin_password.call_args.args, (trial.instance, trial.admin_password))
         self.assertGreaterEqual(len(trial.admin_password), 12)
         self.assertAlmostEqual((trial.expires_at - trial.created_at).total_seconds(), 15 * 86400, delta=60)
@@ -2704,6 +2707,30 @@ class AdminPasswordTests(TestCase):
                 mock.patch.object(service, '_list_user_databases', return_value=['shop']):
             self.assertEqual(service.set_admin_password(instance, 'pw123456'), 'admin')
         return [call.args[0][-1] for call in container.exec_run.call_args_list if call.args[0][-1].startswith('UPDATE')]
+
+    def neutralize_sql(self, version, crons=True):
+        from .services.docker_service import DockerService
+        with mock.patch('orchestrator.services.docker_service.docker.from_env'):
+            service = DockerService()
+        container = mock.Mock()
+        container.exec_run.return_value = mock.Mock(exit_code=0, output=b'')
+        with mock.patch.object(service, '_start_db_container', return_value=container), \
+                mock.patch.object(service, '_wait_for_postgres'), \
+                mock.patch.object(service, '_list_user_databases', return_value=['shop']):
+            notes = service.neutralize_databases(Instance(name='copy', odoo_version=version), crons=crons)
+        self.assertEqual(len(notes), 1)
+        return ' ; '.join(call.args[0][-1] for call in container.exec_run.call_args_list)
+
+    def test_neutralize_a_copy(self):
+        sql = self.neutralize_sql('17.0')
+        for fragment in ('UPDATE ir_mail_server SET active = false', 'UPDATE fetchmail_server SET active = false',
+                         'DELETE FROM res_users_apikeys', "UPDATE payment_provider SET state = 'disabled'",
+                         'UPDATE ir_cron SET active = false', "name = 'autovacuum_job'", 'database.is_neutralized',
+                         "key = 'database.uuid'"):
+            self.assertIn(fragment, sql)
+        # Odoo 12 has no neutralized ribbon; a demo keeps its scheduled actions
+        self.assertNotIn('database.is_neutralized', self.neutralize_sql('12.0'))
+        self.assertNotIn('ir_cron', self.neutralize_sql('18.0', crons=False))
 
     def test_admin_password_by_version(self):
         [sql] = self.sql('18.0')
@@ -3527,6 +3554,27 @@ class InstallNamedModuleTests(BaseTestCase):
 
 
 class ApiDatabaseAndModuleTests(BaseTestCase):
+    def test_duplicates_are_neutralized_unless_unticked(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        page = self.client.get(reverse('instance-duplicate', args=[self.alice_instance.pk]))
+        self.assertContains(page, 'name="neutralize" value="1" checked')
+        self.client.post(reverse('instance-duplicate', args=[self.alice_instance.pk]), {'new_name': 'copy-a', 'neutralize': '1'})
+        self.assertTrue(Task.objects.get(params__new_name='copy-a').params['neutralize'])
+        token = self.client.post(reverse('api-token-markdown'))
+        import re
+        bearer = re.search(r'Bearer (csh_[A-Za-z0-9_-]+)', token.content.decode()).group(1)
+        for name, body in (('copy-b', {}), ('copy-c', {'neutralize': False})):
+            self.client.post(f'/api/instances/{self.alice_instance.pk}/duplicate/', dict(body, new_name=name),
+                             content_type='application/json', HTTP_AUTHORIZATION=f'Bearer {bearer}')
+        self.assertTrue(Task.objects.get(params__new_name='copy-b').params['neutralize'])
+        self.assertFalse(Task.objects.get(params__new_name='copy-c').params['neutralize'])
+        from . import tasks
+        with mock.patch('orchestrator.tasks.DockerService') as service:
+            service.return_value.copy_instance.side_effect = lambda source, name, **kw: Instance.objects.create(name=name)
+            tasks.duplicate(Task.objects.get(params__new_name='copy-b'))
+            self.assertEqual(service.return_value.copy_instance.call_args.kwargs, {'neutralize': 'full'})
+
     def test_create_database_and_install_module_through_the_api(self):
         from .task_models import Task
         self.client.force_login(self.alice)

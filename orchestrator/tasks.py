@@ -188,7 +188,9 @@ def duplicate(task):
     new_name = task.params['new_name']
     if Instance.objects.filter(name=new_name).exists():
         raise Exception(f'Ya existe una instancia con el nombre "{new_name}"')
-    new_instance = DockerService().copy_instance(source, new_name)
+    # A copy is neutralized unless asked otherwise: it must not mail the customers of the original
+    neutralize = 'full' if task.params.get('neutralize', True) else None
+    new_instance = DockerService().copy_instance(source, new_name, neutralize=neutralize)
     new_instance.owner = source.owner or task.created_by
     new_instance.save(update_fields=['owner'])
     send_instance_notification('created', new_instance, task.created_by)

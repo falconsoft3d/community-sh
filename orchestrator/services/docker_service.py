@@ -830,8 +830,10 @@ class DockerService:
             import shutil
             shutil.rmtree(workspace_path)
             
-    def copy_instance(self, instance, new_name, project=None, create_branch=True, origin='duplicate'):
+    def copy_instance(self, instance, new_name, project=None, create_branch=True, origin='duplicate', neutralize=None):
         """
+        neutralize: 'full' (a staging copy: no mail, no scheduled actions, no payments) or 'mail' (a demo: the
+        same but its scheduled actions keep running), applied to the copied databases before its Odoo starts.
         Creates a complete copy of an instance including:
         - Database dump and restore
         - Filestore copy
@@ -930,7 +932,12 @@ class DockerService:
                     raise Exception(f"No se pudo restaurar la base de datos: {restore_result.output.decode('utf-8', errors='replace')[-300:]}")
                 if restore_result.output:
                     print(f"Restore output: {restore_result.output.decode('utf-8')[:500]}")
-                    
+                # Before its Odoo starts: a copy of production must not mail customers or charge cards
+                if neutralize:
+                    progress(35, 'Neutralizando la copia (correo, tareas programadas, pagos)')
+                    for note in self.neutralize_databases(new_instance, crons=neutralize == 'full'):
+                        print(note)
+
             except docker.errors.NotFound:
                 print(f"Source database container {db_source} not found")
                 raise
@@ -1068,6 +1075,39 @@ class DockerService:
         if check and result.exit_code != 0:
             raise Exception(f"{database}: {result.output.decode(errors='replace')[-300:]}")
         return result.output.decode(errors='replace').strip()
+
+    def neutralize_databases(self, instance, crons=True):
+        """
+        A copy that must not act as the original: outgoing and incoming mail servers off, API keys dropped,
+        payment providers disabled, a new database uuid and, with crons, every scheduled action off but the
+        autovacuum (Odoo 16+ also shows its "neutralized" ribbon). Returns notes for the log.
+        """
+        db_container = self._start_db_container(instance)
+        if db_container is None:
+            raise Exception('La base de datos de la instancia no existe')
+        self._wait_for_postgres(db_container)
+        statements = [
+            "UPDATE ir_mail_server SET active = false",
+            "UPDATE fetchmail_server SET active = false",
+            "DELETE FROM res_users_apikeys",
+            "UPDATE payment_provider SET state = 'disabled' WHERE state <> 'disabled'",
+            "UPDATE payment_acquirer SET state = 'disabled' WHERE state <> 'disabled'",
+            "UPDATE ir_config_parameter SET value = md5(random()::text || clock_timestamp()::text)::uuid::text "
+            "WHERE key = 'database.uuid'",
+        ]
+        if crons:
+            statements.append("UPDATE ir_cron SET active = false WHERE id NOT IN (SELECT res_id FROM ir_model_data "
+                              "WHERE model = 'ir.cron' AND module = 'base' AND name = 'autovacuum_job')")
+        if odoo_major(instance.odoo_version) >= 16:
+            statements.append("INSERT INTO ir_config_parameter (key, value) VALUES ('database.is_neutralized', 'True') "
+                              "ON CONFLICT (key) DO UPDATE SET value = 'True'")
+        notes = []
+        for database in self._list_user_databases(db_container):
+            # Tables that only some versions (or installed modules) have: missing ones are skipped
+            for sql in statements:
+                self._psql(db_container, database, sql, check=False)
+            notes.append(f"{database}: neutralizada (correo{', tareas programadas' if crons else ''}, pagos y claves API desactivados)")
+        return notes
 
     def sanitize_demo(self, instance):
         """

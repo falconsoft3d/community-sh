@@ -62,7 +62,7 @@ updates its section here (and the index) in the same commit.
                 </ul>
                 <h3>Otras formas de crear una instancia</h3>
                 <ul>
-                    <li><strong>Duplicar</strong> una instancia: copia la base de datos, el filestore, los repositorios y las variables de entorno.</li>
+                    <li><strong>Duplicar</strong> una instancia: copia la base de datos, el filestore, los repositorios y las variables de entorno. Por defecto la copia se <strong>neutraliza</strong> antes de arrancar: correo entrante y saliente, tareas programadas (salvo la limpieza automática), métodos de pago y claves API desactivados y UUID de la base nuevo (en Odoo 16+ se ve la cinta «neutralizada»). Desmarca «Neutralizar la copia» (o envía <code>neutralize: false</code> por la API) solo si la copia va a sustituir a la original.</li>
                     <li><strong>Desde un backup</strong>: Backups → «Importar un backup y crear una instancia» (detecta la versión y la base).</li>
                     <li><strong>Por la API o el MCP</strong>: crear una instancia también la despliega (ver <a href="#api">API y MCP</a>).</li>
                     <li><strong>Demos</strong> del «Modo test» (ver <a href="#demos">Demos</a>).</li>
@@ -137,7 +137,7 @@ updates its section here (and the index) in the same commit.
                 <ol>
                     <li>En el proyecto marca <strong>Modo test</strong>: URL de la página de demos (p. ej. <code>/bim</code>), días de prueba (15), proyecto hermano donde se crean, texto para el visitante y demos a la vez.</li>
                     <li>El visitante abre la página pública, elige versión entre las instancias en marcha del proyecto (con su descripción), deja sus datos y resuelve el captcha.</li>
-                    <li>Se crea una copia en el proyecto hermano: sin correo saliente, sin claves API, con contraseñas desconocidas para los demás usuarios y una contraseña nueva para el administrador. La página muestra el progreso y al final la dirección, el usuario y la contraseña, que también se envían por email si hay SMTP.</li>
+                    <li>Se crea una copia en el proyecto hermano, neutralizada antes de arrancar (sus tareas programadas siguen activas): sin correo saliente, sin claves API, con contraseñas desconocidas para los demás usuarios y una contraseña nueva para el administrador. La página muestra el progreso y al final la dirección, el usuario y la contraseña, que también se envían por email si hay SMTP.</li>
                     <li>Al vencer se detiene y 7 días después se elimina.</li>
                 </ol>
                 <ul>
