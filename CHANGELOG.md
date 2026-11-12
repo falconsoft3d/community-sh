@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.86**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.87**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.87 — 2026-11-12
+
+- Dashboard: al pulsar CPU, Memoria o Disco se abre Metrics → Recursos con el uso por instancia ordenado por ese recurso (qué instancia consume qué). La tabla se ordena por CPU, RAM o disco pulsando las cabeceras y tiene una columna Disco por instancia (también las paradas): datos (base de datos y adjuntos), código y backups, medido cada 10 minutos o con «Medir el disco ahora».
 
 ## 1.0.86 — 2026-11-12
 

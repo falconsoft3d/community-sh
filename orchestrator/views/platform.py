@@ -32,6 +32,18 @@ def metrics_data(request):
 
 
 @login_required
+@superuser_required
+def metrics_disk(request):
+    """Disk of every instance (volumes, code, backups), measured at most every 10 minutes (?refresh=1 now)."""
+    from django.http import JsonResponse
+    from ..services.metrics import instance_disk_usage
+    try:
+        return JsonResponse(instance_disk_usage(refresh=request.GET.get('refresh') == '1'))
+    except Exception as e:
+        return JsonResponse({'rows': [], 'error': str(e)}, status=503)
+
+
+@login_required
 def settings_view(request):
     from ..config_models import GitHubConfig
     from django.contrib import messages

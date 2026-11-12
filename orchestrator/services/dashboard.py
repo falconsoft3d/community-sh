@@ -108,11 +108,11 @@ def platform_kpis(user):
         pending_todos = Todo.objects.exclude(status='done').count()
         groups.append({'title': 'Servidor y seguridad', 'kpis': [
             _kpi('CPU', f'{sample.cpu_percent:.0f}%' if sample else '—', 'Última muestra del worker', 'cpu',
-                 reverse('metrics'), usage_tone(sample.cpu_percent if sample else None), fill=bool(sample)),
+                 reverse('metrics') + '?tab=resources&sort=cpu', usage_tone(sample.cpu_percent if sample else None), fill=bool(sample)),
             _kpi('Memoria', f'{memory.percent:.0f}%', f'{memory.available // 1024 ** 2} MB libres', 'memory-stick',
-                 reverse('metrics'), usage_tone(memory.percent), fill=True),
+                 reverse('metrics') + '?tab=resources&sort=memory', usage_tone(memory.percent), fill=True),
             _kpi('Disco', f'{disk.percent:.0f}%', f'{disk.free // 1024 ** 3} GB libres', 'hard-drive',
-                 reverse('docker-overview'), usage_tone(disk.percent), fill=True),
+                 reverse('metrics') + '?tab=resources&sort=disk', usage_tone(disk.percent), fill=True),
             _kpi('Usuarios sin 2FA', f'{without_2fa}/{users.count()}',
                  '2FA obligatorio' if config and config.two_factor_required else '2FA opcional', 'shield-alert',
                  reverse('user-list'), 'amber' if without_2fa and not (config and config.two_factor_required) else 'default'),

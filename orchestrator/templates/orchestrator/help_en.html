@@ -201,8 +201,8 @@ its section here and in help.html (and the index in views/public.py) in the same
             <section id="panel" class="rounded-xl border bg-card p-6 scroll-mt-24">
                 <h2>14. Dashboard, Metrics and Todo</h2>
                 <ul>
-                    <li><strong>Dashboard</strong>: the main figures, each linked to its page; CPU, memory and disk in green (&lt;50 %), orange (50-90 %) or red (&gt;90 %).</li>
-                    <li><strong>Metrics</strong>: CPU and RAM usage over the last 24 hours, 7 days, 30 days and 12 months. Under Resources, <strong>usage by instance</strong> (its Odoo and PostgreSQL together, from the one using the most memory to the least, with how much of its limit it uses) and by container.</li>
+                    <li><strong>Dashboard</strong>: the main figures, each linked to its page; CPU, memory and disk in green (&lt;50 %), orange (50-90 %) or red (&gt;90 %). Clicking <strong>CPU, Memory or Disk</strong> opens the usage by instance sorted by that resource: which instance uses what.</li>
+                    <li><strong>Metrics</strong>: CPU and RAM usage over the last 24 hours, 7 days, 30 days and 12 months. Under Resources, <strong>usage by instance</strong>: CPU and RAM of its Odoo and PostgreSQL now (with how much of its limit it uses) and the <strong>disk</strong> of its data (database and attachments), code and backups, stopped instances included; sorted by clicking the headers. The disk is measured every 10 minutes or with «Measure the disk now». Below, usage by container.</li>
                     <li>On each instance page, Information shows its <strong>current usage</strong> (CPU and RAM of Odoo and PostgreSQL).</li>
                     <li><strong>Todo</strong>: the team's tasks (to do, in progress, done) with a note of what was done.</li>
                 </ul>

@@ -177,6 +177,16 @@ ES_TO_EN = {
     'Sin eventos': 'No events',
     'No responde': 'Not responding',
     'Uso por instancia': 'Usage by instance',
+    'Qué instancia consume qué: CPU y RAM de su Odoo y su PostgreSQL ahora, y disco de sus datos, su código y sus backups. Pulsa una cabecera para ordenar.':
+        'Which instance uses what: CPU and RAM of its Odoo and PostgreSQL now, and disk of its data, code and backups. Click a header to sort.',
+    'Midiendo el disco…': 'Measuring the disk…',
+    'Medir el disco ahora': 'Measure the disk now',
+    'Disco': 'Disk',
+    'detenida': 'stopped',
+    'datos': 'data',
+    'código': 'code',
+    'Disco medido a las': 'Disk measured at',
+    'se vuelve a medir cada 10 minutos': 'measured again every 10 minutes',
     'Su Odoo y su PostgreSQL juntos, de la que más memoria usa a la que menos. Útil para saber cuál parar cuando falta memoria.':
         'Its Odoo and its PostgreSQL together, from the one using the most memory to the least. Useful to know which to stop when memory is short.',
     'Odoo / límite': 'Odoo / limit',

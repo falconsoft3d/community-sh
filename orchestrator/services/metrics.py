@@ -1,4 +1,5 @@
 """Server, Docker and instance metrics for the Metrics page (rendered and polled as JSON)."""
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 import docker
@@ -183,3 +184,61 @@ def metrics_history(range_key, now=None):
             'memory_max': round(max(v[3] for v in values), 1),
         })
     return points
+
+
+DISK_CACHE_SECONDS = 600
+
+
+def _dir_size(path):
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.lstat(os.path.join(root, name)).st_size
+            except OSError:
+                pass
+    return total
+
+
+def instance_disk_usage(refresh=False):
+    """
+    Disk of every instance (also stopped ones), the biggest first: its Docker volumes (PostgreSQL data and the
+    filestore), its code (instances/<name>) and its backups, in MB. Docker takes a while to measure volumes:
+    the result is kept DISK_CACHE_SECONDS. Returns {'rows': [...], 'measured_at': iso}.
+    """
+    from django.conf import settings
+    from django.core.cache import cache
+    from django.db.models import Sum
+    from django.utils import timezone
+    from ..backup_models import Backup
+    from ..models import Instance
+
+    if not refresh:
+        cached = cache.get('instance-disk-usage')
+        if cached:
+            return cached
+    client = docker.from_env()
+    volume_sizes = {v['Name']: max((v.get('UsageData') or {}).get('Size', 0), 0) for v in client.df().get('Volumes') or []}
+    instances = list(Instance.objects.select_related('project'))
+    names = {i.name for i in instances}
+    volumes_of = {}
+    for container in client.containers.list(all=True):
+        prefix, _, name = container.name.partition('_')
+        if prefix in ('odoo', 'db') and name in names:
+            volumes_of.setdefault(name, set()).update(
+                m['Name'] for m in container.attrs.get('Mounts', []) if m.get('Type') == 'volume' and m.get('Name'))
+    backups = dict(Backup.objects.values_list('instance__name').annotate(total=Sum('file_size')))
+    rows = []
+    for instance in instances:
+        volumes = volumes_of.get(instance.name, set()) | ({instance.data_volume} if instance.data_volume else set())
+        data = sum(volume_sizes.get(v, 0) for v in volumes)
+        code = _dir_size(os.path.join(settings.BASE_DIR, 'instances', instance.name))
+        backup = backups.get(instance.name) or 0
+        rows.append({
+            'id': instance.pk, 'name': instance.name, 'project': instance.project.name if instance.project else '',
+            'status': instance.status, 'disk_mb': round((data + code + backup) / MB), 'data_mb': round(data / MB),
+            'code_mb': round(code / MB), 'backups_mb': round(backup / MB),
+        })
+    result = {'rows': sorted(rows, key=lambda r: -r['disk_mb']), 'measured_at': timezone.now().isoformat()}
+    cache.set('instance-disk-usage', result, DISK_CACHE_SECONDS)
+    return result

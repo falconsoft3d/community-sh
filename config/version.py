@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.86'
+VERSION = '1.0.87'
 
 CHANGELOG = [
+    {
+        'version': '1.0.87',
+        'date': '2026-11-12',
+        'notes': [
+            'Dashboard: al pulsar CPU, Memoria o Disco se abre Metrics → Recursos con el uso por instancia ordenado por ese recurso (qué instancia consume qué). La tabla se ordena por CPU, RAM o disco pulsando las cabeceras y tiene una columna Disco por instancia (también las paradas): datos (base de datos y adjuntos), código y backups, medido cada 10 minutos o con «Medir el disco ahora».',
+        ],
+    },
     {
         'version': '1.0.86',
         'date': '2026-11-12',

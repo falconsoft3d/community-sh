@@ -183,50 +183,75 @@
     <!-- Resource Usage Tab -->
     <div x-show="activeTab === 'resources'" class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
-            <div class="p-6 border-b">
-                <h3 class="font-semibold text-lg">{% translate "Uso por instancia" %}</h3>
-                <p class="text-sm text-muted-foreground mt-1">{% translate "Su Odoo y su PostgreSQL juntos, de la que más memoria usa a la que menos. Útil para saber cuál parar cuando falta memoria." %}</p>
+            <div class="p-6 border-b flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h3 class="font-semibold text-lg">{% translate "Uso por instancia" %}</h3>
+                    <p class="text-sm text-muted-foreground mt-1">{% translate "Qué instancia consume qué: CPU y RAM de su Odoo y su PostgreSQL ahora, y disco de sus datos, su código y sus backups. Pulsa una cabecera para ordenar." %}</p>
+                </div>
+                <button type="button" @click="loadDisk(true)" class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent"
+                    :disabled="diskLoading">
+                    <i data-lucide="refresh-cw" class="mr-1.5 h-3.5 w-3.5"></i>
+                    <span x-text="diskLoading ? '{% translate "Midiendo el disco…" %}' : '{% translate "Medir el disco ahora" %}'"></span>
+                </button>
             </div>
             <div class="p-6">
                 <div class="relative w-full overflow-auto">
                     <table class="w-full caption-bottom text-sm">
                         <thead><tr class="border-b">
                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Instancia" %}</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">CPU</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">RAM</th>
+                            <template x-for="col in [['cpu', 'CPU'], ['memory', 'RAM'], ['disk', '{% translate "Disco" %}']]" :key="col[0]">
+                                <th class="h-12 px-4 text-left align-middle font-medium">
+                                    <button type="button" @click="sort = col[0]" class="inline-flex items-center gap-1 hover:text-foreground"
+                                        :class="sort === col[0] ? 'text-primary' : 'text-muted-foreground'">
+                                        <span x-text="col[1]"></span><span x-show="sort === col[0]">↓</span>
+                                    </button>
+                                </th>
+                            </template>
                             <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Odoo / límite" %}</th>
-                            <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">PostgreSQL</th>
                         </tr></thead>
                         <tbody>
-                            <template x-for="row in (m.instances || [])" :key="row.name">
+                            <template x-for="row in instanceRows()" :key="row.name">
                                 <tr class="border-b last:border-0 hover:bg-muted/50">
                                     <td class="p-4 align-middle">
                                         <a :href="'/instance/' + row.id + '/'" class="font-medium hover:underline" x-text="row.name"></a>
-                                        <div class="text-xs text-muted-foreground" x-text="row.project"></div>
+                                        <div class="text-xs text-muted-foreground" x-text="row.project + (row.running ? '' : ' · {% translate "detenida" %}')"></div>
                                     </td>
-                                    <td class="p-4 align-middle tabular-nums" x-text="row.cpu_percent + ' %'"></td>
-                                    <td class="p-4 align-middle tabular-nums font-medium" x-text="row.memory_mb + ' MB'"></td>
+                                    <td class="p-4 align-middle tabular-nums" :class="sort === 'cpu' && 'font-semibold'" x-text="row.running ? row.cpu_percent + ' %' : '—'"></td>
+                                    <td class="p-4 align-middle tabular-nums" :class="sort === 'memory' && 'font-semibold'">
+                                        <span x-text="row.running ? row.memory_mb + ' MB' : '—'"></span>
+                                        <div class="text-xs text-muted-foreground" x-show="row.running" x-text="'Odoo ' + row.odoo_memory_mb + ' · PostgreSQL ' + row.db_memory_mb"></div>
+                                    </td>
+                                    <td class="p-4 align-middle tabular-nums" :class="sort === 'disk' && 'font-semibold'">
+                                        <span x-text="row.disk_mb === null ? (diskLoading ? '…' : '—') : formatMb(row.disk_mb)"></span>
+                                        <div class="text-xs text-muted-foreground" x-show="row.disk_mb !== null"
+                                            x-text="'{% translate "datos" %} ' + formatMb(row.data_mb) + ' · {% translate "código" %} ' + formatMb(row.code_mb) + ' · backups ' + formatMb(row.backups_mb)"></div>
+                                    </td>
                                     <td class="p-4 align-middle tabular-nums">
-                                        <span x-text="row.odoo_memory_mb + ' MB'"></span>
-                                        <span class="text-muted-foreground" x-text="row.memory_limit_mb ? ' / ' + row.memory_limit_mb + ' MB' : ' / {% translate "sin límite" %}'"></span>
-                                        <template x-if="row.limit_percent !== null">
-                                            <div class="mt-1 w-24 h-2 bg-muted rounded-full overflow-hidden">
-                                                <div class="h-full" :style="'width:' + Math.min(row.limit_percent, 100) + '%'"
-                                                    :class="row.limit_percent > 85 ? 'bg-red-500' : row.limit_percent > 60 ? 'bg-yellow-500' : 'bg-green-500'"></div>
+                                        <template x-if="row.running">
+                                            <div>
+                                                <span x-text="row.odoo_memory_mb + ' MB'"></span>
+                                                <span class="text-muted-foreground" x-text="row.memory_limit_mb ? ' / ' + row.memory_limit_mb + ' MB' : ' / {% translate "sin límite" %}'"></span>
+                                                <template x-if="row.limit_percent !== null">
+                                                    <div class="mt-1 w-24 h-2 bg-muted rounded-full overflow-hidden">
+                                                        <div class="h-full" :style="'width:' + Math.min(row.limit_percent, 100) + '%'"
+                                                            :class="row.limit_percent > 85 ? 'bg-red-500' : row.limit_percent > 60 ? 'bg-yellow-500' : 'bg-green-500'"></div>
+                                                    </div>
+                                                </template>
                                             </div>
                                         </template>
                                     </td>
-                                    <td class="p-4 align-middle tabular-nums" x-text="row.db_memory_mb + ' MB'"></td>
                                 </tr>
                             </template>
-                            <tr x-show="!m.instances || m.instances.length === 0">
+                            <tr x-show="instanceRows().length === 0">
                                 <td colspan="5" class="p-8 text-center text-muted-foreground" x-text="m.instances ? '{% translate "Ninguna instancia en marcha" %}' : 'Cargando…'"></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+                <p class="mt-3 text-xs text-muted-foreground" x-show="diskMeasuredAt" x-text="'{% translate "Disco medido a las" %} ' + diskMeasuredAt + ' · {% translate "se vuelve a medir cada 10 minutos" %}'"></p>
             </div>
         </div>
+
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="p-6 border-b">
                 <h3 class="font-semibold text-lg">{% translate "Container Resource Usage" %}</h3>
@@ -371,13 +396,44 @@
     // Polls /metrics/data/ every 5 s; container stats are only requested while their tab is open
     function liveMetrics() {
         return {
-            activeTab: 'overview',
+            // ?tab=resources&sort=cpu|memory|disk: the CPU, memory and disk cards of the Dashboard
+            activeTab: new URLSearchParams(location.search).get('tab') === 'resources' ? 'resources' : 'overview',
+            sort: ['cpu', 'memory', 'disk'].includes(new URLSearchParams(location.search).get('sort')) ? new URLSearchParams(location.search).get('sort') : 'memory',
+            disk: {}, diskLoading: false, diskMeasuredAt: '',
             m: JSON.parse(document.getElementById('metrics-initial').textContent),
             error: false,
             updatedAt: new Date().toLocaleTimeString(),
             start() {
-                this.$watch('activeTab', () => this.refresh());
+                this.$watch('activeTab', () => { this.refresh(); if (this.activeTab === 'resources') this.loadDisk(); });
                 setInterval(() => this.refresh(), 5000);
+                if (this.activeTab === 'resources') { this.refresh(); this.loadDisk(); }
+            },
+            async loadDisk(refresh = false) {
+                if (this.diskLoading || (!refresh && Object.keys(this.disk).length)) return;
+                this.diskLoading = true;
+                try {
+                    const response = await fetch("{% url 'metrics-disk' %}" + (refresh ? '?refresh=1' : ''), { headers: { 'Accept': 'application/json' } });
+                    const data = await response.json();
+                    this.disk = Object.fromEntries((data.rows || []).map(r => [r.name, r]));
+                    this.diskMeasuredAt = data.measured_at ? new Date(data.measured_at).toLocaleTimeString() : '';
+                } catch (e) {
+                } finally {
+                    this.diskLoading = false;
+                }
+            },
+            // Running instances (CPU, RAM) and every instance's disk, merged by name and sorted
+            instanceRows() {
+                const rows = {};
+                for (const r of (this.m.instances || [])) rows[r.name] = { ...r, running: true, disk_mb: null };
+                for (const d of Object.values(this.disk)) {
+                    rows[d.name] = Object.assign(rows[d.name] || { id: d.id, name: d.name, project: d.project, running: false,
+                        cpu_percent: 0, memory_mb: 0 }, { disk_mb: d.disk_mb, data_mb: d.data_mb, code_mb: d.code_mb, backups_mb: d.backups_mb });
+                }
+                const key = { cpu: 'cpu_percent', memory: 'memory_mb', disk: 'disk_mb' }[this.sort];
+                return Object.values(rows).sort((a, b) => (b[key] || 0) - (a[key] || 0));
+            },
+            formatMb(mb) {
+                return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb + ' MB';
             },
             async refresh() {
                 if (document.hidden) return;

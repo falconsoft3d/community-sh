@@ -3915,6 +3915,48 @@ class InstancePageLanguageTests(BaseTestCase):
         self.assertNotIn('Tareas recientes', page)
 
 
+class InstanceDiskUsageTests(BaseTestCase):
+    def test_disk_by_instance_biggest_first(self):
+        import tempfile
+        from django.core.cache import cache
+        from .services.metrics import instance_disk_usage
+        cache.clear()
+        MB = 1024 * 1024
+        Backup.objects.create(instance=self.bob_instance, filename='b.zip', file_path='/x', file_size=300 * MB)
+        db = mock.Mock(attrs={'Mounts': [{'Type': 'volume', 'Name': 'anon123'}]})
+        db.name = 'db_alice-odoo'
+        odoo = mock.Mock(attrs={'Mounts': [{'Type': 'volume', 'Name': 'odoo_data_alice-odoo'}, {'Type': 'bind', 'Name': ''}]})
+        odoo.name = 'odoo_alice-odoo'
+        client = mock.Mock()
+        client.df.return_value = {'Volumes': [{'Name': 'anon123', 'UsageData': {'Size': 500 * MB}},
+                                              {'Name': 'odoo_data_alice-odoo', 'UsageData': {'Size': 200 * MB}},
+                                              {'Name': 'other', 'UsageData': {'Size': 999 * MB}}]}
+        client.containers.list.return_value = [db, odoo]
+        with tempfile.TemporaryDirectory() as base, self.settings(BASE_DIR=base):
+            os.makedirs(os.path.join(base, 'instances', 'alice-odoo'))
+            open(os.path.join(base, 'instances', 'alice-odoo', 'big'), 'wb').write(b'0' * (2 * MB))
+            with mock.patch('orchestrator.services.metrics.docker.from_env', return_value=client):
+                rows = instance_disk_usage()['rows']
+                instance_disk_usage()  # cached: Docker isn't asked again
+                self.assertEqual(client.df.call_count, 1)
+        alice = next(r for r in rows if r['name'] == 'alice-odoo')
+        bob = next(r for r in rows if r['name'] == 'bob-odoo')
+        self.assertEqual((alice['data_mb'], alice['code_mb'], alice['backups_mb'], alice['disk_mb']), (700, 2, 0, 702))
+        self.assertEqual((bob['data_mb'], bob['backups_mb'], bob['disk_mb']), (0, 300, 300))
+        self.assertEqual(rows[0]['name'], 'alice-odoo')
+
+    def test_dashboard_cards_open_the_usage_by_instance(self):
+        self.client.force_login(self.admin)
+        page = self.client.get('/dashboard/').content.decode()
+        for sort in ('cpu', 'memory', 'disk'):
+            self.assertIn(f'/metrics/?tab=resources&amp;sort={sort}', page)
+        with mock.patch('orchestrator.services.metrics.instance_disk_usage', return_value={'rows': [], 'measured_at': None}) as usage:
+            self.assertEqual(self.client.get(reverse('metrics-disk') + '?refresh=1').json()['rows'], [])
+            self.assertEqual(usage.call_args.kwargs, {'refresh': True})
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('metrics-disk')).status_code, 403)
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

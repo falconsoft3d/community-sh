@@ -91,6 +91,7 @@ from .backups import (
 from .platform import (
     metrics_view,
     metrics_data,
+    metrics_disk,
     metrics_history_data,
     settings_view,
     settings_ai_test,
@@ -184,6 +185,7 @@ __all__ = [
     'backup_create_instance',
     'metrics_view',
     'metrics_data',
+    'metrics_disk',
     'metrics_history_data',
     'settings_view',
     'settings_ai_test',
