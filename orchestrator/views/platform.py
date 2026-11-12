@@ -1,4 +1,5 @@
 """Platform administration: metrics, settings, panel SSL and manual backups."""
+from ..api_docs import API_ENDPOINTS
 from ..models import Instance
 from ..task_models import Task
 from ..tasks import enqueue
@@ -178,6 +179,7 @@ def settings_view(request):
         'mcp_tokens': MCPToken.objects.filter(user=request.user),
         'mcp_url': request.build_absolute_uri(reverse('mcp')),
         'api_url': request.build_absolute_uri('/api/'),
+        'api_endpoints': API_ENDPOINTS,
     })
 
 

@@ -204,6 +204,7 @@ updates its section here (and the index) in the same commit.
                 <h2>15. API y MCP (Claude)</h2>
                 <ul>
                     <li><strong>API REST</strong> (Configuración → API → Generar token; <code>Authorization: Bearer …</code>): proyectos, instancias (crear y desplegar, reiniciar, detener, backup, duplicar, variables de entorno, repositorios extra, <code>create-database</code>, <code>install-module</code>), backups, tareas con su log, contenedores, contactos, Todo y demos.</li>
+                    <li><strong>Para una IA</strong>: Configuración → API → «Generar token y descargar .md» crea un token nuevo y descarga <code>community-sh-api.md</code> con el token, la URL base y toda la documentación (endpoints, tareas, errores, ejemplos y, si está activo, cómo conectar el MCP). Pásaselo a Claude, ChatGPT… para que use la API por ti. Guárdalo como una contraseña; el token se revoca en «Tus tokens».</li>
                     <li><strong>MCP</strong> (Configuración → MCP): conecta Claude con <code>/mcp/</code> y un token personal; actúa con los permisos de su usuario.</li>
                     <li>Los tokens se muestran una sola vez y exigen 2FA cuando es obligatorio.</li>
                 </ul>

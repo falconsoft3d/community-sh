@@ -204,6 +204,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                 <h2>15. API and MCP (Claude)</h2>
                 <ul>
                     <li><strong>REST API</strong> (Settings → API → Generate token; <code>Authorization: Bearer …</code>): projects, instances (create and deploy, restart, stop, backup, duplicate, environment variables, extra repositories, <code>create-database</code>, <code>install-module</code>), backups, tasks with their log, containers, contacts, Todo and demos.</li>
+                    <li><strong>For an AI</strong>: Settings → API → «Generar token y descargar .md» creates a new token and downloads <code>community-sh-api.md</code> with the token, the base URL and the whole documentation (endpoints, tasks, errors, examples and, if enabled, how to connect MCP). Give it to Claude, ChatGPT… so it uses the API for you. Keep it like a password; the token is revoked in «Tus tokens».</li>
                     <li><strong>MCP</strong> (Settings → MCP): connect Claude to <code>/mcp/</code> with a personal token; it acts with its user's permissions.</li>
                     <li>Tokens are shown only once and require 2FA when it's mandatory.</li>
                 </ul>

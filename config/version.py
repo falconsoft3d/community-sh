@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.73'
+VERSION = '1.0.74'
 
 CHANGELOG = [
+    {
+        'version': '1.0.74',
+        'date': '2026-11-12',
+        'notes': [
+            'Configuración → API: botón «Generar token y descargar .md» para dárselo a una IA. Crea un token personal nuevo (con el nombre que escribas o «IA» y la fecha) y descarga community-sh-api.md con el token, la URL base, con qué usuario y permisos actúa, cómo seguir las tareas, los errores, todos los endpoints, ejemplos con curl, una receta para dejar una instancia lista y, si el MCP está activo, cómo conectarlo. La tabla de endpoints de la pestaña y la del fichero salen de la misma lista (orchestrator/api_docs.py), que ahora incluye también GET/PATCH de una instancia y la lista de tareas.',
+        ],
+    },
     {
         'version': '1.0.73',
         'date': '2026-11-12',

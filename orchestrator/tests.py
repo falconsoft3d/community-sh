@@ -1700,6 +1700,34 @@ class RestAPITests(MCPServerTests):
         self.assertEqual(self.api('get', '/api/projects/', token=token).status_code, 200)
         self.assertIsNone(self.client.get(reverse('settings')).context['new_token'])
 
+    def test_markdown_for_an_ai_carries_a_working_token_and_the_documentation(self):
+        import re
+        from .api_docs import API_ENDPOINTS
+        from .mcp_models import MCPToken
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('api-token-markdown')).status_code, 405)
+        response = self.client.post(reverse('api-token-markdown'), {'name': 'Claude'})
+        self.assertEqual(response['Content-Disposition'], 'attachment; filename="community-sh-api.md"')
+        self.assertEqual(response['Cache-Control'], 'no-store')
+        self.assertTrue(response['Content-Type'].startswith('text/markdown'))
+        text = response.content.decode()
+        token = re.search(r'Authorization: Bearer (csh_[A-Za-z0-9_-]+)', text).group(1)
+        self.assertEqual(self.api('get', '/api/projects/', token=token).status_code, 200)
+        self.assertTrue(MCPToken.objects.filter(user=self.alice, name='Claude', hint=token[-6:]).exists())
+        self.assertIn('http://testserver/api/', text)
+        self.assertIn('`alice`', text)
+        for method, path, _ in API_ENDPOINTS:
+            self.assertIn(f'`{path}`', text)
+        self.assertIn('19.0', text)
+        # The settings table comes from the same list, and the button is there
+        page = self.client.get(reverse('settings')).content.decode()
+        self.assertIn(reverse('api-token-markdown'), page)
+        self.assertIn('/api/instances/{id}/create-database/', page)
+        # Without the mandatory 2FA the token wouldn't work: no file
+        with mock.patch('orchestrator.permissions.missing_required_2fa', return_value=True):
+            response = self.client.post(reverse('api-token-markdown'))
+        self.assertEqual(response.status_code, 302)
+
     def api(self, method, path, data=None, token=None):
         import json
         kwargs = {'HTTP_AUTHORIZATION': f'Bearer {token or self.token}'}

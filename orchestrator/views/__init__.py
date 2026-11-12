@@ -19,6 +19,7 @@ from .todo import (
 from .mcp import (
     mcp_endpoint,
     mcp_token_create,
+    api_token_markdown,
     mcp_token_revoke,
 )
 from .docker import (
@@ -110,6 +111,7 @@ __all__ = [
     'todo_edit',
     'mcp_endpoint',
     'mcp_token_create',
+    'api_token_markdown',
     'mcp_token_revoke',
     'docker_overview',
     'docker_container_action',

@@ -75,5 +75,26 @@ def mcp_token_revoke(request, token_id):
     return redirect(reverse('settings') + f'#{_token_tab(request)}')
 
 
+@login_required
+@require_POST
+def api_token_markdown(request):
+    """Settings → API: a new personal token and the API documentation in one .md file, to hand to an AI."""
+    from ..api_docs import api_markdown
+    from ..permissions import missing_required_2fa
+    if missing_required_2fa(request.user):
+        messages.error(request, 'Activa la verificación en dos pasos (2FA) en tu perfil: sin ella los tokens no funcionan')
+        return redirect(reverse('settings') + '#api')
+    name = request.POST.get('name', '').strip()[:100] or f'IA {timezone.localtime():%d/%m/%Y %H:%M}'
+    _record, token = MCPToken.issue(request.user, name)
+    config = get_global_config()
+    mcp_url = request.build_absolute_uri(reverse('mcp')) if config and config.mcp_enabled else ''
+    content = api_markdown(request.user, request.build_absolute_uri('/api/'), token, name, mcp_url=mcp_url)
+    response = HttpResponse(content, content_type='text/markdown; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="community-sh-api.md"'
+    # It carries a secret: never kept by a cache
+    response['Cache-Control'] = 'no-store'
+    return response
+
+
 def _token_tab(request):
     return 'api' if request.POST.get('tab') == 'api' else 'mcp'
