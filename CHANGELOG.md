@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.84**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.85**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.85 — 2026-11-12
+
+- Ficha de la instancia en inglés: con el panel en EN, toda la página (pestañas, etiquetas, botones, ayudas, confirmaciones, el chat de IA y la consola) sale en inglés; en español queda igual que antes. Unos 240 textos nuevos en los catálogos de traducción.
 
 ## 1.0.84 — 2026-11-12
 

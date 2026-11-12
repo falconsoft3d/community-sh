@@ -3901,6 +3901,20 @@ class AuditTests(BaseTestCase):
         self.assertNotContains(self.client.get('/dashboard/'), reverse('audit'))
 
 
+class InstancePageLanguageTests(BaseTestCase):
+    def test_the_instance_page_in_spanish_and_english(self):
+        self.client.force_login(self.alice)
+        url = f'/instance/{self.alice_instance.pk}/'
+        page = self.client.get(url).content.decode()
+        for text in ('Tareas recientes', 'Límite de memoria', 'Restablecer contraseña'):
+            self.assertIn(text, page)
+        self.client.cookies['django_language'] = 'en'
+        page = self.client.get(url).content.decode()
+        for text in ('Recent tasks', 'Memory limit', 'Reset password'):
+            self.assertIn(text, page)
+        self.assertNotIn('Tareas recientes', page)
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

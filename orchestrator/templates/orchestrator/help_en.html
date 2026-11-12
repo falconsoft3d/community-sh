@@ -41,7 +41,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                 <ul>
                     <li><strong>Administrator</strong> (superuser): everything, including Users, Docker, the global Settings (domain, backups, AI, email, demos) and the Docker cleanup.</li>
                     <li><strong>User</strong>: creates and manages their projects and instances.</li>
-                    <li><strong>Client</strong> (the user's «Client» checkbox, assigned to a project): only sees and operates their projects; doesn't see the Master Password or the Odoo administrator's password, nor the Console, Domains, Modules and Migrar tabs.</li>
+                    <li><strong>Client</strong> (the user's «Client» checkbox, assigned to a project): only sees and operates their projects; doesn't see the Master Password or the Odoo administrator's password, nor the Console, Domains, Modules and Migrate tabs.</li>
                 </ul>
             </section>
 
@@ -72,7 +72,7 @@ its section here and in help.html (and the index in views/public.py) in the same
 
             <section id="gestionar" class="rounded-xl border bg-card p-6 scroll-mt-24">
                 <h2>3. Manage an instance</h2>
-                <p>The instance page has the tabs <strong>Information, Logs, Console, Domains, Modules, Backups, Migrar (migrate), IA (AI) and Tareas recientes (recent tasks)</strong>.</p>
+                <p>The instance page has the tabs <strong>Information, Logs, Console, Domains, Modules, Backups, Migrate, AI and Recent tasks</strong>.</p>
                 <ul>
                     <li><strong>Deploy</strong>: deploys again (recreates the containers with the current configuration; data is kept).</li>
                     <li><strong>Restart / Stop</strong>: restarting first starts the database if it was stopped. A stopped instance loses its Traefik route (no certificates spent) and gets it back when restarted. After a server reboot, instances come back on their own except the ones you stopped.</li>
@@ -160,9 +160,9 @@ its section here and in help.html (and the index in views/public.py) in the same
             <section id="ia" class="rounded-xl border bg-card p-6 scroll-mt-24">
                 <h2>10. AI and migrations</h2>
                 <ul>
-                    <li><strong>AI assistant</strong> (IA tab, with AI set up in Settings → IA): creates and changes modules in the instance's addons and installs them. Accepts attachments and tagging modules with @, shows a step-by-step plan, and every answer that changed files has «Undo these changes».</li>
+                    <li><strong>AI assistant</strong> (AI tab, with AI set up in Settings → IA): creates and changes modules in the instance's addons and installs them. Accepts attachments and tagging modules with @, shows a step-by-step plan, and every answer that changed files has «Undo these changes».</li>
                     <li><strong>/ia from Odoo</strong>: write <code>/ia …</code> in the chatter of any record and the answer arrives in that chatter.</li>
-                    <li><strong>Migrate</strong> (Migrar tab): brings data from another Odoo 8+ over XML-RPC into 14+ instances (contacts, products, sales, purchases, invoices and payments); can be repeated without duplicating.</li>
+                    <li><strong>Migrate</strong> (Migrate tab): brings data from another Odoo 8+ over XML-RPC into 14+ instances (contacts, products, sales, purchases, invoices and payments); can be repeated without duplicating.</li>
                 </ul>
             </section>
 
@@ -188,7 +188,7 @@ its section here and in help.html (and the index in views/public.py) in the same
             <section id="tareas" class="rounded-xl border bg-card p-6 scroll-mt-24">
                 <h2>13. Tasks and Activity</h2>
                 <ul>
-                    <li>Every task keeps its full timestamped log and a live progress bar, in the instance's «Tareas recientes» tab and in the <strong>Activity</strong> menu (filters by status, kind and instance).</li>
+                    <li>Every task keeps its full timestamped log and a live progress bar, in the instance's «Recent tasks» tab and in the <strong>Activity</strong> menu (filters by status, kind and instance).</li>
                     <li>Statuses: Queued, Running, Done and Failed (with the error). If the worker restarts mid-task, the task is marked as failed.</li>
                 </ul>
                 <h3>Availability and alerts</h3>

@@ -1,4 +1,5 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="flex flex-col gap-6" x-data="{ 
@@ -11,7 +12,7 @@
     <div class="flex items-center justify-between">
         <div>
             <nav class="text-sm text-muted-foreground mb-1">
-                <a href="{% url 'project-list' %}" class="hover:text-foreground">Proyectos</a>
+                <a href="{% url 'project-list' %}" class="hover:text-foreground">{% translate "Proyectos" %}</a>
                 <span class="mx-1">/</span>
                 {% if object.project %}
                 <a href="{% url 'project-detail' object.project.pk %}" class="hover:text-foreground">{{ object.project.name }}</a>
@@ -28,21 +29,21 @@
                 {% csrf_token %}
                 <button type="submit"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                    <i data-lucide="refresh-cw" class="mr-2 h-4 w-4"></i> Upgrade / Deploy
+                    <i data-lucide="refresh-cw" class="mr-2 h-4 w-4"></i> {% translate "Upgrade / Deploy" %}
                 </button>
             </form>
             <form action="{% url 'instance-stop' object.pk %}" method="post">
                 {% csrf_token %}
                 <button type="submit"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 text-red-500 hover:text-red-600">
-                    <i data-lucide="square" class="mr-2 h-4 w-4 fill-current"></i> Stop
+                    <i data-lucide="square" class="mr-2 h-4 w-4 fill-current"></i> {% translate "Stop" %}
                 </button>
             </form>
             <form action="{% url 'instance-restart' object.pk %}" method="post">
                 {% csrf_token %}
                 <button type="submit"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                    <i data-lucide="refresh-cw" class="mr-2 h-4 w-4"></i> Restart
+                    <i data-lucide="refresh-cw" class="mr-2 h-4 w-4"></i> {% translate "Restart" %}
                 </button>
             </form>
             <div class="h-6 w-px bg-border mx-2"></div>
@@ -50,22 +51,22 @@
             {% if can_manage and object.status == 'running' %}
             <form action="{% url 'instance-admin-login' object.pk %}" method="post" target="_blank">
                 {% csrf_token %}
-                <button type="submit" title="Abre Odoo con la sesión del administrador (enlace de un solo uso)"
+                <button type="submit" title="{% translate "Abre Odoo con la sesión del administrador (enlace de un solo uso)" %}"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                    <i data-lucide="key-round" class="mr-2 h-4 w-4"></i> Entrar como admin
+                    <i data-lucide="key-round" class="mr-2 h-4 w-4"></i> {% translate "Entrar como admin" %}
                 </button>
             </form>
             {% endif %}
             <a href="{% url 'instance-duplicate' object.pk %}"
                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                <i data-lucide="copy" class="mr-2 h-4 w-4"></i> Duplicate
+                <i data-lucide="copy" class="mr-2 h-4 w-4"></i> {% translate "Duplicate" %}
             </a>
             <form action="{% url 'instance-delete' object.pk %}" method="post" id="deleteForm">
                 {% csrf_token %}
             </form>
             <button type="button" @click="deleteModal = true"
                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
-                <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Delete
+                <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> {% translate "Eliminar" %}
             </button>
 {% endif %}
         </div>
@@ -74,68 +75,68 @@
     {% if object.trial %}{% with trial=object.trial %}
     <!-- A demo: how long it has left -->
     <div class="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
-        <span class="flex items-center gap-2 font-semibold"><i data-lucide="flask-conical" class="h-4 w-4"></i> Demo de {{ trial.name }}{% if trial.company %} · {{ trial.company }}{% endif %}</span>
+        <span class="flex items-center gap-2 font-semibold"><i data-lucide="flask-conical" class="h-4 w-4"></i> {% blocktranslate with name=trial.name %}Demo de {{ name }}{% endblocktranslate %}{% if trial.company %} · {{ trial.company }}{% endif %}</span>
         {% if trial.status == 'ready' and trial.expires_at %}
         <span><i data-lucide="pause-circle" class="inline h-4 w-4 align-text-bottom"></i>
-            Se detiene en <strong>{{ trial.days_until_stop }} día{{ trial.days_until_stop|pluralize }}</strong> ({{ trial.expires_at|date:"d/m/Y" }})</span>
+            {% blocktranslate with days=trial.days_until_stop plural=trial.days_until_stop|pluralize %}Se detiene en <strong>{{ days }} día{{ plural }}</strong>{% endblocktranslate %} ({{ trial.expires_at|date:"d/m/Y" }})</span>
         {% elif trial.status == 'expired' %}
-        <span><i data-lucide="pause-circle" class="inline h-4 w-4 align-text-bottom"></i> Vencida y detenida</span>
+        <span><i data-lucide="pause-circle" class="inline h-4 w-4 align-text-bottom"></i> {% translate "Vencida y detenida" %}</span>
         {% endif %}
         {% if trial.delete_at %}
         <span><i data-lucide="trash-2" class="inline h-4 w-4 align-text-bottom"></i>
-            Se elimina en <strong>{{ trial.days_until_delete }} día{{ trial.days_until_delete|pluralize }}</strong> ({{ trial.delete_at|date:"d/m/Y" }})</span>
+            {% blocktranslate with days=trial.days_until_delete plural=trial.days_until_delete|pluralize %}Se elimina en <strong>{{ days }} día{{ plural }}</strong>{% endblocktranslate %} ({{ trial.delete_at|date:"d/m/Y" }})</span>
         {% endif %}
-        {% if trial.emailed_at %}<span><i data-lucide="mail-check" class="inline h-4 w-4 align-text-bottom"></i> Datos enviados por email</span>{% endif %}
+        {% if trial.emailed_at %}<span><i data-lucide="mail-check" class="inline h-4 w-4 align-text-bottom"></i> {% translate "Datos enviados por email" %}</span>{% endif %}
     </div>
     {% endwith %}{% endif %}
 
     <!-- Tabs Navigation -->
     <div class="border-b border-border">
-        <nav class="flex space-x-8" aria-label="Tabs">
+        <nav class="flex space-x-8" aria-label="{% translate "Tabs" %}">
             <button @click="activeTab = 'info'"
                 :class="activeTab === 'info' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="info" class="inline-block h-4 w-4 mr-2"></i>
-                Information
+                {% translate "Information" %}
             </button>
             <button @click="activeTab = 'logs'"
                 :class="activeTab === 'logs' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="terminal" class="inline-block h-4 w-4 mr-2"></i>
-                Logs
+                {% translate "Logs" %}
             </button>
 {% if can_manage %}
             <button @click="activeTab = 'console'"
                 :class="activeTab === 'console' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="code" class="inline-block h-4 w-4 mr-2"></i>
-                Console
+                {% translate "Console" %}
             </button>
             <button @click="activeTab = 'domains'"
                 :class="activeTab === 'domains' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="globe" class="inline-block h-4 w-4 mr-2"></i>
-                Domains
+                {% translate "Domains" %}
             </button>
             <button @click="activeTab = 'modules'"
                 :class="activeTab === 'modules' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="package" class="inline-block h-4 w-4 mr-2"></i>
-                Modules
+                {% translate "Modules" %}
             </button>
 {% endif %}
             <button @click="activeTab = 'backups'"
                 :class="activeTab === 'backups' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="archive" class="inline-block h-4 w-4 mr-2"></i>
-                Backups
+                {% translate "Backups" %}
             </button>
             {% if can_manage %}
             <button @click="activeTab = 'migrate'"
                 :class="activeTab === 'migrate' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="arrow-right-left" class="inline-block h-4 w-4 mr-2"></i>
-                Migrar
+                {% translate "Migrar" %}
             </button>
             {% endif %}
             {% if ai_enabled %}
@@ -143,15 +144,15 @@
                 :class="activeTab === 'ai' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="sparkles" class="inline-block h-4 w-4 mr-2"></i>
-                IA
+                {% translate "IA" %}
             </button>
             {% endif %}
             <button @click="activeTab = 'tasks'"
                 :class="activeTab === 'tasks' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
                 class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
                 <i data-lucide="list-checks" class="inline-block h-4 w-4 mr-2"></i>
-                Tareas recientes
-                {% if has_active_tasks %}<span class="ml-1 inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="En curso"></span>{% endif %}
+                {% translate "Tareas recientes" %}
+                {% if has_active_tasks %}<span class="ml-1 inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="{% translate "En curso" %}"></span>{% endif %}
             </button>
         </nav>
     </div>
@@ -161,11 +162,11 @@
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
         <div class="px-4 py-3 border-b flex items-center gap-2">
             <i data-lucide="list-checks" class="h-4 w-4"></i>
-            <h3 class="text-sm font-semibold">Tareas recientes</h3>
+            <h3 class="text-sm font-semibold">{% translate "Tareas recientes" %}</h3>
             {% if has_active_tasks %}
-            <span class="text-xs text-muted-foreground">· en directo; la página se actualizará al terminar</span>
+            <span class="text-xs text-muted-foreground">· {% translate "en directo; la página se actualizará al terminar" %}</span>
             {% endif %}
-            <a href="{% url 'activity' %}?q={{ object.name|urlencode }}" class="ml-auto text-xs text-primary hover:underline">Toda la actividad</a>
+            <a href="{% url 'activity' %}?q={{ object.name|urlencode }}" class="ml-auto text-xs text-primary hover:underline">{% translate "Toda la actividad" %}</a>
         </div>
         {% if tasks %}
         <ul class="divide-y">
@@ -174,7 +175,7 @@
             {% endfor %}
         </ul>
         {% else %}
-        <p class="px-4 py-6 text-sm text-muted-foreground">Aún no hay tareas en esta instancia.</p>
+        <p class="px-4 py-6 text-sm text-muted-foreground">{% translate "Aún no hay tareas en esta instancia." %}</p>
         {% endif %}
     </div>
     </div>
@@ -187,18 +188,18 @@
         <!-- Info Card -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm" x-data="{ editingName: false }">
             <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Information</h3>
-                <p class="text-sm text-muted-foreground">Details about this instance.</p>
+                <h3 class="font-semibold leading-none tracking-tight">{% translate "Information" %}</h3>
+                <p class="text-sm text-muted-foreground">{% translate "Details about this instance." %}</p>
             </div>
             <div class="p-6 pt-4 space-y-4">
                 <div class="space-y-1">
-                    <label class="text-sm font-medium leading-none">Nombre</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Name" %}</label>
                     <div x-show="!editingName" class="flex items-center gap-2">
                         <span class="text-sm text-muted-foreground">{{ object.name }}</span>
 {% if can_manage %}
                         <button @click="editingName = true"
                             class="text-xs text-primary hover:underline flex items-center gap-1">
-                            <i data-lucide="pencil" class="h-3 w-3"></i> Editar
+                            <i data-lucide="pencil" class="h-3 w-3"></i> {% translate "Editar" %}
                         </button>
                         {% endif %}
                     </div>
@@ -207,7 +208,7 @@
                         {% csrf_token %}
                         <input type="text" name="name" value="{{ object.name }}"
                             class="flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm" required
-                            pattern="[a-z0-9-]+" title="Solo letras minúsculas, números y guiones">
+                            pattern="[a-z0-9-]+" title="{% translate "Solo letras minúsculas, números y guiones" %}">
                         <button type="submit"
                             class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">
                             <i data-lucide="check" class="h-3 w-3"></i>
@@ -221,16 +222,16 @@
 
                 <div class="space-y-1">
                     <label
-                        class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Status</label>
+                        class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">{% translate "Status" %}</label>
                     <div class="flex items-center">
                         {% if object.status == 'running' %}
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-100 text-green-800">
-                            Running</div>
+                            {% translate "Running" %}</div>
                         {% elif object.status == 'deploying' %}
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-yellow-100 text-yellow-800">
-                            Deploying</div>
+                            {% translate "Deploying" %}</div>
                         {% else %}
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground">
@@ -240,7 +241,7 @@
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-sm font-medium leading-none">URL Principal</label>
+                    <label class="text-sm font-medium leading-none">{% translate "URL Principal" %}</label>
                     <div>
                         {% if object.status == 'running' %}
                         <div class="flex items-center gap-2">
@@ -250,7 +251,7 @@
                             </a>
                             <button onclick="navigator.clipboard.writeText('{{ object.url }}'); this.querySelector('i').setAttribute('data-lucide', 'check'); lucide.createIcons(); setTimeout(() => { this.querySelector('i').setAttribute('data-lucide', 'copy'); lucide.createIcons(); }, 2000)"
                                 class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
-                                title="Copiar URL">
+                                title="{% translate "Copiar URL" %}">
                                 <i data-lucide="copy" class="h-3 w-3"></i>
                             </button>
                         </div>
@@ -261,7 +262,7 @@
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-sm font-medium leading-none">URL Alternativa</label>
+                    <label class="text-sm font-medium leading-none">{% translate "URL Alternativa" %}</label>
                     <div>
                         {% if object.status == 'running' and object.port and object.port_is_public %}
                         <div class="flex items-center gap-2">
@@ -271,12 +272,11 @@
                             </a>
                             <button onclick="navigator.clipboard.writeText('{{ object.url_with_port }}'); this.querySelector('i').setAttribute('data-lucide', 'check'); lucide.createIcons(); setTimeout(() => { this.querySelector('i').setAttribute('data-lucide', 'copy'); lucide.createIcons(); }, 2000)"
                                 class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
-                                title="Copiar URL">
+                                title="{% translate "Copiar URL" %}">
                                 <i data-lucide="copy" class="h-3 w-3"></i>
                             </button>
                         </div>
-                        <p class="text-xs text-muted-foreground mt-1">Acceso directo por puerto (disponible
-                            inmediatamente)</p>
+                        <p class="text-xs text-muted-foreground mt-1">{% translate "Acceso directo por puerto (disponible inmediatamente)" %}</p>
                         {% else %}
                         <span class="text-sm text-muted-foreground">-</span>
                         {% endif %}
@@ -285,102 +285,103 @@
 
                 {% if can_manage %}
                 <div class="space-y-1">
-                    <label for="move_project" class="text-sm font-medium leading-none">Proyecto</label>
+                    <label for="move_project" class="text-sm font-medium leading-none">{% translate "Proyecto" %}</label>
+                    {% translate "¿Mover la instancia a este proyecto? Su dirección no cambia." as confirm_move %}
                     <form method="post" action="{% url 'instance-move' object.pk %}" class="flex gap-2"
-                        onsubmit="return confirm('¿Mover la instancia a este proyecto? Su dirección no cambia.');">
+                        onsubmit="return confirm('{{ confirm_move|escapejs }}');">
                         {% csrf_token %}
                         <select id="move_project" name="project" class="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm">
                             {% for project in move_projects %}<option value="{{ project.pk }}" {% if project.pk == object.project_id %}selected{% endif %}>{{ project.name }}</option>{% endfor %}
                         </select>
-                        <button type="submit" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">Mover</button>
+                        <button type="submit" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">{% translate "Mover" %}</button>
                     </form>
                 </div>
                 {% endif %}
 
                 <div class="space-y-1">
-                    <label class="text-sm font-medium leading-none">Version</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Version" %}</label>
                     <div class="text-sm text-muted-foreground">{{ object.odoo_version }}</div>
                 </div>
 
                 {% if object.health_checked_at %}
                 <div class="space-y-1">
-                    <label class="text-sm font-medium leading-none">Disponibilidad</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Disponibilidad" %}</label>
                     <div class="text-sm {% if object.health == 'down' %}text-red-600 font-medium{% else %}text-muted-foreground{% endif %}">
-                        {% if object.health == 'down' %}No responde{% if object.health_error %} ({{ object.health_error }}){% endif %}{% elif object.health == 'up' %}Responde en {{ object.health_ms }} ms{% else %}Sin comprobar{% endif %}
-                        · comprobado hace {{ object.health_checked_at|timesince }}
+                        {% if object.health == 'down' %}{% translate "No responde" %}{% if object.health_error %} ({{ object.health_error }}){% endif %}{% elif object.health == 'up' %}{% blocktranslate with ms=object.health_ms %}Responde en {{ ms }} ms{% endblocktranslate %}{% else %}{% translate "Sin comprobar" %}{% endif %}
+                        · {% blocktranslate with since=object.health_checked_at|timesince %}comprobado hace {{ since }}{% endblocktranslate %}
                     </div>
-                    <p class="text-xs text-muted-foreground">El worker pide la página de login de Odoo cada 5 minutos; tras dos fallos seguidos avisa por las alertas de Configuración → General.</p>
+                    <p class="text-xs text-muted-foreground">{% translate "El worker pide la página de login de Odoo cada 5 minutos; tras dos fallos seguidos avisa por las alertas de Configuración → General." %}</p>
                 </div>
                 {% endif %}
 
                 {% if object.trial %}
                 <div class="space-y-1">
-                    <label class="text-sm font-medium leading-none">Demo</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Demo" %}</label>
                     <div class="text-sm text-muted-foreground">
                         {{ object.trial.name }} · {{ object.trial.email }}{% if object.trial.phone %} · {{ object.trial.phone }}{% endif %}<br>
                         {% if object.trial.company %}{{ object.trial.company }}{% endif %}{% if object.trial.job_title %} · {{ object.trial.job_title }}{% endif %}{% if object.trial.country %} · {{ object.trial.country }}{% endif %}<br>
-                        {% if object.trial.expires_at %}Se detiene el {{ object.trial.expires_at|date:"d/m/Y" }} y se elimina el {{ object.trial.delete_at|date:"d/m/Y" }} (en {{ object.trial.days_until_delete }} día{{ object.trial.days_until_delete|pluralize }}).{% endif %}
+                        {% if object.trial.expires_at %}{% blocktranslate with stop=object.trial.expires_at|date:"d/m/Y" delete=object.trial.delete_at|date:"d/m/Y" days=object.trial.days_until_delete plural=object.trial.days_until_delete|pluralize %}Se detiene el {{ stop }} y se elimina el {{ delete }} (en {{ days }} día{{ plural }}).{% endblocktranslate %}{% endif %}
                     </div>
                 </div>
                 {% endif %}
 
                 <div class="space-y-1" x-data="{ editingDescription: false }">
-                    <label class="text-sm font-medium leading-none">Descripción (demos)</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Descripción (demos)" %}</label>
                     <div x-show="!editingDescription" class="flex items-start gap-2">
                         <span class="text-sm text-muted-foreground whitespace-pre-line">{{ object.description|default:"—" }}</span>
                         {% if can_manage %}
                         <button @click="editingDescription = true" class="text-xs text-primary hover:underline flex shrink-0 items-center gap-1">
-                            <i data-lucide="pencil" class="h-3 w-3"></i> Editar
+                            <i data-lucide="pencil" class="h-3 w-3"></i> {% translate "Editar" %}
                         </button>
                         {% endif %}
                     </div>
                     {% if can_manage %}
                     <form x-show="editingDescription" x-cloak action="{% url 'instance-update-description' object.pk %}" method="post" class="space-y-2">
                         {% csrf_token %}
-                        <textarea name="description" rows="3" maxlength="2000" placeholder="Qué incluye esta versión"
+                        <textarea name="description" rows="3" maxlength="2000" placeholder="{% translate "Qué incluye esta versión" %}"
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">{{ object.description }}</textarea>
                         <div class="flex gap-2">
-                            <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">Guardar</button>
-                            <button type="button" @click="editingDescription = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">Cancelar</button>
+                            <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">{% translate "Guardar" %}</button>
+                            <button type="button" @click="editingDescription = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">{% translate "Cancelar" %}</button>
                         </div>
                     </form>
                     {% endif %}
-                    <p class="text-xs text-muted-foreground">Se muestra junto a la instancia en la página de demos de su proyecto (modo test) y en su API pública.</p>
+                    <p class="text-xs text-muted-foreground">{% translate "Se muestra junto a la instancia en la página de demos de su proyecto (modo test) y en su API pública." %}</p>
                 </div>
 
                 {% if can_manage %}
                 <div class="space-y-1" x-data="revealField('{% url 'instance-secret' object.pk 'master' %}')">
-                    <label class="text-sm font-medium leading-none">Master Password</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Master Password" %}</label>
                     <div class="flex items-center gap-2">
                         <code class="text-sm text-muted-foreground flex-1 truncate"
                             x-text="show && value ? value : '••••••••••••'">••••••••••••</code>
                         <button type="button" @click="toggle()"
                             class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
-                            title="Mostrar/ocultar">
+                            title="{% translate "Mostrar/ocultar" %}">
                             <i data-lucide="eye" class="h-3 w-3"></i>
                         </button>
                         <button type="button" @click="copy()"
                             class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8"
-                            title="Copiar contraseña">
+                            title="{% translate "Copiar contraseña" %}">
                             <i data-lucide="copy" class="h-3 w-3"></i>
                         </button>
                     </div>
-                    <p class="text-xs text-muted-foreground mt-1">Para el gestor de bases de datos de Odoo (/web/database/manager). Se aplica al redesplegar.</p>
+                    <p class="text-xs text-muted-foreground mt-1">{% translate "Para el gestor de bases de datos de Odoo (/web/database/manager). Se aplica al redesplegar." %}</p>
                 </div>
                 {% endif %}
 
                 {% if can_manage %}
                 <div class="space-y-1" x-data="{ usage: undefined }"
                     x-init="fetch('{% url 'instance-usage' object.pk %}').then(r => r.json()).then(d => usage = d.usage).catch(() => usage = null)">
-                    <label class="text-sm font-medium leading-none">Uso ahora</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Uso ahora" %}</label>
                     <div class="text-sm text-muted-foreground tabular-nums">
-                        <span x-show="usage === undefined">Midiendo…</span>
-                        <span x-show="usage === null" x-cloak>No está en marcha</span>
+                        <span x-show="usage === undefined">{% translate "Midiendo…" %}</span>
+                        <span x-show="usage === null" x-cloak>{% translate "No está en marcha" %}</span>
                         <template x-if="usage">
                             <span>
                                 CPU <span x-text="usage.cpu_percent + ' %'"></span> ·
                                 RAM <span x-text="usage.memory_mb + ' MB'"></span>
-                                (Odoo <span x-text="usage.odoo_memory_mb"></span> MB<template x-if="usage.memory_limit_mb"><span x-text="', ' + usage.limit_percent + ' % de su límite'"></span></template>;
+                                (Odoo <span x-text="usage.odoo_memory_mb"></span> MB{% translate "de su límite" as of_its_limit %}<template x-if="usage.memory_limit_mb"><span x-text="', ' + usage.limit_percent + ' % {{ of_its_limit|escapejs }}'"></span></template>;
                                 PostgreSQL <span x-text="usage.db_memory_mb"></span> MB)
                             </span>
                         </template>
@@ -388,72 +389,73 @@
                 </div>
 
                 <div class="space-y-1" x-data="{ editingMemory: false }">
-                    <label class="text-sm font-medium leading-none">Límite de memoria</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Memory Limit" %}</label>
                     <div x-show="!editingMemory" class="flex items-center gap-2">
-                        <span class="text-sm text-muted-foreground">{% if object.memory_limit_mb %}{{ object.memory_limit_mb }} MB{% else %}Sin límite{% endif %}</span>
+                        <span class="text-sm text-muted-foreground">{% if object.memory_limit_mb %}{{ object.memory_limit_mb }} MB{% else %}{% translate "Sin límite" %}{% endif %}</span>
                         <button @click="editingMemory = true" class="text-xs text-primary hover:underline flex items-center gap-1">
-                            <i data-lucide="pencil" class="h-3 w-3"></i> Editar
+                            <i data-lucide="pencil" class="h-3 w-3"></i> {% translate "Editar" %}
                         </button>
                     </div>
                     <form x-show="editingMemory" x-cloak action="{% url 'instance-update-memory' object.pk %}" method="post" class="flex flex-wrap items-center gap-2">
                         {% csrf_token %}
-                        <input name="memory_limit_mb" type="number" min="0" max="32768" step="128" value="{{ object.memory_limit_mb }}" aria-label="Límite de memoria en MB"
+                        <input name="memory_limit_mb" type="number" min="0" max="32768" step="128" value="{{ object.memory_limit_mb }}" aria-label="{% translate "Límite de memoria en MB" %}"
                             class="h-8 w-28 rounded-md border border-input bg-background px-3 text-sm"> <span class="text-sm text-muted-foreground">MB</span>
-                        <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">Guardar</button>
-                        <button type="button" @click="editingMemory = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">Cancelar</button>
+                        <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">{% translate "Guardar" %}</button>
+                        <button type="button" @click="editingMemory = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-8 px-3">{% translate "Cancelar" %}</button>
                     </form>
-                    <p class="text-xs text-muted-foreground">Tope de RAM del contenedor de Odoo, para que una instancia no deje sin memoria al servidor ni a las demás. Se aplica en marcha, sin reiniciar; 0 = sin límite (en el próximo despliegue). Si Odoo lo alcanza, el sistema corta el proceso y Docker lo vuelve a arrancar.</p>
+                    <p class="text-xs text-muted-foreground">{% translate "Tope de RAM del contenedor de Odoo, para que una instancia no deje sin memoria al servidor ni a las demás. Se aplica en marcha, sin reiniciar; 0 = sin límite (en el próximo despliegue). Si Odoo lo alcanza, el sistema corta el proceso y Docker lo vuelve a arrancar." %}</p>
                 </div>
                 {% endif %}
 
                 {% if can_manage %}
                 <div class="space-y-1" x-data="Object.assign(revealField('{% url 'instance-secret' object.pk 'admin' %}'), { resetting: false })">
-                    <label class="text-sm font-medium leading-none">Administrador</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Administrador" %}</label>
                     {% if object.admin_password %}
                     <div class="flex items-center gap-2">
-                        <span class="text-sm text-muted-foreground">Usuario</span>
+                        <span class="text-sm text-muted-foreground">{% translate "Username" %}</span>
                         <code class="text-sm text-muted-foreground flex-1 truncate">{{ object.admin_login|default:"admin" }}</code>
                         <button type="button" onclick="navigator.clipboard.writeText('{{ object.admin_login|default:"admin"|escapejs }}')"
-                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Copiar usuario">
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="{% translate "Copiar usuario" %}">
                             <i data-lucide="copy" class="h-3 w-3"></i>
                         </button>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="text-sm text-muted-foreground">Contraseña</span>
+                        <span class="text-sm text-muted-foreground">{% translate "Password" %}</span>
                         <code class="text-sm text-muted-foreground flex-1 truncate"
                             x-text="show && value ? value : '••••••••••••'">••••••••••••</code>
-                        <button type="button" @click="toggle()" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Mostrar/ocultar">
+                        <button type="button" @click="toggle()" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="{% translate "Mostrar/ocultar" %}">
                             <i data-lucide="eye" class="h-3 w-3"></i>
                         </button>
                         <button type="button" @click="copy()"
-                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="Copiar contraseña">
+                            class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8" title="{% translate "Copiar contraseña" %}">
                             <i data-lucide="copy" class="h-3 w-3"></i>
                         </button>
                     </div>
-                    <p class="text-xs text-muted-foreground mt-1">El administrador de Odoo que creó la plataforma{% if object.admin_database %} (base de datos {{ object.admin_database }}){% endif %}, para compartirlo. Si se cambia la contraseña dentro de Odoo, esta deja de valer.</p>
+                    <p class="text-xs text-muted-foreground mt-1">{% if object.admin_database %}{% blocktranslate with database=object.admin_database %}El administrador de Odoo que creó la plataforma (base de datos {{ database }}), para compartirlo. Si se cambia la contraseña dentro de Odoo, esta deja de valer.{% endblocktranslate %}{% else %}{% translate "El administrador de Odoo que creó la plataforma, para compartirlo. Si se cambia la contraseña dentro de Odoo, esta deja de valer." %}{% endif %}</p>
                     {% else %}
-                    <p class="text-sm text-muted-foreground">Contraseña desconocida: la base de datos no la creó la plataforma. Restablécela para verla y compartirla.</p>
+                    <p class="text-sm text-muted-foreground">{% translate "Contraseña desconocida: la base de datos no la creó la plataforma. Restablécela para verla y compartirla." %}</p>
                     {% endif %}
                     <button type="button" x-show="!resetting" @click="resetting = true" class="text-xs text-primary hover:underline flex items-center gap-1">
-                        <i data-lucide="key-round" class="h-3 w-3"></i> Restablecer contraseña
+                        <i data-lucide="key-round" class="h-3 w-3"></i> {% translate "Restablecer contraseña" %}
                     </button>
+                    {% translate "¿Cambiar la contraseña del administrador de Odoo? La actual dejará de funcionar y se cerrarán sus sesiones abiertas." as confirm_reset %}
                     <form x-show="resetting" x-cloak action="{% url 'instance-reset-admin-password' object.pk %}" method="post" class="space-y-2"
-                        onsubmit="return confirm('¿Cambiar la contraseña del administrador de Odoo? La actual dejará de funcionar y se cerrarán sus sesiones abiertas.')">
+                        onsubmit="return confirm('{{ confirm_reset|escapejs }}')">
                         {% csrf_token %}
-                        <input name="password" type="text" autocomplete="off" pattern="[A-Za-z0-9_\-]{8,64}" placeholder="Vacío: se genera una aleatoria"
-                            aria-label="Nueva contraseña del administrador" title="8-64 letras, números, «_» o «-»"
+                        <input name="password" type="text" autocomplete="off" pattern="[A-Za-z0-9_\-]{8,64}" placeholder="{% translate "Vacío: se genera una aleatoria" %}"
+                            aria-label="{% translate "Nueva contraseña del administrador" %}" title="{% translate "8-64 letras, números, «_» o «-»" %}"
                             class="flex h-8 w-full rounded-md border border-input bg-background px-3 text-sm">
                         <div class="flex gap-2">
-                            <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">Restablecer</button>
-                            <button type="button" @click="resetting = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">Cancelar</button>
+                            <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3">{% translate "Restablecer" %}</button>
+                            <button type="button" @click="resetting = false" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">{% translate "Cancelar" %}</button>
                         </div>
-                        <p class="text-xs text-muted-foreground">Se aplica al usuario administrador de {% if object.admin_database or object.database_name %}la base de datos {{ object.admin_database|default:object.database_name }}{% else %}todas las bases de datos de la instancia{% endif %}. La instancia tiene que estar desplegada.</p>
+                        <p class="text-xs text-muted-foreground">{% if object.admin_database or object.database_name %}{% blocktranslate with database=object.admin_database|default:object.database_name %}Se aplica al usuario administrador de la base de datos {{ database }}. La instancia tiene que estar desplegada.{% endblocktranslate %}{% else %}{% translate "Se aplica al usuario administrador de todas las bases de datos de la instancia. La instancia tiene que estar desplegada." %}{% endif %}</p>
                     </form>
                 </div>
                 {% endif %}
 
                 <div class="space-y-1">
-                    <label class="text-sm font-medium leading-none">Source</label>
+                    <label class="text-sm font-medium leading-none">{% translate "Source" %}</label>
                     <div class="text-sm text-muted-foreground">
                         {% if object.github_repo %}
                         <div class="flex items-center gap-2">
@@ -479,8 +481,8 @@
         <!-- Domain & SSL Card -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Dominio & SSL</h3>
-                <p class="text-sm text-muted-foreground">Configurar dominio personalizado</p>
+                <h3 class="font-semibold leading-none tracking-tight">{% translate "Dominio & SSL" %}</h3>
+                <p class="text-sm text-muted-foreground">{% translate "Configurar dominio personalizado" %}</p>
             </div>
             <div class="p-6 pt-4 space-y-4"
                 x-data="{ showDomainForm: {% if not object.custom_domain %}true{% else %}false{% endif %} }">
@@ -488,19 +490,19 @@
                 <div class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm space-y-1">
                     <div class="flex items-center gap-2 font-medium">
                         <i data-lucide="shield-alert" class="h-4 w-4"></i>
-                        <span>Certificado pendiente</span>
+                        <span>{% translate "Certificado pendiente" %}</span>
                     </div>
                     <p class="text-muted-foreground">
                         {% if certificate_problem.kind == 'rate_limit' %}
-                        Let's Encrypt ha alcanzado su límite semanal de certificados para este dominio. Se reintenta solo{% if certificate_problem.retry_after %}, no antes de {{ certificate_problem.retry_after }} UTC{% endif %}.
+                        {% if certificate_problem.retry_after %}{% blocktranslate with retry=certificate_problem.retry_after %}Let's Encrypt ha alcanzado su límite semanal de certificados para este dominio. Se reintenta solo, no antes de {{ retry }} UTC.{% endblocktranslate %}{% else %}{% translate "Let's Encrypt ha alcanzado su límite semanal de certificados para este dominio. Se reintenta solo." %}{% endif %}
                         {% elif certificate_problem.kind == 'failed' %}
-                        Let's Encrypt no pudo comprobar el dominio: revisa que su DNS apunte a este servidor.
+                        {% translate "Let's Encrypt no pudo comprobar el dominio: revisa que su DNS apunte a este servidor." %}
                         {% elif certificate_problem.kind == 'error' %}
-                        Let's Encrypt no pudo emitir el certificado: revisa el DNS del dominio y los registros de Traefik.
+                        {% translate "Let's Encrypt no pudo emitir el certificado: revisa el DNS del dominio y los registros de Traefik." %}
                         {% else %}
-                        El certificado se está solicitando.
+                        {% translate "El certificado se está solicitando." %}
                         {% endif %}
-                        Mientras tanto la instancia funciona, pero el navegador mostrará un aviso de seguridad.
+                        {% translate "Mientras tanto la instancia funciona, pero el navegador mostrará un aviso de seguridad." %}
                     </p>
                     <p class="text-xs text-muted-foreground">{{ certificate_problem.hosts|join:", " }}</p>
                 </div>
@@ -516,13 +518,13 @@
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-green-100 text-green-800">
                             <i data-lucide="shield-check" class="h-3 w-3 mr-1"></i>
-                            SSL Activo
+                            {% translate "SSL Activo" %}
                         </div>
                         {% else %}
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold border-transparent bg-yellow-100 text-yellow-800">
                             <i data-lucide="shield-alert" class="h-3 w-3 mr-1"></i>
-                            Sin SSL
+                            {% translate "Sin SSL" %}
                         </div>
                         {% endif %}
                     </div>
@@ -531,28 +533,28 @@
                     <button onclick="document.getElementById('ssl-form-{{ object.pk }}').classList.toggle('hidden')"
                         class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
                         <i data-lucide="shield-plus" class="mr-2 h-4 w-4"></i>
-                        Generar Certificado SSL
+                        {% translate "Generar Certificado SSL" %}
                     </button>
 
                     <form id="ssl-form-{{ object.pk }}" action="{% url 'instance-generate-ssl' object.pk %}"
                         method="post" class="hidden space-y-3 pt-2 border-t">
                         {% csrf_token %}
                         <div>
-                            <label class="text-sm font-medium mb-2 block">Email para notificaciones</label>
-                            <input type="email" name="email" required placeholder="tu@email.com"
+                            <label class="text-sm font-medium mb-2 block">{% translate "Email para notificaciones" %}</label>
+                            <input type="email" name="email" required placeholder="{% translate "tu@email.com" %}"
                                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                         </div>
                         <button type="submit"
                             class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-green-600 text-white hover:bg-green-700 h-9 px-4 py-2">
                             <i data-lucide="lock" class="mr-2 h-4 w-4"></i>
-                            Confirmar y Generar
+                            {% translate "Confirmar y Generar" %}
                         </button>
                     </form>
                     {% else %}
                     <div class="text-xs text-muted-foreground space-y-1">
                         <div class="flex items-center gap-2">
                             <i data-lucide="key" class="h-3 w-3"></i>
-                            <span>Certificado: {{ object.ssl_certificate_path|truncatechars:40 }}</span>
+                            <span>{% blocktranslate with path=object.ssl_certificate_path|truncatechars:40 %}Certificado: {{ path }}{% endblocktranslate %}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <i data-lucide="mail" class="h-3 w-3"></i>
@@ -564,7 +566,7 @@
                     <button @click="showDomainForm = !showDomainForm"
                         class="w-full text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-2">
                         <i data-lucide="settings" class="h-3 w-3"></i>
-                        Cambiar dominio
+                        {% translate "Cambiar dominio" %}
                     </button>
                 </div>
                 {% endif %}
@@ -573,18 +575,18 @@
                     class="space-y-3">
                     {% csrf_token %}
                     <div>
-                        <label class="text-sm font-medium mb-2 block">Dominio Personalizado</label>
+                        <label class="text-sm font-medium mb-2 block">{% translate "Dominio Personalizado" %}</label>
                         <input type="text" name="domain" value="{{ object.custom_domain|default:'' }}"
-                            placeholder="ejemplo.com o www.ejemplo.com"
+                            placeholder="{% translate "ejemplo.com o www.ejemplo.com" %}"
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
                         <p class="text-xs text-muted-foreground mt-1">
-                            Asegúrate de que tu dominio apunte a este servidor
+                            {% translate "Asegúrate de que tu dominio apunte a este servidor" %}
                         </p>
                     </div>
                     <button type="submit"
                         class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
                         <i data-lucide="save" class="mr-2 h-4 w-4"></i>
-                        Guardar Dominio
+                        {% translate "Guardar Dominio" %}
                     </button>
                 </form>
             </div>
@@ -598,22 +600,23 @@
             <div class="flex flex-wrap items-center gap-4 p-6">
                 <i data-lucide="chrome" class="h-6 w-6 shrink-0 text-muted-foreground"></i>
                 <div class="min-w-0 flex-1">
-                    <h3 class="font-semibold leading-none tracking-tight">Navegador (WhatsApp Web)</h3>
+                    <h3 class="font-semibold leading-none tracking-tight">{% translate "Navegador (WhatsApp Web)" %}</h3>
                     <p class="mt-1.5 text-sm text-muted-foreground">
-                        Google Chrome dentro del contenedor de Odoo, para los módulos que lo necesitan, como WhatsApp Web. Ocupa unos 450 MB y se reinstala solo en cada despliegue (menos de un minuto más).
+                        {% translate "Google Chrome dentro del contenedor de Odoo, para los módulos que lo necesitan, como WhatsApp Web. Ocupa unos 450 MB y se reinstala solo en cada despliegue (menos de un minuto más)." %}
                     </p>
                 </div>
                 <form method="post" action="{% url 'instance-browser' object.pk %}">
                     {% csrf_token %}
                     {% if object.browser %}
-                    <span class="mr-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">Instalado</span>
+                    <span class="mr-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">{% translate "Instalado" %}</span>
                     <input type="hidden" name="enable" value="0">
+                    {% translate "¿Dejar de instalar Google Chrome? Desaparece en el próximo despliegue." as confirm_browser %}
                     <button type="submit" class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent"
-                        onclick="return confirm('¿Dejar de instalar Google Chrome? Desaparece en el próximo despliegue.');">Quitar</button>
+                        onclick="return confirm('{{ confirm_browser|escapejs }}');">{% translate "Quitar" %}</button>
                     {% else %}
                     <input type="hidden" name="enable" value="1">
                     <button type="submit" class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                        <i data-lucide="download" class="mr-2 h-4 w-4"></i> Instalar Google Chrome
+                        <i data-lucide="download" class="mr-2 h-4 w-4"></i> {% translate "Instalar Google Chrome" %}
                     </button>
                     {% endif %}
                 </form>
@@ -623,13 +626,13 @@
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-wrap items-start gap-3 p-6 pb-2">
                 <div class="min-w-0 flex-1 space-y-1.5">
-                    <h3 class="font-semibold leading-none tracking-tight">Repositorios de addons</h3>
-                    <p class="text-sm text-muted-foreground">Cada repositorio se clona y se añade al addons_path de Odoo. «Pull» trae los últimos cambios de todos y reinicia Odoo, sin redesplegar.</p>
+                    <h3 class="font-semibold leading-none tracking-tight">{% translate "Repositorios de addons" %}</h3>
+                    <p class="text-sm text-muted-foreground">{% translate "Cada repositorio se clona y se añade al addons_path de Odoo. «Pull» trae los últimos cambios de todos y reinicia Odoo, sin redesplegar." %}</p>
                 </div>
                 {% if object.github_repo or object.repositories.exists %}
                 <form method="post" action="{% url 'instance-pull' object.pk %}">
                     {% csrf_token %}
-                    <button type="submit" title="Descarga los últimos commits de cada repositorio y reinicia Odoo. Si cambian vistas o datos, actualiza el módulo en Odoo."
+                    <button type="submit" title="{% translate "Descarga los últimos commits de cada repositorio y reinicia Odoo. Si cambian vistas o datos, actualiza el módulo en Odoo." %}"
                         class="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                         <i data-lucide="git-pull-request-arrow" class="mr-2 h-4 w-4"></i> Pull
                     </button>
@@ -637,13 +640,14 @@
                 {% endif %}
             </div>
             <div class="p-6 pt-4 space-y-4">
+                {% translate "¿Quitar este repositorio?" as confirm_repo_remove %}
                 <ul class="divide-y rounded-lg border text-sm">
                     {% if object.github_repo %}
                     <li class="flex items-center gap-3 px-4 py-3">
                         {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4 shrink-0" %}
                         <div class="min-w-0 flex-1">
                             <div class="truncate font-medium">{{ object.github_repo }}</div>
-                            <div class="text-xs text-muted-foreground">rama {{ object.github_branch }} · principal (/mnt/extra-addons)</div>
+                            <div class="text-xs text-muted-foreground">{% blocktranslate with branch=object.github_branch %}rama {{ branch }} · principal (/mnt/extra-addons){% endblocktranslate %}</div>
                         </div>
                     </li>
                     {% endif %}
@@ -652,30 +656,30 @@
                         {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4 shrink-0" %}
                         <div class="min-w-0 flex-1">
                             <div class="truncate font-medium">{{ repository.url }}</div>
-                            <div class="text-xs text-muted-foreground">rama {{ repository.branch }} · /mnt/repos/{{ repository.slug }}</div>
+                            <div class="text-xs text-muted-foreground">{% blocktranslate with branch=repository.branch slug=repository.slug %}rama {{ branch }} · /mnt/repos/{{ slug }}{% endblocktranslate %}</div>
                         </div>
-                        <form method="post" action="{% url 'instance-repo-remove' object.pk repository.pk %}" onsubmit="return confirm('¿Quitar este repositorio?');">
+                        <form method="post" action="{% url 'instance-repo-remove' object.pk repository.pk %}" onsubmit="return confirm('{{ confirm_repo_remove|escapejs }}');">
                             {% csrf_token %}
-                            <button type="submit" title="Quitar" aria-label="Quitar" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-accent">
+                            <button type="submit" title="{% translate "Quitar" %}" aria-label="{% translate "Quitar" %}" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-accent">
                                 <i data-lucide="trash-2" class="h-4 w-4"></i>
                             </button>
                         </form>
                     </li>
                     {% empty %}
-                    {% if not object.github_repo %}<li class="px-4 py-3 text-muted-foreground">Sin repositorios</li>{% endif %}
+                    {% if not object.github_repo %}<li class="px-4 py-3 text-muted-foreground">{% translate "Sin repositorios" %}</li>{% endif %}
                     {% endfor %}
                 </ul>
                 <form method="post" action="{% url 'instance-repo-add' object.pk %}" class="flex flex-wrap gap-2">
                     {% csrf_token %}
-                    <input name="url" required placeholder="https://github.com/OCA/web.git" aria-label="URL del repositorio"
+                    <input name="url" required placeholder="https://github.com/OCA/web.git" aria-label="{% translate "URL del repositorio" %}"
                         class="h-10 min-w-[16rem] flex-1 rounded-md border border-input bg-background px-3 text-sm">
-                    <input name="branch" placeholder="{{ object.odoo_version }}" value="{{ object.odoo_version }}" aria-label="Rama"
+                    <input name="branch" placeholder="{{ object.odoo_version }}" value="{{ object.odoo_version }}" aria-label="{% translate "Rama" %}"
                         class="h-10 w-32 rounded-md border border-input bg-background px-3 text-sm">
                     <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                        <i data-lucide="plus" class="mr-2 h-4 w-4"></i> Añadir
+                        <i data-lucide="plus" class="mr-2 h-4 w-4"></i> {% translate "Añadir" %}
                     </button>
                 </form>
-                <p class="text-xs text-muted-foreground">Los repos privados usan el token de GitHub del dueño de la instancia (Settings → GitHub).</p>
+                <p class="text-xs text-muted-foreground">{% translate "Los repos privados usan el token de GitHub del dueño de la instancia (Settings → GitHub)." %}</p>
             </div>
         </div>
 
@@ -684,52 +688,53 @@
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm" x-data="{ showSecret: false }">
             <div class="flex flex-wrap items-start gap-3 p-6 pb-2">
                 <div class="min-w-0 flex-1 space-y-1.5">
-                    <h3 class="flex items-center gap-2 font-semibold leading-none tracking-tight"><i data-lucide="git-pull-request-arrow" class="h-4 w-4"></i> Actualización automática al hacer push</h3>
-                    <p class="text-sm text-muted-foreground">Cada push a la rama de uno de los repositorios de esta instancia (el principal o los de addons) la actualiza sola, como tarea con su log en «Tareas recientes». Además, cada noche se actualiza aunque el repositorio no tenga webhook. Solo se reinicia Odoo si el código cambió.</p>
+                    <h3 class="flex items-center gap-2 font-semibold leading-none tracking-tight"><i data-lucide="git-pull-request-arrow" class="h-4 w-4"></i> {% translate "Actualización automática al hacer push" %}</h3>
+                    <p class="text-sm text-muted-foreground">{% translate "Cada push a la rama de uno de los repositorios de esta instancia (el principal o los de addons) la actualiza sola, como tarea con su log en «Tareas recientes». Además, cada noche se actualiza aunque el repositorio no tenga webhook. Solo se reinicia Odoo si el código cambió." %}</p>
                 </div>
-                {% if object.auto_update %}<span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900/40 dark:text-green-300">Activa</span>{% endif %}
+                {% if object.auto_update %}<span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-900/40 dark:text-green-300">{% translate "Activa" %}</span>{% endif %}
             </div>
             <div class="space-y-4 p-6 pt-4">
                 <form method="post" action="{% url 'instance-auto-update' object.pk %}" class="flex flex-wrap items-end gap-2">
                     {% csrf_token %}
                     <div class="min-w-64 flex-1 space-y-1.5">
-                        <label for="auto_update" class="text-sm font-medium">Al recibir un push</label>
+                        <label for="auto_update" class="text-sm font-medium">{% translate "Al recibir un push" %}</label>
                         <select id="auto_update" name="auto_update" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                             {% for value, label in auto_update_choices %}
                             <option value="{{ value }}" {% if object.auto_update == value %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">Guardar</button>
+                    <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">{% translate "Guardar" %}</button>
                 </form>
-                <p class="text-xs text-muted-foreground">«Actualizar todos los módulos» ejecuta <code class="font-mono">-u all</code> en cada base de datos (campos, vistas y datos nuevos de los módulos) y tarda más; «Pull» solo trae el código y reinicia Odoo.</p>
+                <p class="text-xs text-muted-foreground">{% blocktranslate %}«Actualizar todos los módulos» ejecuta <code class="font-mono">-u all</code> en cada base de datos (campos, vistas y datos nuevos de los módulos) y tarda más; «Pull» solo trae el código y reinicia Odoo.{% endblocktranslate %}</p>
 
                 {% if object.auto_update %}
                 <div class="space-y-3 rounded-lg border bg-muted/30 p-4 text-sm">
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <p class="font-medium">Webhook de GitHub</p>
+                        <p class="font-medium">{% translate "Webhook de GitHub" %}</p>
                         <form method="post" action="{% url 'instance-webhook-github' object.pk %}">
                             {% csrf_token %}
                             <button type="submit" class="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent">
-                                {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4" %} Crear webhook en GitHub
+                                {% include "orchestrator/includes/github_icon.html" with cls="h-4 w-4" %} {% translate "Crear webhook en GitHub" %}
                             </button>
                         </form>
                     </div>
-                    <p class="text-xs text-muted-foreground">Un webhook por repositorio basta: el push actualiza todas las instancias en marcha que usan ese repositorio y rama con la actualización automática activa, aunque el webhook sea de otra instancia. Lo crea en todos los repositorios de la instancia con tu token de GitHub (necesita el permiso <code class="font-mono">admin:repo_hook</code>, o «Webhooks: lectura y escritura» en un token fine-grained). O añádelo a mano en cada repositorio → Settings → Webhooks → Add webhook:</p>
+                    <p class="text-xs text-muted-foreground">{% blocktranslate %}Un webhook por repositorio basta: el push actualiza todas las instancias en marcha que usan ese repositorio y rama con la actualización automática activa, aunque el webhook sea de otra instancia. Lo crea en todos los repositorios de la instancia con tu token de GitHub (necesita el permiso <code class="font-mono">admin:repo_hook</code>, o «Webhooks: lectura y escritura» en un token fine-grained). O añádelo a mano en cada repositorio → Settings → Webhooks → Add webhook:{% endblocktranslate %}</p>
                     <dl class="grid gap-2 sm:grid-cols-[10rem_1fr]">
                         <dt class="text-muted-foreground">Payload URL</dt>
                         <dd class="flex items-center gap-2"><code class="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1 text-xs">{{ webhook_url }}</code>
-                            <button type="button" onclick="navigator.clipboard.writeText('{{ webhook_url|escapejs }}')" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background hover:bg-accent" title="Copiar"><i data-lucide="copy" class="h-3 w-3"></i></button></dd>
+                            <button type="button" onclick="navigator.clipboard.writeText('{{ webhook_url|escapejs }}')" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background hover:bg-accent" title="{% translate "Copiar" %}"><i data-lucide="copy" class="h-3 w-3"></i></button></dd>
                         <dt class="text-muted-foreground">Content type</dt><dd><code class="rounded bg-muted px-2 py-1 text-xs">application/json</code></dd>
                         <dt class="text-muted-foreground">Secret</dt>
                         <dd class="flex items-center gap-2"><code class="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1 text-xs" x-text="showSecret ? '{{ object.webhook_secret|escapejs }}' : '••••••••••••••••'">••••••••••••••••</code>
-                            <button type="button" @click="showSecret = !showSecret" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background hover:bg-accent" title="Mostrar/ocultar"><i data-lucide="eye" class="h-3 w-3"></i></button>
-                            <button type="button" onclick="navigator.clipboard.writeText('{{ object.webhook_secret|escapejs }}')" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background hover:bg-accent" title="Copiar"><i data-lucide="copy" class="h-3 w-3"></i></button></dd>
-                        <dt class="text-muted-foreground">Eventos</dt><dd>Just the <strong>push</strong> event</dd>
+                            <button type="button" @click="showSecret = !showSecret" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background hover:bg-accent" title="{% translate "Mostrar/ocultar" %}"><i data-lucide="eye" class="h-3 w-3"></i></button>
+                            <button type="button" onclick="navigator.clipboard.writeText('{{ object.webhook_secret|escapejs }}')" class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input bg-background hover:bg-accent" title="{% translate "Copiar" %}"><i data-lucide="copy" class="h-3 w-3"></i></button></dd>
+                        <dt class="text-muted-foreground">{% translate "Eventos" %}</dt><dd>Just the <strong>push</strong> event</dd>
                     </dl>
-                    <form method="post" action="{% url 'instance-webhook-secret' object.pk %}" onsubmit="return confirm('¿Generar un secreto nuevo? Los webhooks con el actual dejarán de funcionar hasta actualizarlos.')">
+                    {% translate "¿Generar un secreto nuevo? Los webhooks con el actual dejarán de funcionar hasta actualizarlos." as confirm_new_secret %}
+                    <form method="post" action="{% url 'instance-webhook-secret' object.pk %}" onsubmit="return confirm('{{ confirm_new_secret|escapejs }}')">
                         {% csrf_token %}
-                        <button type="submit" class="text-xs text-muted-foreground underline hover:text-foreground">Generar un secreto nuevo</button>
+                        <button type="submit" class="text-xs text-muted-foreground underline hover:text-foreground">{% translate "Generar un secreto nuevo" %}</button>
                     </form>
                 </div>
                 {% endif %}
@@ -742,8 +747,8 @@
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm" x-data="{ editing: {{ env_keys|yesno:'false,true' }} }">
             <div class="flex flex-wrap items-start gap-3 p-6 pb-2">
                 <div class="min-w-0 flex-1 space-y-1.5">
-                    <h3 class="flex items-center gap-2 font-semibold leading-none tracking-tight"><i data-lucide="variable" class="h-4 w-4"></i> Variables de entorno</h3>
-                    <p class="text-sm text-muted-foreground">Se pasan al contenedor de Odoo de esta instancia en cada despliegue (los módulos las leen con <code class="font-mono">os.environ</code>). Solo las ve quien gestiona la instancia.</p>
+                    <h3 class="flex items-center gap-2 font-semibold leading-none tracking-tight"><i data-lucide="variable" class="h-4 w-4"></i> {% translate "Variables de entorno" %}</h3>
+                    <p class="text-sm text-muted-foreground">{% blocktranslate %}Se pasan al contenedor de Odoo de esta instancia en cada despliegue (los módulos las leen con <code class="font-mono">os.environ</code>). Solo las ve quien gestiona la instancia.{% endblocktranslate %}</p>
                 </div>
                 {% if env_keys %}<span class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold">{{ env_keys|length }}</span>{% endif %}
             </div>
@@ -751,20 +756,20 @@
                 {% if env_keys %}
                 <div class="flex flex-wrap items-center gap-2" x-show="!editing">
                     {% for key in env_keys %}<code class="rounded bg-muted px-2 py-1 font-mono text-xs">{{ key }}</code>{% endfor %}
-                    <button type="button" @click="editing = true" class="ml-auto inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"><i data-lucide="pencil" class="h-4 w-4"></i> Ver y editar</button>
+                    <button type="button" @click="editing = true" class="ml-auto inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"><i data-lucide="pencil" class="h-4 w-4"></i> {% translate "Ver y editar" %}</button>
                 </div>
                 {% endif %}
                 <form method="post" action="{% url 'instance-env-vars' object.pk %}" class="space-y-3" x-show="editing" {% if env_keys %}x-cloak{% endif %}>
                     {% csrf_token %}
-                    <textarea name="env_vars" rows="5" spellcheck="false" autocomplete="off" aria-label="Variables de entorno"
+                    <textarea name="env_vars" rows="5" spellcheck="false" autocomplete="off" aria-label="{% translate "Variables de entorno" %}"
                         placeholder="NOMBRE=valor&#10;OTRA_VARIABLE=otro valor"
                         class="flex w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm">{{ object.env_vars }}</textarea>
                     <div class="flex flex-wrap items-center gap-3">
-                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="redeploy" value="1" checked class="h-4 w-4 rounded border-input"> Redesplegar ahora para aplicarlas</label>
-                        <button type="submit" class="ml-auto inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">Guardar</button>
+                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="redeploy" value="1" checked class="h-4 w-4 rounded border-input"> {% translate "Redesplegar ahora para aplicarlas" %}</label>
+                        <button type="submit" class="ml-auto inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">{% translate "Guardar" %}</button>
                     </div>
                 </form>
-                <p class="text-xs text-muted-foreground">Una por línea, <code class="font-mono">NOMBRE=valor</code>; se ignoran las líneas vacías y las que empiezan por <code class="font-mono">#</code>. HOST, USER, PASSWORD y PORT los pone la plataforma. Las copias de la instancia las heredan; las demos de «Modo test» no.</p>
+                <p class="text-xs text-muted-foreground">{% blocktranslate %}Una por línea, <code class="font-mono">NOMBRE=valor</code>; se ignoran las líneas vacías y las que empiezan por <code class="font-mono">#</code>. HOST, USER, PASSWORD y PORT los pone la plataforma. Las copias de la instancia las heredan; las demos de «Modo test» no.{% endblocktranslate %}</p>
             </div>
         </div>
         {% endif %}
@@ -774,26 +779,26 @@
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-wrap items-start gap-3 p-6 pb-2">
                 <div class="min-w-0 flex-1 space-y-1.5">
-                    <h3 class="font-semibold leading-none tracking-tight">Instalar un módulo disponible</h3>
-                    <p class="text-sm text-muted-foreground">Instala o actualiza en todas las bases de datos de la instancia un módulo que ya está en sus addons (el tema, los de tus repositorios o los de Odoo). La instancia necesita tener al menos una base de datos.</p>
+                    <h3 class="font-semibold leading-none tracking-tight">{% translate "Instalar un módulo disponible" %}</h3>
+                    <p class="text-sm text-muted-foreground">{% translate "Instala o actualiza en todas las bases de datos de la instancia un módulo que ya está en sus addons (el tema, los de tus repositorios o los de Odoo). La instancia necesita tener al menos una base de datos." %}</p>
                 </div>
                 <form method="post" action="{% url 'instance-install-named-module' object.pk %}">
                     {% csrf_token %}
                     <input type="hidden" name="module" value="community_sh_theme">
                     <button type="submit" class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                        <i data-lucide="palette" class="h-4 w-4"></i> Instalar el tema Community SH
+                        <i data-lucide="palette" class="h-4 w-4"></i> {% translate "Instalar el tema Community SH" %}
                     </button>
                 </form>
             </div>
             <form method="post" action="{% url 'instance-install-named-module' object.pk %}" class="flex flex-wrap items-end gap-2 p-6 pt-4">
                 {% csrf_token %}
                 <div class="min-w-56 flex-1 space-y-1.5">
-                    <label for="named_module" class="text-sm font-medium">Nombre técnico</label>
+                    <label for="named_module" class="text-sm font-medium">{% translate "Nombre técnico" %}</label>
                     <input type="text" id="named_module" name="module" required pattern="[a-z0-9_]{2,64}" placeholder="sale_management"
                         class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm">
                 </div>
-                <label class="flex h-10 items-center gap-2 text-sm"><input type="checkbox" name="upgrade" value="1" class="h-4 w-4 rounded border-input"> Actualizar (-u) en vez de instalar</label>
-                <button type="submit" class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">Instalar</button>
+                <label class="flex h-10 items-center gap-2 text-sm"><input type="checkbox" name="upgrade" value="1" class="h-4 w-4 rounded border-input"> {% translate "Actualizar (-u) en vez de instalar" %}</label>
+                <button type="submit" class="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent">{% translate "Instalar" %}</button>
             </form>
         </div>
         {% endif %}
@@ -801,15 +806,14 @@
         <!-- Install Module from ZIP Card -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 pb-2">
-                <h3 class="font-semibold leading-none tracking-tight">Instalar Módulo</h3>
-                <p class="text-sm text-muted-foreground">Agregar al repositorio y desplegar</p>
+                <h3 class="font-semibold leading-none tracking-tight">{% translate "Instalar Módulo" %}</h3>
+                <p class="text-sm text-muted-foreground">{% translate "Agregar al repositorio y desplegar" %}</p>
             </div>
             <div class="p-6 pt-4">
                 {% if not object.github_repo %}
                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
                     <p class="text-xs text-yellow-800">
-                        Esta instancia no tiene un repositorio de GitHub configurado.
-                        Los módulos solo se pueden instalar en instancias con repositorio.
+                        {% translate "Esta instancia no tiene un repositorio de GitHub configurado. Los módulos solo se pueden instalar en instancias con repositorio." %}
                     </p>
                 </div>
                 {% else %}
@@ -817,19 +821,18 @@
                     class="space-y-3">
                     {% csrf_token %}
                     <div>
-                        <label class="text-sm font-medium mb-2 block">Archivo del Módulo</label>
+                        <label class="text-sm font-medium mb-2 block">{% translate "Archivo del Módulo" %}</label>
                         <input type="file" name="module_file" accept=".zip"
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium"
                             required>
                         <p class="text-xs text-muted-foreground mt-1">
-                            El módulo se agregará a <strong>{{ object.github_repo }}</strong> y se desplegará
-                            automáticamente
+                            {% blocktranslate with repo=object.github_repo %}El módulo se agregará a <strong>{{ repo }}</strong> y se desplegará automáticamente{% endblocktranslate %}
                         </p>
                     </div>
                     <button type="submit"
                         class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2">
                         <i data-lucide="upload" class="mr-2 h-4 w-4"></i>
-                        Subir e Instalar
+                        {% translate "Subir e Instalar" %}
                     </button>
                 </form>
                 {% endif %}
@@ -842,32 +845,33 @@
     <div x-show="activeTab === 'backups'" class="space-y-6">
         <!-- Create Backup Actions -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-            <h3 class="font-semibold leading-none tracking-tight mb-4">Create New Backup</h3>
+            <h3 class="font-semibold leading-none tracking-tight mb-4">{% translate "Create New Backup" %}</h3>
             <div class="flex gap-3">
                 <form method="post" action="{% url 'instance-backup' object.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="filestore" value="true">
                     <button type="submit"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                    <i data-lucide="download" class="mr-2 h-4 w-4"></i> Full Backup (with filestore)
+                    <i data-lucide="download" class="mr-2 h-4 w-4"></i> {% translate "Full Backup (with filestore)" %}
                 </button>
                 </form>
                 <form method="post" action="{% url 'instance-backup' object.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="filestore" value="false">
                     <button type="submit"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                    <i data-lucide="database" class="mr-2 h-4 w-4"></i> Database Only
+                    <i data-lucide="database" class="mr-2 h-4 w-4"></i> {% translate "Database Only" %}
                 </button>
                 </form>
             </div>
         </div>
         {% if can_manage %}
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-            <h3 class="font-semibold leading-none tracking-tight mb-1">Restaurar desde un archivo</h3>
-            <p class="mb-4 text-sm text-muted-foreground">Sustituye la base de datos y el filestore de esta instancia. Acepta backups del panel, del gestor de bases de datos de Odoo (.zip) o un volcado .dump.</p>
+            <h3 class="font-semibold leading-none tracking-tight mb-1">{% translate "Restaurar desde un archivo" %}</h3>
+            <p class="mb-4 text-sm text-muted-foreground">{% translate "Sustituye la base de datos y el filestore de esta instancia. Acepta backups del panel, del gestor de bases de datos de Odoo (.zip) o un volcado .dump." %}</p>
+            {% translate "Se sobrescribirán la base de datos y el filestore actuales. ¿Continuar?" as confirm_restore_file %}
             <form method="post" action="{% url 'instance-restore' object.pk %}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3"
-                onsubmit="return confirm('Se sobrescribirán la base de datos y el filestore actuales. ¿Continuar?');">
+                onsubmit="return confirm('{{ confirm_restore_file|escapejs }}');">
                 {% csrf_token %}
                 <input type="file" name="backup_file" required accept=".zip,.dump" class="text-sm">
                 <button type="submit" class="inline-flex h-10 items-center rounded-md bg-yellow-600 px-4 text-sm font-medium text-white hover:bg-yellow-700">
-                    <i data-lucide="upload" class="mr-2 h-4 w-4"></i> Restaurar
+                    <i data-lucide="upload" class="mr-2 h-4 w-4"></i> {% translate "Restaurar" %}
                 </button>
             </form>
         </div>
@@ -876,11 +880,13 @@
         <!-- Backups List -->
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex flex-col space-y-1.5 p-6 border-b">
-                <h3 class="font-semibold leading-none tracking-tight">Available Backups</h3>
-                <p class="text-sm text-muted-foreground">List of all created backups</p>
+                <h3 class="font-semibold leading-none tracking-tight">{% translate "Available Backups" %}</h3>
+                <p class="text-sm text-muted-foreground">{% translate "List of all created backups" %}</p>
             </div>
             <div class="p-6">
                 {% if backups %}
+                {% translate "ADVERTENCIA: Esto sobrescribirá la base de datos y archivos actuales. ¿Estás seguro de que quieres restaurar este backup?" as confirm_restore_backup %}
+                {% translate "¿Estás seguro de que quieres eliminar este backup?" as confirm_delete_backup %}
                 <div class="space-y-4">
                     {% for backup in backups %}
                     <div class="flex items-center justify-between p-4 rounded-lg border bg-background">
@@ -898,37 +904,37 @@
                                     <i data-lucide="hard-drive" class="h-3 w-3"></i>
                                     {{ backup.formatted_size }}
                                 </span>
-                                {% if backup.offsite_at %}<span class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800" title="Copiado fuera del servidor: {{ backup.offsite_key }}"><i data-lucide="cloud" class="h-3 w-3"></i> S3</span>{% endif %}
+                                {% if backup.offsite_at %}<span class="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800" title="{% blocktranslate with key=backup.offsite_key %}Copiado fuera del servidor: {{ key }}{% endblocktranslate %}"><i data-lucide="cloud" class="h-3 w-3"></i> S3</span>{% endif %}
                                 <span
                                     class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors border-transparent {% if backup.include_filestore %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
-                                    {% if backup.include_filestore %}With filestore{% else %}DB only{% endif %}
+                                    {% if backup.include_filestore %}{% translate "With filestore" %}{% else %}{% translate "Solo BD" %}{% endif %}
                                 </span>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <a href="{% url 'backup-download' backup.pk %}"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3">
-                                <i data-lucide="download" class="mr-2 h-4 w-4"></i> Download
+                                <i data-lucide="download" class="mr-2 h-4 w-4"></i> {% translate "Descargar" %}
                             </a>
 {% if can_manage %}
                             <a href="{% url 'backup-create-instance' backup.pk %}"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-green-200 bg-green-50 hover:bg-green-100 text-green-600 h-9 px-3">
-                                <i data-lucide="copy-plus" class="mr-2 h-4 w-4"></i> New Instance
+                                <i data-lucide="copy-plus" class="mr-2 h-4 w-4"></i> {% translate "New Instance" %}
                             </a>
                             <form action="{% url 'backup-restore-action' backup.pk %}" method="post"
-                                onsubmit="return confirm('ADVERTENCIA: Esto sobrescribirá la base de datos y archivos actuales. ¿Estás seguro de que quieres restaurar este backup?')">
+                                onsubmit="return confirm('{{ confirm_restore_backup|escapejs }}')">
                                 {% csrf_token %}
                                 <button type="submit"
                                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-yellow-600 text-white hover:bg-yellow-700 h-9 px-3">
-                                    <i data-lucide="rotate-ccw" class="mr-2 h-4 w-4"></i> Restore
+                                    <i data-lucide="rotate-ccw" class="mr-2 h-4 w-4"></i> {% translate "Restaurar" %}
                                 </button>
                             </form>
                             <form action="{% url 'backup-delete' backup.pk %}" method="post"
-                                onsubmit="return confirm('¿Estás seguro de que quieres eliminar este backup?')">
+                                onsubmit="return confirm('{{ confirm_delete_backup|escapejs }}')">
                                 {% csrf_token %}
                                 <button type="submit"
                                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-9 px-3">
-                                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Delete
+                                    <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> {% translate "Eliminar" %}
                                 </button>
                             </form>
 {% endif %}
@@ -939,8 +945,8 @@
                 {% else %}
                 <div class="text-center py-12">
                     <i data-lucide="archive-x" class="h-12 w-12 text-muted-foreground mx-auto mb-4"></i>
-                    <h3 class="text-lg font-medium">No backups available</h3>
-                    <p class="text-sm text-muted-foreground mt-2">Create a backup using the buttons above</p>
+                    <h3 class="text-lg font-medium">{% translate "No backups available" %}</h3>
+                    <p class="text-sm text-muted-foreground mt-2">{% translate "Create a backup using the buttons above" %}</p>
                 </div>
                 {% endif %}
             </div>
@@ -953,32 +959,32 @@
     <div x-show="activeTab === 'migrate'" x-cloak class="space-y-6">
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="border-b p-6">
-                <h3 class="font-semibold">Migrar desde otro Odoo</h3>
-                <p class="mt-1 text-sm text-muted-foreground">Copia por XML-RPC los datos de cualquier Odoo (versión 8 o posterior, en tu servidor o en Internet) a esta instancia. Se puede repetir: lo ya copiado no se duplica y continúa donde se quedó.</p>
+                <h3 class="font-semibold">{% translate "Migrar desde otro Odoo" %}</h3>
+                <p class="mt-1 text-sm text-muted-foreground">{% translate "Copia por XML-RPC los datos de cualquier Odoo (versión 8 o posterior, en tu servidor o en Internet) a esta instancia. Se puede repetir: lo ya copiado no se duplica y continúa donde se quedó." %}</p>
             </div>
             {% if migration_supported %}
             <form method="post" action="{% url 'instance-migrate' object.pk %}" class="grid gap-6 p-6 lg:grid-cols-2">
                 {% csrf_token %}
                 <fieldset class="space-y-3">
-                    <legend class="text-sm font-semibold">Origen</legend>
-                    <input name="source_url" required placeholder="https://erp.miempresa.com" aria-label="URL del Odoo de origen" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                    <input name="source_db" required placeholder="Base de datos" aria-label="Base de datos de origen" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <legend class="text-sm font-semibold">{% translate "Origen" %}</legend>
+                    <input name="source_url" required placeholder="https://erp.miempresa.com" aria-label="{% translate "URL del Odoo de origen" %}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <input name="source_db" required placeholder="{% translate "Base de datos" %}" aria-label="{% translate "Base de datos de origen" %}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <div class="grid grid-cols-2 gap-3">
-                        <input name="source_login" required value="admin" aria-label="Usuario de origen" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                        <input name="source_password" type="password" required placeholder="Contraseña o clave API" aria-label="Contraseña de origen" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        <input name="source_login" required value="admin" aria-label="{% translate "Usuario de origen" %}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        <input name="source_password" type="password" required placeholder="{% translate "Contraseña o clave API" %}" aria-label="{% translate "Contraseña de origen" %}" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                     </div>
                 </fieldset>
                 <fieldset class="space-y-3">
-                    <legend class="text-sm font-semibold">Destino: {{ object.name }} (Odoo {{ object.odoo_version }})</legend>
-                    <input name="target_db" required value="{{ object.database_name|default:'' }}" placeholder="Base de datos" aria-label="Base de datos de destino" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <legend class="text-sm font-semibold">{% blocktranslate with name=object.name version=object.odoo_version %}Destino: {{ name }} (Odoo {{ version }}){% endblocktranslate %}</legend>
+                    <input name="target_db" required value="{{ object.database_name|default:'' }}" placeholder="{% translate "Base de datos" %}" aria-label="{% translate "Base de datos de destino" %}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <div class="grid grid-cols-2 gap-3">
-                        <input name="target_login" required value="admin" aria-label="Usuario de destino" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                        <input name="target_password" type="password" required placeholder="Contraseña del administrador" aria-label="Contraseña de destino" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        <input name="target_login" required value="admin" aria-label="{% translate "Usuario de destino" %}" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                        <input name="target_password" type="password" required placeholder="{% translate "Contraseña del administrador" %}" aria-label="{% translate "Contraseña de destino" %}" autocomplete="off" class="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                     </div>
-                    <p class="text-xs text-muted-foreground">Instala antes en el destino Ventas, Compras y Facturación si vas a migrar esos datos. Las contraseñas no se guardan: solo se usan durante la migración.</p>
+                    <p class="text-xs text-muted-foreground">{% translate "Instala antes en el destino Ventas, Compras y Facturación si vas a migrar esos datos. Las contraseñas no se guardan: solo se usan durante la migración." %}</p>
                 </fieldset>
                 <fieldset class="lg:col-span-2">
-                    <legend class="text-sm font-semibold">Qué migrar</legend>
+                    <legend class="text-sm font-semibold">{% translate "Qué migrar" %}</legend>
                     <div class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {% for step, label in migration_steps %}
                         <label class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"><input type="checkbox" name="steps" value="{{ step }}" checked class="h-4 w-4 rounded border-input"> {{ label }}</label>
@@ -986,23 +992,24 @@
                     </div>
                 </fieldset>
                 <div class="flex items-center justify-between gap-3 lg:col-span-2">
-                    <p class="text-xs text-muted-foreground">Haz un backup de esta instancia antes de migrar. Los impuestos, monedas, países y unidades se buscan por nombre o código en el destino.</p>
+                    <p class="text-xs text-muted-foreground">{% translate "Haz un backup de esta instancia antes de migrar. Los impuestos, monedas, países y unidades se buscan por nombre o código en el destino." %}</p>
                     <button type="submit" class="inline-flex h-10 shrink-0 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                        <i data-lucide="arrow-right-left" class="mr-2 h-4 w-4"></i> Migrar
+                        <i data-lucide="arrow-right-left" class="mr-2 h-4 w-4"></i> {% translate "Migrar" %}
                     </button>
                 </div>
             </form>
             {% else %}
-            <p class="p-6 text-sm text-muted-foreground">La migración escribe en esta instancia con el modelo de facturación de Odoo {{ migration_min_version }}+: crea una instancia de Odoo {{ migration_min_version }} o posterior para migrar a ella (el origen puede ser cualquier versión desde la 8).</p>
+            <p class="p-6 text-sm text-muted-foreground">{% blocktranslate with version=migration_min_version %}La migración escribe en esta instancia con el modelo de facturación de Odoo {{ version }}+: crea una instancia de Odoo {{ version }} o posterior para migrar a ella (el origen puede ser cualquier versión desde la 8).{% endblocktranslate %}</p>
             {% endif %}
         </div>
         {% if last_migration %}
         <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
             <div class="flex items-center justify-between border-b px-6 py-3">
-                <h3 class="text-sm font-semibold">Última migración · {{ last_migration.params.source }}</h3>
+                <h3 class="text-sm font-semibold">{% blocktranslate with source=last_migration.params.source %}Última migración · {{ source }}{% endblocktranslate %}</h3>
                 <span class="text-xs text-muted-foreground">{{ last_migration.get_status_display }} · {{ last_migration.created_at|date:"d M Y H:i" }}</span>
             </div>
-            <pre class="max-h-96 overflow-auto whitespace-pre-wrap p-6 text-xs">{{ last_migration.result|default:"En cola…" }}</pre>
+            {% translate "En cola…" as queued %}
+            <pre class="max-h-96 overflow-auto whitespace-pre-wrap p-6 text-xs">{{ last_migration.result|default:queued }}</pre>
         </div>
         {% endif %}
     </div>
@@ -1014,8 +1021,8 @@
             <div class="flex flex-col space-y-1.5 p-6 pb-2 border-b">
                 <div class="flex items-center justify-between">
                     <div class="flex flex-col space-y-1">
-                        <h3 class="font-semibold leading-none tracking-tight">Live Logs</h3>
-                        <p class="text-sm text-muted-foreground">Real-time output from container.</p>
+                        <h3 class="font-semibold leading-none tracking-tight">{% translate "Live Logs" %}</h3>
+                        <p class="text-sm text-muted-foreground">{% translate "Real-time output from container." %}</p>
                     </div>
                     <span class="relative flex h-3 w-3">
                         <span
@@ -1039,13 +1046,13 @@
             <div class="flex flex-col space-y-1.5 p-6 pb-2 border-b">
                 <div class="flex items-center justify-between">
                     <div class="flex flex-col space-y-1">
-                        <h3 class="font-semibold leading-none tracking-tight">Consola Interactiva</h3>
-                        <p class="text-sm text-muted-foreground">Ejecuta comandos dentro del contenedor.</p>
+                        <h3 class="font-semibold leading-none tracking-tight">{% translate "Consola Interactiva" %}</h3>
+                        <p class="text-sm text-muted-foreground">{% translate "Ejecuta comandos dentro del contenedor." %}</p>
                     </div>
                     <div class="flex gap-2">
                         <button onclick="document.getElementById('requirements-file').click()"
                             class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
-                            title="Instalar desde requirements.txt">
+                            title="{% translate "Instalar desde requirements.txt" %}">
                             <i data-lucide="package-plus" class="h-4 w-4 mr-2"></i> Requirements
                         </button>
                         <input type="file" id="requirements-file" accept=".txt" class="hidden"
@@ -1074,12 +1081,12 @@
                     class="font-mono text-xs text-zinc-300 flex-1 overflow-y-auto whitespace-pre-wrap mb-2"></div>
                 <div class="flex gap-2">
                     <span class="text-green-400 font-mono text-xs">$</span>
-                    <input type="text" id="console-input" placeholder="Ingresa un comando (ej: pip install requests)"
+                    <input type="text" id="console-input" placeholder="{% translate "Ingresa un comando (ej: pip install requests)" %}"
                         class="flex-1 bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-300 font-mono focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                         onkeydown="handleConsoleInput(event)">
                     <button onclick="executeConsoleCommand()"
                         class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-                        <i data-lucide="play" class="mr-2 h-4 w-4"></i> Ejecutar
+                        <i data-lucide="play" class="mr-2 h-4 w-4"></i> {% translate "Ejecutar" %}
                     </button>
                 </div>
             </div>
@@ -1090,25 +1097,27 @@
     <!-- Domains Tab -->
     {% if ai_enabled %}
     <!-- AI assistant Tab -->
+    {% translate "hechos" as t_done %}{% translate "Deshacer estos cambios" as t_undo %}{% translate "archivo" as t_file %}{% translate "archivos" as t_files %}
+    {% translate "Solo lectura (repositorio): la IA lo extenderá con un módulo nuevo" as t_read_only %}
     <div x-show="activeTab === 'ai'" x-data="aiChat()" x-init="load()" class="space-y-4">
         <div class="relative rounded-xl border bg-card text-card-foreground shadow-sm flex flex-col" style="height: 70vh"
             @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="dragging = false; addFiles($event.dataTransfer.files)">
             <div x-show="dragging" x-cloak class="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-background/80 text-sm font-medium">
-                Suelta aquí los PDF, imágenes o archivos de texto
+                {% translate "Suelta aquí los PDF, imágenes o archivos de texto" %}
             </div>
             <div class="flex items-center justify-between border-b px-5 py-3">
                 <div>
-                    <h3 class="font-semibold">Asistente de IA</h3>
-                    <p class="text-xs text-muted-foreground">Crea y modifica módulos de Odoo {{ object.odoo_version }} en la carpeta de addons de esta instancia y los instala.</p>
+                    <h3 class="font-semibold">{% translate "Asistente de IA" %}</h3>
+                    <p class="text-xs text-muted-foreground">{% blocktranslate with version=object.odoo_version %}Crea y modifica módulos de Odoo {{ version }} en la carpeta de addons de esta instancia y los instala.{% endblocktranslate %}</p>
                 </div>
                 <button type="button" @click="reset()" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent">
-                    <i data-lucide="rotate-ccw" class="mr-1.5 h-3.5 w-3.5"></i> Nueva conversación
+                    <i data-lucide="rotate-ccw" class="mr-1.5 h-3.5 w-3.5"></i> {% translate "Nueva conversación" %}
                 </button>
             </div>
             <div x-ref="log" class="flex-1 space-y-3 overflow-y-auto p-5">
                 <template x-if="messages.length === 0 && !loading">
                     <div class="mx-auto max-w-lg py-10 text-center text-sm text-muted-foreground">
-                        <p>Pídele, por ejemplo: «Crea un módulo que añada un campo "Código interno" a los contactos y lo muestre en el formulario».</p>
+                        <p>{% blocktranslate %}Pídele, por ejemplo: «Crea un módulo que añada un campo "Código interno" a los contactos y lo muestre en el formulario».{% endblocktranslate %}</p>
                     </div>
                 </template>
                 <template x-for="message in messages" :key="message.id">
@@ -1133,7 +1142,7 @@
                             </template>
                             <template x-if="message.plan && message.plan.length">
                                 <div class="mt-3 rounded-md bg-background p-3 text-xs text-foreground">
-                                    <p class="mb-2 font-semibold" x-text="'Plan · ' + message.plan.filter(s => s.status === 'done').length + '/' + message.plan.length + ' hechos'"></p>
+                                    <p class="mb-2 font-semibold" x-text="'Plan · ' + message.plan.filter(s => s.status === 'done').length + '/' + message.plan.length + ' {{ t_done|escapejs }}'"></p>
                                     <ul class="space-y-1">
                                         <template x-for="(step, index) in message.plan" :key="index">
                                             <li class="flex items-start gap-2">
@@ -1151,10 +1160,10 @@
                                     <template x-if="!message.undo.reverted">
                                         <button type="button" @click="revert(message.undo)" :disabled="sending"
                                             class="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 hover:bg-accent disabled:opacity-50">
-                                            ↶ <span x-text="'Deshacer estos cambios (' + message.undo.files + (message.undo.files === 1 ? ' archivo)' : ' archivos)')"></span>
+                                            ↶ <span x-text="'{{ t_undo|escapejs }} (' + message.undo.files + (message.undo.files === 1 ? ' {{ t_file|escapejs }})' : ' {{ t_files|escapejs }})')"></span>
                                         </button>
                                     </template>
-                                    <template x-if="message.undo.reverted"><span class="text-muted-foreground">Cambios deshechos</span></template>
+                                    <template x-if="message.undo.reverted"><span class="text-muted-foreground">{% translate "Cambios deshechos" %}</span></template>
                                 </div>
                             </template>
                         </div>
@@ -1164,7 +1173,7 @@
                     <div class="flex items-center gap-3 rounded-lg bg-muted px-4 py-2.5 text-sm text-muted-foreground">
                         <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-primary"></span>
                         <span x-text="progress()"></span>
-                        <button type="button" x-show="running" @click="stop()" class="rounded-md border border-input bg-background px-2 py-0.5 text-xs text-foreground hover:bg-accent">Detener</button>
+                        <button type="button" x-show="running" @click="stop()" class="rounded-md border border-input bg-background px-2 py-0.5 text-xs text-foreground hover:bg-accent">{% translate "Detener" %}</button>
                     </div>
                 </div>
             </div>
@@ -1173,7 +1182,7 @@
                 <template x-for="module in tagged()" :key="module.name">
                     <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
                         :class="module.editable ? 'bg-blue-100 text-blue-800' : 'bg-muted text-muted-foreground'"
-                        :title="module.editable ? 'Editable (addons)' : 'Solo lectura (repositorio): la IA lo extenderá con un módulo nuevo'"
+                        :title="module.editable ? 'Editable (addons)' : '{{ t_read_only|escapejs }}'"
                         x-text="'@' + module.name + (module.editable ? '' : ' · ' + module.source)"></span>
                 </template>
             </div>
@@ -1181,14 +1190,14 @@
                 <template x-for="(file, index) in files" :key="index">
                     <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
                         <span x-text="file.name"></span>
-                        <button type="button" @click="files.splice(index, 1)" class="text-muted-foreground hover:text-foreground" aria-label="Quitar">×</button>
+                        <button type="button" @click="files.splice(index, 1)" class="text-muted-foreground hover:text-foreground" aria-label="{% translate "Quitar" %}">×</button>
                     </span>
                 </template>
             </div>
             <form @submit.prevent="send()" class="relative flex gap-2 border-t p-3">
                 <input type="file" x-ref="picker" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md,.csv,.xml,.py,.json,.js,.html,.css,.po,.log"
                     @change="addFiles($event.target.files); $event.target.value = ''">
-                <button type="button" @click="$refs.picker.click()" title="Adjuntar PDF, imágenes o archivos de texto" aria-label="Adjuntar archivos"
+                <button type="button" @click="$refs.picker.click()" title="{% translate "Adjuntar PDF, imágenes o archivos de texto" %}" aria-label="{% translate "Adjuntar archivos" %}"
                     class="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 hover:bg-accent">
                     <i data-lucide="paperclip" class="h-4 w-4"></i>
                 </button>
@@ -1205,14 +1214,14 @@
                         </li>
                     </template>
                 </ul>
-                <textarea x-model="draft" x-ref="input" rows="2" placeholder="Describe el módulo o el cambio que quieres… Usa @ para etiquetar un módulo"
+                <textarea x-model="draft" x-ref="input" rows="2" placeholder="{% translate "Describe el módulo o el cambio que quieres… Usa @ para etiquetar un módulo" %}"
                     @input="suggest()" @click="suggest()"
                     @keydown.arrow-down="if (suggestions.length) { $event.preventDefault(); active = (active + 1) % suggestions.length; }"
                     @keydown.arrow-up="if (suggestions.length) { $event.preventDefault(); active = (active - 1 + suggestions.length) % suggestions.length; }"
                     @keydown.escape="suggestions = []"
                     @keydown.enter="if (suggestions.length) { $event.preventDefault(); pick(suggestions[active]); } else if (!$event.shiftKey) { $event.preventDefault(); send(); }"
                     class="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm"></textarea>
-                <button type="submit" :disabled="sending || running || (!draft.trim() && !files.length)" aria-label="Enviar"
+                <button type="submit" :disabled="sending || running || (!draft.trim() && !files.length)" aria-label="{% translate "Enviar" %}"
                     class="inline-flex items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                     <i data-lucide="send" class="h-4 w-4"></i>
                 </button>
@@ -1221,11 +1230,15 @@
         {% if object.odoo_version != '8.0' %}
         <p class="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <i data-lucide="message-square-text" class="mt-0.5 h-3.5 w-3.5 shrink-0"></i>
-            <span>También desde Odoo: un administrador escribe <code class="font-mono">/ia …</code> en el chatter de cualquier registro (p. ej. «/ia añade una columna Obra a esta lista») y la respuesta llega a ese mismo chatter. El módulo <code class="font-mono">community_sh_ai</code> se instala solo al desplegar.</span>
+            <span>{% blocktranslate %}También desde Odoo: un administrador escribe <code class="font-mono">/ia …</code> en el chatter de cualquier registro (p. ej. «/ia añade una columna Obra a esta lista») y la respuesta llega a ese mismo chatter. El módulo <code class="font-mono">community_sh_ai</code> se instala solo al desplegar.{% endblocktranslate %}</span>
         </p>
         {% endif %}
-        <p class="text-xs text-muted-foreground">Puedes adjuntar PDF con capturas o especificaciones: en peticiones largas la IA arma un plan y lo va completando paso a paso (puedes cerrar la página, sigue trabajando). La instalación de módulos aparece en la pestaña «Tareas recientes». Haz un backup antes de cambios grandes.</p>
+        <p class="text-xs text-muted-foreground">{% translate "Puedes adjuntar PDF con capturas o especificaciones: en peticiones largas la IA arma un plan y lo va completando paso a paso (puedes cerrar la página, sigue trabajando). La instalación de módulos aparece en la pestaña «Tareas recientes». Haz un backup antes de cambios grandes." %}</p>
     </div>
+    {% translate "Adjunta como máximo 5 archivos" as t_max_files %}{% translate "supera los 20 MB" as t_too_big %}{% translate "Enviando…" as t_sending %}
+    {% translate "Pensando y trabajando en los archivos…" as t_thinking %}{% translate "Paso {step} de {total}" as t_step %}
+    {% translate "Se restaurarán los archivos como estaban antes de esta petición (y se deshacen también las posteriores). ¿Continuar?" as t_confirm_revert %}
+    {% translate "¿Borrar la conversación?" as t_confirm_reset %}
     <script>
         function aiChat() {
             const csrf = () => document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -1234,19 +1247,19 @@
                 modules: [], suggestions: [], active: 0, files: [], dragging: false, timer: null,
                 addFiles(list) {
                     for (const file of list) {
-                        if (this.files.length >= 5) { this.error = 'Adjunta como máximo 5 archivos'; break; }
-                        if (file.size > 20 * 1024 * 1024) { this.error = file.name + ' supera los 20 MB'; continue; }
+                        if (this.files.length >= 5) { this.error = '{{ t_max_files|escapejs }}'; break; }
+                        if (file.size > 20 * 1024 * 1024) { this.error = file.name + ' {{ t_too_big|escapejs }}'; continue; }
                         this.files.push(file);
                     }
                 },
                 progress() {
-                    if (this.sending) return 'Enviando…';
+                    if (this.sending) return '{{ t_sending|escapejs }}';
                     const turn = [...this.messages].reverse().find(m => m.role === 'user');
                     const plan = (turn && turn.plan) || [];
-                    if (!plan.length) return 'Pensando y trabajando en los archivos…';
+                    if (!plan.length) return '{{ t_thinking|escapejs }}';
                     const current = plan.find(s => s.status === 'in_progress');
                     const done = plan.filter(s => s.status === 'done').length;
-                    return 'Paso ' + Math.min(done + 1, plan.length) + ' de ' + plan.length + (current ? ': ' + current.step : '');
+                    return '{{ t_step|escapejs }}'.replace('{step}', Math.min(done + 1, plan.length)).replace('{total}', plan.length) + (current ? ': ' + current.step : '');
                 },
                 apply(data) {
                     const before = this.messages.length;
@@ -1321,7 +1334,7 @@
                     this.scroll();
                 },
                 async revert(undo) {
-                    if (!confirm('Se restaurarán los archivos como estaban antes de esta petición (y se deshacen también las posteriores). ¿Continuar?')) return;
+                    if (!confirm('{{ t_confirm_revert|escapejs }}')) return;
                     this.sending = true; this.error = '';
                     try {
                         const response = await fetch("{% url 'instance-ai-revert' object.pk 0 %}".replace('/0/', '/' + undo.turn + '/'), {
@@ -1337,7 +1350,7 @@
                     this.sending = false; this.scroll();
                 },
                 async reset() {
-                    if (!confirm('¿Borrar la conversación?')) return;
+                    if (!confirm('{{ t_confirm_reset|escapejs }}')) return;
                     const response = await fetch("{% url 'instance-ai-reset' object.pk %}", { method: 'POST', headers: { 'X-CSRFToken': csrf() } });
                     const data = await response.json();
                     if (!response.ok) { this.error = data.error || response.status; return; }
@@ -1367,26 +1380,26 @@
                         <i data-lucide="alert-triangle" class="h-6 w-6 text-destructive"></i>
                     </div>
                     <div>
-                        <h3 class="text-lg font-semibold">¿Eliminar Instancia?</h3>
-                        <p class="text-sm text-muted-foreground">Esta acción no se puede deshacer</p>
+                        <h3 class="text-lg font-semibold">{% translate "¿Eliminar Instancia?" %}</h3>
+                        <p class="text-sm text-muted-foreground">{% translate "Esta acción no se puede deshacer" %}</p>
                     </div>
                 </div>
 
                 <div class="space-y-3 mb-6">
                     <div class="bg-destructive/5 border border-destructive/20 rounded-lg p-4">
-                        <p class="text-sm font-medium mb-2">Se eliminará permanentemente:</p>
+                        <p class="text-sm font-medium mb-2">{% translate "Se eliminará permanentemente:" %}</p>
                         <ul class="text-sm text-muted-foreground space-y-1 ml-4">
                             <li class="flex items-center gap-2">
                                 <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                                El contenedor Docker <strong class="text-foreground">{{ object.name }}</strong>
+                                {% blocktranslate with name=object.name %}El contenedor Docker <strong class="text-foreground">{{ name }}</strong>{% endblocktranslate %}
                             </li>
                             <li class="flex items-center gap-2">
                                 <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                                Todos los datos y configuraciones
+                                {% translate "Todos los datos y configuraciones" %}
                             </li>
                             <li class="flex items-center gap-2">
                                 <span class="h-1.5 w-1.5 rounded-full bg-destructive"></span>
-                                Los addons personalizados
+                                {% translate "Los addons personalizados" %}
                             </li>
                         </ul>
                     </div>
@@ -1395,11 +1408,11 @@
                 <div class="flex gap-3">
                     <button @click="deleteModal = false; step = 1; confirmText = ''"
                         class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                        Cancelar
+                        {% translate "Cancelar" %}
                     </button>
                     <button @click="step = 2"
                         class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
-                        Continuar
+                        {% translate "Continuar" %}
                     </button>
                 </div>
             </div>
@@ -1407,12 +1420,12 @@
             <!-- Step 2: Confirmation -->
             <div x-show="step === 2" class="p-6">
                 <div class="mb-4">
-                    <h3 class="text-lg font-semibold mb-2">Confirmar Eliminación</h3>
+                    <h3 class="text-lg font-semibold mb-2">{% translate "Confirmar Eliminación" %}</h3>
                     <p class="text-sm text-muted-foreground mb-4">
-                        Escribe <strong class="text-foreground">{{ object.name }}</strong> para confirmar:
+                        {% blocktranslate with name=object.name %}Escribe <strong class="text-foreground">{{ name }}</strong> para confirmar:{% endblocktranslate %}
                     </p>
 
-                    <input type="text" x-model="confirmText" placeholder="Escribe el nombre de la instancia"
+                    <input type="text" x-model="confirmText" placeholder="{% translate "Escribe el nombre de la instancia" %}"
                         @keyup.enter="if (confirmText === '{{ object.name }}') document.getElementById('deleteForm').submit()"
                         class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                 </div>
@@ -1420,14 +1433,14 @@
                 <div class="flex gap-3">
                     <button @click="step = 1; confirmText = ''"
                         class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-                        <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i> Atrás
+                        <i data-lucide="arrow-left" class="mr-2 h-4 w-4"></i> {% translate "Atrás" %}
                     </button>
                     <button
                         @click="if (confirmText === '{{ object.name }}') document.getElementById('deleteForm').submit()"
                         :disabled="confirmText !== '{{ object.name }}'"
                         :class="confirmText === '{{ object.name }}' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'opacity-50 cursor-not-allowed'"
                         class="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-10 px-4 py-2">
-                        <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> Eliminar
+                        <i data-lucide="trash-2" class="mr-2 h-4 w-4"></i> {% translate "Eliminar" %}
                     </button>
                 </div>
             </div>
@@ -1436,6 +1449,9 @@
 
 </div> <!-- Cierre del div principal con x-data -->
 
+{% translate "Ejecutando..." as t_running %}{% translate "(sin salida)" as t_no_output %}{% translate "Error desconocido" as t_unknown_error %}{% translate "Error de conexión" as t_connection_error %}
+{% translate "Consola limpiada" as t_console_cleared %}{% translate "Instalando dependencias desde" as t_installing_from %}{% translate "Leyendo archivo y ejecutando pip install..." as t_reading_file %}
+{% translate "Instalación completada" as t_install_done %}{% translate "Error en la instalación" as t_install_failed %}
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const logsContainer = document.getElementById('logs-container');
@@ -1497,7 +1513,7 @@
         consoleInput.value = '';
 
         // Show loading
-        appendToConsole('Ejecutando...', 'output');
+        appendToConsole('{{ t_running|escapejs }}', 'output');
 
         // Execute command
         fetch(consoleUrl, {
@@ -1514,14 +1530,14 @@
                 consoleOutput.lastChild.remove();
 
                 if (data.success) {
-                    appendToConsole(data.output || '(sin salida)', 'output');
+                    appendToConsole(data.output || '{{ t_no_output|escapejs }}', 'output');
                 } else {
-                    appendToConsole(data.error || 'Error desconocido', 'error');
+                    appendToConsole(data.error || '{{ t_unknown_error|escapejs }}', 'error');
                 }
             })
             .catch(error => {
                 consoleOutput.lastChild.remove();
-                appendToConsole(`Error de conexión: ${error.message}`, 'error');
+                appendToConsole(`{{ t_connection_error|escapejs }}: ${error.message}`, 'error');
             });
     }
 
@@ -1553,15 +1569,15 @@
 
     function clearConsole() {
         consoleOutput.innerHTML = '';
-        appendToConsole('Consola limpiada', 'output');
+        appendToConsole('{{ t_console_cleared|escapejs }}', 'output');
     }
 
     function handleRequirementsFile(event) {
         const file = event.target.files[0];
         if (!file) return;
 
-        appendToConsole(`[${getCurrentTime()}] $ Instalando dependencias desde ${file.name}...`, 'input');
-        appendToConsole('Leyendo archivo y ejecutando pip install...', 'output');
+        appendToConsole(`[${getCurrentTime()}] $ {{ t_installing_from|escapejs }} ${file.name}...`, 'input');
+        appendToConsole('{{ t_reading_file|escapejs }}', 'output');
 
         const formData = new FormData();
         formData.append('requirements', file);
@@ -1576,9 +1592,9 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    appendToConsole(data.output || '✓ Instalación completada', 'output');
+                    appendToConsole(data.output || '✓ {{ t_install_done|escapejs }}', 'output');
                 } else {
-                    appendToConsole(data.error || 'Error en la instalación', 'error');
+                    appendToConsole(data.error || '{{ t_install_failed|escapejs }}', 'error');
                 }
             })
             .catch(error => {
@@ -1590,6 +1606,7 @@
     }
 </script>
 
+{% translate "No se pudo obtener" as t_fetch_failed %}
 <script>
     // Passwords aren't in the page: they're fetched when shown or copied (each time is recorded in Auditoría)
     function revealField(url) {
@@ -1600,7 +1617,7 @@
             show: false, value: '',
             toggle() {
                 if (this.show) { this.show = false; return; }
-                load().then(v => { this.value = v; this.show = true; }).catch(() => alert('No se pudo obtener'));
+                load().then(v => { this.value = v; this.show = true; }).catch(() => alert('{{ t_fetch_failed|escapejs }}'));
             },
             copy() {
                 // ClipboardItem with a promise keeps the click's permission while it loads (Safari)

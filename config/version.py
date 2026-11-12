@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.84'
+VERSION = '1.0.85'
 
 CHANGELOG = [
+    {
+        'version': '1.0.85',
+        'date': '2026-11-12',
+        'notes': [
+            'Ficha de la instancia en inglés: con el panel en EN, toda la página (pestañas, etiquetas, botones, ayudas, confirmaciones, el chat de IA y la consola) sale en inglés; en español queda igual que antes. Unos 240 textos nuevos en los catálogos de traducción.',
+        ],
+    },
     {
         'version': '1.0.84',
         'date': '2026-11-12',
