@@ -17,10 +17,11 @@ def two_factor_setup(request):
         action = request.POST.get('action')
         
         def current_code_ok():
-            """Changing or removing an active 2FA needs a code of the current one."""
+            """Changing or removing an active 2FA needs a code of the current one (or a recovery code)."""
             if not (profile.two_factor_enabled and profile.two_factor_secret):
                 return True
-            return pyotp.TOTP(profile.two_factor_secret).verify(request.POST.get('current_code', '').strip(), valid_window=1)
+            from .two_factor import verify_code
+            return verify_code(user, request.POST.get('current_code', ''))
 
         if action == 'enable':
             if not current_code_ok():
@@ -63,12 +64,15 @@ def two_factor_setup(request):
 
             totp = pyotp.TOTP(secret)
             if totp.verify(code, valid_window=1):
+                from .two_factor import new_recovery_codes
                 request.session.pop('2fa_pending_secret', None)
                 profile.two_factor_secret = secret
                 profile.two_factor_enabled = True
                 profile.save()
+                # Shown once on the next page, to keep somewhere else: they get in when the phone is lost
+                request.session['new_recovery_codes'] = new_recovery_codes(profile)
                 messages.success(request, 'Autenticación de dos factores activada correctamente')
-                return redirect('user-profile')
+                return redirect('two-factor-setup')
             else:
                 messages.error(request, 'Código inválido. Inténtalo de nuevo.')
                 return render(request, 'orchestrator/two_factor_setup.html', {
@@ -87,12 +91,24 @@ def two_factor_setup(request):
                 return redirect('two-factor-setup')
             profile.two_factor_enabled = False
             profile.two_factor_secret = ''
+            profile.two_factor_recovery_codes = []
             profile.save()
             messages.success(request, 'Autenticación de dos factores desactivada')
             return redirect('user-profile')
     
+        elif action == 'recovery_codes':
+            if not current_code_ok():
+                messages.error(request, 'Escribe un código válido de tu app para generar códigos nuevos')
+                return redirect('two-factor-setup')
+            from .two_factor import new_recovery_codes
+            request.session['new_recovery_codes'] = new_recovery_codes(profile)
+            messages.success(request, 'Códigos de recuperación nuevos: los anteriores ya no valen')
+            return redirect('two-factor-setup')
+
     return render(request, 'orchestrator/two_factor_setup.html', {
-        'two_factor_enabled': profile.two_factor_enabled
+        'two_factor_enabled': profile.two_factor_enabled,
+        'recovery_codes': request.session.pop('new_recovery_codes', None),
+        'recovery_left': len(profile.two_factor_recovery_codes or []),
     })
 
 def two_factor_verify(request):
@@ -119,8 +135,8 @@ def two_factor_verify(request):
             profile = user.profile
             
             if profile.two_factor_enabled and profile.two_factor_secret:
-                totp = pyotp.TOTP(profile.two_factor_secret)
-                if totp.verify(code, valid_window=1):
+                from .two_factor import verify_code
+                if verify_code(user, code):
                     clear_failures(lockout_key)
                     # Code is valid, complete login
                     from django.contrib.auth import login

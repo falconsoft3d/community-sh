@@ -578,6 +578,11 @@
                             <label class="space-y-1 text-sm"><span class="font-medium">Conservar en el bucket (días)</span>
                                 <input type="number" name="offsite_retention_days" min="0" value="{{ config.offsite_retention_days }}" class="w-full px-3 py-2 rounded-md border bg-background">
                                 <span class="text-xs text-muted-foreground">Las copias más antiguas se borran del bucket; 0 = conservarlas todas.</span></label>
+                            <label class="space-y-1 text-sm md:col-span-2"><span class="font-medium">Frase de cifrado</span>
+                                <input type="password" name="offsite_passphrase" value="" autocomplete="new-password" minlength="12"
+                                    placeholder="{% if config.offsite_passphrase %}Guardada: las copias se cifran · vacío para no cambiarla{% else %}Vacío: las copias se suben sin cifrar{% endif %}" class="w-full px-3 py-2 rounded-md border bg-background">
+                                <span class="text-xs text-muted-foreground">Con ella, cada copia (backups, base de datos del panel y certificados) se cifra en el servidor con AES-256 antes de subirse (<code>.enc</code>): ni el proveedor del bucket ni quien robe sus claves puede leerla. Al menos 12 caracteres. <strong>Guárdala fuera del servidor</strong>: sin ella las copias cifradas no se pueden restaurar (el panel no la vuelve a mostrar). Cambiarla solo afecta a las copias nuevas.</span>
+                                {% if config.offsite_passphrase %}<span class="flex items-center gap-1.5 text-xs"><input type="checkbox" name="offsite_passphrase_clear" value="1"> Quitar la frase (las próximas copias se suben sin cifrar)</span>{% endif %}</label>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button type="submit" formaction="{% url 'offsite-test' %}" formnovalidate

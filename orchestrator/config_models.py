@@ -67,6 +67,8 @@ class GitHubConfig(models.Model):
     s3_bucket = models.CharField(max_length=255, blank=True)
     s3_access_key = models.CharField(max_length=255, blank=True)
     s3_secret_key = EncryptedCharField(max_length=255, blank=True)
+    # Encrypts every copy before it leaves the server (services/backup_crypto.py); empty: copies go as they are
+    offsite_passphrase = EncryptedCharField(max_length=255, blank=True, help_text="Passphrase that encrypts the copies sent to S3")
     s3_prefix = models.CharField(max_length=255, blank=True, default='community-sh')
     offsite_retention_days = models.PositiveIntegerField(default=30, help_text="Copies older than this are deleted from the bucket (0: kept)")
 

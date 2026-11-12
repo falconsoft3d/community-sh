@@ -30,9 +30,10 @@
                         <label for="code" class="text-sm font-medium leading-none">
                             Código de 6 dígitos
                         </label>
-                        <input type="text" id="code" name="code" required maxlength="6" pattern="[0-9]{6}"
+                        <input type="text" id="code" name="code" required maxlength="11" autocomplete="one-time-code"
                             class="flex h-12 w-full rounded-md border border-input bg-background px-3 py-2 text-lg text-center font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             placeholder="000000" autofocus>
+                        <p class="text-xs text-muted-foreground">¿Sin el móvil? Escribe uno de tus códigos de recuperación (xxxxx-xxxxx); cada uno sirve una vez.</p>
                     </div>
 
                     <button type="submit"

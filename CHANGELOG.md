@@ -1,6 +1,11 @@
 # Changelog
 
-Versión actual: **1.0.103**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.104**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.104 — 2026-11-12
+
+- Seguridad: copias en S3 cifradas. Nueva Frase de cifrado en Configuración → Respaldos (mín. 12 caracteres, guardada cifrada): cada backup, la copia diaria de la base del panel y los certificados (acme.json, con sus claves privadas) se cifran en el servidor antes de subirse, con AES-256-GCM por bloques de 1 MB y la clave derivada con scrypt (services/backup_crypto.py, terminan en .enc). Una copia alterada, cortada o reordenada no se descifra. Restaurar desde S3 descifra solo; la comprobación semanal tiene en cuenta el tamaño cifrado. Se descifra a mano en cualquier equipo con Python: python orchestrator/services/backup_crypto.py decrypt copia.enc copia. Sin frase todo sigue como antes.
+- Seguridad: códigos de recuperación del 2FA. Al activarlo se muestran una vez 10 códigos de un solo uso (guardados como hash) que sirven en lugar del código de la app si se pierde el móvil: entrar, confirmar la contraseña, cambiar o quitar el 2FA. Gestionar 2FA muestra cuántos quedan y genera otros. Cada código de la app vale ahora una sola vez y el secreto del 2FA se guarda cifrado (los que ya existían se cifran en la migración 0081).
 
 ## 1.0.103 — 2026-11-12
 

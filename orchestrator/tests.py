@@ -6,6 +6,8 @@ from unittest import mock
 os.environ['DOCKER_HOST'] = 'tcp://127.0.0.1:9'
 os.environ.pop('DOCKER_TLS_VERIFY', None)
 os.environ.pop('DOCKER_CERT_PATH', None)
+# Nor a real S3: a boto3 client nobody mocked fails at once instead of calling AWS
+os.environ['AWS_ENDPOINT_URL'] = 'http://127.0.0.1:9'
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -2908,7 +2910,9 @@ class SecurityHardeningTests(BaseTestCase):
         self.client.post(reverse('two-factor-setup'), {'action': 'enable', 'current_code': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
         profile.refresh_from_db()
         self.assertEqual(profile.two_factor_secret, 'JBSWY3DPEHPK3PXP')
-        self.client.post(reverse('two-factor-setup'), {'action': 'disable', 'current_code': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
+        # Each app code works once: the next one (also accepted) switches it off
+        import time
+        self.client.post(reverse('two-factor-setup'), {'action': 'disable', 'current_code': pyotp.TOTP('JBSWY3DPEHPK3PXP').at(time.time() + 30)})
         profile.refresh_from_db()
         self.assertFalse(profile.two_factor_enabled)
 
@@ -4068,6 +4072,143 @@ class OdooDatabaseManagerTests(BaseTestCase):
             docker_service.return_value._list_user_databases.return_value = ['acme']
             self.assertEqual(odoo_bridge.databases(self.alice_instance), ['acme'])
         urlopen.assert_not_called()
+
+
+class BackupEncryptionTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.config.offsite_enabled = True
+        self.config.s3_bucket, self.config.s3_access_key, self.config.s3_secret_key = 'bk', 'AK', 'SK'
+        self.config.offsite_passphrase = 'correct horse battery'
+        self.config.save()
+
+    def temp(self, data=b''):
+        import tempfile
+        handle, path = tempfile.mkstemp()
+        os.write(handle, data)
+        os.close(handle)
+        self.addCleanup(lambda: os.path.exists(path) and os.remove(path))
+        return path
+
+    def test_round_trip_sizes_and_tampering(self):
+        from .services import backup_crypto
+        with mock.patch.object(backup_crypto, 'CHUNK', 1024):
+            for size in (0, 10, 1024, 1025, 5000):
+                plain = self.temp(os.urandom(size))
+                encrypted, restored = self.temp(), self.temp()
+                backup_crypto.encrypt_file(plain, encrypted, 'pass phrase 123')
+                self.assertTrue(backup_crypto.is_encrypted(encrypted))
+                self.assertEqual(os.path.getsize(encrypted), backup_crypto.encrypted_size(size), size)
+                backup_crypto.decrypt_file(encrypted, restored, 'pass phrase 123')
+                self.assertEqual(open(restored, 'rb').read(), open(plain, 'rb').read())
+            with self.assertRaisesMessage(backup_crypto.DecryptionError, 'Frase de cifrado incorrecta'):
+                backup_crypto.decrypt_file(encrypted, restored, 'wrong phrase 123')
+            data = open(encrypted, 'rb').read()
+            cut = self.temp(data[:backup_crypto.HEADER_SIZE + 4 + 1024 + 16])  # only the first chunk
+            with self.assertRaisesMessage(backup_crypto.DecryptionError, 'incompleta'):
+                backup_crypto.decrypt_file(cut, restored, 'pass phrase 123')
+            flipped = bytearray(data)
+            flipped[-1] ^= 1
+            with self.assertRaises(backup_crypto.DecryptionError):
+                backup_crypto.decrypt_file(self.temp(bytes(flipped)), restored, 'pass phrase 123')
+
+    def test_uploads_are_encrypted_and_restored(self):
+        import shutil
+        from .services import backup_crypto, offsite
+        path = self.temp(b'PK zip content' * 100)
+        backup = Backup.objects.create(instance=self.alice_instance, filename='alice.zip', file_path=path, file_size=1400)
+        uploaded = {}
+        s3 = mock.Mock()
+        s3.get_paginator.return_value.paginate.return_value = []
+        s3.upload_file.side_effect = lambda source, bucket, key: uploaded.update({key: open(source, 'rb').read()})
+        with mock.patch('orchestrator.services.offsite.client', return_value=s3):
+            offsite.upload([backup])
+        key = 'community-sh/alice-odoo/alice.zip.enc'
+        self.assertEqual(list(uploaded), [key])
+        self.assertTrue(uploaded[key].startswith(backup_crypto.MAGIC))
+        self.assertNotIn(b'zip content', uploaded[key])
+        backup.refresh_from_db()
+        self.assertEqual(backup.offsite_key, key)
+        s3.head_object.return_value = {'ContentLength': len(uploaded[key])}
+        self.assertNotIn('S3', ' '.join(offsite.check_backup(backup, s3, self.config)))
+
+        restored = {}
+        s3.download_file.side_effect = lambda bucket, k, target: open(target, 'wb').write(uploaded[k])
+        with mock.patch('orchestrator.services.offsite.client', return_value=s3), \
+                mock.patch('orchestrator.services.docker_service.DockerService') as service:
+            service.return_value.restore_instance.side_effect = lambda instance, p: restored.update(data=open(p, 'rb').read())
+            offsite.restore_from_bucket(self.alice_instance, key)
+        self.assertEqual(restored['data'], b'PK zip content' * 100)
+        self.config.offsite_passphrase = ''
+        self.config.save()
+        with mock.patch('orchestrator.services.offsite.client', return_value=s3), \
+                mock.patch('orchestrator.services.docker_service.DockerService'), \
+                self.assertRaisesMessage(Exception, 'Esta copia está cifrada'):
+            offsite.restore_from_bucket(self.alice_instance, key)
+
+    def test_settings_keep_validate_and_clear_the_passphrase(self):
+        self.client.force_login(self.admin)
+        url = reverse('settings')
+        base = {'section': 'backups', 'offsite_enabled': 'on', 's3_bucket': 'bk', 's3_access_key': 'AK', 'offsite_retention_days': '30'}
+        self.client.post(url, {**base, 'offsite_passphrase': ''})
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.offsite_passphrase, 'correct horse battery')
+        self.client.post(url, {**base, 'offsite_passphrase': 'short'})
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.offsite_passphrase, 'correct horse battery')
+        self.client.post(url, {**base, 'offsite_passphrase': 'a much longer passphrase'})
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.offsite_passphrase, 'a much longer passphrase')
+        self.client.post(url, {**base, 'offsite_passphrase_clear': '1'})
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.offsite_passphrase, '')
+
+
+class TwoFactorRecoveryTests(BaseTestCase):
+    def enable(self):
+        import pyotp
+        self.client.force_login(self.alice)
+        self.client.post(reverse('two-factor-setup'), {'action': 'enable'})
+        secret = self.client.session['2fa_pending_secret']
+        response = self.client.post(reverse('two-factor-setup'), {'action': 'verify', 'code': pyotp.TOTP(secret).now()}, follow=True)
+        return secret, response.context['recovery_codes']
+
+    def login_with(self, code):
+        self.client.logout()
+        self.client.post(reverse('login'), {'username': 'alice', 'password': 'pass-12345'})
+        self.client.post(reverse('two-factor-verify'), {'code': code})
+        return '_auth_user_id' in self.client.session
+
+    def test_codes_shown_once_work_once_and_secret_encrypted(self):
+        import pyotp
+        from django.db import connection
+        secret, codes = self.enable()
+        self.assertEqual(len(codes), 10)
+        self.assertRegex(codes[0], r'^[a-z2-9]{5}-[a-z2-9]{5}$')
+        self.assertNotIn(codes[0], self.client.get(reverse('two-factor-setup')).content.decode())
+        self.alice.profile.refresh_from_db()
+        self.assertNotIn(codes[0].replace('-', ''), str(self.alice.profile.two_factor_recovery_codes))
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT two_factor_secret FROM orchestrator_userprofile WHERE user_id = %s', [self.alice.pk])
+            self.assertTrue(cursor.fetchone()[0].startswith('enc:'))
+
+        self.assertTrue(self.login_with(codes[0].upper()))
+        self.assertFalse(self.login_with(codes[0]))
+        self.alice.profile.refresh_from_db()
+        self.assertEqual(len(self.alice.profile.two_factor_recovery_codes), 9)
+        # An app code works once
+        code = pyotp.TOTP(secret).now()
+        self.assertTrue(self.login_with(code))
+        self.assertFalse(self.login_with(code))
+
+        # New codes replace the old ones; a recovery code can switch 2FA off (lost phone)
+        self.assertTrue(self.login_with(codes[1]))
+        self.client.post(reverse('two-factor-setup'), {'action': 'recovery_codes', 'current_code': codes[2]})
+        self.assertEqual(len(self.client.get(reverse('two-factor-setup')).context['recovery_codes']), 10)
+        self.assertIsNone(self.client.get(reverse('two-factor-setup')).context['recovery_codes'])  # shown once
+        self.alice.profile.refresh_from_db()
+        self.assertEqual(len(self.alice.profile.two_factor_recovery_codes), 10)
+        self.assertFalse(self.login_with(codes[3]))
 
 
 class TokenScopeAndRateLimitTests(BaseTestCase):

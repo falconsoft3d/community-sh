@@ -228,7 +228,9 @@ class UserProfile(models.Model):
     
     # Two-Factor Authentication
     two_factor_enabled = models.BooleanField(default=False, help_text="Enable two-factor authentication")
-    two_factor_secret = models.CharField(max_length=32, blank=True, help_text="TOTP secret key")
+    two_factor_secret = EncryptedCharField(max_length=32, blank=True, help_text="TOTP secret key")
+    # sha256 of the unused single-use recovery codes (two_factor.py)
+    two_factor_recovery_codes = models.JSONField(default=list, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -9,6 +9,19 @@
         </div>
     </div>
 
+    {% if recovery_codes %}
+    <div class="rounded-xl border border-amber-300 bg-amber-50 p-6 text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" x-data="{ copied: false }">
+        <h3 class="font-semibold">Tus códigos de recuperación</h3>
+        <p class="text-sm mt-1">Guárdalos ahora fuera del ordenador (gestor de contraseñas o papel): no se vuelven a mostrar. Si pierdes el móvil, cada uno sirve <strong>una vez</strong> en lugar del código de la app para entrar, confirmar la contraseña o cambiar el 2FA.</p>
+        <pre x-ref="codes" class="mt-3 font-mono text-sm leading-6">{% for code in recovery_codes %}{{ code }}
+{% endfor %}</pre>
+        <button type="button" @click="navigator.clipboard.writeText($refs.codes.innerText).then(() => { copied = true; setTimeout(() => copied = false, 2000) })"
+            class="mt-3 inline-flex h-9 items-center rounded-md border border-amber-400 bg-background px-3 text-xs font-medium text-foreground hover:bg-accent">
+            <i data-lucide="copy" class="mr-1.5 h-3.5 w-3.5"></i><span x-text="copied ? '¡Copiados!' : 'Copiar los códigos'">Copiar los códigos</span>
+        </button>
+    </div>
+    {% endif %}
+
     {% if two_factor_enabled %}
     <!-- 2FA Already Enabled -->
     <div class="rounded-xl border bg-card text-card-foreground shadow-sm">
@@ -29,12 +42,24 @@
                 {% csrf_token %}
                 <input type="hidden" name="action" value="disable">
                 <label for="current_code_disable" class="block text-sm font-medium">Código actual de tu app</label>
-                <input type="text" id="current_code_disable" name="current_code" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code"
+                <input type="text" id="current_code_disable" name="current_code" required maxlength="11" autocomplete="one-time-code" title="Código de tu app o de recuperación"
                     class="flex h-10 w-40 rounded-md border border-input bg-background px-3 py-2 text-sm tracking-widest" placeholder="000000">
                 <button type="submit" onclick="return confirm('¿Estás seguro de desactivar la autenticación de dos factores?')"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2">
                     <i data-lucide="shield-off" class="mr-2 h-4 w-4"></i>
                     Desactivar 2FA
+                </button>
+            </form>
+
+            <form method="post" class="space-y-3 mt-6 border-t pt-6">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="recovery_codes">
+                <p class="text-sm"><strong>Códigos de recuperación:</strong> te quedan {{ recovery_left }} de 10.{% if recovery_left < 4 %} Genera otros antes de que se acaben.{% endif %}</p>
+                <label for="current_code_recovery" class="block text-sm font-medium">Código actual de tu app</label>
+                <input type="text" id="current_code_recovery" name="current_code" required maxlength="11" autocomplete="one-time-code"
+                    class="flex h-10 w-40 rounded-md border border-input bg-background px-3 py-2 text-sm tracking-widest" placeholder="000000">
+                <button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent h-10 px-4">
+                    <i data-lucide="list-restart" class="mr-2 h-4 w-4"></i> Generar códigos nuevos
                 </button>
             </form>
         </div>

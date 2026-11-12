@@ -215,6 +215,15 @@ def _read_offsite_fields(request, config):
         setattr(config, field, request.POST.get(field, '').strip())
     if request.POST.get('s3_secret_key', '').strip():
         config.s3_secret_key = request.POST['s3_secret_key'].strip()
+    passphrase = request.POST.get('offsite_passphrase', '')
+    if request.POST.get('offsite_passphrase_clear'):
+        config.offsite_passphrase = ''
+    elif passphrase.strip():
+        if len(passphrase.strip()) < 12:
+            from django.contrib import messages
+            messages.error(request, 'La frase de cifrado necesita al menos 12 caracteres: no se ha cambiado')
+        else:
+            config.offsite_passphrase = passphrase.strip()
     try:
         config.offsite_retention_days = max(int(request.POST.get('offsite_retention_days') or 0), 0)
     except ValueError:

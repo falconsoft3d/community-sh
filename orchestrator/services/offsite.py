@@ -37,6 +37,25 @@ def object_key(config, backup):
     return f'{prefix(config)}{backup.instance.name}/{backup.filename}'
 
 
+def _put(s3, config, path, key):
+    """Upload a file; encrypted first (key + .enc) when a passphrase is set. Returns the key it got."""
+    from django.conf import settings
+    from .backup_crypto import SUFFIX, encrypt_file
+    if not config.offsite_passphrase:
+        s3.upload_file(path, config.s3_bucket, key)  # multipart for big files
+        return key
+    folder = os.path.join(settings.BASE_DIR, 'backups', 'tmp')
+    os.makedirs(folder, exist_ok=True)
+    encrypted = os.path.join(folder, os.path.basename(path) + f'.{os.getpid()}' + SUFFIX)
+    try:
+        encrypt_file(path, encrypted, config.offsite_passphrase)
+        s3.upload_file(encrypted, config.s3_bucket, key + SUFFIX)
+    finally:
+        if os.path.exists(encrypted):
+            os.remove(encrypted)
+    return key + SUFFIX
+
+
 def test_connection(config):
     """Write, read back and delete a small object. Returns (ok, message)."""
     try:
@@ -63,11 +82,10 @@ def upload(backups, progress=None):
             continue
         if progress:
             progress(10 + 80 * index // max(len(backups), 1), f'Subiendo {backup.filename} ({backup.formatted_size})')
-        key = object_key(config, backup)
-        s3.upload_file(backup.file_path, config.s3_bucket, key)  # multipart for big files
+        key = _put(s3, config, backup.file_path, object_key(config, backup))
         backup.offsite_key, backup.offsite_at = key, timezone.now()
         backup.save(update_fields=['offsite_key', 'offsite_at'])
-        notes.append(f'{backup.filename} → s3://{config.s3_bucket}/{key}')
+        notes.append(f'{backup.filename} → s3://{config.s3_bucket}/{key}' + (' (cifrado)' if config.offsite_passphrase else ''))
     notes += apply_retention(config, s3)
     return notes
 
@@ -159,12 +177,16 @@ def backup_panel(progress=None):
     key = f'{prefix(config)}{PANEL_PREFIX}{os.path.basename(path)}'
     if progress:
         progress(60, 'Subiendo la copia al bucket')
-    s3.upload_file(path, config.s3_bucket, key)
-    notes = [f'Base de datos del panel → s3://{config.s3_bucket}/{key} ({os.path.getsize(path) // 1024} KB)']
+    key = _put(s3, config, path, key)
+    notes = [f'Base de datos del panel → s3://{config.s3_bucket}/{key} ({os.path.getsize(path) // 1024} KB)'
+             + (' (cifrada)' if config.offsite_passphrase else '')]
     acme = os.path.join(settings.BASE_DIR, 'letsencrypt', 'acme.json')
     if os.path.exists(acme) and os.path.getsize(acme):
-        s3.upload_file(acme, config.s3_bucket, f'{prefix(config)}{PANEL_PREFIX}acme.json')
-        notes.append('Certificados (acme.json) subidos')
+        # The certificates' private keys: a plain copy left from before encryption was on is replaced
+        acme_key = _put(s3, config, acme, f'{prefix(config)}{PANEL_PREFIX}acme.json')
+        if acme_key.endswith('.enc'):
+            s3.delete_object(Bucket=config.s3_bucket, Key=f'{prefix(config)}{PANEL_PREFIX}acme.json')
+        notes.append('Certificados (acme.json) subidos' + (' cifrados' if config.offsite_passphrase else ''))
     # The local daily copies are kept a couple of weeks (the bucket keeps them per its retention)
     limit = timezone.now().timestamp() - PANEL_LOCAL_DAYS * 86400
     for name in os.listdir(target_dir):
@@ -210,17 +232,28 @@ def restore_from_bucket(instance, key, progress=None):
         raise Exception('Esa copia no es de esta instancia')
     folder = os.path.join(settings.BASE_DIR, 'backups', 'tmp')
     os.makedirs(folder, exist_ok=True)
+    from .backup_crypto import SUFFIX, decrypt_file
     path = tempfile.NamedTemporaryFile(dir=folder, suffix='.zip', delete=False).name
+    encrypted = path + SUFFIX
     try:
         if progress:
             progress(10, f'Descargando {os.path.basename(key)} del bucket')
-        client(config).download_file(config.s3_bucket, key, path)
+        if key.endswith(SUFFIX):
+            if not config.offsite_passphrase:
+                raise Exception('Esta copia está cifrada: escribe su frase de cifrado en Configuración → Respaldos')
+            client(config).download_file(config.s3_bucket, key, encrypted)
+            if progress:
+                progress(30, 'Descifrando')
+            decrypt_file(encrypted, path, config.offsite_passphrase)
+        else:
+            client(config).download_file(config.s3_bucket, key, path)
         if progress:
             progress(40, 'Restaurando')
         DockerService().restore_instance(instance, path)
     finally:
-        if os.path.exists(path):
-            os.remove(path)
+        for leftover in (path, encrypted):
+            if os.path.exists(leftover):
+                os.remove(leftover)
     return [f'Restaurado desde s3://{config.s3_bucket}/{key}']
 
 
@@ -249,9 +282,12 @@ def check_backup(backup, s3=None, config=None):
                 problems.append(f'{dump} casi vacío ({zf.getinfo(dump).file_size} bytes)')
     if backup.offsite_key and s3 is not None:
         try:
+            from .backup_crypto import SUFFIX, encrypted_size
             size = s3.head_object(Bucket=config.s3_bucket, Key=backup.offsite_key)['ContentLength']
-            if size != os.path.getsize(backup.file_path):
-                problems.append(f'la copia en S3 mide {size} bytes y la local {os.path.getsize(backup.file_path)}')
+            local = os.path.getsize(backup.file_path)
+            expected = encrypted_size(local) if backup.offsite_key.endswith(SUFFIX) else local
+            if size != expected:
+                problems.append(f'la copia en S3 mide {size} bytes y debería medir {expected}')
         except Exception as e:
             problems.append(f'la copia en S3 no se encuentra: {e}')
     return problems
