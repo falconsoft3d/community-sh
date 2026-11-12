@@ -12,7 +12,8 @@
 #    would request every certificate again (Let's Encrypt allows 50 a week).
 # 3. Moves the code to origin/<branch>, rebuilds the panel's images and restarts what changed.
 #    The Odoo instances and user containers are not part of docker compose: they keep running.
-# 4. Waits for the panel to answer; if it doesn't, goes back to the previous version.
+# 4. Waits for the panel to answer and opens its main pages as an administrator (manage.py smoke_check);
+#    if it doesn't answer or a page fails, goes back to the previous version.
 set -euo pipefail
 
 BRANCH="${1:-main}"
@@ -135,12 +136,16 @@ if ! docker compose build --quiet; then
 fi
 docker compose up -d
 if panel_answers; then
-    log "Panel up at ${TARGET:0:7}"
-    docker image prune -f >/dev/null 2>&1 || true
-    exit 0
+    # The login page answering isn't enough: open the main pages as an administrator
+    if docker compose exec -T app python manage.py smoke_check; then
+        log "Panel up at ${TARGET:0:7}"
+        docker image prune -f >/dev/null 2>&1 || true
+        exit 0
+    fi
+    log "Pages fail after the deploy: going back to ${PREVIOUS:0:7}"
+else
+    log "The panel did not answer: going back to ${PREVIOUS:0:7}"
 fi
-
-log "The panel did not answer: going back to ${PREVIOUS:0:7}"
 docker compose logs --tail=80 app || true
 git checkout --quiet --force -B "$BRANCH" "$PREVIOUS"
 restore_acme

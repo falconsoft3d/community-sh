@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.88**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.89**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.89 — 2026-11-12
+
+- Despliegue: tras arrancar, además de comprobar que responde el login, abre como administrador las páginas principales (Dashboard, instancias, proyectos, backups, contenedores, contactos, Todo, Actividad, Metrics, Docker, usuarios, Auditoría, Configuración, Ayuda, Acerca de, una instancia y un proyecto) contra la base real con manage.py smoke_check; si alguna falla, vuelve a la versión anterior. Habría detectado el Error 500 del 12/11.
 
 ## 1.0.88 — 2026-11-12
 

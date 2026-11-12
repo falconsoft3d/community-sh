@@ -234,7 +234,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                 <h2>17. Panel updates</h2>
                 <ul>
                     <li>Every change to the panel bumps the version and is documented in <a href="{% url 'about' %}">About</a> and in this Help.</li>
-                    <li>A push to the main branch runs the tests on GitHub Actions and, if they pass, deploys to the server: it waits for running tasks, saves a copy of the panel's database and rolls back to the previous version if it doesn't respond.</li>
+                    <li>A push to the main branch runs the tests on GitHub Actions and, if they pass, deploys to the server: it waits for running tasks, saves a copy of the panel's database, frees space if less than 5 GB is left, builds and, once started, <strong>opens the main pages as an administrator</strong> (<code>manage.py smoke_check</code>). If the build fails, the panel doesn't answer or a page fails, it goes back to the previous version.</li>
                 </ul>
             </section>
         </div>

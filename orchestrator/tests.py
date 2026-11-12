@@ -3960,6 +3960,22 @@ class InstanceDiskUsageTests(BaseTestCase):
         self.assertEqual(self.client.get(reverse('metrics-disk')).status_code, 403)
 
 
+class SmokeCheckTests(BaseTestCase):
+    def test_main_pages_open_and_a_failing_one_is_reported(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+        out = StringIO()
+        with mock.patch('docker.from_env'), mock.patch('orchestrator.services.metrics.collect_metrics', return_value={}):
+            call_command('smoke_check', stdout=out)
+        self.assertIn('pages OK', out.getvalue())
+        self.assertIn(f'/instance/{self.bob_instance.pk}/', out.getvalue())
+        with mock.patch('docker.from_env'), mock.patch('orchestrator.services.metrics.collect_metrics', return_value={}), \
+                mock.patch('orchestrator.views.public.render', side_effect=Exception('no such column')):
+            with self.assertRaisesMessage(CommandError, '/help/: Exception: no such column'):
+                call_command('smoke_check', stdout=StringIO())
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.88'
+VERSION = '1.0.89'
 
 CHANGELOG = [
+    {
+        'version': '1.0.89',
+        'date': '2026-11-12',
+        'notes': [
+            'Despliegue: tras arrancar, además de comprobar que responde el login, abre como administrador las páginas principales (Dashboard, instancias, proyectos, backups, contenedores, contactos, Todo, Actividad, Metrics, Docker, usuarios, Auditoría, Configuración, Ayuda, Acerca de, una instancia y un proyecto) contra la base real con manage.py smoke_check; si alguna falla, vuelve a la versión anterior. Habría detectado el Error 500 del 12/11.',
+        ],
+    },
     {
         'version': '1.0.88',
         'date': '2026-11-12',
