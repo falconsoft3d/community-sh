@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.91'
+VERSION = '1.0.92'
 
 CHANGELOG = [
+    {
+        'version': '1.0.92',
+        'date': '2026-11-12',
+        'notes': [
+            'Copia del panel fuera del servidor: con el bucket S3 configurado, cada día la tarea «Copia del panel fuera (S3)» sube a _panel/ un volcado de la base de datos del panel (pg_dump dentro de su contenedor, comprimido) y los certificados (acme.json); localmente se guardan 15 días y en el bucket rige su retención. El .env no se sube a propósito (tiene la clave que descifra los secretos): hay que guardarlo aparte. Migración 0073.',
+        ],
+    },
     {
         'version': '1.0.91',
         'date': '2026-11-12',

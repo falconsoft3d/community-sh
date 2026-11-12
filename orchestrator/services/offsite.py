@@ -94,3 +94,91 @@ def queue_upload(backups, user=None):
     if not backups or offsite_config() is None:
         return None
     return enqueue(Task.Kind.OFFSITE_UPLOAD, backups[0].instance, user, backups=[b.pk for b in backups])
+
+
+PANEL_PREFIX = '_panel/'
+PANEL_LOCAL_DAYS = 15
+
+
+def _panel_db_container():
+    import docker
+    containers = docker.from_env().containers.list(filters={'label': 'com.docker.compose.service=db'})
+    project = os.environ.get('COMPOSE_PROJECT_NAME', '')
+    for container in containers:
+        if not project or container.labels.get('com.docker.compose.project') == project:
+            return container
+    return None
+
+
+def dump_panel_database(target_dir):
+    """
+    A copy of the panel's own database in target_dir: pg_dump inside its container (the panel's image has no
+    pg_dump), gzipped; a copy of the file for SQLite installs. Returns the path.
+    """
+    import gzip
+    import shutil
+    from django.conf import settings
+    database = settings.DATABASES['default']
+    stamp = timezone.localtime().strftime('%Y%m%d-%H%M%S')
+    os.makedirs(target_dir, exist_ok=True)
+    if 'sqlite' in database['ENGINE']:
+        path = os.path.join(target_dir, f'panel-daily-{stamp}.sqlite3')
+        shutil.copy2(database['NAME'], path)
+        return path
+    container = _panel_db_container()
+    if container is None:
+        raise Exception('No encuentro el contenedor de la base de datos del panel')
+    path = os.path.join(target_dir, f'panel-daily-{stamp}.sql.gz')
+    result = container.exec_run(['pg_dump', '-U', database['USER'], '--no-owner', database['NAME']], stream=True, demux=True)
+    errors = b''
+    with gzip.open(path, 'wb') as out:
+        for stdout, stderr in result.output:
+            if stdout:
+                out.write(stdout)
+            if stderr:
+                errors += stderr
+    with gzip.open(path, 'rb') as check:
+        if len(check.read(200)) < 100:
+            os.remove(path)
+            raise Exception(f'pg_dump no devolvió nada: {errors.decode(errors="replace")[-300:]}')
+    os.chmod(path, 0o600)
+    return path
+
+
+def backup_panel(progress=None):
+    """Daily: the panel's database (and Traefik's certificate store) to the bucket. Returns notes for the log."""
+    from django.conf import settings
+    config = offsite_config()
+    if config is None:
+        return ['La copia fuera del servidor no está configurada']
+    target_dir = os.path.join(settings.BASE_DIR, 'backups', 'panel-db')
+    if progress:
+        progress(10, 'Copiando la base de datos del panel')
+    path = dump_panel_database(target_dir)
+    s3 = client(config)
+    key = f'{prefix(config)}{PANEL_PREFIX}{os.path.basename(path)}'
+    if progress:
+        progress(60, 'Subiendo la copia al bucket')
+    s3.upload_file(path, config.s3_bucket, key)
+    notes = [f'Base de datos del panel → s3://{config.s3_bucket}/{key} ({os.path.getsize(path) // 1024} KB)']
+    acme = os.path.join(settings.BASE_DIR, 'letsencrypt', 'acme.json')
+    if os.path.exists(acme) and os.path.getsize(acme):
+        s3.upload_file(acme, config.s3_bucket, f'{prefix(config)}{PANEL_PREFIX}acme.json')
+        notes.append('Certificados (acme.json) subidos')
+    # The local daily copies are kept a couple of weeks (the bucket keeps them per its retention)
+    limit = timezone.now().timestamp() - PANEL_LOCAL_DAYS * 86400
+    for name in os.listdir(target_dir):
+        old = os.path.join(target_dir, name)
+        if name.startswith('panel-daily-') and os.path.getmtime(old) < limit:
+            os.remove(old)
+    return notes + apply_retention(config, s3)
+
+
+def queue_daily_panel_backup():
+    """Called by the worker every minute: once a day, if the copy off the server is configured."""
+    from django.core.cache import cache
+    from ..task_models import Task
+    from ..tasks import enqueue
+    if offsite_config() is None or not cache.add('panel-backup-day', 1, 23 * 3600):
+        return None
+    return enqueue(Task.Kind.PANEL_BACKUP)

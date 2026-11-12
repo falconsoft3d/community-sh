@@ -4013,6 +4013,60 @@ class EncryptedSecretsTests(BaseTestCase):
             self.assertEqual(decrypt(token), '')  # another key: unreadable, empty rather than garbage
 
 
+class PanelBackupTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        from django.core.cache import cache
+        cache.clear()
+        self.config.offsite_enabled = True
+        self.config.s3_bucket, self.config.s3_access_key, self.config.s3_secret_key = 'bk', 'AK', 'SK'
+        self.config.save()
+
+    def test_dump_through_the_database_container(self):
+        import gzip
+        import tempfile
+        from .services import offsite
+        container = mock.Mock(labels={'com.docker.compose.project': 'community-sh'})
+        container.exec_run.return_value = mock.Mock(output=iter([(b'-- PostgreSQL database dump\n' + b'x' * 200, None), (None, b'')]))
+        databases = {'default': {'ENGINE': 'django.db.backends.postgresql', 'NAME': 'community_sh', 'USER': 'postgres'}}
+        with tempfile.TemporaryDirectory() as target, self.settings(DATABASES=databases), \
+                mock.patch('orchestrator.services.offsite._panel_db_container', return_value=container):
+            path = offsite.dump_panel_database(target)
+            self.assertTrue(gzip.open(path).read().startswith(b'-- PostgreSQL database dump'))
+            self.assertEqual(container.exec_run.call_args.args[0], ['pg_dump', '-U', 'postgres', '--no-owner', 'community_sh'])
+            container.exec_run.return_value = mock.Mock(output=iter([(None, b'role does not exist')]))
+            with self.assertRaisesMessage(Exception, 'role does not exist'):
+                offsite.dump_panel_database(target)
+
+    def test_daily_task_uploads_the_dump_and_certificates(self):
+        import tempfile
+        from .services import offsite
+        from .task_models import Task
+        self.assertIsNotNone(offsite.queue_daily_panel_backup())
+        self.assertIsNone(offsite.queue_daily_panel_backup())  # once a day
+        self.assertEqual(Task.objects.filter(kind=Task.Kind.PANEL_BACKUP).count(), 1)
+        s3 = mock.Mock()
+        s3.get_paginator.return_value.paginate.return_value = []
+        with tempfile.TemporaryDirectory() as base, self.settings(BASE_DIR=base):
+            os.makedirs(os.path.join(base, 'letsencrypt'))
+            open(os.path.join(base, 'letsencrypt', 'acme.json'), 'w').write('{"keys": 1}')
+            dump = os.path.join(base, 'panel-daily-x.sql.gz')
+            open(dump, 'wb').write(b'dump')
+            os.makedirs(os.path.join(base, 'backups', 'panel-db'))
+            with mock.patch('orchestrator.services.offsite.dump_panel_database', return_value=dump), \
+                    mock.patch('orchestrator.services.offsite.client', return_value=s3):
+                notes = offsite.backup_panel()
+        keys = [c.args[2] for c in s3.upload_file.call_args_list]
+        self.assertEqual(keys, ['community-sh/_panel/panel-daily-x.sql.gz', 'community-sh/_panel/acme.json'])
+        self.assertIn('Certificados', notes[1])
+
+    def test_nothing_without_a_bucket(self):
+        from .services import offsite
+        self.config.offsite_enabled = False
+        self.config.save()
+        self.assertIsNone(offsite.queue_daily_panel_backup())
+
+
 class ApiDatabaseAndModuleTests(BaseTestCase):
     def test_duplicates_are_neutralized_unless_unticked(self):
         from .task_models import Task

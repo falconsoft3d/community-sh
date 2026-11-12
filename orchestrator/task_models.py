@@ -27,6 +27,7 @@ class Task(models.Model):
         CREATE_DATABASE = 'create_database', 'Crear base de datos'
         RESET_ADMIN_PASSWORD = 'reset_admin_password', 'Restablecer contraseña del administrador'
         OFFSITE_UPLOAD = 'offsite_upload', 'Copiar backup fuera (S3)'
+        PANEL_BACKUP = 'panel_backup', 'Copia del panel fuera (S3)'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

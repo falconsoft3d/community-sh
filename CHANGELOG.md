@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.91**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.92**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.92 — 2026-11-12
+
+- Copia del panel fuera del servidor: con el bucket S3 configurado, cada día la tarea «Copia del panel fuera (S3)» sube a _panel/ un volcado de la base de datos del panel (pg_dump dentro de su contenedor, comprimido) y los certificados (acme.json); localmente se guardan 15 días y en el bucket rige su retención. El .env no se sube a propósito (tiene la clave que descifra los secretos): hay que guardarlo aparte. Migración 0073.
 
 ## 1.0.91 — 2026-11-12
 
