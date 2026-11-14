@@ -51,8 +51,8 @@ its section here and in help.html (and the index in views/public.py) in the same
                 <ol>
                     <li>Dashboard or Project → <strong>New instance</strong>.</li>
                     <li>Choose the project, name, Odoo version and, if you have your own code, the GitHub repository (HTTPS) and branch. Private repositories need your token in Settings → GitHub.</li>
-                    <li>Optional: database name (empty = auto-detect), «Default database for demos» (several databases in one instance, Odoo 18+) and a custom domain.</li>
-                    <li>On saving, a branch named after the instance is created in your repository (if there is a token) and the <strong>deploy</strong> is queued.</li>
+                    <li>Optional: database name (empty = created with the instance's name, then auto-detected), «Default database for demos» (several databases in one instance, Odoo 18+) and a custom domain.</li>
+                    <li>On saving, a branch named after the instance is created in your repository (if there is a token) and the <strong>deploy</strong> is queued. When it finishes, the <strong>database</strong> is created automatically (task «Create database», without demo data, in the panel's language: es_ES or en_US); the administrator's login and password appear in the instance page and «Log in as admin» works as soon as it's done.</li>
                 </ol>
                 <h3>What the deploy does</h3>
                 <ul>
@@ -69,7 +69,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                     <li><strong>Through the API or MCP</strong>: creating an instance also deploys it (see <a href="#api">API and MCP</a>).</li>
                     <li><strong>Demos</strong> from «Test mode» (see <a href="#demos">Demos</a>).</li>
                 </ul>
-                <p class="note">The Odoo database isn't created automatically: create it in the instance page (Information → <strong>Create database</strong>: name, language and demo data) or through the API (<code>create-database</code>); both store the administrator's login and password. In new instances Odoo's manager (<code>/web/database/manager</code>) is <strong>closed</strong>; open it in Information only when you need it.</p>
+                <p class="note">New instances create their first database automatically after the first deploy. For another one (or if that one failed), create it in the instance page (Information → <strong>Create database</strong>: name, language and demo data) or through the API (<code>create-database</code>); both store the administrator's login and password. In new instances Odoo's manager (<code>/web/database/manager</code>) is <strong>closed</strong>; open it in Information only when you need it.</p>
             </section>
 
             <section id="gestionar" class="rounded-xl border bg-card p-6 scroll-mt-24">

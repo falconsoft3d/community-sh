@@ -1026,6 +1026,44 @@ class DockerAdminTests(BaseTestCase):
             docker_cleanup.assert_not_called()
         self.assertEqual(task.status, Task.Status.DONE)
 
+    def test_a_new_instance_gets_its_database_after_the_first_deploy(self):
+        from .task_models import Task
+        from . import tasks
+        databases = Task.objects.filter(kind=Task.Kind.CREATE_DATABASE)
+        with mock.patch('orchestrator.tasks.DockerService') as service, \
+                mock.patch('orchestrator.tasks.TraefikService.generate_instance_config', return_value=(True, '')):
+            service.return_value.deploy_notes = []
+            service.return_value._list_user_databases.return_value = []
+            # A redeploy doesn't create one
+            tasks.deploy(Task.objects.create(kind=Task.Kind.DEPLOY, instance=self.alice_instance, params={}))
+            self.assertFalse(databases.exists())
+            result = tasks.deploy(Task.objects.create(kind=Task.Kind.DEPLOY, instance=self.alice_instance, created_by=self.alice,
+                                                      params={'created': True, 'lang': 'en_US'}))
+            task = databases.get()
+            self.assertEqual((task.params['name'], task.params['lang'], task.params['demo'], task.created_by),
+                             (self.alice_instance.name, 'en_US', False, self.alice))
+            self.assertRegex(task.params['password'], r'^[A-Za-z0-9_-]{8,64}$')
+            self.assertIn(f'Base de datos {self.alice_instance.name} en cola', result)
+            # Not twice, and not when the instance already has one
+            self.assertEqual(tasks.queue_first_database(self.alice_instance, self.alice), '')
+            task.delete()
+            service.return_value._list_user_databases.return_value = ['prod']
+            self.assertEqual(tasks.queue_first_database(self.alice_instance, self.alice), '')
+            self.assertFalse(databases.exists())
+            # Named as the database of the instance when it has one
+            service.return_value._list_user_databases.return_value = []
+            self.alice_instance.database_name = 'acme'
+            tasks.queue_first_database(self.alice_instance, self.alice)
+            self.assertEqual((databases.get().params['name'], databases.get().params['lang']), ('acme', 'es_ES'))
+
+    def test_creating_an_instance_from_the_page_queues_its_database_language(self):
+        from .task_models import Task
+        self.client.force_login(self.alice)
+        self.client.post(reverse('instance-create'), {'project': self.alice_project.pk, 'name': 'with-db', 'odoo_version': '18.0'})
+        deploy = Task.objects.get(kind=Task.Kind.DEPLOY, instance__name='with-db')
+        self.assertTrue(deploy.params['created'])
+        self.assertEqual(deploy.params['lang'], 'es_ES')
+
     def test_creating_an_instance_marks_its_deploy(self):
         from .task_models import Task
         self.client.force_login(self.alice)
@@ -1915,6 +1953,18 @@ class AdminLoginTests(BaseTestCase):
     def test_only_managers(self):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(reverse('instance-admin-login', args=[self.alice_instance.pk])).status_code, 404)
+
+    def test_without_a_database_it_points_to_create_one_or_to_the_running_task(self):
+        from .task_models import Task
+        url = reverse('instance-admin-login', args=[self.alice_instance.pk])
+        self.client.force_login(self.alice)
+        with mock.patch('orchestrator.views.instances.DockerService') as service:
+            service.return_value.client.containers.get.return_value.status = 'running'
+            service.return_value._list_user_databases.return_value = []
+            page = self.client.post(url, follow=True).content.decode()
+            self.assertIn('Information → Crear base de datos', page)
+            Task.objects.create(kind=Task.Kind.CREATE_DATABASE, instance=self.alice_instance, params={'name': 'x'})
+            self.assertIn('se está creando', self.client.post(url, follow=True).content.decode())
 
 
 class DemoDatabasesTests(BaseTestCase):

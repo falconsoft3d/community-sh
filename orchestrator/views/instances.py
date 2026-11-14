@@ -91,8 +91,11 @@ class InstanceCreateView(LoginRequiredMixin, CreateView):
         response = super().form_valid(form)
         
         # The worker creates the instance's GitHub branch, deploys it and notifies
-        enqueue(Task.Kind.DEPLOY, self.object, self.request.user, create_branch=True, notify=True, created=True)
-        messages.info(self.request, 'Instancia creada. El despliegue está en cola y puede tardar unos minutos.')
+        # ... and then creates its database, in the language of the panel
+        from django.utils.translation import get_language
+        lang = 'en_US' if (get_language() or '').startswith('en') else 'es_ES'
+        enqueue(Task.Kind.DEPLOY, self.object, self.request.user, create_branch=True, notify=True, created=True, lang=lang)
+        messages.info(self.request, 'Instancia creada. El despliegue y su base de datos están en cola y pueden tardar unos minutos.')
         return response
 
 
@@ -760,7 +763,11 @@ def instance_admin_login(request, pk):
         except Exception:
             databases = []
         if not databases:
-            messages.error(request, 'La instancia todavía no tiene base de datos: créala primero desde Odoo')
+            if instance.tasks.filter(kind=Task.Kind.CREATE_DATABASE, status__in=[Task.Status.PENDING, Task.Status.RUNNING]).exists():
+                messages.info(request, 'La base de datos de la instancia se está creando: espera a que termine la tarea '
+                                       '«Crear base de datos» en Tareas recientes')
+            else:
+                messages.error(request, 'La instancia todavía no tiene base de datos: créala en Information → Crear base de datos')
             return redirect('instance-detail', pk=pk)
         database = databases[0]
     from ..audit import record

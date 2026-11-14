@@ -189,7 +189,32 @@ def deploy(task):
         notes.append(f'Traefik: {message}')
     if task.params.get('notify'):
         send_instance_notification('created', instance, task.created_by)
-    return '\n'.join(notes + ['Instancia desplegada'])
+    if task.params.get('created'):
+        notes.append(queue_first_database(instance, task.created_by, task.params.get('lang') or 'es_ES'))
+    return '\n'.join([note for note in notes if note] + ['Instancia desplegada'])
+
+
+def queue_first_database(instance, user, lang='es_ES'):
+    """
+    A new instance gets its database right after its first deploy (Odoo's manager is closed by default):
+    named as the database of the instance, or as the instance, with a random administrator password.
+    """
+    import secrets
+    from .permissions import DATABASE_NAME_RE
+    name = instance.database_name or instance.name
+    if not DATABASE_NAME_RE.match(name or ''):
+        return ''
+    if instance.tasks.filter(kind=Task.Kind.CREATE_DATABASE, status__in=[Task.Status.PENDING, Task.Status.RUNNING]).exists():
+        return ''
+    try:
+        service = DockerService()
+        db_container = service._get_container(f'db_{instance.name}')
+        if db_container is not None and service._list_user_databases(db_container):
+            return ''
+    except Exception:
+        logger.warning('Could not list the databases of %s', instance.name, exc_info=True)
+    enqueue(Task.Kind.CREATE_DATABASE, instance, user, name=name, password=secrets.token_urlsafe(12), lang=lang, demo=False)
+    return f'Base de datos {name} en cola: el administrador aparecerá en la ficha al terminar'
 
 
 @handler(Task.Kind.DUPLICATE)
@@ -503,7 +528,7 @@ def ai_module(task):
     db_container = service._get_container(f'db_{instance.name}')
     databases = [instance.database_name] if instance.database_name else service._list_user_databases(db_container)
     if not databases:
-        raise Exception('La instancia todavía no tiene base de datos: créala desde Odoo y vuelve a intentarlo')
+        raise Exception('La instancia todavía no tiene base de datos: créala en Information → Crear base de datos y vuelve a intentarlo')
     flag = '-u' if task.params.get('upgrade') else '-i'
     from .services.docker_service import odoo_command, odoo_major
     for index, database in enumerate(databases):

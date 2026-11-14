@@ -51,8 +51,8 @@ updates its section here (and the index) in the same commit.
                 <ol>
                     <li>Dashboard o Proyecto → <strong>Nueva instancia</strong>.</li>
                     <li>Elige proyecto, nombre, versión de Odoo y, si tienes código propio, el repositorio de GitHub (HTTPS) y la rama. Para repositorios privados necesitas tu token en Configuración → GitHub.</li>
-                    <li>Opcional: nombre de la base de datos (vacío = auto-detección), «Base por defecto de las demos» (varias bases en una instancia, Odoo 18+) y dominio propio.</li>
-                    <li>Al guardar se crea una rama con el nombre de la instancia en tu repositorio (si hay token) y se pone en cola el <strong>despliegue</strong>.</li>
+                    <li>Opcional: nombre de la base de datos (vacío = se crea con el nombre de la instancia y después se auto-detecta), «Base por defecto de las demos» (varias bases en una instancia, Odoo 18+) y dominio propio.</li>
+                    <li>Al guardar se crea una rama con el nombre de la instancia en tu repositorio (si hay token) y se pone en cola el <strong>despliegue</strong>. Al terminar se crea sola la <strong>base de datos</strong> (tarea «Crear base de datos», sin datos de demo, en el idioma del panel: es_ES o en_US); el usuario y la contraseña del administrador aparecen en la ficha y «Entrar como admin» funciona en cuanto acaba.</li>
                 </ol>
                 <h3>Qué hace el despliegue</h3>
                 <ul>
@@ -69,7 +69,7 @@ updates its section here (and the index) in the same commit.
                     <li><strong>Por la API o el MCP</strong>: crear una instancia también la despliega (ver <a href="#api">API y MCP</a>).</li>
                     <li><strong>Demos</strong> del «Modo test» (ver <a href="#demos">Demos</a>).</li>
                 </ul>
-                <p class="note">La base de datos de Odoo no se crea sola: créala en la ficha de la instancia (Information → <strong>Crear base de datos</strong>: nombre, idioma y datos de demo) o por la API (<code>create-database</code>); las dos guardan el usuario y la contraseña del administrador. En las instancias nuevas el gestor de Odoo (<code>/web/database/manager</code>) está <strong>cerrado</strong>; ábrelo en Information solo si lo necesitas.</p>
+                <p class="note">Las instancias nuevas crean su primera base de datos solas tras el primer despliegue. Para otra base (o si aquella falló), créala en la ficha de la instancia (Information → <strong>Crear base de datos</strong>: nombre, idioma y datos de demo) o por la API (<code>create-database</code>); las dos guardan el usuario y la contraseña del administrador. En las instancias nuevas el gestor de Odoo (<code>/web/database/manager</code>) está <strong>cerrado</strong>; ábrelo en Information solo si lo necesitas.</p>
             </section>
 
             <section id="gestionar" class="rounded-xl border bg-card p-6 scroll-mt-24">

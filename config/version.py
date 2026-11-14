@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.105'
+VERSION = '1.0.106'
 
 CHANGELOG = [
+    {
+        'version': '1.0.106',
+        'date': '2026-11-14',
+        'notes': [
+            'Instancias nuevas: la base de datos se crea sola. Al terminar el primer despliegue se pone en cola «Crear base de datos» con el nombre de la base de la instancia (o el de la instancia), sin datos de demo, en el idioma del panel (es_ES o en_US; por la API es_ES) y con una contraseña aleatoria para el administrador, que aparece en la ficha. No se crea si la instancia ya tiene alguna base o si ya hay una en curso. Antes no se creaba ninguna y, con el gestor de Odoo cerrado por defecto (1.0.100), no había forma de crearla desde Odoo. «Entrar como admin» e instalar un módulo sin base de datos llevan ahora a Information → Crear base de datos (o avisan de que se está creando) en vez de decir «créala desde Odoo».',
+        ],
+    },
     {
         'version': '1.0.105',
         'date': '2026-11-12',
