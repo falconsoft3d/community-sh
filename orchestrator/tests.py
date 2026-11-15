@@ -5192,3 +5192,65 @@ class InstanceEnvVarsTests(BaseTestCase):
                          {'TOKEN': 'x', 'HOST': 'db_alice-odoo'})
         self.alice_instance.env_vars = 'not valid'
         self.assertEqual(instance_environment(self.alice_instance), {})
+
+
+class InstanceStatsTests(BaseTestCase):
+    """Indicators tab: scoped to the instance's users, sizes and Odoo figures read from the containers."""
+
+    def test_stats_api_is_scoped(self):
+        self.client.force_login(self.alice)
+        url = reverse('instance-stats-api', args=[self.bob_instance.pk])
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_stats_api_returns_figures(self):
+        from django.core.cache import cache
+        cache.clear()
+
+        def exec_run(cmd, environment=None):
+            sql = cmd[-1] if isinstance(cmd, list) else cmd
+            text = {
+                'SHOW server_version': '16.15',
+                'SELECT count(*) FROM pg_stat_activity': '7',
+                "SELECT pg_database_size('prod')": '4400000000',
+                "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'": '1341',
+                "SELECT count(*) FROM ir_module_module WHERE state = 'installed'": '324',
+                "SELECT count(*) FROM res_users WHERE active AND NOT share": '45',
+            }.get(sql)
+            if sql.startswith('du -sb "/var/lib/odoo/filestore/prod"'):
+                text = '28300000000'
+            elif sql.startswith('find "/var/lib/odoo/filestore/prod"'):
+                text = '58337'
+            elif 'pg_total_relation_size(c.oid) DESC' in sql:
+                text = 'mail_message|900000000|916342'
+            elif 'blks_hit' in sql:
+                text = '99.5'
+            return mock.Mock(exit_code=0 if text is not None else 1, output=(text or 'ERROR').encode())
+
+        def container(name):
+            c = mock.Mock(status='running', attrs={'State': {'StartedAt': '2026-11-15T09:00:00Z'},
+                                                    'Config': {'Image': 'odoo:20.0'}})
+            c.name = name
+            c.exec_run.side_effect = exec_run
+            return c
+
+        service = mock.Mock()
+        service._get_container.side_effect = container
+        service._list_user_databases.return_value = ['prod']
+        with mock.patch('orchestrator.services.docker_service.DockerService', return_value=service), \
+                mock.patch('orchestrator.services.instance_stats._container_stats', return_value={'cpu_percent': 1.0}):
+            self.client.force_login(self.alice)
+            data = self.client.get(reverse('instance-stats-api', args=[self.alice_instance.pk])).json()
+        db = data['databases'][0]
+        self.assertEqual(db['name'], 'prod')
+        self.assertEqual(db['size_bytes'], 4400000000)
+        self.assertEqual(db['filestore_bytes'], 28300000000)
+        self.assertEqual(db['filestore_files'], 58337)
+        self.assertEqual(db['tables'], 1341)
+        self.assertEqual(db['cache_hit_percent'], 99.5)
+        self.assertEqual(db['odoo']['modules_installed'], 324)
+        self.assertEqual(db['odoo']['users_internal'], 45)
+        self.assertNotIn('partners', db['odoo'])  # a failing query is left out
+        self.assertEqual(db['top_tables'][0], {'name': 'mail_message', 'size_bytes': 900000000, 'rows': 916342})
+        self.assertEqual(data['total_bytes'], 4400000000 + 28300000000)
+        self.assertEqual(data['postgres_version'], '16.15')
+        self.assertEqual(len(data['containers']), 2)

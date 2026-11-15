@@ -217,6 +217,20 @@ def instance_logs_api(request, pk):
 
 
 @login_required
+def instance_stats_api(request, pk):
+    """Indicators tab: database/filestore sizes, Odoo figures, containers (cached 5 min; ?refresh=1 recomputes)."""
+    from ..permissions import require
+    from ..services.instance_stats import collect_instance_stats
+    instance = get_instance_for_user(request.user, pk)
+    require(request.user, instance, 'logs')
+    try:
+        data = collect_instance_stats(instance, refresh=request.GET.get('refresh') == '1')
+    except Exception as e:  # Docker unreachable, etc.
+        return JsonResponse({'error': str(e)[:300]}, status=503)
+    return JsonResponse(data)
+
+
+@login_required
 def instance_console_exec(request, pk):
     """Execute commands in the container console"""
     instance = get_instance_for_user(request.user, pk, manage=True)

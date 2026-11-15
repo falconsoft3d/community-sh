@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.106'
+VERSION = '1.0.107'
 
 CHANGELOG = [
+    {
+        'version': '1.0.107',
+        'date': '2026-11-15',
+        'notes': [
+            'Instancias: nueva pestaña Indicadores en la ficha (quien ve los logs): tamaño de cada base de datos y de su filestore (con número de ficheros), volumen de datos, código y respaldos; por base de datos, versión de Odoo, módulos instalados, usuarios internos y de portal, compañías, contactos, facturas, adjuntos (y los guardados en la base), mensajes, correos en cola y con error, tareas programadas activas, último acceso, tablas, aciertos de caché y las 10 tablas más grandes; y memoria, CPU, imagen y arranque de los contenedores de Odoo y PostgreSQL. Solo lectura, se calcula al abrirla y se guarda 5 minutos (Actualizar lo recalcula). También en GET /instance/{id}/stats/.',
+        ],
+    },
     {
         'version': '1.0.106',
         'date': '2026-11-14',

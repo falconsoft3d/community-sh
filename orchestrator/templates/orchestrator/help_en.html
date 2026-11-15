@@ -74,7 +74,7 @@ its section here and in help.html (and the index in views/public.py) in the same
 
             <section id="gestionar" class="rounded-xl border bg-card p-6 scroll-mt-24">
                 <h2>3. Manage an instance</h2>
-                <p>The instance page has the tabs <strong>Information, Logs, Console, Domains, Modules, Backups, Migrate, AI and Recent tasks</strong>.</p>
+                <p>The instance page has the tabs <strong>Information, Logs, Indicators, Console, Domains, Modules, Backups, Migrate, AI and Recent tasks</strong>.</p>
                 <ul>
                     <li><strong>Deploy</strong>: deploys again (recreates the containers with the current configuration; data is kept).</li>
                     <li><strong>Restart / Stop</strong>: restarting first starts the database if it was stopped. A stopped instance loses its Traefik route (no certificates spent) and gets it back when restarted. After a server reboot, instances come back on their own except the ones you stopped.</li>
@@ -83,6 +83,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                     <li><strong>Memory saving</strong> (Information, off unless you choose it): «Stop if nobody logs in for N days» (3, 7, 14 or 30; it reads its Odoo's login log, alerts the day before and when it stops it) and a daily <strong>schedule</strong> in UTC to start and stop it. Meant for test instances.</li>
                     <li><strong>Description (demos)</strong>: text shown next to the instance on its project's demo page.</li>
                     <li>Odoo <strong>Logs</strong> and a <strong>Console</strong> to run commands in the container.</li>
+                    <li><strong>Indicators</strong>: size of each database and of its filestore (attachments, with the number of files), data volume, code and backups; per database, Odoo version, modules, internal and portal users, companies, contacts, invoices, attachments, messages, queued and failed emails, active scheduled actions, last login and the biggest tables; and memory and CPU of the containers. Read-only; kept 5 minutes (<strong>Refresh</strong> recomputes it).</li>
                 </ul>
             </section>
 

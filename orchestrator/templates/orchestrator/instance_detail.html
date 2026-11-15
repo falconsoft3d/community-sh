@@ -117,6 +117,12 @@
                 <i data-lucide="terminal" class="inline-block h-4 w-4 mr-2"></i>
                 {% translate "Logs" %}
             </button>
+            <button @click="activeTab = 'stats'"
+                :class="activeTab === 'stats' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'"
+                class="whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors">
+                <i data-lucide="gauge" class="inline-block h-4 w-4 mr-2"></i>
+                {% translate "Indicadores" %}
+            </button>
             {% endif %}
 {% if can_manage %}
             <button @click="activeTab = 'console'"
@@ -1180,6 +1186,111 @@
             </div>
         </div>
     </div>
+
+    <!-- Indicators Tab: sizes and figures of the instance (JSON, cached 5 min) -->
+    <div x-show="activeTab === 'stats'" x-cloak class="space-y-6"
+         x-data="instanceStats('{% url 'instance-stats-api' object.pk %}')"
+         x-init="if (activeTab === 'stats') load(); $watch('activeTab', v => { if (v === 'stats' && !data && !loading) load() })">
+        <div class="flex items-center justify-between">
+            <p class="text-sm text-muted-foreground">
+                <span x-show="data">{% translate "Calculado" %} <span x-text="data && new Date(data.generated_at).toLocaleString()"></span> · {% translate "se guarda 5 minutos" %}</span>
+                <span x-show="loading">{% translate "Calculando (puede tardar unos segundos con muchos adjuntos)…" %}</span>
+            </p>
+            <button @click="load(true)" :disabled="loading" class="inline-flex items-center rounded-md border px-3 h-8 text-sm hover:bg-accent disabled:opacity-50">
+                <i data-lucide="refresh-cw" class="mr-1 h-3 w-3"></i> {% translate "Actualizar" %}
+            </button>
+        </div>
+        <p x-show="error" class="text-sm text-red-600" x-text="error"></p>
+        <template x-if="data">
+            <div class="space-y-6">
+                <template x-if="data.warnings.includes('db_stopped')"><p class="text-sm text-amber-600">{% translate "La base de datos está parada: no hay datos de PostgreSQL." %}</p></template>
+                <template x-if="data.warnings.includes('odoo_stopped')"><p class="text-sm text-amber-600">{% translate "Odoo está parado: el tamaño del filestore no se puede medir." %}</p></template>
+                <!-- Totals -->
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="rounded-xl border bg-card p-4"><p class="text-xs text-muted-foreground">{% translate "Bases de datos" %}</p><p class="text-2xl font-semibold tabular-nums" x-text="size(data.databases.reduce((a, d) => a + (d.size_bytes || 0), 0))"></p></div>
+                    <div class="rounded-xl border bg-card p-4"><p class="text-xs text-muted-foreground">{% translate "Filestore (adjuntos)" %}</p><p class="text-2xl font-semibold tabular-nums" x-text="size(data.databases.reduce((a, d) => a + (d.filestore_bytes || 0), 0))"></p><p class="text-xs text-muted-foreground tabular-nums" x-text="num(data.databases.reduce((a, d) => a + (d.filestore_files || 0), 0)) + ' {% translate "ficheros" %}'"></p></div>
+                    <div class="rounded-xl border bg-card p-4"><p class="text-xs text-muted-foreground">{% translate "Base de datos + filestore" %}</p><p class="text-2xl font-semibold tabular-nums" x-text="size(data.total_bytes)"></p><p class="text-xs text-muted-foreground tabular-nums" x-show="data.data_volume_bytes" x-text="'{% translate "Volumen de datos" %}: ' + size(data.data_volume_bytes)"></p></div>
+                    <div class="rounded-xl border bg-card p-4"><p class="text-xs text-muted-foreground">{% translate "Código y respaldos" %}</p><p class="text-2xl font-semibold tabular-nums" x-text="size(data.code_bytes)"></p><p class="text-xs text-muted-foreground tabular-nums" x-text="data.backups.count + ' {% translate "respaldos" %} · ' + size(data.backups.local_bytes)"></p></div>
+                </div>
+                <!-- Containers -->
+                <div class="rounded-xl border bg-card p-4 space-y-2">
+                    <h3 class="font-semibold">{% translate "Contenedores" %}</h3>
+                    <template x-for="c in data.containers" :key="c.name">
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                            <span class="font-mono" x-text="c.name"></span>
+                            <span :class="c.status === 'running' ? 'text-green-600' : 'text-amber-600'" x-text="c.status"></span>
+                            <span class="text-muted-foreground" x-text="c.image"></span>
+                            <span class="tabular-nums" x-show="c.memory_usage_mb != null" x-text="'{% translate "Memoria" %}: ' + c.memory_usage_mb + ' / ' + c.memory_limit_mb + ' MB (' + c.memory_percent + ' %)'"></span>
+                            <span class="tabular-nums" x-show="c.cpu_percent != null" x-text="'CPU: ' + c.cpu_percent + ' %'"></span>
+                            <span class="text-muted-foreground" x-show="c.started_at" x-text="'{% translate "Arrancado" %}: ' + new Date(c.started_at).toLocaleString()"></span>
+                        </div>
+                    </template>
+                    <p class="text-xs text-muted-foreground" x-show="data.postgres_version" x-text="'PostgreSQL ' + data.postgres_version + ' · ' + data.connections + ' {% translate "conexiones" %}'"></p>
+                </div>
+                <!-- One card per database -->
+                <template x-for="db in data.databases" :key="db.name">
+                    <div class="rounded-xl border bg-card p-4 space-y-4">
+                        <div class="flex flex-wrap items-baseline justify-between gap-2">
+                            <h3 class="font-semibold"><i data-lucide="database" class="inline h-4 w-4"></i> <span x-text="db.name"></span>
+                                <span x-show="db.odoo.neutralized" class="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">{% translate "neutralizada" %}</span></h3>
+                            <span class="text-sm text-muted-foreground tabular-nums" x-text="'Odoo ' + (db.odoo.odoo_version || '?')"></span>
+                        </div>
+                        <dl class="grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+                            <template x-for="row in rows(db)" :key="row[0]">
+                                <div><dt class="text-xs text-muted-foreground" x-text="row[0]"></dt><dd class="font-medium tabular-nums" x-text="row[1]"></dd></div>
+                            </template>
+                        </dl>
+                        <div x-show="db.top_tables.length">
+                            <p class="text-xs text-muted-foreground mb-1">{% translate "Tablas más grandes" %}</p>
+                            <table class="w-full text-sm">
+                                <thead><tr class="text-left text-xs text-muted-foreground"><th class="py-1">{% translate "Tabla" %}</th><th class="py-1 text-right">{% translate "Tamaño" %}</th><th class="py-1 text-right">{% translate "Filas (aprox.)" %}</th></tr></thead>
+                                <tbody><template x-for="t in db.top_tables" :key="t.name"><tr class="border-t"><td class="py-1 font-mono text-xs" x-text="t.name"></td><td class="py-1 text-right tabular-nums" x-text="size(t.size_bytes)"></td><td class="py-1 text-right tabular-nums" x-text="num(t.rows)"></td></tr></template></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+    <script>
+    function instanceStats(url) {
+        const L = {
+            db: '{{ _("Base de datos")|escapejs }}', filestore: '{{ _("Filestore")|escapejs }}', files: '{{ _("Ficheros")|escapejs }}',
+            tables: '{{ _("Tablas")|escapejs }}', cache: '{{ _("Aciertos de caché")|escapejs }}', modules: '{{ _("Módulos instalados")|escapejs }}',
+            internal: '{{ _("Usuarios internos")|escapejs }}', portal: '{{ _("Usuarios portal")|escapejs }}', companies: '{{ _("Compañías")|escapejs }}',
+            partners: '{{ _("Contactos")|escapejs }}', invoices: '{{ _("Facturas")|escapejs }}', attachments: '{{ _("Adjuntos")|escapejs }}',
+            inDb: '{{ _("Adjuntos en la BD")|escapejs }}', messages: '{{ _("Mensajes")|escapejs }}', outgoing: '{{ _("Correos en cola")|escapejs }}',
+            exception: '{{ _("Correos con error")|escapejs }}', crons: '{{ _("Tareas programadas activas")|escapejs }}', lastLogin: '{{ _("Último acceso")|escapejs }}',
+        };
+        return {
+            data: null, loading: false, error: '',
+            size(b) { if (b == null) return '—'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; } return b.toFixed(i ? 1 : 0) + ' ' + u[i]; },
+            num(n) { return n == null ? '—' : Number(n).toLocaleString(); },
+            rows(db) {
+                const o = db.odoo || {};
+                const r = [[L.db, this.size(db.size_bytes)], [L.filestore, this.size(db.filestore_bytes)], [L.files, this.num(db.filestore_files)],
+                    [L.tables, this.num(db.tables)], [L.cache, db.cache_hit_percent == null ? '—' : db.cache_hit_percent + ' %'],
+                    [L.modules, this.num(o.modules_installed)], [L.internal, this.num(o.users_internal)], [L.portal, this.num(o.users_portal)],
+                    [L.companies, this.num(o.companies)], [L.partners, this.num(o.partners)], [L.invoices, this.num(o.invoices)],
+                    [L.attachments, this.num(o.attachments)], [L.inDb, this.size(o.attachments_in_db_bytes)], [L.messages, this.num(o.messages)],
+                    [L.outgoing, this.num(o.mail_outgoing)], [L.exception, this.num(o.mail_exception)], [L.crons, this.num(o.crons_active)],
+                    [L.lastLogin, o.last_login ? new Date(o.last_login + 'Z').toLocaleString() : '—']];
+                return r;
+            },
+            async load(refresh) {
+                this.loading = true; this.error = '';
+                try {
+                    const res = await fetch(url + (refresh ? '?refresh=1' : ''), {headers: {'Accept': 'application/json'}});
+                    const body = await res.json();
+                    if (!res.ok) throw new Error(body.error || res.statusText);
+                    this.data = body;
+                    this.$nextTick(() => window.lucide && lucide.createIcons());
+                } catch (e) { this.error = '{{ _("No se pudieron calcular los indicadores")|escapejs }}: ' + e.message; }
+                this.loading = false;
+            },
+        };
+    }
+    </script>
 
     {% endif %}
     <!-- Console Tab -->
