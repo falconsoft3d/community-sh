@@ -630,6 +630,12 @@ ES_TO_EN = {
     'reservados por los límites de sus instancias': "reserved by its instances' limits",
     '¿Quitar este servidor del panel? El servidor en sí no se toca.': "Remove this server from the panel? The server itself isn't touched.",
     'Última preparación': 'Last preparation',
+    'Mover a otro servidor…': 'Move to another server…',
+    'Odoo se detiene mientras sus bases de datos y adjuntos pasan al otro servidor (minutos, según su tamaño). El dominio, el código y los backups no cambian. Si algo falla, vuelve a arrancar donde estaba.':
+        'Odoo stops while its databases and attachments move to the other server (minutes, depending on their size). The domain, code and backups stay the same. If anything fails, it starts again where it was.',
+    'libres': 'free',
+    'Escribe «%(name)s» para confirmar': 'Type «%(name)s» to confirm',
+    'Mover ahora': 'Move now',
 }
 
 # Strings written in English in the code -> Spanish

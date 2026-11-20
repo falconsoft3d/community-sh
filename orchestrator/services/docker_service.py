@@ -175,10 +175,10 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
                 shutil.rmtree(os.path.join(repos_root, folder), ignore_errors=True)
         return [slug for slug in wanted if os.path.isdir(os.path.join(repos_root, slug))]
 
-    def _ensure_db_container(self, instance, network_name, notes):
-        """Start the instance's Postgres with a version its Odoo supports."""
+    def _ensure_db_container(self, instance, network_name, notes, image=None):
+        """Start the instance's Postgres with a version its Odoo supports (or `image`: a move keeps the one it had)."""
         name = f"db_{instance.name}"
-        image = postgres_image(instance.odoo_version)
+        image = image or postgres_image(instance.odoo_version)
         existing = self._get_container(name)
         if existing is not None:
             if existing.attrs.get('HostConfig', {}).get('RestartPolicy', {}).get('Name') != RESTART_POLICY['Name']:
@@ -680,14 +680,12 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
         except docker.errors.NotFound:
             print(f"Container not found for instance {instance.name}")
             
-    def delete_instance(self, instance):
-        """
-        Stops and removes containers, networks and the instance directory.
-        """
+    def remove_containers(self, name, data_volume=None, container_id=None):
+        """The Docker side of an instance on this server: its Odoo and Postgres containers, filestore volume and network."""
         # 1. Stop and Remove Odoo Container (by id, or by name if the id isn't known)
-        if instance.container_id or self._get_container(f"odoo_{instance.name}"):
+        if container_id or self._get_container(f"odoo_{name}"):
             try:
-                container = self.client.containers.get(instance.container_id or f"odoo_{instance.name}")
+                container = self.client.containers.get(container_id or f"odoo_{name}")
                 container.stop()
                 container.remove(v=True)
             except docker.errors.NotFound:
@@ -696,7 +694,7 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
                 print(f"Error removing Odoo container: {e}")
         
         # Named filestore volume (not removed by remove(v=True))
-        data_volume = instance.data_volume or f"odoo_data_{instance.name}"
+        data_volume = data_volume or f"odoo_data_{name}"
         try:
             self.client.volumes.get(data_volume).remove()
         except docker.errors.NotFound:
@@ -705,7 +703,7 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
             print(f"Error removing data volume {data_volume}: {e}")
 
         # 2. Stop and Remove DB Container
-        db_container_name = f"db_{instance.name}"
+        db_container_name = f"db_{name}"
         try:
             container = self.client.containers.get(db_container_name)
             container.stop()
@@ -715,9 +713,8 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
         except Exception as e:
             print(f"Error removing DB container: {e}")
 
-        # 3. Remove Network (if empty/exclusive? Usually shared or unique per instance)
-        # We created a unique network `net_{instance.name}`
-        network_name = f"net_{instance.name}"
+        # 3. Remove its own network
+        network_name = f"net_{name}"
         try:
             network = self.client.networks.get(network_name)
             network.remove()
@@ -726,7 +723,13 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
         except Exception as e:
             print(f"Error removing network: {e}")
 
-        # 4. Delete Git branch if this instance has a custom branch
+    def delete_instance(self, instance):
+        """
+        Stops and removes containers, networks and the instance directory.
+        """
+        self.remove_containers(instance.name, instance.data_volume, container_id=instance.container_id)
+
+        # 2. Delete Git branch if this instance has a custom branch
         workspace_path = os.path.join(settings.BASE_DIR, 'instances', instance.name)
         if instance.github_repo and instance.github_branch:
             # Don't delete main/master branches
@@ -760,7 +763,7 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
             else:
                 print(f"Skipping deletion of protected branch: {instance.github_branch}")
         
-        # 5. Remove Files (and the node's copy)
+        # 3. Remove Files (and the node's copy)
         if self.remote:
             try:
                 nodes.remove_workspace(instance)

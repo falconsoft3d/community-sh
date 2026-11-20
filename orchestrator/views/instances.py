@@ -6,7 +6,7 @@ from ..services import DockerService
 
 from django.views.generic import ListView, CreateView, DetailView
 from django.urls import reverse_lazy
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponseRedirect, JsonResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -23,6 +23,7 @@ from ..permissions import (
     is_client,
     instances_for,
     projects_for,
+    superuser_required,
     validate_domain,
     validate_resource_name,
 )
@@ -128,6 +129,8 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
             context['auto_update_choices'] = Instance.AutoUpdate.choices
             from ..instance_env import instance_environment
             context['env_keys'] = sorted(instance_environment(self.object))
+        if self.request.user.is_superuser:
+            context['server_targets'] = server_targets(self.object)
         from ..services.domains import certificate_problem
         context['certificate_problem'] = certificate_problem(self.object)
         from ..services.odoo_migration import MIN_TARGET_VERSION, STEP_LABELS, STEPS
@@ -934,6 +937,47 @@ def instance_refresh_data(request, pk):
     enqueue(Task.Kind.REFRESH_DATA, instance, request.user, source=source.pk, neutralize=neutralize)
     record(request, 'refresh_data', instance.name, f'Desde {source.name}' + ('' if neutralize else ' · sin neutralizar'))
     messages.success(request, f'Refrescando {instance.name} con los datos de {source.name}: sigue el progreso en «Tareas recientes»')
+    return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
+
+
+def server_targets(instance):
+    """Where a superuser can move the instance: the panel's server (None) and the ready nodes, but not where it is."""
+    from ..server_models import Server
+    targets = [] if instance.server_id is None else [None]
+    targets += list(Server.objects.filter(status=Server.Status.READY).exclude(pk=instance.server_id))
+    return targets if Server.objects.exists() else []
+
+
+@login_required
+@superuser_required
+@require_POST
+@recent_auth_required
+def instance_move_server(request, pk):
+    """Move the instance to another server (a task): its Odoo stops while its data travels."""
+    from django.urls import reverse
+    from ..audit import record
+    from ..services.server_moves import check_move, server_label
+    instance = get_object_or_404(Instance, pk=pk)
+    back = redirect('instance-detail', pk=pk)
+    wanted = request.POST.get('server', '')
+    target = next((t for t in server_targets(instance) if str(t.pk if t else '') == wanted), 'none')
+    if target == 'none':
+        messages.error(request, 'Elige un servidor listo distinto del actual')
+        return back
+    problem = check_move(instance, target)
+    if problem:
+        messages.error(request, problem)
+        return back
+    if instance.tasks.filter(status__in=[Task.Status.PENDING, Task.Status.RUNNING]).exists():
+        messages.error(request, 'La instancia tiene tareas en curso o en cola: espera a que terminen')
+        return back
+    if request.POST.get('confirm', '').strip() != instance.name:
+        messages.error(request, f'Para confirmar escribe el nombre de la instancia: {instance.name}')
+        return back
+    enqueue(Task.Kind.MOVE_SERVER, instance, request.user, server=target.pk if target else None)
+    record(request, 'instance_moved_server', instance.name,
+           f'De {server_label(instance.server)} a {server_label(target)}')
+    messages.success(request, f'Moviendo {instance.name} a {server_label(target)}: sigue el progreso en «Tareas recientes»')
     return redirect(reverse('instance-detail', args=[pk]) + '#tasks')
 
 

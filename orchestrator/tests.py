@@ -5514,3 +5514,166 @@ class ServerNodeTests(BaseTestCase):
             with self.assertRaises(RuntimeError):
                 DockerService(self.remote).copy_instance(self.remote, 'remota-copia', create_branch=False)
         self.assertEqual(create.call_args.kwargs['server'], self.server)
+
+
+class ServerMoveTests(BaseTestCase):
+    """Moving an instance between the panel's server and the nodes: data through the panel, rollback on failure."""
+
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from .server_models import Server
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(__import__('shutil').rmtree, self.tmp, True)
+        settings_patch = override_settings(BASE_DIR=self.tmp)
+        settings_patch.enable()
+        self.addCleanup(settings_patch.disable)
+        self.node = Server.objects.create(name='nodo-1', host='10.0.0.3', status=Server.Status.READY, disk_free_gb=100)
+        self.instance = self.alice_instance
+        self.instance.container_id, self.instance.port = 'old-odoo', 21000
+        self.instance.status = Instance.Status.RUNNING
+        self.instance.data_volume = 'abc123'  # an anonymous volume of an old deploy
+        self.instance.save()
+        self.source_db = mock.MagicMock(status='running', attrs={'Config': {'Image': 'postgres:15'}})
+        self.source_db.exec_run.return_value = mock.MagicMock(exit_code=0, output=b'')
+        self.source_db.get_archive.return_value = ([b'dump-', b'tar'], {})
+        self.source_odoo = mock.MagicMock(status='running')
+        self.source_odoo.get_archive.return_value = ([b'filestore-tar'], {})
+        self.target_db = mock.MagicMock()
+        self.target_db.exec_run.return_value = mock.MagicMock(exit_code=0, output=b'')
+        self.target_odoo = mock.MagicMock()
+        self.target_odoo.put_archive.return_value = True
+        self.clients = {None: mock.MagicMock(), self.node.pk: mock.MagicMock()}
+        self.clients[self.node.pk].containers.get.return_value = self.target_odoo
+
+    def patches(self, deploy=None):
+        from contextlib import ExitStack
+        from .services.docker_service import DockerService
+        sources = {f'db_{self.instance.name}': self.source_db, f'odoo_{self.instance.name}': self.source_odoo}
+
+        def get_container(service, name):
+            # The containers are on the server the instance is leaving
+            return sources.get(name) if service.server == self.instance.server else None
+
+        def deploy_instance(service, instance):
+            if deploy:
+                deploy()
+            instance.container_id, instance.status = 'new-odoo', Instance.Status.RUNNING
+            instance.save()
+
+        stack = ExitStack()
+        stack.enter_context(mock.patch('orchestrator.services.nodes.docker_client',
+                                       side_effect=lambda server: self.clients[server.pk if server else None]))
+        stack.enter_context(mock.patch.object(DockerService, '_get_container', autospec=True, side_effect=get_container))
+        stack.enter_context(mock.patch.object(DockerService, '_start_db_container', return_value=self.source_db))
+        stack.enter_context(mock.patch.object(DockerService, '_wait_for_postgres'))
+        stack.enter_context(mock.patch.object(DockerService, '_list_user_databases', return_value=['prod', 'staging']))
+        self.ensure_db = stack.enter_context(mock.patch.object(DockerService, '_ensure_db_container', return_value=self.target_db))
+        self.deploy = stack.enter_context(mock.patch.object(DockerService, 'deploy_instance', autospec=True, side_effect=deploy_instance))
+        self.remove = stack.enter_context(mock.patch.object(DockerService, 'remove_containers', autospec=True))
+        self.routes = stack.enter_context(mock.patch('orchestrator.traefik_service.TraefikService.generate_instance_config',
+                                                     return_value=(True, '')))
+        stack.enter_context(mock.patch('orchestrator.services.nodes.refresh_usage'))
+        self.remove_workspace = stack.enter_context(mock.patch('orchestrator.services.nodes.remove_workspace'))
+        return stack
+
+    def test_move_to_a_node(self):
+        from .services.docker_helpers import ODOO_DATA_DIR
+        from .services.server_moves import move_instance
+        with self.patches():
+            notes = move_instance(self.instance, self.node)
+        self.instance.refresh_from_db()
+        self.assertEqual(self.instance.server, self.node)
+        self.assertEqual((self.instance.container_id, self.instance.data_volume), ('new-odoo', 'odoo_data_alice-odoo'))
+        self.source_odoo.stop.assert_called_once()
+        # Same Postgres as before, every database restored from the dump
+        self.assertEqual(self.ensure_db.call_args.kwargs['image'], 'postgres:15')
+        self.target_db.put_archive.assert_called_once()
+        self.assertIn('psql -U odoo -d postgres -q -f /tmp/move_dump.sql', [c.args[0] for c in self.target_db.exec_run.call_args_list])
+        self.assertEqual(self.target_odoo.put_archive.call_args.args[0], ODOO_DATA_DIR)
+        self.routes.assert_called()
+        # The panel's copy goes only now, with the old volume; the panel keeps the workspace
+        service, name, volume = self.remove.call_args.args
+        self.assertIsNone(service.server)
+        self.assertEqual((name, volume), ('alice-odoo', 'abc123'))
+        self.remove_workspace.assert_not_called()
+        self.assertIn('nodo-1 con 2 base(s)', notes[-1])
+        self.assertEqual(os.listdir(os.path.join(self.tmp, 'backups')), [])  # the files that travelled are gone
+
+    def test_failure_goes_back_to_the_source(self):
+        from .services.server_moves import move_instance
+
+        def broken():
+            raise RuntimeError('no image')
+        with self.patches(deploy=broken), self.assertRaisesMessage(RuntimeError, 'no image'):
+            move_instance(self.instance, self.node)
+        self.instance.refresh_from_db()
+        self.assertIsNone(self.instance.server)
+        self.assertEqual((self.instance.container_id, self.instance.data_volume, self.instance.port, self.instance.status),
+                         ('old-odoo', 'abc123', 21000, Instance.Status.RUNNING))
+        self.source_odoo.start.assert_called_once()
+        # Only the target is cleaned up, never the source
+        service, name, _ = self.remove.call_args.args
+        self.assertEqual((service.server, name), (self.node, 'alice-odoo'))
+        self.assertEqual(self.remove.call_count, 1)
+        self.remove_workspace.assert_called_once_with(self.instance, server=self.node)
+
+    def test_missing_database_after_restore_rolls_back(self):
+        from .services.docker_service import DockerService
+        from .services.server_moves import move_instance
+        with self.patches():
+            with mock.patch.object(DockerService, '_list_user_databases', side_effect=[['prod', 'staging'], ['prod']]), \
+                    self.assertRaisesMessage(Exception, 'staging'):
+                move_instance(self.instance, self.node)
+        self.deploy.assert_not_called()
+        self.instance.refresh_from_db()
+        self.assertIsNone(self.instance.server)
+
+    def test_back_from_a_node_removes_its_copy(self):
+        from .services.server_moves import move_instance
+        Instance.objects.filter(pk=self.instance.pk).update(server=self.node)
+        self.instance.refresh_from_db()
+        self.clients[None], self.clients[self.node.pk] = self.clients[self.node.pk], self.clients[None]
+        with self.patches(), mock.patch('shutil.disk_usage', return_value=mock.MagicMock(free=500 * 1024 ** 3)):
+            move_instance(self.instance, None)
+        self.instance.refresh_from_db()
+        self.assertIsNone(self.instance.server)
+        self.remove_workspace.assert_called_once_with(self.instance, server=self.node)
+
+    def test_not_enough_disk(self):
+        from .services.server_moves import move_instance
+        self.node.disk_free_gb = 1
+        self.node.save()
+        with self.patches(), self.assertRaisesMessage(Exception, 'disco suficiente'):
+            move_instance(self.instance, self.node)
+        self.deploy.assert_not_called()
+        self.instance.refresh_from_db()
+        self.assertIsNone(self.instance.server)
+
+    def test_checks(self):
+        from .services.server_moves import check_move
+        self.assertIn('ya está', check_move(self.instance, None))
+        self.node.status = self.node.Status.ERROR
+        self.assertIn('no está listo', check_move(self.instance, self.node))
+        self.node.status = self.node.Status.READY
+        self.instance.container_id = ''
+        self.assertIn('desplegado', check_move(self.instance, self.node))
+
+    def test_view_queues_the_move_for_superusers_only(self):
+        from .task_models import Task
+        url = reverse('instance-move-server', args=[self.instance.pk])
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.post(url, {'server': self.node.pk, 'confirm': 'alice-odoo'}).status_code, 403)
+        self.client.force_login(self.admin)
+        page = self.client.get(reverse('instance-detail', args=[self.instance.pk])).content.decode()
+        self.assertIn(url, page)
+        self.client.post(url, {'server': self.node.pk, 'confirm': 'wrong'})
+        self.assertFalse(Task.objects.filter(kind=Task.Kind.MOVE_SERVER).exists())
+        self.client.post(url, {'server': '', 'confirm': 'alice-odoo'})  # already on the panel's server
+        self.assertFalse(Task.objects.filter(kind=Task.Kind.MOVE_SERVER).exists())
+        self.client.post(url, {'server': self.node.pk, 'confirm': 'alice-odoo'})
+        task = Task.objects.get(kind=Task.Kind.MOVE_SERVER)
+        self.assertEqual(task.params, {'server': self.node.pk})
+        # One at a time
+        self.client.post(url, {'server': self.node.pk, 'confirm': 'alice-odoo'})
+        self.assertEqual(Task.objects.filter(kind=Task.Kind.MOVE_SERVER).count(), 1)

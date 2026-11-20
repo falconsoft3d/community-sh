@@ -612,6 +612,15 @@ def build_container(task):
     return f'{message}: {container.url}'
 
 
+@handler(Task.Kind.MOVE_SERVER)
+def move_server(task):
+    """Move an instance to another server (its databases and filestore through the panel), then remove it from the old one."""
+    from .server_models import Server
+    from .services.server_moves import move_instance
+    target = Server.objects.get(pk=task.params['server']) if task.params.get('server') else None
+    return '\n'.join(move_instance(task.instance, target))
+
+
 @handler(Task.Kind.SERVER_SETUP)
 def server_setup(task):
     """Check a server (node) and prepare it to run instances: SSH, Docker, its folder and its Docker proxy."""

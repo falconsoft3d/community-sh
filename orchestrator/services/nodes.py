@@ -201,9 +201,11 @@ def sync_workspace(instance):
     rsync(server, panel_addons + '/', node_path(server, panel_addons))
 
 
-def remove_workspace(instance):
-    path = node_path(instance.server, os.path.join(settings.BASE_DIR, 'instances', instance.name))
-    run_ssh(instance.server, f'rm -rf {shlex.quote(path)}')
+def remove_workspace(instance, server=None):
+    """The node's copy of the workspace (on its current server, or on `server`: the one it left)."""
+    server = server or instance.server
+    path = node_path(server, os.path.join(settings.BASE_DIR, 'instances', instance.name))
+    run_ssh(server, f'rm -rf {shlex.quote(path)}')
 
 
 def rename_workspace(instance, old_name):

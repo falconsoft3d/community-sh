@@ -44,6 +44,7 @@ ACTIONS = {
     'server_added': 'Añadir servidor',
     'server_changed': 'Cambiar servidor',
     'server_deleted': 'Eliminar servidor',
+    'instance_moved_server': 'Mover instancia a otro servidor',
 }
 
 

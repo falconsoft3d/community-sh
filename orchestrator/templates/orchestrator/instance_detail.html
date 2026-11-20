@@ -289,6 +289,24 @@
                         <span class="text-muted-foreground">{% translate "Este servidor (panel)" %}</span>
                         {% endif %}
                     </div>
+                    {% if server_targets %}
+                    <div x-data="{ open: false }">
+                        <button type="button" x-show="!open" @click="open = true" class="text-xs text-primary hover:underline">{% translate "Mover a otro servidor…" %}</button>
+                        <form x-show="open" x-cloak method="post" action="{% url 'instance-move-server' object.pk %}" class="mt-2 space-y-2 rounded-md border p-3">
+                            {% csrf_token %}
+                            <p class="text-xs text-muted-foreground">{% translate "Odoo se detiene mientras sus bases de datos y adjuntos pasan al otro servidor (minutos, según su tamaño). El dominio, el código y los backups no cambian. Si algo falla, vuelve a arrancar donde estaba." %}</p>
+                            <select name="server" class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
+                                {% for target in server_targets %}<option value="{% if target %}{{ target.pk }}{% endif %}">{% if target %}{{ target.name }} ({{ target.host }}){% if target.disk_free_gb is not None %} · {{ target.disk_free_gb }} GB {% translate "libres" %}{% endif %}{% else %}{% translate "Este servidor (panel)" %}{% endif %}</option>{% endfor %}
+                            </select>
+                            <label class="block space-y-1 text-xs"><span>{% blocktranslate with name=object.name %}Escribe «{{ name }}» para confirmar{% endblocktranslate %}</span>
+                                <input name="confirm" autocomplete="off" required class="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"></label>
+                            <div class="flex gap-2">
+                                <button type="submit" class="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">{% translate "Mover ahora" %}</button>
+                                <button type="button" @click="open = false" class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs hover:bg-accent">{% translate "Cancelar" %}</button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div class="space-y-1">

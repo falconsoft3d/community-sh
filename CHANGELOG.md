@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.109**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.110**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.110 — 2026-11-20
+
+- Servidores, fase 2: mover una instancia que ya existe a otro servidor (administradores, Information → Servidor → «Mover a otro servidor…», confirmando con su nombre y la contraseña si hace rato que se entró). Tarea «Mover a otro servidor»: detiene Odoo, copia todas sus bases (pg_dumpall) y los adjuntos a disco en el panel, comprueba que el destino tiene sitio (dos veces los datos), arranca allí la misma imagen de PostgreSQL con los datos, comprueba que están todas las bases, despliega Odoo y cambia las rutas de Traefik; solo entonces borra los contenedores, el volumen y la copia del workspace del origen. Si algo falla antes, quita lo creado en el destino y la vuelve a arrancar donde estaba. Funciona panel → nodo, nodo → panel y entre nodos. Queda en la Auditoría. Migración 0083.
 
 ## 1.0.109 — 2026-11-20
 

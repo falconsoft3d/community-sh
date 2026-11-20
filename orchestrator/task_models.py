@@ -32,6 +32,7 @@ class Task(models.Model):
         BACKUP_VERIFY = 'backup_verify', 'Comprobar backups'
         REFRESH_DATA = 'refresh_data', 'Refrescar datos desde otra instancia'
         SERVER_SETUP = 'server_setup', 'Preparar servidor'
+        MOVE_SERVER = 'move_server', 'Mover a otro servidor'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'
