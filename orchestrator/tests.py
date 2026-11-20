@@ -5784,3 +5784,106 @@ class ServerMetricsTests(BaseTestCase):
             self.assertContains(self.client.get(reverse('dashboard')), 'nodo-2')
         self.client.force_login(self.alice)
         self.assertNotContains(self.client.get(reverse('dashboard')), 'nodo-1')
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
+class ContainerNodeTests(BaseTestCase):
+    """Generic containers on a node: published on its private IP, routed by the panel's Traefik."""
+
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from .server_models import Server
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(__import__('shutil').rmtree, self.tmp, True)
+        settings_patch = override_settings(BASE_DIR=self.tmp)
+        settings_patch.enable()
+        self.addCleanup(settings_patch.disable)
+        self.node = Server.objects.create(name='nodo-1', host='10.0.0.3', status=Server.Status.READY)
+
+    def test_create_on_a_node(self):
+        import docker
+        from .container_service import ContainerService
+        container = Container.objects.create(name='n8n1', image='n8nio/n8n', port=31000, container_port=5678,
+                                             volumes={'data': {'host': 'data', 'container': '/data'}},
+                                             created_by=self.admin, server=self.node)
+        client = mock.MagicMock()
+        client.containers.get.side_effect = docker.errors.NotFound('missing')
+        client.volumes.get.side_effect = docker.errors.NotFound('missing')
+        client.containers.run.return_value.id = 'c1'
+        with mock.patch('orchestrator.services.nodes.docker_client', return_value=client) as get_client, \
+                mock.patch('orchestrator.traefik_service.TraefikService.generate_container_config', return_value=(True, '')) as route:
+            ok, message = ContainerService(container).create_container(container)
+        self.assertTrue(ok, message)
+        get_client.assert_called_with(self.node)
+        run = client.containers.run.call_args.kwargs
+        # Only on the private IP; the panel's Docker network isn't on the node
+        self.assertEqual(run['ports'], {'5678/tcp': ('10.0.0.3', 31000)})
+        self.assertEqual(run['network'], 'bridge')
+        self.assertNotIn(mock.call('community-sh_web'), client.networks.get.call_args_list)
+        client.volumes.create.assert_called_once()
+        route.assert_called_once_with(container)
+        self.assertFalse(container.port_is_public)
+
+    def test_traefik_routes_it_by_private_ip(self):
+        import yaml
+        from .traefik_service import TraefikService
+        container = Container.objects.create(name='n8n1', image='n8nio/n8n', port=31000, container_port=5678,
+                                             created_by=self.admin, server=self.node, status='running')
+        with mock.patch('orchestrator.services.domains.main_domain', return_value='example.com'):
+            ok, _ = TraefikService.generate_container_config(container)
+        self.assertTrue(ok)
+        with open(f'{self.tmp}/traefik/container-n8n1.yml') as f:
+            config = yaml.safe_load(f)
+        servers = [s['url'] for service in config['http']['services'].values() for s in service['loadBalancer']['servers']]
+        self.assertEqual(servers, ['http://10.0.0.3:31000'])
+
+    def test_web_form_places_it_on_a_node_for_superusers(self):
+        with mock.patch('orchestrator.container_views.ContainerService') as service:
+            service.return_value.create_container.return_value = (True, 'ok')
+            self.client.force_login(self.admin)
+            self.assertContains(self.client.get(reverse('container-create')), 'nodo-1')
+            self.client.post(reverse('container-create'), {'template': 'custom', 'name': 'web1', 'image': 'nginx',
+                                                           'port': 31001, 'container_port': 80, 'server': self.node.pk})
+            container = Container.objects.get(name='web1')
+            self.assertEqual(container.server, self.node)
+            service.assert_called_with(container)
+            # Not for others, and never on a server that isn't ready
+            self.client.force_login(self.alice)
+            self.assertNotContains(self.client.get(reverse('container-create')), 'nodo-1')
+            self.client.post(reverse('container-create'), {'template': 'custom', 'name': 'web2', 'image': 'nginx',
+                                                           'port': 31002, 'container_port': 80, 'server': self.node.pk})
+            self.assertFalse(Container.objects.filter(name='web2').exists())
+
+    def test_api_server_is_for_superusers_when_creating(self):
+        with mock.patch('orchestrator.container_service.ContainerService') as service:
+            service.return_value.create_container.return_value = (True, 'ok')
+            self.client.force_login(self.admin)
+            response = self.client.post('/api/containers/', {'name': 'web1', 'image': 'nginx', 'container_port': 80,
+                                                              'server': self.node.pk}, content_type='application/json')
+            self.assertEqual(response.status_code, 201, response.content)
+            self.assertEqual(Container.objects.get(name='web1').server, self.node)
+            self.client.force_login(self.alice)
+            response = self.client.post('/api/containers/', {'name': 'web2', 'image': 'nginx', 'container_port': 80,
+                                                              'server': self.node.pk}, content_type='application/json')
+            self.assertEqual(response.status_code, 201, response.content)
+            self.assertIsNone(Container.objects.get(name='web2').server)
+
+    def test_server_with_containers_cannot_be_removed(self):
+        from .server_models import Server
+        Container.objects.create(name='web1', image='nginx', port=31001, container_port=80, created_by=self.admin, server=self.node)
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse('server-list')), 'web1')
+        self.client.post(reverse('server-delete', args=[self.node.pk]))
+        self.assertTrue(Server.objects.filter(pk=self.node.pk).exists())
+
+    def test_build_runs_on_the_server_of_the_container(self):
+        from .task_models import Task
+        from .tasks import enqueue, run_task
+        container = Container.objects.create(name='app1', image='', port=31003, container_port=80, created_by=self.admin,
+                                             server=self.node, git_repo='https://github.com/acme/app')
+        with mock.patch('orchestrator.container_service.ContainerService') as service:
+            service.return_value.build_image.return_value = 'csh-build/app1:latest'
+            service.return_value.restart_container.return_value = (True, 'ok')
+            run_task(enqueue(Task.Kind.BUILD_CONTAINER, None, self.admin, container=container.pk))
+        service.assert_called_once_with(container)

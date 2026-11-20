@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.111**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.112**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.112 — 2026-11-20
+
+- Servidores, fase 2 (fin): contenedores genéricos (aplicaciones) en nodos. Al crear un contenedor, los administradores eligen el servidor (formulario y campo server de la API, solo al crearlo; vacío = este). En un nodo publica su puerto solo en la IP privada y Traefik le envía su dominio (sin URL alternativa IP:puerto); arrancar, parar, reiniciar, logs y eliminar van por el Docker del nodo; los que se construyen desde un repositorio se construyen en el propio nodo (el build-worker monta la clave SSH del panel en solo lectura). Servidores muestra sus contenedores y no deja quitar un servidor que tenga instancias o contenedores. Sus estadísticas ya salían en Metrics. Migración 0085.
 
 ## 1.0.111 — 2026-11-20
 

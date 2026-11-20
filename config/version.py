@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.111'
+VERSION = '1.0.112'
 
 CHANGELOG = [
+    {
+        'version': '1.0.112',
+        'date': '2026-11-20',
+        'notes': [
+            'Servidores, fase 2 (fin): contenedores genéricos (aplicaciones) en nodos. Al crear un contenedor, los administradores eligen el servidor (formulario y campo server de la API, solo al crearlo; vacío = este). En un nodo publica su puerto solo en la IP privada y Traefik le envía su dominio (sin URL alternativa IP:puerto); arrancar, parar, reiniciar, logs y eliminar van por el Docker del nodo; los que se construyen desde un repositorio se construyen en el propio nodo (el build-worker monta la clave SSH del panel en solo lectura). Servidores muestra sus contenedores y no deja quitar un servidor que tenga instancias o contenedores. Sus estadísticas ya salían en Metrics. Migración 0085.',
+        ],
+    },
     {
         'version': '1.0.111',
         'date': '2026-11-20',

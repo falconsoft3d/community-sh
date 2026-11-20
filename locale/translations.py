@@ -638,6 +638,10 @@ ES_TO_EN = {
     'Mover ahora': 'Move now',
     'En los nodos, la CPU es su carga entre sus CPU, medida cada 5 minutos.': 'On nodes, CPU is their load over their CPUs, measured every 5 minutes.',
     'Sin datos del servidor': 'No data from server',
+    'En un nodo, su puerto solo escucha en la red privada: se entra por su dominio. Las rutas absolutas del host tienen que estar dentro de la carpeta de trabajo del nodo.':
+        "On a node, its port only listens on the private network: it is reached through its domain. Absolute host paths must be inside the node's work folder.",
+    'En un nodo, su puerto solo escucha en la red privada: se entra por su dominio.':
+        'On a node, its port only listens on the private network: it is reached through its domain.',
 }
 
 # Strings written in English in the code -> Spanish

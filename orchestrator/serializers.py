@@ -280,7 +280,7 @@ class ContainerSerializer(serializers.ModelSerializer):
         model = Container
         fields = ['id', 'name', 'project', 'template', 'image', 'port', 'container_port', 'environment', 'volumes',
                   'network', 'command', 'description', 'git_repo', 'git_branch', 'dockerfile',
-                  'custom_domain', 'status', 'container_id', 'url', 'created_at', 'updated_at']
+                  'custom_domain', 'server', 'status', 'container_id', 'url', 'created_at', 'updated_at']
         read_only_fields = ['status', 'container_id', 'url', 'created_at', 'updated_at']
         # A template fills in the image (or repository) and the port
         extra_kwargs = {'image': {'required': False}, 'container_port': {'required': False}}
@@ -294,6 +294,12 @@ class ContainerSerializer(serializers.ModelSerializer):
         if request is not None:
             from .permissions import managed_projects_for
             self.fields['project'].queryset = managed_projects_for(request.user)
+        # Where it runs (empty: this server): chosen by a superuser when creating it, among the ready nodes
+        if request is None or not request.user.is_superuser or self.instance is not None:
+            self.fields['server'].read_only = True
+        else:
+            from .server_models import Server
+            self.fields['server'].queryset = Server.objects.filter(status=Server.Status.READY, active=True)
 
     def to_internal_value(self, data):
         # As the web form: names are lowercased before validating them

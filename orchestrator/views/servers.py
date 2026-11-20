@@ -49,6 +49,7 @@ def server_list(request):
     servers = list(Server.objects.all())
     for server in servers:
         server.instance_list = list(server.instances.order_by('name'))
+        server.container_list = list(server.containers.order_by('name'))
         server.setup_pending = _setup_pending(server)
         last = Task.objects.filter(kind=Task.Kind.SERVER_SETUP, params__server=server.pk).order_by('-created_at').first()
         server.last_task = last
@@ -90,9 +91,10 @@ def server_toggle(request, pk):
 @require_POST
 def server_delete(request, pk):
     server = get_object_or_404(Server, pk=pk)
-    count = server.instances.count()
-    if count:
-        messages.error(request, f'{server.name} tiene {count} instancia(s): elimínalas antes de quitar el servidor')
+    count, containers = server.instances.count(), server.containers.count()
+    if count or containers:
+        messages.error(request, f'{server.name} tiene {count} instancia(s) y {containers} contenedor(es): '
+                                'muévelos o elimínalos antes de quitar el servidor')
         return redirect('server-list')
     from ..services.nodes import forget_client
     forget_client(server)

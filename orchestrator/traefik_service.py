@@ -151,8 +151,10 @@ class TraefikService:
             certificate = None
             if container.ssl_enabled:
                 certificate = TraefikService._certbot_certificate(container.ssl_certificate_path, container.ssl_key_path)
-            config = TraefikService._routes(f'container-{container.name}', hosts,
-                                            f'http://{container.name}:{container.container_port}', certificate)
+            # On a node: its port on the private IP (the panel's Docker network isn't there)
+            target = (f'http://{container.server.host}:{container.port}' if container.server_id
+                      else f'http://{container.name}:{container.container_port}')
+            config = TraefikService._routes(f'container-{container.name}', hosts, target, certificate)
             TraefikService._write(name, config)
             return True, f"Configuración de Traefik generada para el contenedor {container.name}"
         except Exception as e:

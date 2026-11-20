@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 13:17+0000\n"
+"POT-Creation-Date: 2026-11-20 14:01+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -441,6 +441,35 @@ msgstr ""
 msgid "Ningún contacto."
 msgstr ""
 
+#: orchestrator/templates/orchestrator/container_create.html:175
+#: orchestrator/templates/orchestrator/container_detail.html:228
+#: orchestrator/templates/orchestrator/instance_detail.html:284
+#: orchestrator/templates/orchestrator/instance_list.html:57
+#: orchestrator/templates/orchestrator/metrics.html:54
+msgid "Servidor"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/container_create.html:178
+#: orchestrator/templates/orchestrator/instance_detail.html:289
+#: orchestrator/templates/orchestrator/instance_detail.html:299
+#: orchestrator/templates/orchestrator/metrics.html:56
+#: orchestrator/templates/orchestrator/server_list.html:15
+msgid "Este servidor (panel)"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/container_create.html:181
+msgid ""
+"En un nodo, su puerto solo escucha en la red privada: se entra por su "
+"dominio. Las rutas absolutas del host tienen que estar dentro de la carpeta "
+"de trabajo del nodo."
+msgstr ""
+
+#: orchestrator/templates/orchestrator/container_detail.html:231
+msgid ""
+"En un nodo, su puerto solo escucha en la red privada: se entra por su "
+"dominio."
+msgstr ""
+
 #: orchestrator/templates/orchestrator/dashboard.html:9
 msgid "Todo Community SH de un vistazo: pulsa una cifra para ir a su página."
 msgstr ""
@@ -806,7 +835,7 @@ msgstr ""
 #: orchestrator/templates/orchestrator/project_detail.html:240
 #: orchestrator/templates/orchestrator/project_detail.html:252
 #: orchestrator/templates/orchestrator/project_detail.html:293
-#: orchestrator/templates/orchestrator/server_list.html:123
+#: orchestrator/templates/orchestrator/server_list.html:130
 #: orchestrator/templates/orchestrator/trial_status.html:49
 #: orchestrator/templates/orchestrator/trial_status.html:56
 #: orchestrator/templates/orchestrator/trial_status.html:63
@@ -912,7 +941,7 @@ msgid "Documentación"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:583
-#: orchestrator/templates/orchestrator/server_list.html:123
+#: orchestrator/templates/orchestrator/server_list.html:130
 msgid "Copiado"
 msgstr ""
 
@@ -1075,19 +1104,6 @@ msgstr ""
 #: orchestrator/templates/orchestrator/instance_detail.html:273
 #: orchestrator/templates/orchestrator/instance_detail.html:323
 msgid "Copiar URL"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/instance_detail.html:284
-#: orchestrator/templates/orchestrator/instance_list.html:57
-#: orchestrator/templates/orchestrator/metrics.html:54
-msgid "Servidor"
-msgstr ""
-
-#: orchestrator/templates/orchestrator/instance_detail.html:289
-#: orchestrator/templates/orchestrator/instance_detail.html:299
-#: orchestrator/templates/orchestrator/metrics.html:56
-#: orchestrator/templates/orchestrator/server_list.html:15
-msgid "Este servidor (panel)"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:294
@@ -2945,51 +2961,51 @@ msgstr ""
 msgid "Última preparación"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:94
+#: orchestrator/templates/orchestrator/server_list.html:101
 msgid "Añadir un servidor"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:96
+#: orchestrator/templates/orchestrator/server_list.html:103
 msgid ""
 "Crea el servidor en Hetzner (Ubuntu o Debian) en la misma ubicación que el "
 "panel y conéctalo a la misma red privada (Networks)."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:97
+#: orchestrator/templates/orchestrator/server_list.html:104
 msgid ""
 "Entra en él como root y ejecuta el comando de la derecha: instala Docker y "
 "rsync y autoriza la clave del panel."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:98
+#: orchestrator/templates/orchestrator/server_list.html:105
 msgid ""
 "Añádelo aquí con su IP privada. El panel lo comprueba, copia lo que necesita "
 "y arranca su proxy de Docker."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:99
+#: orchestrator/templates/orchestrator/server_list.html:106
 msgid "Al crear una instancia, elige el servidor."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:113
+#: orchestrator/templates/orchestrator/server_list.html:120
 msgid "Añadir y preparar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:118
+#: orchestrator/templates/orchestrator/server_list.html:125
 msgid "Comando de preparación (como root, en el servidor nuevo)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:125
+#: orchestrator/templates/orchestrator/server_list.html:132
 msgid "Clave pública del panel"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:127
+#: orchestrator/templates/orchestrator/server_list.html:134
 msgid ""
 "La clave SSH del panel todavía no existe: la crea el worker al arrancar "
 "(tras el próximo despliegue del panel). Recarga en un minuto."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/server_list.html:129
+#: orchestrator/templates/orchestrator/server_list.html:136
 msgid ""
 "Seguridad: la clave solo la tiene el worker. La web llega a cada servidor "
 "por un proxy de Docker que filtra las peticiones, escucha solo en la IP "

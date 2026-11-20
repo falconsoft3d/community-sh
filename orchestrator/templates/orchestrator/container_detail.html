@@ -1,4 +1,5 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="flex flex-col gap-6" x-data="{ activeTab: 'info' }">
@@ -222,6 +223,14 @@
                             </button>
                         </div>
                     </div>
+                    {% if container.server %}
+                    <div>
+                        <label class="text-sm font-medium">{% translate "Servidor" %}</label>
+                        <p class="mt-1 text-sm"><i data-lucide="server" class="inline h-3 w-3"></i> {{ container.server.name }}
+                            {% if user.is_superuser %}<span class="font-mono text-xs text-muted-foreground">{{ container.server.host }}:{{ container.port }}</span>{% endif %}</p>
+                        <p class="text-xs text-muted-foreground">{% translate "En un nodo, su puerto solo escucha en la red privada: se entra por su dominio." %}</p>
+                    </div>
+                    {% else %}
                     <div>
                         <label class="text-sm font-medium">Alternative URL (IP:Port)</label>
                         <div class="flex items-center gap-2 mt-1">
@@ -233,6 +242,7 @@
                             </button>
                         </div>
                     </div>
+                    {% endif %}
                 </div>
 
                 <div class="border-t pt-6">

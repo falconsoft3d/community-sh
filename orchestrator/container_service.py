@@ -20,8 +20,16 @@ def reserved_container_name(name):
 class ContainerService:
     """Service for managing generic Docker containers"""
     
-    def __init__(self):
-        self.client = docker.from_env()
+    def __init__(self, target=None):
+        """target: the container to work on (its server), a Server, or None for this server."""
+        from .container_models import Container
+        from .services import nodes
+        self.server = target.server if isinstance(target, Container) else target
+        self.client = nodes.docker_client(self.server)
+
+    @property
+    def remote(self):
+        return self.server is not None
     
     def create_container(self, container):
         """Create and start a Docker container from a Container model"""
@@ -105,19 +113,21 @@ class ContainerService:
 
             # Start on Traefik's network and join the template's network afterwards, so the
             # published port survives (see DockerService.deploy_instance)
-            try:
-                self.client.networks.get("community-sh_web")
-                start_network = "community-sh_web"
-            except docker.errors.NotFound:
-                print("Warning: community-sh_web network not found. Traefik routing may not work.")
-                start_network = None
+            start_network = None
+            if not self.remote:
+                try:
+                    self.client.networks.get("community-sh_web")
+                    start_network = "community-sh_web"
+                except docker.errors.NotFound:
+                    print("Warning: community-sh_web network not found. Traefik routing may not work.")
             extra_network = container.network if start_network and container.network not in ('', 'bridge', start_network) else None
-            
+
             docker_container = self.client.containers.run(
                 image=container.image,
                 command=container.command,
                 name=container.name,
-                ports={f'{container.container_port}/tcp': container.port},
+                # A node publishes it on its private IP only, where the panel's Traefik reaches it
+                ports={f'{container.container_port}/tcp': (self.server.host, container.port) if self.remote else container.port},
                 environment=container.environment,
                 volumes=volumes,
                 network=start_network or container.network,

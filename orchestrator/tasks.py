@@ -594,7 +594,8 @@ def build_container(task):
     from .container_models import Container
     from .container_service import ContainerService
     container = Container.objects.get(pk=task.params['container'])
-    service = ContainerService()
+    # Built where it runs: on a node, over SSH (the image never goes through the panel)
+    service = ContainerService(container)
     container.status = 'creating'
     container.save(update_fields=['status'])
     try:

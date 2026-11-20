@@ -1,4 +1,5 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
@@ -168,6 +169,18 @@
                         </select>
                         <p class="text-xs text-muted-foreground">El contenedor aparece en la ficha del proyecto, junto a sus instancias.</p>
                     </div>
+
+                    {% if servers %}
+                    <div class="space-y-2 md:col-span-2">
+                        <label for="server" class="text-sm font-medium">{% translate "Servidor" %}</label>
+                        <select id="server" name="server"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                            <option value="">{% translate "Este servidor (panel)" %}</option>
+                            {% for server in servers %}<option value="{{ server.pk }}">{{ server.name }} ({{ server.host }})</option>{% endfor %}
+                        </select>
+                        <p class="text-xs text-muted-foreground">{% translate "En un nodo, su puerto solo escucha en la red privada: se entra por su dominio. Las rutas absolutas del host tienen que estar dentro de la carpeta de trabajo del nodo." %}</p>
+                    </div>
+                    {% endif %}
 
                     <div class="space-y-2">
                         <label for="image" class="text-sm font-medium">Docker Image <span

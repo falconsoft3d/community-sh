@@ -64,6 +64,8 @@ class Container(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='containers')
     # Optional: the project it belongs to, next to its Odoo instances
     project = models.ForeignKey('Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='containers')
+    # Where it runs: empty = this server (the panel's); see server_models.Server
+    server = models.ForeignKey('Server', on_delete=models.PROTECT, null=True, blank=True, related_name='containers')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -104,6 +106,16 @@ class Container(models.Model):
         
         return f"http://{display_ip}:{self.port}"
     
+    @property
+    def is_remote(self):
+        """Runs on another server (a node): its port only listens on the private network."""
+        return self.server_id is not None
+
+    @property
+    def port_is_public(self):
+        """Its IP:port address works from outside (not on a node, reached only through the panel's Traefik)."""
+        return not self.is_remote
+
     @property
     def url_with_port(self):
         """Get the URL with IP and port (alternative access)"""

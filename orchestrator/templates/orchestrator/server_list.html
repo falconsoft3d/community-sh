@@ -52,7 +52,7 @@
                     <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
                         {% if server.active %}{% translate "No admitir nuevas" %}{% else %}{% translate "Admitir nuevas" %}{% endif %}</button>
                 </form>
-                {% if not server.instance_list %}
+                {% if not server.instance_list and not server.container_list %}
                 <form method="post" action="{% url 'server-delete' server.pk %}" onsubmit="return confirm('{% translate "¿Quitar este servidor del panel? El servidor en sí no se toca." %}')">{% csrf_token %}
                     <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm text-destructive hover:bg-accent">
                         <i data-lucide="trash-2" class="h-4 w-4"></i></button>
@@ -82,6 +82,13 @@
         <div class="flex flex-wrap gap-2">
             {% for instance in server.instance_list %}
             <a href="{% url 'instance-detail' instance.pk %}" class="rounded-md border px-2 py-1 text-xs hover:bg-accent">{{ instance.name }} <span class="text-muted-foreground">{{ instance.odoo_version }} · {{ instance.memory_limit_mb }} MB</span></a>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if server.container_list %}
+        <div class="flex flex-wrap gap-2">
+            {% for container in server.container_list %}
+            <span class="rounded-md border border-dashed px-2 py-1 text-xs"><i data-lucide="box" class="inline h-3 w-3"></i> {{ container.name }} <span class="text-muted-foreground">{{ container.image|truncatechars:40 }}</span></span>
             {% endfor %}
         </div>
         {% endif %}

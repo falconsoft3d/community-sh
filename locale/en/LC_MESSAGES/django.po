@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 13:17+0000\n"
+"POT-Creation-Date: 2026-11-20 14:01+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -448,6 +448,35 @@ msgstr "Last page"
 msgid "Ningún contacto."
 msgstr ""
 
+#: orchestrator/templates/orchestrator/container_create.html:175
+#: orchestrator/templates/orchestrator/container_detail.html:228
+#: orchestrator/templates/orchestrator/instance_detail.html:284
+#: orchestrator/templates/orchestrator/instance_list.html:57
+#: orchestrator/templates/orchestrator/metrics.html:54
+msgid "Servidor"
+msgstr "Server"
+
+#: orchestrator/templates/orchestrator/container_create.html:178
+#: orchestrator/templates/orchestrator/instance_detail.html:289
+#: orchestrator/templates/orchestrator/instance_detail.html:299
+#: orchestrator/templates/orchestrator/metrics.html:56
+#: orchestrator/templates/orchestrator/server_list.html:15
+msgid "Este servidor (panel)"
+msgstr "This server (panel)"
+
+#: orchestrator/templates/orchestrator/container_create.html:181
+msgid ""
+"En un nodo, su puerto solo escucha en la red privada: se entra por su "
+"dominio. Las rutas absolutas del host tienen que estar dentro de la carpeta "
+"de trabajo del nodo."
+msgstr "On a node, its port only listens on the private network: it is reached through its domain. Absolute host paths must be inside the node's work folder."
+
+#: orchestrator/templates/orchestrator/container_detail.html:231
+msgid ""
+"En un nodo, su puerto solo escucha en la red privada: se entra por su "
+"dominio."
+msgstr "On a node, its port only listens on the private network: it is reached through its domain."
+
 #: orchestrator/templates/orchestrator/dashboard.html:9
 msgid "Todo Community SH de un vistazo: pulsa una cifra para ir a su página."
 msgstr ""
@@ -823,7 +852,7 @@ msgstr "Quick install"
 #: orchestrator/templates/orchestrator/project_detail.html:240
 #: orchestrator/templates/orchestrator/project_detail.html:252
 #: orchestrator/templates/orchestrator/project_detail.html:293
-#: orchestrator/templates/orchestrator/server_list.html:123
+#: orchestrator/templates/orchestrator/server_list.html:130
 #: orchestrator/templates/orchestrator/trial_status.html:49
 #: orchestrator/templates/orchestrator/trial_status.html:56
 #: orchestrator/templates/orchestrator/trial_status.html:63
@@ -931,7 +960,7 @@ msgid "Documentación"
 msgstr "Documentation"
 
 #: orchestrator/templates/orchestrator/home.html:583
-#: orchestrator/templates/orchestrator/server_list.html:123
+#: orchestrator/templates/orchestrator/server_list.html:130
 msgid "Copiado"
 msgstr "Copied"
 
@@ -1093,19 +1122,6 @@ msgstr "Main URL"
 #: orchestrator/templates/orchestrator/instance_detail.html:323
 msgid "Copiar URL"
 msgstr "Copy URL"
-
-#: orchestrator/templates/orchestrator/instance_detail.html:284
-#: orchestrator/templates/orchestrator/instance_list.html:57
-#: orchestrator/templates/orchestrator/metrics.html:54
-msgid "Servidor"
-msgstr "Server"
-
-#: orchestrator/templates/orchestrator/instance_detail.html:289
-#: orchestrator/templates/orchestrator/instance_detail.html:299
-#: orchestrator/templates/orchestrator/metrics.html:56
-#: orchestrator/templates/orchestrator/server_list.html:15
-msgid "Este servidor (panel)"
-msgstr "This server (panel)"
 
 #: orchestrator/templates/orchestrator/instance_detail.html:294
 msgid "Mover a otro servidor…"
@@ -2953,51 +2969,51 @@ msgstr "Remove this server from the panel? The server itself isn't touched."
 msgid "Última preparación"
 msgstr "Last preparation"
 
-#: orchestrator/templates/orchestrator/server_list.html:94
+#: orchestrator/templates/orchestrator/server_list.html:101
 msgid "Añadir un servidor"
 msgstr "Add a server"
 
-#: orchestrator/templates/orchestrator/server_list.html:96
+#: orchestrator/templates/orchestrator/server_list.html:103
 msgid ""
 "Crea el servidor en Hetzner (Ubuntu o Debian) en la misma ubicación que el "
 "panel y conéctalo a la misma red privada (Networks)."
 msgstr "Create the server in Hetzner (Ubuntu or Debian) in the same location as the panel and attach it to the same private network (Networks)."
 
-#: orchestrator/templates/orchestrator/server_list.html:97
+#: orchestrator/templates/orchestrator/server_list.html:104
 msgid ""
 "Entra en él como root y ejecuta el comando de la derecha: instala Docker y "
 "rsync y autoriza la clave del panel."
 msgstr "Log in to it as root and run the command on the right: it installs Docker and rsync and authorizes the panel's key."
 
-#: orchestrator/templates/orchestrator/server_list.html:98
+#: orchestrator/templates/orchestrator/server_list.html:105
 msgid ""
 "Añádelo aquí con su IP privada. El panel lo comprueba, copia lo que necesita "
 "y arranca su proxy de Docker."
 msgstr "Add it here with its private IP. The panel checks it, copies what it needs and starts its Docker proxy."
 
-#: orchestrator/templates/orchestrator/server_list.html:99
+#: orchestrator/templates/orchestrator/server_list.html:106
 msgid "Al crear una instancia, elige el servidor."
 msgstr "When creating an instance, choose the server."
 
-#: orchestrator/templates/orchestrator/server_list.html:113
+#: orchestrator/templates/orchestrator/server_list.html:120
 msgid "Añadir y preparar"
 msgstr "Add and prepare"
 
-#: orchestrator/templates/orchestrator/server_list.html:118
+#: orchestrator/templates/orchestrator/server_list.html:125
 msgid "Comando de preparación (como root, en el servidor nuevo)"
 msgstr "Setup command (as root, on the new server)"
 
-#: orchestrator/templates/orchestrator/server_list.html:125
+#: orchestrator/templates/orchestrator/server_list.html:132
 msgid "Clave pública del panel"
 msgstr "Panel's public key"
 
-#: orchestrator/templates/orchestrator/server_list.html:127
+#: orchestrator/templates/orchestrator/server_list.html:134
 msgid ""
 "La clave SSH del panel todavía no existe: la crea el worker al arrancar "
 "(tras el próximo despliegue del panel). Recarga en un minuto."
 msgstr "The panel's SSH key doesn't exist yet: the worker creates it when it starts (after the next panel deploy). Reload in a minute."
 
-#: orchestrator/templates/orchestrator/server_list.html:129
+#: orchestrator/templates/orchestrator/server_list.html:136
 msgid ""
 "Seguridad: la clave solo la tiene el worker. La web llega a cada servidor "
 "por un proxy de Docker que filtra las peticiones, escucha solo en la IP "

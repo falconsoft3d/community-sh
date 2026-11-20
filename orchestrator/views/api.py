@@ -295,9 +295,9 @@ class ContainerViewSet(viewsets.ModelViewSet):
         from ..container_models import Container
         return Container.objects.filter(created_by=self.request.user).order_by('-id')
 
-    def _service(self):
+    def _service(self, container):
         from ..container_service import ContainerService
-        return ContainerService()
+        return ContainerService(container)
 
     def create(self, request, *args, **kwargs):
         from ..permissions import is_client
@@ -335,7 +335,7 @@ class ContainerViewSet(viewsets.ModelViewSet):
                            label=container.name)
             data = dict(self.get_serializer(container).data, task_id=task.pk)
             return Response(data, status=status.HTTP_202_ACCEPTED)
-        ok, message = self._service().create_container(container)
+        ok, message = self._service(container).create_container(container)
         if not ok:
             container.delete()
             return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
@@ -344,11 +344,11 @@ class ContainerViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         container = serializer.save()
         if container.status == 'running':
-            self._service().restart_container(container)
+            self._service(container).restart_container(container)
 
     def destroy(self, request, *args, **kwargs):
         container = self.get_object()
-        ok, message = self._service().delete_container(container)
+        ok, message = self._service(container).delete_container(container)
         if not ok:
             return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
         container.delete()
@@ -356,7 +356,7 @@ class ContainerViewSet(viewsets.ModelViewSet):
 
     def _act(self, method):
         container = self.get_object()
-        ok, message = getattr(self._service(), method)(container)
+        ok, message = getattr(self._service(container), method)(container)
         if not ok:
             return Response({'detail': message}, status=status.HTTP_400_BAD_REQUEST)
         return Response(self.get_serializer(container).data)
@@ -386,7 +386,8 @@ class ContainerViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def logs(self, request, pk=None):
         tail = min(int(request.query_params.get('tail', 200)), 5000)
-        return Response({'logs': self._service().get_container_logs(self.get_object(), tail=tail)})
+        container = self.get_object()
+        return Response({'logs': self._service(container).get_container_logs(container, tail=tail)})
 
 
 class DemoViewSet(viewsets.ReadOnlyModelViewSet):

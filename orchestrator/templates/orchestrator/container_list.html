@@ -1,4 +1,5 @@
 {% extends "orchestrator/base.html" %}
+{% load i18n %}
 
 {% block content %}
 <div class="flex items-center justify-between">
@@ -50,6 +51,7 @@
                     <td class="p-4 align-middle cursor-pointer"
                         onclick="window.location.href='{% url 'container-detail' container.pk %}';">
                         <span class="font-mono text-xs">{{ container.image|truncatewords:2 }}</span>
+                        {% if container.server %}<div class="text-xs text-muted-foreground"><i data-lucide="server" class="inline h-3 w-3"></i> {{ container.server.name }}</div>{% endif %}
                     </td>
                     <td class="p-4 align-middle cursor-pointer"
                         onclick="window.location.href='{% url 'container-detail' container.pk %}';">
@@ -92,11 +94,13 @@
                                 <i data-lucide="external-link" class="h-3 w-3 mr-1"></i>
                                 Primary
                             </a>
+                            {% if container.port_is_public %}
                             <a href="{{ container.url_with_port }}" target="_blank"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
                                 <i data-lucide="link" class="h-3 w-3 mr-1"></i>
                                 Alt
                             </a>
+                            {% endif %}
                         </div>
                         {% else %}
                         <span class="text-muted-foreground">-</span>

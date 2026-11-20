@@ -36,7 +36,8 @@ API_ENDPOINTS = [
     ('POST', '/api/backups/{id}/restore/', 'Restaurar en su instancia'),
     ('GET', '/api/containers/', 'Contenedores Docker (estado, imagen, URL)'),
     ('POST', '/api/containers/', 'Crear contenedor: desde una imagen (name, image, container_port) o construido desde un '
-                                 'repositorio (git_repo, git_branch, dockerfile; devuelve task_id). Tiene https://nombre.dominio'),
+                                 'repositorio (git_repo, git_branch, dockerfile; devuelve task_id). Tiene https://nombre.dominio. '
+                                 'Administradores: server (id de un servidor listo; vacío = el del panel)'),
     ('POST', '/api/containers/{id}/start/ · stop/ · restart/', 'Arrancar, detener o recrear'),
     ('POST', '/api/containers/{id}/build/', 'Volver a construir desde el repositorio (task_id)'),
     ('GET', '/api/containers/{id}/logs/?tail=200', 'Logs del contenedor'),

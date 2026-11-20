@@ -21,11 +21,19 @@ def _restricted_config_error(config, template_network, template_volumes=()):
         return 'Solo un administrador puede cambiar la red del contenedor'
     return None
 
+def _servers_for(user):
+    """Servers a superuser can put a new container on (empty for everyone else)."""
+    from .server_models import Server
+    if not user.is_superuser:
+        return Server.objects.none()
+    return Server.objects.filter(status=Server.Status.READY, active=True)
+
+
 @login_required
 def container_list(request):
     """List all containers"""
     from .pagination import paginate
-    containers = Container.objects.filter(created_by=request.user).order_by('-id')
+    containers = Container.objects.filter(created_by=request.user).select_related('server').order_by('-id')
     return render(request, 'orchestrator/container_list.html', {'containers': paginate(request, containers)})
 
 @login_required
@@ -36,6 +44,12 @@ def container_create(request):
     projects = managed_projects_for(request.user).order_by('name')
     selected_project = request.POST.get('project') or request.GET.get('project') or ''
     project = projects.filter(pk=selected_project).first() if str(selected_project).isdigit() else None
+    servers = _servers_for(request.user)
+    wanted_server = request.POST.get('server', '')
+    server = servers.filter(pk=wanted_server).first() if wanted_server.isdigit() else None
+    if request.method == 'POST' and wanted_server and server is None:
+        messages.error(request, 'Ese servidor no está listo para contenedores nuevos')
+        return redirect('container-create')
     if request.method == 'POST':
         template_key = request.POST.get('template')
         name = (request.POST.get('name') or '').strip().lower()
@@ -60,7 +74,7 @@ def container_create(request):
                 templates_dict[tmpl_data['name']]['name'] = tmpl_data['display_name']
                 templates_dict[tmpl_data['name']]['description'] = tmpl_data['description']
             return render(request, 'orchestrator/container_create.html', {
-                'templates': templates_dict, 'projects': projects, 'selected_project': selected_project,
+                'templates': templates_dict, 'projects': projects, 'selected_project': selected_project, 'servers': servers,
             })
         
         # Get template or custom config
@@ -109,6 +123,7 @@ def container_create(request):
                 dockerfile=template_defaults.get('dockerfile', 'Dockerfile'),
                 created_by=request.user,
                 project=project,
+                server=server,
             )
             if git_repo:
                 from .task_models import Task
@@ -131,10 +146,11 @@ def container_create(request):
                 description=request.POST.get('description', ''),
                 created_by=request.user,
                 project=project,
+                server=server,
             )
         
         # Create and start container
-        service = ContainerService()
+        service = ContainerService(container)
         success, message = service.create_container(container)
         
         if success:
@@ -161,7 +177,7 @@ def container_create(request):
             return render(request, 'orchestrator/container_create.html', {
                 'templates': templates_dict,
                 'first_template': first_template,
-                'projects': projects, 'selected_project': selected_project,
+                'projects': projects, 'selected_project': selected_project, 'servers': servers,
             })
     
     loader = get_template_loader()
@@ -183,7 +199,7 @@ def container_create(request):
     return render(request, 'orchestrator/container_create.html', {
         'templates': templates_dict,
         'first_template': first_template,
-        'projects': projects, 'selected_project': selected_project,
+        'projects': projects, 'selected_project': selected_project, 'servers': servers,
     })
 
 @login_required
@@ -194,7 +210,7 @@ def container_detail(request, pk):
     # Get container logs if running
     logs = None
     if container.status == 'running':
-        service = ContainerService()
+        service = ContainerService(container)
         logs = service.get_container_logs(container, tail=50)
     
     return render(request, 'orchestrator/container_detail.html', {
@@ -207,7 +223,7 @@ def container_detail(request, pk):
 def container_start(request, pk):
     """Start a container"""
     container = get_object_or_404(Container, pk=pk, created_by=request.user)
-    service = ContainerService()
+    service = ContainerService(container)
     success, message = service.start_container(container)
     
     if success:
@@ -222,7 +238,7 @@ def container_start(request, pk):
 def container_stop(request, pk):
     """Stop a container"""
     container = get_object_or_404(Container, pk=pk, created_by=request.user)
-    service = ContainerService()
+    service = ContainerService(container)
     success, message = service.stop_container(container)
     
     if success:
@@ -237,7 +253,7 @@ def container_stop(request, pk):
 def container_restart(request, pk):
     """Restart a container"""
     container = get_object_or_404(Container, pk=pk, created_by=request.user)
-    service = ContainerService()
+    service = ContainerService(container)
     success, message = service.restart_container(container)
     
     if success:
@@ -253,7 +269,7 @@ def container_delete(request, pk):
     container = get_object_or_404(Container, pk=pk, created_by=request.user)
     
     if request.method == 'POST':
-        service = ContainerService()
+        service = ContainerService(container)
         success, message = service.delete_container(container)
         
         if success:
@@ -298,7 +314,7 @@ def container_update_domain(request, pk):
         
         # Restart container if running to apply new domain
         if container.status == 'running' and old_domain != container.custom_domain:
-            service = ContainerService()
+            service = ContainerService(container)
             service.restart_container(container)
             messages.success(request, 'Domain updated and container restarted')
         else:
@@ -341,7 +357,7 @@ def container_generate_ssl(request, pk):
                 
                 # Restart container if running to apply SSL
                 if container.status == 'running':
-                    service = ContainerService()
+                    service = ContainerService(container)
                     service.restart_container(container)
                 
                 messages.success(request, f'✅ Certificado SSL generado correctamente para {container.custom_domain}')

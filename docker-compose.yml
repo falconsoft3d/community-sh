@@ -194,6 +194,8 @@ services:
     volumes:
       - ./:/app
       - /var/run/docker.sock:/var/run/docker.sock
+      # The worker's SSH key, read-only: builds the image of a container that runs on a node there
+      - worker_ssh:/root/.ssh:ro
     depends_on:
       app:
         condition: service_started
