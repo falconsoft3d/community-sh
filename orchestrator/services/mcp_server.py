@@ -56,6 +56,17 @@ TOOLS = [
      'inputSchema': _schema({'instance': {'type': 'string', 'description': 'Optional instance name'}})},
     {'name': 'get_task', 'description': 'Status and result of a background task (deploy, backup, restore...).',
      'inputSchema': _schema({'task_id': {'type': 'integer'}}, ['task_id'])},
+    {'name': 'list_servers', 'description': 'Administrators: the servers (nodes) instances can run on besides the panel\'s, '
+                                             'with their state, CPU/memory/disk usage and instances.',
+     'inputSchema': _schema()},
+    {'name': 'move_instance_server',
+     'description': 'Administrators: move an instance to another server (a ready node, or "panel" for the panel\'s own). Its Odoo '
+                    'STOPS while its databases and attachments travel (minutes, depending on their size); if anything fails it '
+                    'starts again where it was. Domain, code and backups stay. Ask the user first; confirm must be the instance '
+                    'name. Returns a task id (follow it with get_task).',
+     'inputSchema': _schema({**INSTANCE, 'server': {'type': 'string', 'description': 'Server name (list_servers), or "panel"'},
+                             'confirm': {'type': 'string', 'description': 'The instance name again, to confirm'}},
+                            ['instance', 'server', 'confirm'])},
     {'name': 'list_todos', 'description': 'List the team to-do items (the "Todo" menu). Filter by status: pending, in_progress or done.',
      'inputSchema': _schema({'status': {'type': 'string', 'enum': ['pending', 'in_progress', 'done']}})},
     {'name': 'add_todo', 'description': 'Add a to-do item.',
@@ -72,7 +83,7 @@ class ToolError(Exception):
 
 def _instance(user, name):
     from ..permissions import instances_for
-    instance = instances_for(user).select_related('project').filter(name=name).first()
+    instance = instances_for(user).select_related('project', 'server').filter(name=name).first()
     if instance is None:
         raise ToolError(f'Instance "{name}" not found (or not accessible to this user)')
     return instance
@@ -90,6 +101,7 @@ def _instance_info(instance):
         'odoo_version': instance.odoo_version, 'status': instance.status,
         'url': instance.url if (instance.port or instance.custom_domain) else None,
         'custom_domain': instance.custom_domain, 'database': instance.database_name,
+        'server': instance.server.name if instance.server_id else 'panel',
     }
 
 
@@ -106,7 +118,7 @@ def call_tool(user, name, arguments):
             'instances': [i.name for i in p.instances.order_by('name')],
         } for p in projects_for(user).order_by('name')]
     if name == 'list_instances':
-        instances = instances_for(user).select_related('project').order_by('name')
+        instances = instances_for(user).select_related('project', 'server').order_by('name')
         if arguments.get('project'):
             instances = instances.filter(project__name=arguments['project'])
         return [_instance_info(i) for i in instances]
@@ -200,6 +212,24 @@ def call_tool(user, name, arguments):
             raise ToolError('Invalid status')
         todo.set_status(arguments['status'], by=f'Claude (MCP, {user.username})', note=arguments.get('note', ''))
         return {'id': todo.id, 'status': todo.status, 'completed_in_version': todo.completed_in_version}
+    if name == 'list_servers':
+        from ..server_models import Server
+        if not user.is_superuser:
+            raise ToolError('Only administrators see the servers')
+        return [{'name': s.name, 'host': s.host, 'status': s.status, 'accepts_new': s.active,
+                 'cpu_percent': s.cpu_percent, 'memory_percent': s.memory_percent, 'disk_percent': s.disk_percent,
+                 'disk_free_gb': s.disk_free_gb, 'usage_at': s.usage_at.isoformat() if s.usage_at else None,
+                 'instances': list(s.instances.order_by('name').values_list('name', flat=True))}
+                for s in Server.objects.all()]
+    if name == 'move_instance_server':
+        from ..services.server_moves import queue_move
+        instance = _instance(user, arguments['instance'])
+        server = arguments.get('server', '')
+        try:
+            task = queue_move(instance, user, '' if server == 'panel' else server, arguments.get('confirm'), source='MCP')
+        except ValueError as e:
+            raise ToolError(str(e))
+        return {'task_id': task.id, 'status': task.status, 'note': 'Odoo is stopped while it moves: follow it with get_task'}
     if name == 'get_task':
         task = Task.objects.filter(pk=arguments['task_id'], instance__in=instances_for(user)).first()
         if task is None:
@@ -220,7 +250,7 @@ def _error(request_id, code, message):
 
 # What a read-only token may call
 READ_ONLY_TOOLS = {'list_projects', 'list_instances', 'get_instance', 'get_instance_logs', 'list_backups', 'get_task',
-                   'list_todos'}
+                   'list_todos', 'list_servers'}
 
 
 def handle_message(user, message, read_only=False):

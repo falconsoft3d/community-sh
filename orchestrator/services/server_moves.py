@@ -195,3 +195,42 @@ def _roll_back(instance, before, destination, source_odoo, was_running):
             instance.status = Instance.Status.ERROR
     instance.save()
     TraefikService.generate_instance_config(instance)
+
+
+def move_targets(instance):
+    """Where a superuser can move the instance: the panel's server (None) and the ready nodes, but not where it is."""
+    from ..server_models import Server
+    if not Server.objects.exists():
+        return []
+    targets = [] if instance.server_id is None else [None]
+    return targets + list(Server.objects.filter(status=Server.Status.READY).exclude(pk=instance.server_id))
+
+
+def queue_move(instance, user, server, confirm, source='web'):
+    """
+    Queue the move of `instance` to `server` (a Server, its id or name; None or '' = the panel's server) for a superuser,
+    confirmed with the instance's name. The web page, the API and the MCP all go through here. Returns the task, or
+    raises ValueError with what is wrong.
+    """
+    from ..audit import record
+    from ..task_models import Task
+    from ..tasks import enqueue
+    if not (user and user.is_superuser):
+        raise ValueError('Solo un administrador puede mover instancias entre servidores')
+    targets = move_targets(instance)
+    wanted = '' if server in (None, '') else str(getattr(server, 'pk', server))
+    target = next((t for t in targets if wanted in ((str(t.pk), t.name) if t else ('', 'panel'))), 'none')
+    if target == 'none':
+        names = ', '.join(t.name if t else 'panel' for t in targets) or 'ninguno'
+        raise ValueError(f'Elige un servidor listo distinto del actual (disponibles: {names})')
+    problem = check_move(instance, target)
+    if problem:
+        raise ValueError(problem)
+    if instance.tasks.filter(status__in=[Task.Status.PENDING, Task.Status.RUNNING]).exists():
+        raise ValueError('La instancia tiene tareas en curso o en cola: espera a que terminen')
+    if str(confirm or '').strip() != instance.name:
+        raise ValueError(f'Para confirmar, escribe el nombre de la instancia: {instance.name}')
+    task = enqueue(Task.Kind.MOVE_SERVER, instance, user, server=target.pk if target else None)
+    record(None, 'instance_moved_server', instance.name,
+           f'De {server_label(instance.server)} a {server_label(target)} ({source})', user=user)
+    return task

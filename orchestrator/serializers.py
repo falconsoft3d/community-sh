@@ -11,13 +11,14 @@ class InstanceSerializer(serializers.ModelSerializer):
                                      help_text='Environment variables of the Odoo container: NAME=value, one per line. '
                                                'Replaces the current ones; applied on the next deploy.')
     env_keys = serializers.SerializerMethodField(help_text='Names of the environment variables of the instance')
+    server_name = serializers.SerializerMethodField(help_text='Server it runs on (empty: the panel\'s)')
 
     class Meta:
         model = Instance
         fields = ('id', 'name', 'project', 'owner', 'odoo_version', 'status', 'origin', 'github_repo', 'github_branch',
                   'database_name', 'demo_default_db', 'custom_domain', 'ssl_enabled', 'browser', 'subdomain', 'url',
                   'port', 'container_id', 'master_password', 'admin_login', 'admin_password', 'admin_database', 'description', 'auto_update', 'memory_limit_mb', 'odoo_db_manager', 'env_vars', 'env_keys',
-                  'created_at', 'updated_at')
+                  'server', 'server_name', 'created_at', 'updated_at')
         read_only_fields = ('odoo_db_manager', 'owner', 'status', 'origin', 'ssl_enabled', 'browser', 'subdomain', 'url', 'port',
                             'container_id', 'master_password', 'admin_login', 'admin_password', 'admin_database',
                             'created_at', 'updated_at')
@@ -32,8 +33,16 @@ class InstanceSerializer(serializers.ModelSerializer):
             from .permissions import managed_projects_for
             self.fields['project'].queryset = managed_projects_for(request.user)
         # Renaming moves containers and volumes: it goes through its task (web form), not a PATCH
-        if self.instance is not None and not isinstance(self.instance, (list, tuple)) and hasattr(self.instance, 'pk'):
+        existing = self.instance is not None and not isinstance(self.instance, (list, tuple)) and hasattr(self.instance, 'pk')
+        if existing:
             self.fields['name'].read_only = True
+        # Where it runs: a superuser chooses it when creating it (a ready node that accepts new instances); moving it
+        # later is the move-server action (a task), never a PATCH
+        if existing or request is None or not request.user.is_superuser:
+            self.fields['server'].read_only = True
+        else:
+            from .server_models import Server
+            self.fields['server'].queryset = Server.objects.filter(status=Server.Status.READY, active=True)
 
     def to_representation(self, instance):
         from .permissions import can_manage
@@ -58,6 +67,9 @@ class InstanceSerializer(serializers.ModelSerializer):
         if problem:
             raise serializers.ValidationError({'project': [problem]})
         return attrs
+
+    def get_server_name(self, instance):
+        return instance.server.name if instance.server_id else ''
 
     def get_env_keys(self, instance):
         from .instance_env import instance_environment
@@ -342,3 +354,22 @@ class ContactSerializer(serializers.ModelSerializer):
     def get_demos(self, contact):
         return [{'id': trial.pk, 'project': trial.project_id, 'version': trial.version, 'status': trial.status,
                  'created_at': trial.created_at} for trial in contact.trials.all()]
+
+
+class ServerSerializer(serializers.ModelSerializer):
+    """A server (node), read-only: its address, state and the usage the worker read last. The token never leaves the panel."""
+    instances = serializers.SerializerMethodField()
+    cpu_percent = serializers.IntegerField(read_only=True)
+    memory_percent = serializers.IntegerField(read_only=True)
+    disk_percent = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        from .server_models import Server
+        model = Server
+        fields = ['id', 'name', 'host', 'status', 'active', 'docker_version', 'cpus', 'memory_mb', 'memory_available_mb',
+                  'disk_total_gb', 'disk_free_gb', 'load_1m', 'cpu_percent', 'memory_percent', 'disk_percent', 'usage_at',
+                  'last_error', 'instances', 'created_at']
+        read_only_fields = fields
+
+    def get_instances(self, server):
+        return list(server.instances.order_by('name').values_list('name', flat=True))

@@ -98,6 +98,38 @@ class InstanceActionsMixin:
         return Response({'task_id': task.pk, 'status': task.status}, status=status.HTTP_202_ACCEPTED)
 
 
+class InstanceServerMixin:
+    """Move an instance to another server (superusers; its Odoo stops while its data travels)."""
+
+    @action(detail=True, methods=['post'], url_path='move-server')
+    def move_server(self, request, pk=None):
+        from ..services.server_moves import queue_move
+        instance = self.get_object()
+        if not request.user.is_superuser:
+            return Response({'detail': 'Only administrators move instances between servers'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            task = queue_move(instance, request.user, request.data.get('server'), request.data.get('confirm'), source='API')
+        except ValueError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'task_id': task.pk, 'status': task.status, 'server': task.params['server']},
+                        status=status.HTTP_202_ACCEPTED)
+
+
+class ServerViewSet(viewsets.ReadOnlyModelViewSet):
+    """The servers (nodes) where instances and containers can run besides the panel's: superusers only."""
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from ..serializers import ServerSerializer
+        return ServerSerializer
+
+    def get_queryset(self):
+        from ..server_models import Server
+        if not self.request.user.is_superuser:
+            return Server.objects.none()
+        return Server.objects.all()
+
+
 class InstanceDatabaseMixin:
     """Create a database and install modules (owners and administrators, not clients)."""
 
@@ -179,7 +211,8 @@ class InstanceRepositoriesMixin:
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class InstanceAPIViewSet(InstanceRepositoriesMixin, InstanceDatabaseMixin, InstanceActionsMixin, InstanceViewSet):
+class InstanceAPIViewSet(InstanceRepositoriesMixin, InstanceDatabaseMixin, InstanceServerMixin, InstanceActionsMixin,
+                          InstanceViewSet):
     pass
 
 

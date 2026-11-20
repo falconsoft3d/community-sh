@@ -7,7 +7,7 @@ from .views.webhooks import github_webhook, instance_auto_update, instance_webho
 from .views.servers import server_delete, server_list, server_setup, server_toggle
 from .views.contacts import contact_delete, contact_detail, contact_edit, contact_export, contact_list, contact_stage
 from .views.odoo_ai import instance_migrate, odoo_ai_request
-from .views.api import (BackupViewSet, ContainerViewSet, DemoViewSet, InstanceAPIViewSet, PlatformEmailTestView,
+from .views.api import (BackupViewSet, ContainerViewSet, DemoViewSet, InstanceAPIViewSet, ServerViewSet, PlatformEmailTestView,
                         PlatformSettingsView, ProjectViewSet, TaskViewSet, TodoViewSet, ContactViewSet)
 from .views import (
     todo_list,
@@ -131,6 +131,7 @@ router.register(r'api/backups', BackupViewSet, basename='api-backup')
 router.register(r'api/tasks', TaskViewSet, basename='api-task')
 router.register(r'api/todos', TodoViewSet, basename='api-todo')
 router.register(r'api/containers', ContainerViewSet, basename='api-container')
+router.register(r'api/servers', ServerViewSet, basename='api-server')
 router.register(r'api/demos', DemoViewSet, basename='api-demo')
 router.register(r'api/contacts', ContactViewSet, basename='api-contact')
 

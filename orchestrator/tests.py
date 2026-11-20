@@ -5887,3 +5887,94 @@ class ContainerNodeTests(BaseTestCase):
             service.return_value.restart_container.return_value = (True, 'ok')
             run_task(enqueue(Task.Kind.BUILD_CONTAINER, None, self.admin, container=container.pk))
         service.assert_called_once_with(container)
+
+
+class ServerApiTests(BaseTestCase):
+    """Servers in the REST API and the MCP: placing a new instance, moving one, listing the nodes."""
+
+    def setUp(self):
+        super().setUp()
+        from .server_models import Server
+        self.node = Server.objects.create(name='nodo-1', host='10.0.0.3', status=Server.Status.READY, disk_free_gb=80)
+        self.alice_instance.container_id = 'c1'
+        self.alice_instance.status = Instance.Status.RUNNING
+        self.alice_instance.save()
+        self.config.mcp_enabled = True
+        self.config.save()
+
+    def rpc(self, user, name, arguments):
+        import json
+        from .mcp_models import MCPToken
+        _, token = MCPToken.issue(user, 'test')
+        body = {'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call', 'params': {'name': name, 'arguments': arguments}}
+        result = self.client.post('/mcp/', json.dumps(body), content_type='application/json',
+                                  HTTP_AUTHORIZATION=f'Bearer {token}').json()['result']
+        return result['isError'], result['content'][0]['text']
+
+    def test_create_on_a_node_through_the_api(self):
+        self.client.force_login(self.admin)
+        response = self.client.post('/api/instances/', {'name': 'remota', 'odoo_version': '19.0', 'project': self.alice_project.pk,
+                                                        'server': self.node.pk}, content_type='application/json')
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertEqual((response.json()['server'], response.json()['server_name']), (self.node.pk, 'nodo-1'))
+        self.assertEqual(Instance.objects.get(name='remota').server, self.node)
+        # A PATCH never moves it
+        self.client.patch(f"/api/instances/{response.json()['id']}/", {'server': None}, content_type='application/json')
+        self.assertEqual(Instance.objects.get(name='remota').server, self.node)
+        # Only superusers choose
+        self.client.force_login(self.alice)
+        response = self.client.post('/api/instances/', {'name': 'otra', 'odoo_version': '19.0', 'project': self.alice_project.pk,
+                                                        'server': self.node.pk}, content_type='application/json')
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertIsNone(Instance.objects.get(name='otra').server)
+
+    def test_servers_endpoint_is_for_superusers(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get('/api/servers/').json(), [])
+        self.client.force_login(self.admin)
+        rows = self.client.get('/api/servers/').json()
+        self.assertEqual([r['name'] for r in rows], ['nodo-1'])
+        self.assertNotIn('proxy_token', rows[0])
+
+    def test_move_through_the_api(self):
+        from .audit_models import AuditEvent
+        from .task_models import Task
+        url = f'/api/instances/{self.alice_instance.pk}/move-server/'
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.post(url, {'server': self.node.pk, 'confirm': 'alice-odoo'},
+                                          content_type='application/json').status_code, 403)
+        self.client.force_login(self.admin)
+        response = self.client.post(url, {'server': self.node.pk}, content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('alice-odoo', response.json()['detail'])
+        response = self.client.post(url, {'server': self.node.pk, 'confirm': 'alice-odoo'}, content_type='application/json')
+        self.assertEqual(response.status_code, 202, response.content)
+        task = Task.objects.get(pk=response.json()['task_id'])
+        self.assertEqual((task.kind, task.params), (Task.Kind.MOVE_SERVER, {'server': self.node.pk}))
+        self.assertTrue(AuditEvent.objects.filter(action='instance_moved_server', target='alice-odoo', details__contains='API').exists())
+        # One at a time
+        self.assertEqual(self.client.post(url, {'server': self.node.pk, 'confirm': 'alice-odoo'},
+                                          content_type='application/json').status_code, 400)
+
+    def test_mcp_tools(self):
+        import json
+        from .task_models import Task
+        failed, text = self.rpc(self.alice, 'list_servers', {})
+        self.assertTrue(failed)
+        failed, text = self.rpc(self.admin, 'list_servers', {})
+        self.assertFalse(failed)
+        self.assertEqual(json.loads(text)[0]['name'], 'nodo-1')
+        self.assertEqual(json.loads(self.rpc(self.admin, 'get_instance', {'instance': 'alice-odoo'})[1])['server'], 'panel')
+        failed, text = self.rpc(self.alice, 'move_instance_server', {'instance': 'alice-odoo', 'server': 'nodo-1', 'confirm': 'alice-odoo'})
+        self.assertTrue(failed)
+        failed, text = self.rpc(self.admin, 'move_instance_server', {'instance': 'alice-odoo', 'server': 'panel', 'confirm': 'alice-odoo'})
+        self.assertTrue(failed)  # already there
+        self.assertIn('nodo-1', text)
+        failed, text = self.rpc(self.admin, 'move_instance_server', {'instance': 'alice-odoo', 'server': 'nodo-1', 'confirm': 'alice-odoo'})
+        self.assertFalse(failed, text)
+        self.assertEqual(Task.objects.get(pk=json.loads(text)['task_id']).params, {'server': self.node.pk})
+
+    def test_read_only_tokens_can_list_but_not_move(self):
+        from .services.mcp_server import READ_ONLY_TOOLS
+        self.assertIn('list_servers', READ_ONLY_TOOLS)
+        self.assertNotIn('move_instance_server', READ_ONLY_TOOLS)

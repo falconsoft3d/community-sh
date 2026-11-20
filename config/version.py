@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.112'
+VERSION = '1.0.113'
 
 CHANGELOG = [
+    {
+        'version': '1.0.113',
+        'date': '2026-11-20',
+        'notes': [
+            'Servidores en la API y el MCP (administradores). API: al crear una instancia, campo server (id de un servidor listo que admite nuevas; vacío = el del panel), y cada instancia trae server y server_name (un PATCH no la mueve); nuevo GET /api/servers/ (estado, CPU, memoria, disco e instancias de cada nodo, sin su token); nuevo POST /api/instances/{id}/move-server/ con server (id, o vacío/null para el panel) y confirm (el nombre de la instancia), que devuelve task_id. MCP: list_servers (también con tokens de solo lectura), move_instance_server (servidor por nombre o «panel», con confirm) y el servidor en list_instances/get_instance. La web, la API y el MCP comparten las mismas comprobaciones (servidor listo, sin tareas en curso, confirmación) y cada traslado queda en la Auditoría con su origen. Documentado en el .md para la IA.',
+        ],
+    },
     {
         'version': '1.0.112',
         'date': '2026-11-20',

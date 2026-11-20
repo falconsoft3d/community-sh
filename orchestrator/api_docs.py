@@ -12,7 +12,8 @@ API_ENDPOINTS = [
                                      'trial_target_project, trial_message, trial_max_active'),
     ('GET', '/api/instances/', 'Instancias (estado, versión, proyecto, URL)'),
     ('POST', '/api/instances/', 'Crear y desplegar instancia (name, odoo_version, project; opcionales github_repo, github_branch, '
-                                'database_name, custom_domain, description); devuelve task_id'),
+                                'database_name, custom_domain, description; administradores: server, id de un servidor listo, '
+                                'vacío = el del panel); devuelve task_id'),
     ('GET · PATCH', '/api/instances/{id}/', 'Ver o editar una instancia (description, github_branch, auto_update, memory_limit_mb: tope de RAM en MB, 0 sin límite, '
                                             'env_vars: NOMBRE=valor por línea, se aplican en el próximo despliegue)'),
     ('POST', '/api/instances/{id}/deploy/', 'Desplegar (devuelve task_id)'),
@@ -30,7 +31,11 @@ API_ENDPOINTS = [
     ('GET · POST', '/api/instances/{id}/repositories/', 'Repositorios de módulos extra (OCA, enterprise…); POST añade uno '
                                                          '(url HTTPS, branch). Se aplica en el próximo despliegue'),
     ('DELETE', '/api/instances/{id}/repositories/{repo_id}/', 'Quitar un repositorio de módulos extra (se aplica en el próximo despliegue)'),
+    ('POST', '/api/instances/{id}/move-server/', 'Administradores: mover a otro servidor (server: id de un nodo listo, o vacío/null '
+                                                 'para el del panel; confirm: el nombre de la instancia). Odoo se detiene mientras sus datos '
+                                                 'viajan; si algo falla vuelve a arrancar donde estaba. Devuelve task_id'),
     ('DELETE', '/api/instances/{id}/', 'Eliminar instancia'),
+    ('GET', '/api/servers/', 'Administradores: servidores (nodos) con su estado, uso de CPU, memoria y disco e instancias'),
     ('GET', '/api/backups/?instance=nombre', 'Backups'),
     ('GET', '/api/backups/{id}/download/', 'Descargar ZIP'),
     ('POST', '/api/backups/{id}/restore/', 'Restaurar en su instancia'),
