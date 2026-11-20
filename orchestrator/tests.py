@@ -181,7 +181,7 @@ class TwoFactorEnforcementTests(BaseTestCase):
         self.config.save()
         profile = self.alice.profile
         profile.two_factor_enabled = True
-        profile.two_factor_secret = 'JBSWY3DPEHPK3PXP'
+        profile.two_factor_secret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'
         profile.save()
         self.client.force_login(self.alice)
 
@@ -414,14 +414,14 @@ class LockoutTests(TestCase):
     def test_2fa_locks_after_repeated_failures(self):
         user = User.objects.get(username='dave')
         user.profile.two_factor_enabled = True
-        user.profile.two_factor_secret = 'JBSWY3DPEHPK3PXP'
+        user.profile.two_factor_secret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'
         user.profile.save()
         self.client.post(reverse('login'), {'username': 'dave', 'password': 'right-pass-123'})
         for _ in range(5):
             self.client.post(reverse('two-factor-verify'), {'code': '000000'})
 
         import pyotp
-        self.client.post(reverse('two-factor-verify'), {'code': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
+        self.client.post(reverse('two-factor-verify'), {'code': pyotp.TOTP('JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP').now()})
         self.assertNotIn('_auth_user_id', self.client.session)
 
 
@@ -2951,19 +2951,19 @@ class SecurityHardeningTests(BaseTestCase):
     def test_disabling_2fa_needs_a_current_code(self):
         import pyotp
         profile = self.alice.profile
-        profile.two_factor_enabled, profile.two_factor_secret = True, 'JBSWY3DPEHPK3PXP'
+        profile.two_factor_enabled, profile.two_factor_secret = True, 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'
         profile.save()
         self.client.force_login(self.alice)
         self.client.post(reverse('two-factor-setup'), {'action': 'disable'})
         profile.refresh_from_db()
         self.assertTrue(profile.two_factor_enabled)
         # Starting a new setup doesn't replace the active secret until a code of the new one is verified
-        self.client.post(reverse('two-factor-setup'), {'action': 'enable', 'current_code': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
+        self.client.post(reverse('two-factor-setup'), {'action': 'enable', 'current_code': pyotp.TOTP('JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP').now()})
         profile.refresh_from_db()
-        self.assertEqual(profile.two_factor_secret, 'JBSWY3DPEHPK3PXP')
+        self.assertEqual(profile.two_factor_secret, 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP')
         # Each app code works once: the next one (also accepted) switches it off
         import time
-        self.client.post(reverse('two-factor-setup'), {'action': 'disable', 'current_code': pyotp.TOTP('JBSWY3DPEHPK3PXP').at(time.time() + 30)})
+        self.client.post(reverse('two-factor-setup'), {'action': 'disable', 'current_code': pyotp.TOTP('JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP').at(time.time() + 30)})
         profile.refresh_from_db()
         self.assertFalse(profile.two_factor_enabled)
 

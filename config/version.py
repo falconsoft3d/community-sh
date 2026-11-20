@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.113'
+VERSION = '1.0.114'
 
 CHANGELOG = [
+    {
+        'version': '1.0.114',
+        'date': '2026-11-20',
+        'notes': [
+            'Despliegue automático arreglado: desde la 1.0.108 los tests de GitHub fallaban y no se desplegaba nada (producción se quedó en la 1.0.107 hasta desplegar a mano la 1.0.113 el 20/11). Causa: pyotp 2.12 exige secretos de 2FA de al menos 112 bits y dos tests usaban uno de ejemplo de 80; el panel genera secretos de 160 bits (ningún usuario afectado). Tests corregidos y pyotp>=2.12.1. Seguridad: paramiko 4.0.0 → 5.1.0 (PYSEC-2026-2858, firmas RSA con SHA-1; el panel usa ed25519), comprobado contra un nodo de prueba por SSH (ping, contenedores, exec, copia de ficheros y estadísticas). pip-audit sin vulnerabilidades.',
+        ],
+    },
     {
         'version': '1.0.113',
         'date': '2026-11-20',
