@@ -51,7 +51,7 @@ class InstanceViewSet(viewsets.ModelViewSet):
     def stop(self, request, pk=None):
         instance = self.get_object()
         _may(request, instance, 'operate')
-        service = DockerService()
+        service = DockerService(instance)
         service.stop_instance(instance)
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
@@ -64,7 +64,7 @@ class InstanceActionsMixin:
     def restart(self, request, pk=None):
         instance = self.get_object()
         _may(request, instance, 'operate')
-        DockerService().restart_instance(instance)
+        DockerService(instance).restart_instance(instance)
         return Response(self.get_serializer(instance).data)
 
     @action(detail=True, methods=['post'])

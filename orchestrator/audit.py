@@ -41,6 +41,9 @@ ACTIONS = {
     'two_factor_enabled': 'Activar el 2FA',
     'two_factor_disabled': 'Desactivar el 2FA',
     'recovery_codes': 'Generar códigos de recuperación del 2FA',
+    'server_added': 'Añadir servidor',
+    'server_changed': 'Cambiar servidor',
+    'server_deleted': 'Eliminar servidor',
 }
 
 

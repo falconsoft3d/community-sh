@@ -141,7 +141,7 @@ def destroy_instance(instance, user=None):
     traefik_config = os.path.join(settings.BASE_DIR, 'traefik', f'instance-{instance.name}.yml')
     if os.path.exists(traefik_config):
         os.remove(traefik_config)
-    DockerService().delete_instance(instance)
+    DockerService(instance).delete_instance(instance)
     for backup_record in instance.backups.all():
         if os.path.exists(backup_record.file_path):
             os.remove(backup_record.file_path)
@@ -153,13 +153,12 @@ def destroy_instance(instance, user=None):
 
 def backup_all_instances(retention, user=None):
     """Back up every instance and prune old backups. Returns (successes, errors)."""
-    service = DockerService()
     successes, errors = [], []
-    instances = list(Instance.objects.all())
+    instances = list(Instance.objects.select_related('server'))
     for index, instance in enumerate(instances):
         task_log.progress(100 * index // max(len(instances), 1), f'Respaldo de {instance.name} ({index + 1}/{len(instances)})')
         try:
-            backups = service.backup_all_databases(instance, include_filestore=True, user=user)
+            backups = DockerService(instance).backup_all_databases(instance, include_filestore=True, user=user)
             successes += [backup.filename for backup in backups]
             from .services import offsite
             offsite.queue_upload(backups, user)
@@ -180,7 +179,7 @@ def deploy(task):
     notes = []
     if task.params.get('create_branch') and instance.github_repo and instance.github_branch:
         notes.append(_create_instance_branch(instance, task.created_by, instance.github_branch))
-    service = DockerService()
+    service = DockerService(instance)
     service.deploy_instance(instance)
     notes += service.deploy_notes
     task_log.progress(95, 'Rutas de Traefik')
@@ -207,7 +206,7 @@ def queue_first_database(instance, user, lang='es_ES'):
     if instance.tasks.filter(kind=Task.Kind.CREATE_DATABASE, status__in=[Task.Status.PENDING, Task.Status.RUNNING]).exists():
         return ''
     try:
-        service = DockerService()
+        service = DockerService(instance)
         db_container = service._get_container(f'db_{instance.name}')
         if db_container is not None and service._list_user_databases(db_container):
             return ''
@@ -225,7 +224,7 @@ def duplicate(task):
         raise Exception(f'Ya existe una instancia con el nombre "{new_name}"')
     # A copy is neutralized unless asked otherwise: it must not mail the customers of the original
     neutralize = 'full' if task.params.get('neutralize', True) else None
-    new_instance = DockerService().copy_instance(source, new_name, neutralize=neutralize)
+    new_instance = DockerService(source).copy_instance(source, new_name, neutralize=neutralize)
     new_instance.owner = source.owner or task.created_by
     new_instance.save(update_fields=['owner'])
     send_instance_notification('created', new_instance, task.created_by)
@@ -242,7 +241,7 @@ def trial(task):
 def create_database(task):
     params = task.params
     instance = task.instance
-    login = DockerService().create_database(instance, params['name'], params['password'],
+    login = DockerService(instance).create_database(instance, params['name'], params['password'],
                                             params.get('lang', ''), params.get('demo', False))
     # Shown in the instance page (Administrador), to share it
     instance.admin_login, instance.admin_password, instance.admin_database = login, params['password'], params['name']
@@ -274,7 +273,7 @@ def reset_admin_password(task):
     password = task.params.get('password') or secrets.token_urlsafe(12)
     database = instance.admin_database or instance.database_name or ''
     task_log.progress(20, 'Cambiando la contraseña del administrador')
-    login = DockerService().set_admin_password(instance, password, databases=[database] if database else None)
+    login = DockerService(instance).set_admin_password(instance, password, databases=[database] if database else None)
     instance.admin_login, instance.admin_password, instance.admin_database = login, password, database
     instance.save(update_fields=['admin_login', 'admin_password', 'admin_database'])
     where = f'la base de datos {database}' if database else 'todas las bases de datos'
@@ -289,7 +288,7 @@ def rename(task):
         raise Exception(f'Ya existe una instancia con el nombre "{new_name}"')
     old_name = instance.name
     instance.name = new_name
-    DockerService().rename_instance(instance, old_name)
+    DockerService(instance).rename_instance(instance, old_name)
     from .services.domains import build_subdomain
     instance.subdomain = build_subdomain(instance)
     instance.save(update_fields=['subdomain'])
@@ -375,7 +374,7 @@ def odoo_migration(task):
 @handler(Task.Kind.BACKUP)
 def backup(task):
     from .services import offsite
-    records = DockerService().backup_all_databases(
+    records = DockerService(task.instance).backup_all_databases(
         task.instance, include_filestore=task.params.get('include_filestore', True), user=task.created_by,
     )
     copy = offsite.queue_upload(records, task.created_by)
@@ -386,7 +385,7 @@ def backup(task):
 @handler(Task.Kind.REFRESH_DATA)
 def refresh_data(task):
     source = Instance.objects.get(pk=task.params['source'])
-    notes = DockerService().refresh_from(task.instance, source, neutralize=task.params.get('neutralize', True))
+    notes = DockerService(task.instance).refresh_from(task.instance, source, neutralize=task.params.get('neutralize', True))
     return '\n'.join(notes + [f'{task.instance.name} tiene ahora los datos de {source.name}'])
 
 
@@ -421,7 +420,7 @@ def offsite_upload(task):
 def restore(task):
     file_path = task.params['file_path']
     try:
-        DockerService().restore_instance(task.instance, file_path)
+        DockerService(task.instance).restore_instance(task.instance, file_path)
     finally:
         # Uploaded files are temporary; backups from the list are kept
         if task.params.get('delete_after') and os.path.exists(file_path):
@@ -437,7 +436,7 @@ def create_from_backup(task):
     if instance.github_repo and instance.github_branch:
         notes.append(_create_instance_branch(instance, task.created_by, instance.github_branch))
 
-    service = DockerService()
+    service = DockerService(instance)
     service.deploy_instance(instance)
     task_log.progress(75, f'Restaurando {backup_record.filename}')
     service._wait_for_postgres(service.client.containers.get(f'db_{instance.name}'))
@@ -473,7 +472,7 @@ def pull_repos(task):
         task_log.line(f"Push a {task.params['push']}")
     elif task.params.get('source') == 'schedule':
         task_log.line('Actualización diaria automática')
-    service = DockerService()
+    service = DockerService(task.instance)
     notes = service.pull_repositories(task.instance, update_all=update_all, only_if_changed=only_if_changed)
     if only_if_changed and service.changed is False:
         return '\n'.join(notes)
@@ -486,7 +485,7 @@ def pull_repos(task):
 @handler(Task.Kind.INSTALL_BROWSER)
 def install_browser(task):
     task_log.progress(10, 'Instalando Google Chrome en el contenedor de Odoo')
-    return DockerService().install_browser(task.instance)
+    return DockerService(task.instance).install_browser(task.instance)
 
 
 @handler(Task.Kind.PULL_IMAGE)
@@ -516,7 +515,9 @@ def ai_module(task):
     """Install (-i) or upgrade (-u) a module written by the AI assistant, then restart Odoo."""
     instance = task.instance
     module = task.params['module']
-    service = DockerService()
+    service = DockerService(instance)
+    # On a node the module the assistant wrote has to be copied there first
+    service._sync_workspace(instance)
     container = service._get_container(f'odoo_{instance.name}')
     mounts = {m['Destination'] for m in container.attrs.get('Mounts', [])} if container else set()
     notes = []
@@ -609,3 +610,21 @@ def build_container(task):
     if not ok:
         raise Exception(message)
     return f'{message}: {container.url}'
+
+
+@handler(Task.Kind.SERVER_SETUP)
+def server_setup(task):
+    """Check a server (node) and prepare it to run instances: SSH, Docker, its folder and its Docker proxy."""
+    from django.utils import timezone
+    from .server_models import Server
+    from .services import nodes
+    server = Server.objects.get(pk=task.params['server'])
+    task_log.line(f'Servidor {server.name} ({server.ssh_user}@{server.host}:{server.ssh_port})')
+    try:
+        nodes.setup_server(server, progress=task_log.progress)
+    except Exception as e:
+        Server.objects.filter(pk=server.pk).update(status=Server.Status.ERROR, last_error=str(e)[:2000], checked_at=timezone.now())
+        raise
+    memory = f'{server.memory_mb // 1024} GB de RAM' if server.memory_mb else 'RAM desconocida'
+    disk = f', {server.disk_free_gb} de {server.disk_total_gb} GB libres' if server.disk_total_gb else ''
+    return f'{server.name} listo: Docker {server.docker_version}, {server.cpus or "?"} CPU, {memory}{disk}'

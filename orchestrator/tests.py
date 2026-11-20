@@ -4500,6 +4500,46 @@ class DockerProxyPolicyTests(TestCase):
         with self.assertRaises(self.proxy.Denied):
             self.check(method, path, body)
 
+    def _send(self, request):
+        """What the proxy answers to a raw request (its daemon is unreachable in the tests)."""
+        import asyncio
+
+        class Writer:
+            def __init__(self):
+                self.data = b''
+
+            def write(self, data):
+                self.data += data
+
+            async def drain(self):
+                pass
+
+            def close(self):
+                pass
+
+            async def wait_closed(self):
+                pass
+
+            def is_closing(self):
+                return False
+
+        async def run():
+            reader = asyncio.StreamReader()
+            reader.feed_data(request)
+            reader.feed_eof()
+            writer = Writer()
+            await self.proxy.handle(reader, writer, self.policy())
+            return writer.data.decode(errors='replace')
+        return asyncio.run(run())
+
+    def test_node_proxy_needs_the_panel_token(self):
+        # A node's proxy listens on the private network: the panel's own Odoo containers can reach it too
+        with mock.patch.object(self.proxy, 'TOKEN', 's3cret'), mock.patch.object(self.proxy, 'SOCKET', '/nonexistent.sock'):
+            self.assertIn('403', self._send(b'GET /_ping HTTP/1.1\r\nHost: x\r\n\r\n').split('\r\n')[0])
+            self.assertIn('403', self._send(b'GET /_ping HTTP/1.1\r\nHost: x\r\nX-Proxy-Token: wrong\r\n\r\n').split('\r\n')[0])
+            answer = self._send(b'GET /_ping HTTP/1.1\r\nHost: x\r\nX-Proxy-Token: s3cret\r\n\r\n')
+            self.assertNotIn('Falta el token', answer)
+
     def test_what_the_panel_does_is_allowed(self):
         for method, path, body in [
             ('GET', '/v1.44/containers/json?all=1', None), ('GET', '/containers/odoo_demo/logs?tail=200', None),
@@ -5254,3 +5294,223 @@ class InstanceStatsTests(BaseTestCase):
         self.assertEqual(data['total_bytes'], 4400000000 + 28300000000)
         self.assertEqual(data['postgres_version'], '16.15')
         self.assertEqual(len(data['containers']), 2)
+
+
+class ServerNodeTests(BaseTestCase):
+    """Instances on other servers (nodes): Docker over SSH or the node's proxy, rsync, Traefik by private IP."""
+
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from .server_models import Server
+        from .services import domains, nodes
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(__import__('shutil').rmtree, self.tmp, True)
+        settings_patch = override_settings(BASE_DIR=self.tmp)
+        settings_patch.enable()
+        self.addCleanup(settings_patch.disable)
+        domains.clear_cache()
+        self.addCleanup(domains.clear_cache)
+        self.addCleanup(nodes._clients.clear)
+        # The platform domain only where a test needs it (with one set, the panel refuses the test client's host)
+        self.domain = lambda: mock.patch('orchestrator.services.domains.main_domain', return_value='example.com')
+        self.server = Server.objects.create(name='nodo-1', host='10.0.0.3', status=Server.Status.READY)
+        self.remote = Instance.objects.create(name='remota', owner=self.alice, project=self.alice_project, server=self.server)
+
+    def test_docker_client_per_server(self):
+        from .services import nodes
+        with mock.patch('docker.from_env') as from_env, mock.patch('docker.DockerClient') as client:
+            self.assertIs(nodes.docker_client(None), from_env.return_value)
+            with mock.patch.dict('os.environ', {'NODE_DOCKER': 'ssh'}):
+                nodes.docker_client(self.server)
+            client.assert_called_with(base_url='ssh://root@10.0.0.3:22', timeout=60)
+            nodes._clients.clear()
+            # The web container never gets the key: the node's filtering proxy on its private IP
+            with mock.patch.dict('os.environ', {'NODE_DOCKER': 'proxy'}):
+                nodes.docker_client(self.server)
+            client.assert_called_with(base_url='tcp://10.0.0.3:2375', timeout=60)
+
+    def test_proxy_client_sends_the_token(self):
+        import docker
+        from .services import nodes
+        # The client asks the daemon for its API version when created: not here
+        with mock.patch.object(docker.APIClient, '_retrieve_server_version', return_value='1.44'):
+            client = nodes.proxy_client(self.server)
+        self.assertTrue(self.server.proxy_token)
+        self.assertEqual(client.api.headers['X-Proxy-Token'], self.server.proxy_token)
+        self.assertEqual(client.api.base_url, 'http://10.0.0.3:2375')
+
+    def test_docker_client_is_reused_per_server(self):
+        from .services import nodes
+        with mock.patch('docker.DockerClient') as client, mock.patch.dict('os.environ', {'NODE_DOCKER': 'proxy'}):
+            first = nodes.docker_client(self.server)
+            self.assertIs(nodes.docker_client(self.server), first)
+        self.assertEqual(client.call_count, 1)
+
+    def test_paths_and_addresses(self):
+        from .services import nodes
+        self.assertEqual(nodes.node_path(self.server, f'{self.tmp}/instances/remota/addons'),
+                         '/opt/community-sh-node/instances/remota/addons')
+        self.assertIsNone(nodes.odoo_base_url(self.remote))  # not deployed yet
+        self.remote.port = 23456
+        self.assertEqual(nodes.odoo_base_url(self.remote), 'http://10.0.0.3:23456')
+        self.assertEqual(nodes.odoo_base_url(self.alice_instance), 'http://odoo_alice-odoo:8069')
+        with self.domain():
+            self.assertEqual(nodes.panel_url_for(self.alice_instance), 'http://app:8000')
+            self.assertEqual(nodes.panel_url_for(self.remote), 'http://example.com')
+        self.assertTrue(self.remote.is_remote)
+        self.assertFalse(self.remote.port_is_public)
+
+    def test_deploy_on_a_node(self):
+        import docker
+        from .services.docker_service import DockerService
+        client = mock.MagicMock()
+        client.containers.get.side_effect = docker.errors.NotFound('missing')
+        client.containers.run.return_value.id = 'abc'
+        with mock.patch('orchestrator.services.nodes.docker_client', return_value=client) as get_client, \
+                mock.patch('orchestrator.services.nodes.sync_workspace') as sync, \
+                mock.patch.dict('os.environ', {'NODE_DOCKER': 'ssh', 'LETSENCRYPT_EMAIL': 'a@example.com'}), self.domain():
+            DockerService(self.remote).deploy_instance(self.remote)
+        get_client.assert_called_with(self.server)
+        sync.assert_called_once_with(self.remote)
+        odoo_call = [c for c in client.containers.run.call_args_list if c.args[0].startswith('odoo:')][0]
+        volumes = odoo_call.kwargs['volumes']
+        self.assertEqual(volumes['/opt/community-sh-node/instances/remota/conf']['bind'], '/etc/odoo')
+        self.assertEqual(volumes['/opt/community-sh-node/orchestrator/odoo_addons']['bind'], '/mnt/community-sh-addons')
+        self.remote.refresh_from_db()
+        # Only on the private IP, only on its own network (the panel's Docker network isn't there)
+        self.assertEqual(odoo_call.kwargs['ports'], {'8069/tcp': ('10.0.0.3', self.remote.port)})
+        self.assertEqual(odoo_call.kwargs['network'], 'net_remota')
+        client.networks.get.assert_any_call('net_remota')
+        self.assertNotIn(mock.call('community-sh_web'), client.networks.get.call_args_list)
+        with open(f'{self.tmp}/instances/remota/conf/odoo.conf') as f:
+            self.assertIn('community_sh_panel_url = https://example.com', f.read())
+
+    def test_web_container_does_not_sync(self):
+        from .services.docker_service import DockerService
+        container = mock.MagicMock(status='running')
+        client = mock.MagicMock()
+        client.containers.get.return_value = container
+        self.remote.container_id = 'abc'
+        with mock.patch('orchestrator.services.nodes.docker_client', return_value=client), \
+                mock.patch('orchestrator.services.nodes.sync_workspace') as sync, \
+                mock.patch.dict('os.environ', {'NODE_DOCKER': 'proxy'}):
+            DockerService(self.remote).restart_instance(self.remote)
+        sync.assert_not_called()
+        container.restart.assert_called_once()
+
+    def test_traefik_routes_a_node_by_private_ip(self):
+        import yaml
+        from .traefik_service import TraefikService
+        self.remote.status = Instance.Status.RUNNING
+        self.remote.port = 23456
+        self.remote.save()
+        with self.domain():
+            ok, _ = TraefikService.generate_instance_config(self.remote)
+        self.assertTrue(ok)
+        with open(f'{self.tmp}/traefik/instance-remota.yml') as f:
+            config = yaml.safe_load(f)
+        servers = [s['url'] for service in config['http']['services'].values() for s in service['loadBalancer']['servers']]
+        self.assertEqual(servers, ['http://10.0.0.3:23456'])
+
+    def test_health_probe_uses_the_node(self):
+        from .services import health
+        self.remote.port = 23456
+        with mock.patch('urllib.request.urlopen') as urlopen:
+            urlopen.return_value.__enter__.return_value.status = 200
+            ok, _, _ = health.probe(self.remote)
+        self.assertTrue(ok)
+        self.assertEqual(urlopen.call_args.args[0].full_url, 'http://10.0.0.3:23456/web/login')
+
+    def test_refresh_from_needs_the_same_server(self):
+        from .services.docker_service import DockerService
+        with mock.patch('orchestrator.services.nodes.docker_client'):
+            with self.assertRaisesMessage(Exception, 'mismo servidor'):
+                DockerService(self.remote).refresh_from(self.remote, self.alice_instance)
+
+    def test_usage_and_alerts(self):
+        from .services import nodes
+        output = '4\n8000000\n400000\n3.10\n80G 4G\n'
+        with mock.patch('orchestrator.services.nodes.run_ssh', return_value=output), \
+                mock.patch('orchestrator.services.alerts.alert') as alert:
+            self.assertEqual(nodes.check_usage(force=True), [])
+        self.server.refresh_from_db()
+        self.assertEqual((self.server.cpus, self.server.memory_mb, self.server.disk_free_gb), (4, 7812, 4))
+        self.assertEqual((self.server.memory_percent, self.server.disk_percent, self.server.cpu_percent), (95, 95, 78))
+        self.assertEqual({c.args[0] for c in alert.call_args_list}, {f'node-disk:{self.server.pk}', f'node-memory:{self.server.pk}'})
+        self.assertEqual([bar[0] for bar in self.server.usage_bars], ['CPU', 'Memoria', 'Disco'])
+
+    def test_unreachable_node_alerts(self):
+        from .services import nodes
+        with mock.patch('orchestrator.services.nodes.run_ssh', side_effect=nodes.NodeError('timeout')), \
+                mock.patch('orchestrator.services.alerts.alert') as alert:
+            self.assertEqual(nodes.check_usage(force=True), ['nodo-1'])
+        self.assertEqual(alert.call_args.args[0], f'node-down:{self.server.pk}')
+
+    def test_setup_failure_is_shown(self):
+        from .server_models import Server
+        from .services import nodes
+        from .task_models import Task
+        from .tasks import enqueue, run_task
+        task = enqueue(Task.Kind.SERVER_SETUP, None, self.admin, server=self.server.pk)
+        with mock.patch('orchestrator.services.nodes.setup_server', side_effect=nodes.NodeError('Permission denied')):
+            run_task(task)
+        task.refresh_from_db()
+        self.server.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.FAILED)
+        self.assertEqual(self.server.status, Server.Status.ERROR)
+        self.assertIn('Permission denied', self.server.last_error)
+
+    def test_setup_needs_a_domain(self):
+        from .services import nodes
+        with mock.patch.dict('os.environ', {'MAIN_DOMAIN': ''}), self.assertRaisesMessage(nodes.NodeError, 'dominio'):
+            nodes.setup_server(self.server)
+
+    def test_servers_page_is_for_superusers(self):
+        self.client.force_login(self.alice)
+        self.assertEqual(self.client.get(reverse('server-list')).status_code, 403)
+        self.assertEqual(self.client.post(reverse('server-delete', args=[self.server.pk])).status_code, 403)
+
+    def test_add_server_queues_its_setup(self):
+        from .server_models import PanelKey, Server
+        from .task_models import Task
+        PanelKey.objects.create(public_key='ssh-ed25519 AAAAC3Nz community-sh-panel')
+        self.client.force_login(self.admin)
+        page = self.client.get(reverse('server-list')).content.decode()
+        self.assertIn('ssh-ed25519 AAAAC3Nz community-sh-panel', page)
+        self.assertIn('nodo-1', page)
+        response = self.client.post(reverse('server-list'), {'name': 'nodo-2', 'host': '10.0.0.4', 'ssh_user': 'root',
+                                                             'ssh_port': 22, 'workdir': '/opt/community-sh-node'})
+        self.assertEqual(response.status_code, 302)
+        server = Server.objects.get(name='nodo-2')
+        self.assertTrue(Task.objects.filter(kind=Task.Kind.SERVER_SETUP, params__server=server.pk).exists())
+        # Bad input never reaches a shell
+        response = self.client.post(reverse('server-list'), {'name': 'x', 'host': '10.0.0.5; rm -rf /', 'ssh_user': 'root',
+                                                             'ssh_port': 22, 'workdir': '/opt/x'})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Server.objects.filter(name='x').exists())
+
+    def test_server_with_instances_cannot_be_deleted(self):
+        from .server_models import Server
+        self.client.force_login(self.admin)
+        self.client.post(reverse('server-delete', args=[self.server.pk]))
+        self.assertTrue(Server.objects.filter(pk=self.server.pk).exists())
+        self.remote.delete()
+        self.client.post(reverse('server-delete', args=[self.server.pk]))
+        self.assertFalse(Server.objects.filter(pk=self.server.pk).exists())
+
+    def test_instance_form_offers_ready_servers_to_superusers(self):
+        from .forms import InstanceForm
+        from .server_models import Server
+        self.assertIn('server', InstanceForm(user=self.admin).fields)
+        self.assertNotIn('server', InstanceForm(user=self.alice).fields)
+        Server.objects.update(active=False)
+        self.assertNotIn('server', InstanceForm(user=self.admin).fields)
+
+    def test_copies_stay_on_the_server_of_the_source(self):
+        from .services.docker_service import DockerService
+        with mock.patch('orchestrator.services.nodes.docker_client'), \
+                mock.patch('orchestrator.services.docker_copies.Instance.objects.create', side_effect=RuntimeError('stop')) as create:
+            with self.assertRaises(RuntimeError):
+                DockerService(self.remote).copy_instance(self.remote, 'remota-copia', create_branch=False)
+        self.assertEqual(create.call_args.kwargs['server'], self.server)

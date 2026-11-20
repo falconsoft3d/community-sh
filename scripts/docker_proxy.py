@@ -22,6 +22,7 @@ One request per connection (Connection: close), so nothing can ride on a connect
 first request was checked. Only the standard library: it runs from the image, not the mounted code.
 """
 import asyncio
+import hmac
 import json
 import logging
 import os
@@ -41,6 +42,10 @@ HIJACK = re.compile(r'/(exec/[^/]+/start|containers/[^/]+/attach)')
 SAFE_ON_PANEL = {'start', 'stop', 'restart', 'kill', 'pause', 'unpause', 'wait', 'resize'}
 CLEANUP = {'/containers/prune', '/images/prune', '/volumes/prune', '/networks/prune', '/build/prune'}
 HOST_MODES = ('PidMode', 'IpcMode', 'UTSMode', 'UsernsMode', 'CgroupnsMode')
+# On another server (a node) the proxy listens on the private network, which the panel's Odoo containers can
+# reach too: only requests with this token (sent by the panel's web container) are let through. Empty: no token
+TOKEN = os.environ.get('DOCKER_PROXY_TOKEN', '')
+TOKEN_HEADER = 'X-Proxy-Token'
 
 logger = logging.getLogger('docker-proxy')
 
@@ -331,6 +336,8 @@ async def handle(client_reader, client_writer, policy):
             method, raw_path, _ = first.split(' ', 2)
         except (asyncio.IncompleteReadError, asyncio.LimitOverrunError, ValueError):
             return
+        if TOKEN and not hmac.compare_digest((_header(headers, TOKEN_HEADER) or '').encode(), TOKEN.encode()):
+            raise Denied('Falta el token del panel')
         length = _header(headers, 'Content-Length')
         chunked = (_header(headers, 'Transfer-Encoding') or '').lower() == 'chunked'
         if length is not None and chunked:
@@ -355,7 +362,7 @@ async def handle(client_reader, client_writer, policy):
         if hijack and isinstance(parsed, dict) and parsed.get('Detach'):
             hijack = False
         upgrade = hijack and _header(headers, 'Upgrade') is not None
-        drop = {'connection', 'keep-alive', 'proxy-connection', 'upgrade', 'expect', 'te', 'trailer'}
+        drop = {'connection', 'keep-alive', 'proxy-connection', 'upgrade', 'expect', 'te', 'trailer', TOKEN_HEADER.lower()}
         if body is not None:
             drop |= {'content-length', 'transfer-encoding'}
         out = [f'{method} {raw_path} HTTP/1.1'] + [f'{k}: {v}' for k, v in headers if k.lower() not in drop]

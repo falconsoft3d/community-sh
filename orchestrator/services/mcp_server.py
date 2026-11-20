@@ -125,7 +125,7 @@ def call_tool(user, name, arguments):
     if name == 'get_instance_logs':
         instance = _instance(user, arguments['instance'])
         _may(user, instance, 'logs')
-        return DockerService().get_logs(instance, lines=min(int(arguments.get('lines', 100)), 1000))
+        return DockerService(instance).get_logs(instance, lines=min(int(arguments.get('lines', 100)), 1000))
     if name in ('deploy_instance', 'create_backup'):
         instance = _instance(user, arguments['instance'])
         _may(user, instance, 'operate' if name == 'deploy_instance' else 'backups')
@@ -165,7 +165,7 @@ def call_tool(user, name, arguments):
     if name in ('restart_instance', 'stop_instance'):
         instance = _instance(user, arguments['instance'])
         _may(user, instance, 'operate')
-        service = DockerService()
+        service = DockerService(instance)
         (service.restart_instance if name == 'restart_instance' else service.stop_instance)(instance)
         instance.refresh_from_db()
         return {'instance': instance.name, 'status': instance.status}

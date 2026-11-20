@@ -281,6 +281,17 @@
                 </div>
 
                 <div class="space-y-1">
+                    <label class="text-sm font-medium leading-none">{% translate "Servidor" %}</label>
+                    <div class="text-sm">
+                        {% if object.server %}
+                        {% if user.is_superuser %}<a href="{% url 'server-list' %}" class="hover:underline">{% endif %}<i data-lucide="server" class="inline h-3 w-3"></i> {{ object.server.name }}{% if user.is_superuser %} <span class="font-mono text-xs text-muted-foreground">{{ object.server.host }}{% if object.port %}:{{ object.port }}{% endif %}</span></a>{% endif %}
+                        {% else %}
+                        <span class="text-muted-foreground">{% translate "Este servidor (panel)" %}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="space-y-1">
                     <label class="text-sm font-medium leading-none">{% translate "URL Alternativa" %}</label>
                     <div>
                         {% if object.status == 'running' and object.port and object.port_is_public %}

@@ -3,9 +3,19 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.108'
+VERSION = '1.0.109'
 
 CHANGELOG = [
+    {
+        'version': '1.0.109',
+        'date': '2026-11-20',
+        'notes': [
+            "Servidores (nodos), fase 1: las instancias pueden correr en otros servidores además del del panel. Nuevo menú Servidores (administradores): se añade un servidor con su IP privada de Hetzner tras ejecutar en él, como root, el comando de preparación que muestra la página (instala Docker y rsync y autoriza la clave SSH del panel). La tarea «Preparar servidor» guarda su huella SSH, crea su carpeta de trabajo, copia los módulos del panel y arranca su proxy de Docker; si falla, el error queda en la tarjeta del servidor. Al crear una instancia, los administradores eligen el servidor (vacío = este).",
+            "Cómo funciona: el panel sigue siendo el centro (código de cada instancia, Traefik, backups). El worker habla con el Docker del nodo por SSH (clave ed25519 creada en su propio volumen, nunca en el contenedor web) y copia con rsync el workspace antes de cada despliegue o reinicio; Traefik envía el dominio de la instancia a IP-privada:puerto del nodo, así que dominios y certificados no cambian. La web llega a cada nodo por el mismo proxy de Docker filtrado del panel, que escucha solo en la IP privada y exige un token propio de cada servidor (los contenedores de Odoo también ven la red privada). Deploy, restart/stop, logs, consola, backups, restauraciones, crear base, duplicar (en el mismo servidor), renombrar, eliminar, pull, módulos de la IA y límite de memoria funcionan igual; «Refrescar datos» solo entre instancias del mismo servidor.",
+            "Uso de los nodos: cada 5 minutos el worker lee CPU (carga), memoria y disco de cada servidor, los muestra en barras en Servidores (con la memoria que reservan los límites de sus instancias) y avisa por email/webhook si el disco o la memoria pasan del 90 % o si un nodo deja de responder.",
+            "Todavía no (fase 2): mover a otro servidor una instancia que ya existe, contenedores genéricos en nodos y los nodos en el Dashboard y Metrics.",
+        ],
+    },
     {
         'version': '1.0.108',
         'date': '2026-11-20',

@@ -33,13 +33,30 @@ from .docker_databases import DatabaseMixin
 from .docker_copies import CopyMixin
 from .docker_operations import OperationsMixin
 from .docker_backups import BackupMixin
+from . import nodes
 
 
 class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
-    def __init__(self):
-        self.client = docker.from_env()
+    def __init__(self, target=None):
+        """target: the instance to work on (its server), a Server, or None for this server."""
+        self.server = target.server if isinstance(target, Instance) else target
+        self.client = nodes.docker_client(self.server)
         # Remarks from the last deploy, shown in the task result
         self.deploy_notes = []
+
+    @property
+    def remote(self):
+        return self.server is not None
+
+    def _bind(self, path):
+        """Path of a bind mount as the Docker daemon of the server sees it."""
+        return nodes.node_path(self.server, path) if self.remote else host_path(path)
+
+    def _sync_workspace(self, instance):
+        """A node mounts its own copy of the workspace: send the panel's (only workers can, over SSH)."""
+        if self.remote and not nodes.via_proxy():
+            progress(45, f'Copiando el código al servidor {self.server.name}')
+            nodes.sync_workspace(instance)
 
     def _get_container(self, name):
         try:
@@ -82,7 +99,7 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
         panel_login = (f"server_wide_modules = {server_wide},community_sh_login,community_sh_ai"
                        f"{',community_sh_demo' if demo else ''}\n{demo_lines}"
                        f"community_sh_secret = {admin_login_secret(instance)}\n"
-                       f"community_sh_panel_url = {PANEL_INTERNAL_URL}\n"
+                       f"community_sh_panel_url = {nodes.panel_url_for(instance)}\n"
                        f"community_sh_instance = {instance.name}\n")
         content = (
             "[options]\n"
@@ -306,7 +323,7 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
         "No limit" (0) is applied on the next deploy. Returns the names of the instances whose cap changed.
         """
         from ..models import Instance
-        queryset = Instance.objects.filter(memory_limit_mb__gt=0)
+        queryset = Instance.objects.filter(memory_limit_mb__gt=0, server=self.server)
         if instances is not None:
             queryset = queryset.filter(pk__in=[i.pk for i in instances])
         wanted = {instance.name: instance.memory_limit_mb * 1024 * 1024 for instance in queryset}
@@ -342,7 +359,7 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
             if bindings:
                 published[container.name[len('odoo_'):]] = int(bindings[0]['HostPort'])
         changed = []
-        for instance in Instance.objects.filter(name__in=published):
+        for instance in Instance.objects.filter(name__in=published, server=self.server):
             if instance.port != published[instance.name]:
                 Instance.objects.filter(pk=instance.pk).update(port=published[instance.name])
                 changed.append(instance.name)
@@ -433,11 +450,12 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
             extra_repos = self._sync_extra_repos(instance, workspace_path)
             volumes = {
                 data_volume: {'bind': ODOO_DATA_DIR, 'mode': 'rw'},
-                host_path(self._write_odoo_config(instance, workspace_path, extra_repos)): {'bind': '/etc/odoo', 'mode': 'rw'},
-                host_path(addons_path): {'bind': '/mnt/extra-addons', 'mode': 'rw'},
-                host_path(os.path.join(workspace_path, 'repos')): {'bind': '/mnt/repos', 'mode': 'ro'},
-                host_path(os.path.join(settings.BASE_DIR, 'orchestrator', 'odoo_addons')): {'bind': PANEL_ADDONS_DIR, 'mode': 'ro'},
+                self._bind(self._write_odoo_config(instance, workspace_path, extra_repos)): {'bind': '/etc/odoo', 'mode': 'rw'},
+                self._bind(addons_path): {'bind': '/mnt/extra-addons', 'mode': 'rw'},
+                self._bind(os.path.join(workspace_path, 'repos')): {'bind': '/mnt/repos', 'mode': 'ro'},
+                self._bind(os.path.join(settings.BASE_DIR, 'orchestrator', 'odoo_addons')): {'bind': PANEL_ADDONS_DIR, 'mode': 'ro'},
             }
+            self._sync_workspace(instance)
             
             is_redeploy = False
             try:
@@ -460,12 +478,16 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
             # Start on Traefik's network and join the private network afterwards: Docker keeps
             # published ports on the network the container started on, and older versions drop
             # them when a network connected later becomes the gateway (sorts first by name).
-            try:
-                self.client.networks.get("community-sh_web")
-                start_network, extra_network = "community-sh_web", network_name
-            except docker.errors.NotFound:
-                print("Warning: community-sh_web network not found. Traefik routing may not work.")
+            if self.remote:
+                # On a node Traefik reaches Odoo by the private IP and port: only the instance's own network
                 start_network, extra_network = network_name, None
+            else:
+                try:
+                    self.client.networks.get("community-sh_web")
+                    start_network, extra_network = "community-sh_web", network_name
+                except docker.errors.NotFound:
+                    print("Warning: community-sh_web network not found. Traefik routing may not work.")
+                    start_network, extra_network = network_name, None
             
             odoo_image = f"odoo:{instance.odoo_version}"
             progress(50, f'Imagen {odoo_image}')
@@ -487,7 +509,8 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
                 },
                 network=start_network,
                 volumes=volumes,
-                ports={'8069/tcp': (published_ip(), port)},
+                # A node publishes it on its private IP, where the panel's Traefik reaches it
+                ports={'8069/tcp': (self.server.host if self.remote else published_ip(), port)},
                 detach=True,
                 restart_policy=RESTART_POLICY,
                 log_config=log_config(),
@@ -643,6 +666,7 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
         if not instance.container_id:
             return
         try:
+            self._sync_workspace(instance)
             self._start_db_container(instance)
             container = self.client.containers.get(instance.container_id)
             if container.attrs.get('HostConfig', {}).get('RestartPolicy', {}).get('Name') != RESTART_POLICY['Name']:
@@ -736,7 +760,12 @@ class DockerService(DatabaseMixin, CopyMixin, OperationsMixin, BackupMixin):
             else:
                 print(f"Skipping deletion of protected branch: {instance.github_branch}")
         
-        # 5. Remove Files
+        # 5. Remove Files (and the node's copy)
+        if self.remote:
+            try:
+                nodes.remove_workspace(instance)
+            except Exception as e:
+                print(f"Error removing the workspace on {self.server.name}: {e}")
         if os.path.exists(workspace_path):
             import shutil
             shutil.rmtree(workspace_path)

@@ -104,7 +104,7 @@ class OdooModuleService:
                 return False, f"Error al hacer commit/push al repositorio: {str(e)}", extracted_module_name
             
             # 7. Deploy/upgrade the instance (this will update all modules)
-            docker_service = DockerService()
+            docker_service = DockerService(instance)
             try:
                 docker_service.deploy_instance(instance)
                 

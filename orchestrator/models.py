@@ -36,6 +36,8 @@ class Instance(models.Model):
     name = models.CharField(max_length=100, unique=True, validators=[validate_resource_name], help_text="Subdomain name")
     owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='instances')
     project = models.ForeignKey('Project', on_delete=models.PROTECT, null=True, blank=True, related_name='instances')
+    # Where its containers run: empty = this server (the panel's); see server_models.Server
+    server = models.ForeignKey('Server', on_delete=models.PROTECT, null=True, blank=True, related_name='instances')
     odoo_version = models.CharField(max_length=10, choices=[
         ('8.0', '8.0'),
         ('9.0', '9.0'),
@@ -179,7 +181,13 @@ class Instance(models.Model):
     def port_is_public(self):
         """Its port answers from outside (no domain with HTTPS): the IP:port address works."""
         from .services.docker_service import published_ip
-        return published_ip() != '127.0.0.1'
+        # A node publishes it on its private IP only: reached through the panel's Traefik
+        return not self.is_remote and published_ip() != '127.0.0.1'
+
+    @property
+    def is_remote(self):
+        """Runs on another server (a node), not on the panel's."""
+        return self.server_id is not None
 
     @property
     def url_with_port(self):
@@ -214,6 +222,7 @@ from .mcp_models import MCPToken
 from .todo_models import Todo
 from .metrics_models import MetricRollup, MetricSample
 from .audit_models import AuditEvent
+from .server_models import PanelKey, Server
 
 class UserProfile(models.Model):
     """Extended user profile with additional information"""

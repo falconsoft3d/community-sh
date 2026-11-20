@@ -31,6 +31,7 @@ class Task(models.Model):
         OFFSITE_RESTORE = 'offsite_restore', 'Restaurar desde S3'
         BACKUP_VERIFY = 'backup_verify', 'Comprobar backups'
         REFRESH_DATA = 'refresh_data', 'Refrescar datos desde otra instancia'
+        SERVER_SETUP = 'server_setup', 'Preparar servidor'
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'En cola'

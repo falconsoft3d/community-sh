@@ -42,6 +42,8 @@ class CopyMixin:
             # A copy runs the same code with the same configuration; a demo for a prospect doesn't get it
             env_vars='' if origin == 'trial' else instance.env_vars,
             project=project or instance.project,
+            # On the server of the source: the copy streams its data through that server's Docker
+            server=instance.server,
             status=Instance.Status.DEPLOYING,
             origin=origin,
             copied_from=instance,
@@ -216,6 +218,9 @@ class CopyMixin:
             except docker.errors.NotFound:
                 pass
 
+        if self.remote:
+            from . import nodes
+            nodes.rename_workspace(instance, old_name)
         instances_dir = os.path.join(settings.BASE_DIR, 'instances')
         old_workspace = os.path.join(instances_dir, old_name)
         new_workspace = os.path.join(instances_dir, new_name)
@@ -251,6 +256,8 @@ class CopyMixin:
         """
         if source.pk == instance.pk:
             raise Exception('Una instancia no se puede refrescar desde sí misma')
+        if source.server_id != instance.server_id:
+            raise Exception('Las dos instancias tienen que estar en el mismo servidor')
         notes = []
         source_db = self._start_db_container(source)
         target_db = self._start_db_container(instance)

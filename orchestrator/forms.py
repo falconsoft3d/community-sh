@@ -21,7 +21,7 @@ class InstanceForm(forms.ModelForm):
     
     class Meta:
         model = Instance
-        fields = ['project', 'name', 'odoo_version', 'github_repo', 'github_branch', 'database_name', 'demo_default_db', 'custom_domain', 'description']
+        fields = ['project', 'name', 'odoo_version', 'server', 'github_repo', 'github_branch', 'database_name', 'demo_default_db', 'custom_domain', 'description']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': 'mi-empresa'}),
             'github_branch': forms.TextInput(attrs={'placeholder': 'main'}),
@@ -50,6 +50,18 @@ class InstanceForm(forms.ModelForm):
         self.fields['project'].help_text = 'Cliente o proyecto al que pertenece la instancia'
         if user:
             self.fields['project'].queryset = managed_projects_for(user)
+
+        # Where it runs: only superusers choose, only when creating it, among the servers ready for new instances
+        from .server_models import Server
+        servers = Server.objects.filter(status=Server.Status.READY, active=True)
+        if self.instance.pk or not (user and user.is_superuser) or not servers.exists():
+            self.fields.pop('server', None)
+        else:
+            self.fields['server'].queryset = servers
+            self.fields['server'].required = False
+            self.fields['server'].label = 'Servidor'
+            self.fields['server'].empty_label = 'Este servidor (panel)'
+            self.fields['server'].help_text = 'Dónde corren sus contenedores (Servidores en el menú)'
 
     def clean_project(self):
         from .quotas import quota_problem

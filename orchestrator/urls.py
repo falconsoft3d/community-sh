@@ -4,6 +4,7 @@ from .views.activity import activity_detail, activity_list, task_live
 from .views.trials import instance_update_description, project_trial_key, trial_api, trial_captcha, trial_page, trial_status
 from .views.env_vars import instance_env_vars
 from .views.webhooks import github_webhook, instance_auto_update, instance_webhook_github, instance_webhook_secret
+from .views.servers import server_delete, server_list, server_setup, server_toggle
 from .views.contacts import contact_delete, contact_detail, contact_edit, contact_export, contact_list, contact_stage
 from .views.odoo_ai import instance_migrate, odoo_ai_request
 from .views.api import (BackupViewSet, ContainerViewSet, DemoViewSet, InstanceAPIViewSet, PlatformEmailTestView,
@@ -235,6 +236,10 @@ urlpatterns = [
     path('instance/<int:pk>/update-description/', instance_update_description, name='instance-update-description'),
     path('metrics/', metrics_view, name='metrics'),
     path('docker/', docker_overview, name='docker-overview'),
+    path('servers/', server_list, name='server-list'),
+    path('servers/<int:pk>/setup/', server_setup, name='server-setup'),
+    path('servers/<int:pk>/toggle/', server_toggle, name='server-toggle'),
+    path('servers/<int:pk>/delete/', server_delete, name='server-delete'),
     path('docker/containers/<str:container_id>/logs/', docker_container_logs, name='docker-container-logs'),
     path('docker/containers/<str:container_id>/<str:action>/', docker_container_action, name='docker-container-action'),
     path('docker/images/pull/', docker_image_pull, name='docker-image-pull'),

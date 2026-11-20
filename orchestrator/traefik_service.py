@@ -122,8 +122,12 @@ class TraefikService:
             certificate = None
             if instance.ssl_enabled:
                 certificate = TraefikService._certbot_certificate(instance.ssl_certificate_path, instance.ssl_key_path)
-            config = TraefikService._routes(f'instance-{instance.name}', hosts,
-                                            f'http://odoo_{instance.name}:8069', certificate,
+            from .services.nodes import odoo_base_url
+            backend = odoo_base_url(instance)
+            if not backend:
+                TraefikService._write(name, None)
+                return True, "Configuración de instancia eliminada (sin puerto todavía)"
+            config = TraefikService._routes(f'instance-{instance.name}', hosts, backend, certificate,
                                             blocked_paths=() if instance.odoo_db_manager else ODOO_DB_MANAGER_PATHS)
             TraefikService._write(name, config)
             return True, f"Configuración de Traefik generada para instancia {instance.name}"

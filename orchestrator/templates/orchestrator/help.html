@@ -194,8 +194,27 @@ updates its section here (and the index) in the same commit.
                 </ul>
             </section>
 
+            <section id="servidores" class="rounded-xl border bg-card p-6 scroll-mt-24">
+                <h2>13. Servidores (nodos)</h2>
+                <p>Cuando un servidor se queda corto de memoria o disco, añade otros (solo administradores, menú <strong>Servidores</strong>). El panel sigue en el servidor principal (código de las instancias, Traefik, backups, base del panel) y cada nodo solo ejecuta los contenedores de Odoo y PostgreSQL de sus instancias. Se conectan por la <strong>red privada de Hetzner</strong>.</p>
+                <ol>
+                    <li>Crea el servidor en Hetzner (Ubuntu o Debian), en la misma ubicación que el panel, y conéctalo a la misma red privada (Networks).</li>
+                    <li>En <strong>Servidores</strong> copia el <strong>comando de preparación</strong> y ejecútalo en el servidor nuevo como root: instala Docker y rsync y autoriza la clave SSH del panel.</li>
+                    <li>Añádelo con su <strong>IP privada</strong> (p. ej. 10.0.0.3). El panel lo comprueba y lo prepara (tarea «Preparar servidor»): guarda su huella SSH, crea su carpeta de trabajo, copia los módulos del panel y arranca su proxy de Docker. Si algo falla, el error aparece en la tarjeta del servidor; corrígelo y pulsa <strong>Comprobar y preparar</strong>.</li>
+                    <li>Al crear una instancia, el campo <strong>Servidor</strong> (solo administradores, solo servidores listos que admiten instancias nuevas) decide dónde corre. Vacío = este servidor.</li>
+                </ol>
+                <ul>
+                    <li><strong>Cómo funciona</strong>: el worker habla con el Docker del nodo por SSH y, antes de cada despliegue o reinicio, copia con rsync el código y la configuración de la instancia. Traefik sigue en el panel y envía el dominio de la instancia a <code>IP-privada:puerto</code> del nodo, así que los dominios y certificados no cambian. El puerto de Odoo solo escucha en la IP privada (no hay URL alternativa por puerto).</li>
+                    <li>Deploy, Restart/Stop, logs, consola, backups y restauraciones, crear base de datos, duplicar (la copia queda en el mismo servidor), renombrar, eliminar, pull de los repositorios, módulos de la IA y límite de memoria funcionan igual. «Refrescar datos» solo entre instancias del mismo servidor.</li>
+                    <li><strong>Uso</strong>: cada 5 minutos el worker lee la CPU (carga), la memoria y el disco de cada nodo y los muestra en barras en Servidores, junto a la memoria que reservan los límites de sus instancias. Avisa (email/webhook) si el disco o la memoria pasan del 90 % o si un nodo deja de responder.</li>
+                    <li><strong>Seguridad</strong>: la clave SSH solo existe en el volumen del worker. La web llega a cada nodo por un proxy de Docker que filtra las peticiones (el mismo que usa en el panel), escucha solo en la IP privada y exige un token propio de ese servidor. Usa la red privada solo para tus servidores.</li>
+                    <li><strong>Admitir nuevas</strong> deja de ofrecer un servidor al crear instancias (las suyas siguen funcionando). Un servidor con instancias no se puede quitar del panel; quitarlo no toca el servidor en sí.</li>
+                    <li>Todavía no: mover una instancia ya creada a otro servidor (de momento: crea una en el nodo, restaura en ella un backup de la original y pásale el dominio), contenedores genéricos en nodos y las métricas de los nodos en el Dashboard.</li>
+                </ul>
+            </section>
+
             <section id="tareas" class="rounded-xl border bg-card p-6 scroll-mt-24">
-                <h2>13. Tareas y Actividad</h2>
+                <h2>14. Tareas y Actividad</h2>
                 <ul>
                     <li>Cada tarea guarda su log completo con la hora y una barra de progreso que avanza en directo, en la pestaña «Tareas recientes» de la instancia y en el menú <strong>Actividad</strong> (filtros por estado, tipo e instancia).</li>
                     <li>Estados: En cola, En curso, Completada y Fallida (con el error). Si el worker se reinicia a mitad, la tarea queda como fallida.</li>
@@ -208,7 +227,7 @@ updates its section here (and the index) in the same commit.
             </section>
 
             <section id="panel" class="rounded-xl border bg-card p-6 scroll-mt-24">
-                <h2>14. Dashboard, Metrics y Todo</h2>
+                <h2>15. Dashboard, Metrics y Todo</h2>
                 <ul>
                     <li><strong>Dashboard</strong>: las cifras principales, cada una enlazada a su página; CPU, memoria y disco en verde (&lt;50 %), naranja (50-90 %) o rojo (&gt;90 %). Al pulsar <strong>CPU, Memoria o Disco</strong> se abre el uso por instancia ordenado por ese recurso: qué instancia consume qué.</li>
                     <li><strong>Metrics</strong>: uso de CPU y RAM en las últimas 24 horas, 7 días, 30 días y 12 meses. En Recursos, el <strong>uso por instancia</strong>: CPU y RAM de su Odoo y su PostgreSQL ahora (con cuánto de su límite gasta) y <strong>disco</strong> de sus datos (base de datos y adjuntos), su código y sus backups, también de las instancias paradas; se ordena pulsando las cabeceras. El disco se mide cada 10 minutos o con «Medir el disco ahora». Debajo, el uso por contenedor.</li>
@@ -218,7 +237,7 @@ updates its section here (and the index) in the same commit.
             </section>
 
             <section id="api" class="rounded-xl border bg-card p-6 scroll-mt-24">
-                <h2>15. API y MCP (Claude)</h2>
+                <h2>16. API y MCP (Claude)</h2>
                 <ul>
                     <li><strong>API REST</strong> (Configuración → API → Generar token; <code>Authorization: Bearer …</code>): proyectos, instancias (crear y desplegar, reiniciar, detener, backup, duplicar, variables de entorno, repositorios extra, <code>create-database</code>, <code>install-module</code>), backups, tareas con su log, contenedores, contactos, Todo y demos.</li>
                     <li><strong>Para una IA</strong>: Configuración → API → «Generar token y descargar .md» crea un token nuevo y descarga <code>community-sh-api.md</code> con el token, la URL base y toda la documentación (endpoints, tareas, errores, ejemplos y, si está activo, cómo conectar el MCP). Pásaselo a Claude, ChatGPT… para que use la API por ti. Guárdalo como una contraseña; el token se revoca en «Tus tokens».</li>
@@ -231,7 +250,7 @@ updates its section here (and the index) in the same commit.
             </section>
 
             <section id="cuenta" class="rounded-xl border bg-card p-6 scroll-mt-24">
-                <h2>16. Usuarios, seguridad y configuración</h2>
+                <h2>17. Usuarios, seguridad y configuración</h2>
                 <ul>
                     <li><strong>Usuarios</strong> (administradores): crear, editar y marcar como Cliente.</li>
                     <li><strong>Auditoría</strong> (administradores, en el menú): quién hizo qué y desde qué IP: inicios de sesión (también los fallidos), cada vez que alguien muestra o copia la Master Password o la contraseña del administrador, «Entrar como admin», restablecer contraseñas, cambios de configuración, tokens creados y revocados, usuarios y cambios en instancias (eliminar, renombrar, mover, memoria, variables de entorno). Las contraseñas ya no van dentro de la página: se piden al servidor al pulsar mostrar o copiar.</li>
@@ -244,7 +263,7 @@ updates its section here (and the index) in the same commit.
             </section>
 
             <section id="seguridad" class="rounded-xl border bg-card p-6 scroll-mt-24">
-                <h2>17. Seguridad del servidor</h2>
+                <h2>18. Seguridad del servidor</h2>
                 <ul>
                     <li><strong>Docker filtrado para la web</strong>: el contenedor web del panel ya no tiene el socket de Docker (que equivale a ser root en el servidor). Habla con Docker a través del servicio <code>docker-proxy</code>, que deja pasar lo que hace el panel (logs, consola y pip, arrancar, parar y reiniciar, la página Docker, crear contenedores de apps) y rechaza lo que daría el servidor: contenedores privilegiados, con capacidades extra o con los espacios del host, montar carpetas del host fuera de <code>instances/</code>, el socket de Docker, entrar, copiar archivos o borrar los contenedores del propio panel, sus volúmenes y su red interna. Los despliegues, backups y demás tareas siguen en los workers.</li>
                     <li>Un contenedor de apps que necesite otra carpeta del host (solo administradores): añádela a <code>DOCKER_PROXY_ALLOWED_BINDS</code> en el <code>.env</code> (separadas por comas) y redespliega. Montar el socket de Docker (p. ej. Portainer) ya no se puede desde la web.</li>
@@ -260,7 +279,7 @@ updates its section here (and the index) in the same commit.
             </section>
 
             <section id="actualizaciones" class="rounded-xl border bg-card p-6 scroll-mt-24">
-                <h2>18. Actualizaciones del panel</h2>
+                <h2>19. Actualizaciones del panel</h2>
                 <ul>
                     <li>Cada cambio del panel sube la versión y se documenta en <a href="{% url 'about' %}">Acerca de</a> y en esta Ayuda.</li>
                     <li>Un push a la rama principal pasa los tests en GitHub Actions (con PostgreSQL 16, el mismo motor que producción) y, si van bien, se despliega en el servidor: espera a las tareas en curso, guarda una copia de la base del panel, libera espacio si quedan menos de 5 GB, construye y, tras arrancar, <strong>abre las páginas principales como administrador</strong> (<code>manage.py smoke_check</code>). Si el build falla, el panel no responde o alguna página da error, vuelve a la versión anterior.</li>

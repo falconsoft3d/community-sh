@@ -131,6 +131,7 @@ HELP_SECTIONS = [
     ('ia', 'IA y migraciones', 'AI and migrations'),
     ('contenedores', 'Contenedores', 'Containers'),
     ('limpieza', 'Docker y limpieza', 'Docker and cleanup'),
+    ('servidores', 'Servidores (nodos)', 'Servers (nodes)'),
     ('tareas', 'Tareas y Actividad', 'Tasks and Activity'),
     ('panel', 'Dashboard, Metrics y Todo', 'Dashboard, Metrics and Todo'),
     ('api', 'API y MCP', 'API and MCP'),

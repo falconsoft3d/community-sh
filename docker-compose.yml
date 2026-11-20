@@ -76,6 +76,8 @@ services:
       - TICKETPROO_API_TOKEN=${TICKETPROO_API_TOKEN:-}
       # Docker through the filtering proxy, never the raw socket (see the docker-proxy service)
       - DOCKER_HOST=tcp://docker-proxy:2375
+      # Other servers (nodes) through the same proxy running on each of them, on their private IP
+      - NODE_DOCKER=proxy
     volumes:
       # The code is read-only here: a bug in a page can't change the code the workers (which do have
       # the Docker socket) run. Only the data folders are writable. PANEL_CODE_MOUNT=rw for SQLite installs
@@ -153,6 +155,8 @@ services:
       - MAIN_DOMAIN=${MAIN_DOMAIN:-}
       - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-}
       - RUN_MIGRATIONS=false
+      # Other servers (nodes) over SSH, with the key in its own volume (only this container has it)
+      - NODE_DOCKER=ssh
     # Same code and data as the app (db.sqlite3 is not baked into the image)
     volumes:
       - ./:/app
@@ -160,6 +164,7 @@ services:
       - ./backups:/app/backups
       - ./instances:/app/instances
       - /var/run/docker.sock:/var/run/docker.sock
+      - worker_ssh:/root/.ssh
     depends_on:
       app:
         condition: service_started
@@ -234,3 +239,4 @@ networks:
 
 volumes:
   postgres_data:
+  worker_ssh:

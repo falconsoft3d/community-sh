@@ -43,7 +43,7 @@ class InstanceListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = instances_for(self.request.user).select_related('project').order_by(*self.ordering)
+        queryset = instances_for(self.request.user).select_related('project', 'server').order_by(*self.ordering)
         if self.request.GET.get('project'):
             queryset = queryset.filter(project_id=self.request.GET['project'])
         return queryset
@@ -107,7 +107,7 @@ class InstanceDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        service = DockerService()
+        service = DockerService(self.object)
         context['logs'] = service.get_logs(self.object)
         
         # Add backups to context
@@ -187,7 +187,7 @@ def instance_stop(request, pk):
     if request.method == 'POST':
         record(request, 'instance_stop', instance.name)
     if request.method == 'POST':
-        service = DockerService()
+        service = DockerService(instance)
         service.stop_instance(instance)
     return HttpResponseRedirect(reverse_lazy('instance-detail', args=[pk]))
 
@@ -201,7 +201,7 @@ def instance_restart(request, pk):
     if request.method == 'POST':
         record(request, 'instance_restart', instance.name)
     if request.method == 'POST':
-        service = DockerService()
+        service = DockerService(instance)
         service.restart_instance(instance)
     return HttpResponseRedirect(reverse_lazy('instance-detail', args=[pk]))
 
@@ -211,7 +211,7 @@ def instance_logs_api(request, pk):
     from ..permissions import require
     instance = get_instance_for_user(request.user, pk)
     require(request.user, instance, 'logs')
-    service = DockerService()
+    service = DockerService(instance)
     logs = service.get_logs(instance, lines=200)
     return JsonResponse({'logs': logs})
 
@@ -244,7 +244,7 @@ def instance_console_exec(request, pk):
             return JsonResponse({'error': 'No command provided'}, status=400)
         
         try:
-            service = DockerService()
+            service = DockerService(instance)
             from ..services.docker_service import PIP_INSTALL
             if PIP_INSTALL.match(command):
                 ok, output = service.pip_install(instance, command)
@@ -283,7 +283,7 @@ def instance_install_requirements(request, pk):
                 return JsonResponse({'error': 'No packages found in requirements file'}, status=400)
             
             # Install packages one by one and collect output
-            service = DockerService()
+            service = DockerService(instance)
             outputs = []
             
             outputs.append(f"📦 Instalando {len(packages)} paquete(s)...\n")
@@ -768,7 +768,7 @@ def instance_admin_login(request, pk):
     database = instance.database_name
     if not database:
         try:
-            service = DockerService()
+            service = DockerService(instance)
             db_container = service.client.containers.get(f'db_{instance.name}')
             if db_container.status != 'running':
                 messages.error(request, 'La base de datos de la instancia está parada: pulsa Restart para arrancarla')
@@ -1004,7 +1004,7 @@ def instance_update_memory(request, pk):
     instance.save(update_fields=['memory_limit_mb'])
     if value:
         try:
-            DockerService().apply_memory_limits([instance])
+            DockerService(instance).apply_memory_limits([instance])
         except Exception:
             pass  # the worker applies it within a minute
         messages.success(request, f'Límite de memoria: {value} MB, aplicado sin reiniciar')

@@ -53,6 +53,9 @@
                         <span class="text-muted-foreground font-normal">/</span>
                         {% endif %}
                         {{ instance.name }}
+                        {% if instance.server %}
+                        <span class="ml-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-normal text-muted-foreground" title="{% translate "Servidor" %}"><i data-lucide="server" class="h-3 w-3"></i>{{ instance.server.name }}</span>
+                        {% endif %}
                         {% if instance.github_repo %}
                         <div class="text-xs text-muted-foreground mt-0.5">{{ instance.github_repo }}</div>
                         {% endif %}
@@ -124,11 +127,13 @@
                                 <i data-lucide="external-link" class="h-3 w-3 mr-1"></i>
                                 {% translate "Primary" %}
                             </a>
+                            {% if not instance.is_remote %}
                             <a href="{{ instance.url_with_port }}" target="_blank"
                                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3">
                                 <i data-lucide="link" class="h-3 w-3 mr-1"></i>
                                 Alt
                             </a>
+                            {% endif %}
                             {% may instance 'admin_login' as can_admin_login %}
                             {% if can_admin_login %}
                             <form action="{% url 'instance-admin-login' instance.pk %}" method="post" target="_blank">

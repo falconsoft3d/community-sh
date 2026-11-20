@@ -16,7 +16,8 @@ MAX_AGE = 300
 
 
 def odoo_url(instance):
-    return f'http://odoo_{instance.name}:8069'
+    from .nodes import odoo_base_url
+    return odoo_base_url(instance) or f'http://odoo_{instance.name}:8069'
 
 
 def _signature(instance, timestamp, body):
@@ -60,7 +61,7 @@ def databases(instance):
     if instance.demo_default_db or not instance.odoo_db_manager:
         # Demos and a closed database manager hide the list of databases (list_db = False): ask Postgres
         from .docker_service import DockerService
-        service = DockerService()
+        service = DockerService(instance)
         return service._list_user_databases(service._get_container(f'db_{instance.name}'))
     try:
         request = urllib.request.Request(odoo_url(instance) + '/web/database/list', json.dumps(

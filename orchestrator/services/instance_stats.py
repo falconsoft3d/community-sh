@@ -95,7 +95,7 @@ def collect_instance_stats(instance, refresh=False):
         if cached:
             return cached
     from .docker_service import DockerService
-    service = DockerService()
+    service = DockerService(instance)
     odoo = service._get_container(f'odoo_{instance.name}')
     db = service._get_container(f'db_{instance.name}')
     data = {

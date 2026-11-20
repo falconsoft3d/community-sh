@@ -249,7 +249,7 @@ def restore_from_bucket(instance, key, progress=None):
             client(config).download_file(config.s3_bucket, key, path)
         if progress:
             progress(40, 'Restaurando')
-        DockerService().restore_instance(instance, path)
+        DockerService(instance).restore_instance(instance, path)
     finally:
         for leftover in (path, encrypted):
             if os.path.exists(leftover):

@@ -193,7 +193,7 @@ def build_demo(task):
         if problem:
             raise Exception(problem)
         task_log.line(f'Demo de {trial.source.name} ({trial.source.odoo_version}) para {trial.email} como {name}')
-        service = DockerService()
+        service = DockerService(trial.source)
         instance = service.copy_instance(trial.source, name, project=target, create_branch=False, origin='trial',
                                          neutralize='mail')
         instance.owner = target.owner
@@ -292,7 +292,7 @@ def expire_demos(now=None):
     for trial in TrialRequest.objects.filter(status=TrialRequest.Status.READY, expires_at__lte=now).select_related('instance'):
         if trial.instance is not None:
             try:
-                DockerService().stop_instance(trial.instance)
+                DockerService(trial.instance).stop_instance(trial.instance)
             except Exception:
                 logger.exception('Could not stop the demo %s', trial.instance.name)
                 continue

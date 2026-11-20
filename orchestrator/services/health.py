@@ -19,7 +19,11 @@ FAILURES_TO_ALERT = 2
 
 def probe(instance):
     """(answers, milliseconds, error). Any HTTP answer below 500 means Odoo is serving requests."""
-    url = f'http://odoo_{instance.name}:8069/web/login'
+    from .nodes import odoo_base_url
+    base = odoo_base_url(instance)
+    if not base:
+        return False, None, 'Sin puerto publicado'
+    url = f'{base}/web/login'
     started = time.monotonic()
     try:
         with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Community-SH-health'}),
@@ -40,7 +44,7 @@ def check_instances(force=False):
     from . import alerts
     if not force and not cache.add('health-check-run', 1, CHECK_EVERY_SECONDS - 5):
         return []
-    instances = list(Instance.objects.filter(status=Instance.Status.RUNNING))
+    instances = list(Instance.objects.filter(status=Instance.Status.RUNNING).select_related('server'))
     busy = set(Task.objects.filter(status__in=(Task.Status.PENDING, Task.Status.RUNNING))
                .exclude(instance=None).values_list('instance_id', flat=True))
     instances = [i for i in instances if i.pk not in busy]

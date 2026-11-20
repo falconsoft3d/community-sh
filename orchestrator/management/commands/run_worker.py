@@ -1,3 +1,4 @@
+import os
 import time
 
 from django.core.management import call_command
@@ -23,6 +24,13 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         only, exclude = options['only'], options['exclude']
         recovered = recover_interrupted_tasks(only, exclude)
+        if not only and os.environ.get('NODE_DOCKER') == 'ssh':
+            # The SSH key the worker uses to reach the servers (nodes); its public half is shown in Servidores
+            try:
+                from orchestrator.services.nodes import ensure_key
+                ensure_key()
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'SSH key for the servers not ready: {e}'))
         if recovered:
             self.stdout.write(self.style.WARNING(f'Marked {recovered} interrupted task(s) as failed'))
 
@@ -46,19 +54,36 @@ class Command(BaseCommand):
                 except Exception as e:
                     self.stdout.write(self.style.ERROR(f'Metrics sample failed: {e}'))
                 try:
-                    from orchestrator.services.docker_service import DockerService
-                    changed = DockerService().sync_published_ports()
-                    if changed:
-                        self.stdout.write(f"Updated the published port of: {', '.join(changed)}")
+                    from orchestrator.services.nodes import check_usage
+                    unreachable = check_usage()
+                    if unreachable:
+                        self.stdout.write(self.style.ERROR(f"Servers not answering: {', '.join(unreachable)}"))
                 except Exception as e:
-                    self.stdout.write(self.style.ERROR(f'Port sync failed: {e}'))
-                try:
-                    from orchestrator.services.docker_service import DockerService
-                    capped = DockerService().apply_memory_limits()
-                    if capped:
-                        self.stdout.write(f"Memory limit applied to: {', '.join(capped)}")
-                except Exception as e:
-                    self.stdout.write(self.style.ERROR(f'Memory limits failed: {e}'))
+                    self.stdout.write(self.style.ERROR(f'Server usage check failed: {e}'))
+                from orchestrator.server_models import Server
+                # This server and every node: one that doesn't answer doesn't hold up the others
+                for server in [None, *Server.objects.filter(status=Server.Status.READY)]:
+                    where = f' ({server.name})' if server else ''
+                    try:
+                        from orchestrator.services.docker_service import DockerService
+                        changed = DockerService(server).sync_published_ports()
+                        if changed:
+                            self.stdout.write(f"Updated the published port of: {', '.join(changed)}{where}")
+                            if server is not None:
+                                # Traefik reaches a node's instance by its port
+                                from orchestrator.models import Instance
+                                from orchestrator.traefik_service import TraefikService
+                                for instance in Instance.objects.filter(name__in=changed):
+                                    TraefikService.generate_instance_config(instance)
+                    except Exception as e:
+                        self.stdout.write(self.style.ERROR(f'Port sync failed{where}: {e}'))
+                    try:
+                        from orchestrator.services.docker_service import DockerService
+                        capped = DockerService(server).apply_memory_limits()
+                        if capped:
+                            self.stdout.write(f"Memory limit applied to: {', '.join(capped)}{where}")
+                    except Exception as e:
+                        self.stdout.write(self.style.ERROR(f'Memory limits failed{where}: {e}'))
                 try:
                     from orchestrator.services.webhooks import queue_daily_updates
                     queued = queue_daily_updates()

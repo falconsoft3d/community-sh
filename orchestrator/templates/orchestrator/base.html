@@ -234,6 +234,10 @@
                             class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'docker' %}bg-muted text-primary{% endif %}">
                             <i data-lucide="container" class="h-4 w-4 shrink-0"></i><span class="nav-label">Docker</span>{% if nav_counts.docker != None and nav_counts.docker != "" %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.docker }}</span>{% endif %}
                         </a>
+                        <a href="{% url 'server-list' %}" title="{% translate "Servidores" %}"
+                            class="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary {% if nav_section == 'servers' %}bg-muted text-primary{% endif %}">
+                            <i data-lucide="server" class="h-4 w-4 shrink-0"></i><span class="nav-label">{% translate "Servidores" %}</span>{% if nav_counts.servers %}<span class="nav-label ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">{{ nav_counts.servers }}</span>{% endif %}
+                        </a>
                         {% endif %}
                         {% if user.is_superuser %}
                         <a href="{% url 'metrics' %}" title="{% translate "Metrics" %}"

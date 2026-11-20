@@ -1,0 +1,136 @@
+{% extends "orchestrator/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div>
+        <h1 class="text-3xl font-bold tracking-tight">{% translate "Servidores" %}</h1>
+        <p class="mt-1 text-muted-foreground max-w-3xl">{% translate "Más servidores para las instancias: el panel sigue aquí (código, Traefik, backups) y cada servidor solo ejecuta los contenedores de Odoo y PostgreSQL de sus instancias, conectado por la red privada de Hetzner." %}</p>
+    </div>
+
+    <!-- This server -->
+    <div class="rounded-xl border bg-card p-5 flex flex-wrap items-center gap-4">
+        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted"><i data-lucide="house" class="h-5 w-5"></i></div>
+        <div class="flex-1 min-w-[12rem]">
+            <p class="font-semibold">{% translate "Este servidor (panel)" %}</p>
+            <p class="text-sm text-muted-foreground">{{ local_instances }} {% translate "instancia(s). Es donde van las instancias si no eliges otro servidor." %}</p>
+        </div>
+    </div>
+
+    {% for server in servers %}
+    <div class="rounded-xl border bg-card p-5 flex flex-col gap-4">
+        <div class="flex flex-wrap items-start gap-4">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted"><i data-lucide="server" class="h-5 w-5"></i></div>
+            <div class="flex-1 min-w-[12rem]">
+                <div class="flex flex-wrap items-center gap-2">
+                    <p class="font-semibold">{{ server.name }}</p>
+                    <span class="font-mono text-xs text-muted-foreground">{{ server.ssh_user }}@{{ server.host }}{% if server.ssh_port != 22 %}:{{ server.ssh_port }}{% endif %}</span>
+                    {% if server.setup_pending %}
+                    <span class="rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-800">{% translate "Preparando…" %}</span>
+                    {% elif server.status == 'ready' %}
+                    <span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">{% translate "Listo" %}</span>
+                    {% elif server.status == 'error' %}
+                    <span class="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">{% translate "Error" %}</span>
+                    {% else %}
+                    <span class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground">{% translate "Sin preparar" %}</span>
+                    {% endif %}
+                    {% if not server.active %}<span class="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">{% translate "No admite instancias nuevas" %}</span>{% endif %}
+                </div>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    {% if server.memory_mb %}{{ server.cpus }} CPU · {% widthratio server.memory_mb 1024 1 %} GB RAM ({% widthratio server.reserved_memory_mb 1024 1 %} GB {% translate "reservados por los límites de sus instancias" %}){% endif %}
+                    {% if server.docker_version %} · Docker {{ server.docker_version }}{% endif %}
+                    {% if server.usage_at %} · {% translate "leído hace" %} {{ server.usage_at|timesince }}{% endif %}
+                </p>
+                {% if server.notes %}<p class="mt-1 text-sm">{{ server.notes }}</p>{% endif %}
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <form method="post" action="{% url 'server-setup' server.pk %}">{% csrf_token %}
+                    <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent" {% if server.setup_pending %}disabled{% endif %}>
+                        <i data-lucide="refresh-cw" class="mr-2 h-4 w-4"></i>{% translate "Comprobar y preparar" %}</button>
+                </form>
+                <form method="post" action="{% url 'server-toggle' server.pk %}">{% csrf_token %}
+                    <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                        {% if server.active %}{% translate "No admitir nuevas" %}{% else %}{% translate "Admitir nuevas" %}{% endif %}</button>
+                </form>
+                {% if not server.instance_list %}
+                <form method="post" action="{% url 'server-delete' server.pk %}" onsubmit="return confirm('{% translate "¿Quitar este servidor del panel? El servidor en sí no se toca." %}')">{% csrf_token %}
+                    <button class="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm text-destructive hover:bg-accent">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i></button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% if server.usage_at %}
+        <div class="grid gap-3 sm:grid-cols-3">
+            {% for label, percent, detail in server.usage_bars %}
+            <div>
+                <div class="flex justify-between text-xs"><span class="font-medium">{{ label }}</span><span class="tabular-nums text-muted-foreground">{{ detail }}</span></div>
+                <div class="mt-1 h-2 rounded-full bg-muted">
+                    <div class="h-2 rounded-full {% if percent >= 90 %}bg-red-500{% elif percent >= 75 %}bg-orange-500{% else %}bg-green-600{% endif %}" style="width: {{ percent }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if server.status == 'error' and server.last_error and not server.setup_pending %}
+        <pre class="whitespace-pre-wrap rounded-md bg-red-50 p-3 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-200">{{ server.last_error }}</pre>
+        {% endif %}
+        {% if server.last_task %}
+        <p class="text-xs text-muted-foreground"><a class="hover:underline" href="{% url 'activity-detail' server.last_task.pk %}">{% translate "Última preparación" %}: {{ server.last_task.get_status_display }} · {{ server.last_task.created_at|date:"d/m H:i" }}</a></p>
+        {% endif %}
+        {% if server.instance_list %}
+        <div class="flex flex-wrap gap-2">
+            {% for instance in server.instance_list %}
+            <a href="{% url 'instance-detail' instance.pk %}" class="rounded-md border px-2 py-1 text-xs hover:bg-accent">{{ instance.name }} <span class="text-muted-foreground">{{ instance.odoo_version }} · {{ instance.memory_limit_mb }} MB</span></a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- Add a server -->
+    <div class="grid gap-6 lg:grid-cols-2">
+        <div class="rounded-xl border bg-card p-5">
+            <h2 class="font-semibold">{% translate "Añadir un servidor" %}</h2>
+            <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
+                <li>{% translate "Crea el servidor en Hetzner (Ubuntu o Debian) en la misma ubicación que el panel y conéctalo a la misma red privada (Networks)." %}</li>
+                <li>{% translate "Entra en él como root y ejecuta el comando de la derecha: instala Docker y rsync y autoriza la clave del panel." %}</li>
+                <li>{% translate "Añádelo aquí con su IP privada. El panel lo comprueba, copia lo que necesita y arranca su proxy de Docker." %}</li>
+                <li>{% translate "Al crear una instancia, elige el servidor." %}</li>
+            </ol>
+            <form method="post" class="mt-4 grid gap-3 sm:grid-cols-2">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="{% if field.name == 'notes' or field.name == 'workdir' %}sm:col-span-2{% endif %}">
+                    <label for="{{ field.id_for_label }}" class="text-sm font-medium">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<p class="mt-1 text-xs text-muted-foreground">{{ field.help_text }}</p>{% endif %}
+                    {% if field.errors %}<p class="mt-1 text-xs font-medium text-destructive">{{ field.errors.0 }}</p>{% endif %}
+                </div>
+                {% endfor %}
+                <div class="sm:col-span-2">
+                    <button type="submit" class="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                        <i data-lucide="plus" class="mr-2 h-4 w-4"></i>{% translate "Añadir y preparar" %}</button>
+                </div>
+            </form>
+        </div>
+        <div class="rounded-xl border bg-card p-5" x-data="{ copied: false }">
+            <h2 class="font-semibold">{% translate "Comando de preparación (como root, en el servidor nuevo)" %}</h2>
+            {% if bootstrap %}
+            <pre class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 font-mono text-xs">{{ bootstrap }}</pre>
+            <button type="button" @click="navigator.clipboard.writeText($refs.cmd.value); copied = true; setTimeout(() => copied = false, 2000)"
+                class="mt-3 inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent">
+                <i data-lucide="copy" class="mr-2 h-4 w-4"></i><span x-text="copied ? '{% translate "Copiado" %}' : '{% translate "Copiar" %}'"></span></button>
+            <textarea x-ref="cmd" class="hidden">{{ bootstrap }}</textarea>
+            <p class="mt-3 text-xs text-muted-foreground">{% translate "Clave pública del panel" %}: <span class="break-all font-mono">{{ public_key }}</span></p>
+            {% else %}
+            <p class="mt-3 text-sm text-muted-foreground">{% translate "La clave SSH del panel todavía no existe: la crea el worker al arrancar (tras el próximo despliegue del panel). Recarga en un minuto." %}</p>
+            {% endif %}
+            <p class="mt-3 text-xs text-muted-foreground">{% translate "Seguridad: la clave solo la tiene el worker. La web llega a cada servidor por un proxy de Docker que filtra las peticiones, escucha solo en la IP privada y exige el token de ese servidor. Los puertos de Odoo tampoco salen de la red privada: todo entra por el Traefik del panel." %}</p>
+        </div>
+    </div>
+</div>
+<style>
+    form input[type=text], form input[type=number], form textarea { width: 100%; margin-top: .25rem; border-radius: .375rem; border: 1px solid hsl(var(--input)); background: hsl(var(--background)); padding: .5rem .75rem; font-size: .875rem; }
+</style>
+{% endblock %}

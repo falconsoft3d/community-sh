@@ -13,7 +13,7 @@ def last_login(instance):
     """When someone last logged into any database of the instance (its login log), or None if unknown."""
     from datetime import datetime, timezone as tz
     from .docker_service import DockerService
-    service = DockerService()
+    service = DockerService(instance)
     db = service._get_container(f'db_{instance.name}')
     if db is None or db.status != 'running':
         return None
@@ -42,7 +42,7 @@ def check_idle(now=None):
         since = last_login(instance) or instance.created_at
         idle = (now - since).days
         if idle >= instance.auto_stop_days:
-            DockerService().stop_instance(instance)
+            DockerService(instance).stop_instance(instance)
             notes.append(f'{instance.name}: detenida tras {idle} días sin entrar nadie')
             alerts.alert(f'idle-stop:{instance.pk}', f'{instance.name} detenida por no usarse',
                          f'Nadie ha entrado en {instance.name} desde hace {idle} días: se ha detenido para ahorrar memoria '
@@ -72,7 +72,7 @@ def apply_schedules(now=None):
                 continue
             if not cache.add(f'schedule:{instance.pk}:{action}:{today}', 1, 26 * 3600):
                 continue
-            service = DockerService()
+            service = DockerService(instance)
             if action == 'stop' and instance.status == Instance.Status.RUNNING:
                 service.stop_instance(instance)
                 notes.append(f'{instance.name}: detenida por su horario ({at:%H:%M} UTC)')
