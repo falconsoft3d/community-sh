@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.107**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.108**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.108 — 2026-11-20
+
+- Instancias: la lista ocupa todo el ancho de la pantalla (antes se quedaba en 1280 px y las acciones se cortaban por la derecha), con celdas más compactas y la fecha de creación en una sola línea. Las demás páginas mantienen su ancho (nuevo bloque main_width en base.html).
 
 ## 1.0.107 — 2026-11-15
 

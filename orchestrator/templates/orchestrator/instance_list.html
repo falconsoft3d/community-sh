@@ -1,6 +1,9 @@
 {% extends "orchestrator/base.html" %}
 {% load i18n perms %}
 
+{# Full width: the table has many columns and the actions were cut off at 1280px #}
+{% block main_width %}max-w-none{% endblock %}
+
 {% block content %}
 <div class="flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-lg font-semibold md:text-2xl">{% translate "Instances" %}</h1>
@@ -25,24 +28,24 @@
         <table class="w-full caption-bottom text-sm text-left">
             <thead class="[&_tr]:border-b">
                 <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">ID</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Name" %}</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Origen" %}</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Version" %}</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Status" %}</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Created" %}</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Link" %}</th>
-                    <th class="h-12 px-4 text-left align-middle font-medium text-muted-foreground">{% translate "Actions" %}</th>
+                    <th class="h-12 px-3 text-left align-middle font-medium text-muted-foreground">ID</th>
+                    <th class="h-12 px-3 text-left align-middle font-medium text-muted-foreground">{% translate "Name" %}</th>
+                    <th class="h-12 px-3 text-left align-middle font-medium text-muted-foreground">{% translate "Origen" %}</th>
+                    <th class="h-12 px-3 text-left align-middle font-medium text-muted-foreground">{% translate "Version" %}</th>
+                    <th class="h-12 px-3 text-left align-middle font-medium text-muted-foreground">{% translate "Status" %}</th>
+                    <th class="h-12 px-3 text-left align-middle font-medium text-muted-foreground">{% translate "Created" %}</th>
+                    <th class="h-12 px-3 text-left align-middle font-medium text-muted-foreground">{% translate "Link" %}</th>
+                    <th class="h-12 px-3 text-left align-middle font-medium text-muted-foreground">{% translate "Actions" %}</th>
                 </tr>
             </thead>
             <tbody class="[&_tr:last-child]:border-0">
                 {% for instance in object_list %}
                 <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                    <td class="p-4 align-middle cursor-pointer"
+                    <td class="px-3 py-3 align-middle cursor-pointer"
                         onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
                         <span class="text-muted-foreground font-mono text-xs">#{{ instance.id }}</span>
                     </td>
-                    <td class="p-4 align-middle font-medium cursor-pointer"
+                    <td class="px-3 py-3 align-middle font-medium cursor-pointer"
                         onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
                         {% if instance.project %}
                         <a href="{% url 'project-detail' instance.project.pk %}" onclick="event.stopPropagation()"
@@ -54,7 +57,7 @@
                         <div class="text-xs text-muted-foreground mt-0.5">{{ instance.github_repo }}</div>
                         {% endif %}
                     </td>
-                    <td class="p-4 align-middle cursor-pointer"
+                    <td class="px-3 py-3 align-middle cursor-pointer"
                         onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
                         {% if instance.origin == 'backup' %}
                         <div
@@ -75,14 +78,14 @@
                         <span class="text-xs text-muted-foreground">-</span>
                         {% endif %}
                     </td>
-                    <td class="p-4 align-middle cursor-pointer"
+                    <td class="px-3 py-3 align-middle cursor-pointer"
                         onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
                         <div
                             class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
                             {{ instance.odoo_version }}
                         </div>
                     </td>
-                    <td class="p-4 align-middle whitespace-nowrap cursor-pointer"
+                    <td class="px-3 py-3 align-middle whitespace-nowrap cursor-pointer"
                         onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
                         {% if instance.status == 'running' %}
                         <div
@@ -104,16 +107,16 @@
                             {{ instance.status }}</div>
                         {% endif %}
                     </td>
-                    <td class="p-4 align-middle cursor-pointer"
+                    <td class="px-3 py-3 align-middle cursor-pointer"
                         onclick="window.location.href='{% url 'instance-detail' instance.pk %}';">
-                        <div class="text-sm text-muted-foreground">
+                        <div class="text-sm text-muted-foreground whitespace-nowrap">
                             {{ instance.created_at|date:"M d, Y" }}
                         </div>
                         <div class="text-xs text-muted-foreground">
                             {{ instance.created_at|date:"H:i" }}
                         </div>
                     </td>
-                    <td class="p-4 align-middle">
+                    <td class="px-3 py-3 align-middle">
                         {% if instance.status == 'running' %}
                         <div class="flex items-center gap-2">
                             <a href="{{ instance.url }}" target="_blank"
@@ -142,7 +145,7 @@
                         <span class="text-muted-foreground">-</span>
                         {% endif %}
                     </td>
-                    <td class="p-4 align-middle">
+                    <td class="px-3 py-3 align-middle">
                         <div class="flex items-center gap-2">
                             {% may instance 'operate' as can_operate %}
                             {% if not can_operate %}

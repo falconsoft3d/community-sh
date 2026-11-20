@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.107'
+VERSION = '1.0.108'
 
 CHANGELOG = [
+    {
+        'version': '1.0.108',
+        'date': '2026-11-20',
+        'notes': [
+            'Instancias: la lista ocupa todo el ancho de la pantalla (antes se quedaba en 1280 px y las acciones se cortaban por la derecha), con celdas más compactas y la fecha de creación en una sola línea. Las demás páginas mantienen su ancho (nuevo bloque main_width en base.html).',
+        ],
+    },
     {
         'version': '1.0.107',
         'date': '2026-11-15',
