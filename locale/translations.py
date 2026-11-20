@@ -636,6 +636,8 @@ ES_TO_EN = {
     'libres': 'free',
     'Escribe «%(name)s» para confirmar': 'Type «%(name)s» to confirm',
     'Mover ahora': 'Move now',
+    'En los nodos, la CPU es su carga entre sus CPU, medida cada 5 minutos.': 'On nodes, CPU is their load over their CPUs, measured every 5 minutes.',
+    'Sin datos del servidor': 'No data from server',
 }
 
 # Strings written in English in the code -> Spanish

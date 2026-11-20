@@ -121,7 +121,41 @@ def platform_kpis(user):
                  reverse('settings') + '#email', 'green' if config and config.smtp_enabled and config.smtp_host else 'default'),
             _kpi('Todo pendiente', pending_todos, 'Tareas del equipo', 'list-todo', reverse('todo-list')),
         ]})
+        nodes = server_kpis(now)
+        if nodes:
+            groups.append({'title': 'Servidores', 'kpis': nodes})
     return groups
+
+
+# The worker reads the nodes every 5 minutes: three rounds missed and it counts as not answering
+NODE_STALE = timedelta(minutes=15)
+
+
+def server_kpis(now=None):
+    """One card per node: its memory, with CPU, disk and instances below, coloured by the most used of the three."""
+    from ..server_models import Server
+    from django.db.models import Count
+    now = now or timezone.now()
+    url = reverse('server-list')
+    kpis = []
+    for server in Server.objects.annotate(instance_count=Count('instances')):
+        instances = _plural(server.instance_count, 'instancia')
+        if server.status != Server.Status.READY:
+            kpis.append(_kpi(server.name, 'Error' if server.status == Server.Status.ERROR else 'Sin preparar',
+                             f'{instances} · revisa Servidores', 'server-crash', url,
+                             'red' if server.status == Server.Status.ERROR else 'amber'))
+            continue
+        if server.usage_at is None or now - server.usage_at > NODE_STALE:
+            since = f'desde hace {timesince(server.usage_at, now).split(",")[0]}' if server.usage_at else 'todavía sin datos'
+            kpis.append(_kpi(server.name, 'Sin respuesta', f'{instances} · {since}', 'server-off', url, 'red', fill=True))
+            continue
+        percents = [p for p in (server.cpu_percent, server.memory_percent, server.disk_percent) if p is not None]
+        details = [f'CPU {server.cpu_percent} %' if server.cpu_percent is not None else '',
+                   f'disco {server.disk_percent} %' if server.disk_percent is not None else '', instances]
+        kpis.append(_kpi(server.name, f'{server.memory_percent} %' if server.memory_percent is not None else '—',
+                         'Memoria · ' + ' · '.join(d for d in details if d), 'server', url,
+                         usage_tone(max(percents) if percents else None), fill=bool(percents)))
+    return kpis
 
 
 def dashboard_lists(user):

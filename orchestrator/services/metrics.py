@@ -65,36 +65,72 @@ def collect_metrics(include_containers=False):
         'instances_error': status_counts.get('error', 0),
     }
     if include_containers:
+        # The containers of the nodes too (their instances), each stat tagged with its server
+        targets = [(container, '') for container in running]
+        data['node_errors'] = []
+        for server, containers in _node_containers():
+            if isinstance(containers, Exception):
+                data['node_errors'].append(f'{server.name}: {containers}')
+                continue
+            targets += [(container, server.name) for container in containers]
         # Docker takes about a second per container to sample stats: do them in parallel
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            stats = [s for s in pool.map(_container_stats, running) if s]
-        data['containers'] = sorted(stats, key=lambda s: s['name'])
+        with ThreadPoolExecutor(max_workers=12) as pool:
+            stats = [s for s in pool.map(_tagged_stats, targets) if s]
+        data['containers'] = sorted(stats, key=lambda s: (s['server'], s['name']))
         data['instances'] = instance_usage(stats)
     return data
 
 
+def _tagged_stats(target):
+    container, server = target
+    stats = _container_stats(container)
+    if stats:
+        stats['server'] = server
+    return stats
+
+
+def _node_containers():
+    """[(server, running containers or the exception)] of the ready nodes, read in parallel."""
+    from ..server_models import Server
+    from . import nodes
+    servers = list(Server.objects.filter(status=Server.Status.READY))
+
+    def read(server):
+        try:
+            return server, nodes.quick_client(server).containers.list()
+        except Exception as e:
+            return server, e
+    if not servers:
+        return []
+    with ThreadPoolExecutor(max_workers=min(len(servers), 8)) as pool:
+        return list(pool.map(read, servers))
+
+
 def instance_usage(stats):
     """
-    Container stats grouped by instance (its Odoo plus its PostgreSQL), the heaviest first, with how much of its
-    memory limit (of the Odoo container) it is using.
+    Container stats grouped by instance (its Odoo plus its PostgreSQL, on the server it runs on: a leftover of the
+    same name elsewhere doesn't count), the heaviest first, with how much of its memory limit (of the Odoo container)
+    it is using. Each stat may carry 'server' (a node's name; '' or missing: this server).
     """
     from ..models import Instance
     by_name = {}
     for stat in stats:
         prefix, _, name = stat['name'].partition('_')
         if prefix in ('odoo', 'db') and name:
-            by_name.setdefault(name, {})[prefix] = stat
-    instances = {i.name: i for i in Instance.objects.filter(name__in=by_name).select_related('project')}
+            by_name.setdefault((name, stat.get('server', '')), {})[prefix] = stat
+    instances = {i.name: i for i in Instance.objects.filter(name__in={name for name, _ in by_name})
+                 .select_related('project', 'server')}
     rows = []
-    for name, parts in by_name.items():
+    for (name, server), parts in by_name.items():
         instance = instances.get(name)
-        if instance is None:
+        if instance is None or server != (instance.server.name if instance.server_id else ''):
             continue
         odoo, db = parts.get('odoo'), parts.get('db')
         odoo_mb = odoo['memory_usage_mb'] if odoo else 0
         limit = instance.memory_limit_mb or None
         rows.append({
             'id': instance.pk, 'name': name, 'project': instance.project.name if instance.project else '',
+            'server': server,
             'cpu_percent': round(sum(p['cpu_percent'] for p in parts.values()), 1),
             'memory_mb': sum(p['memory_usage_mb'] for p in parts.values()),
             'odoo_memory_mb': odoo_mb, 'db_memory_mb': db['memory_usage_mb'] if db else 0,
@@ -105,13 +141,15 @@ def instance_usage(stats):
 
 def single_instance_usage(instance):
     """Current use of one instance (the instance page), or None if its containers aren't running."""
-    client = docker.from_env()
+    from . import nodes
+    client = nodes.quick_client(instance.server) if instance.server_id else docker.from_env()
     containers = [c for c in client.containers.list(filters={'name': f'_{instance.name}'})
                   if c.name in (f'odoo_{instance.name}', f'db_{instance.name}')]
     if not containers:
         return None
+    server = instance.server.name if instance.server_id else ''
     with ThreadPoolExecutor(max_workers=2) as pool:
-        stats = [s for s in pool.map(_container_stats, containers) if s]
+        stats = [s for s in pool.map(_tagged_stats, [(c, server) for c in containers]) if s]
     rows = instance_usage(stats)
     return rows[0] if rows else None
 
@@ -127,33 +165,39 @@ RANGES = {
 }
 
 
-def record_sample(now=None):
-    """Store one CPU/RAM sample and refresh the current hour and day rollups."""
+def record_sample(now=None, server=None, cpu=None, memory=None):
+    """
+    Store one CPU/RAM sample and refresh the current hour and day rollups: of this server (read here), or of a node
+    (server, with the cpu and memory percentages the worker read over SSH).
+    """
     from datetime import timedelta
     from django.db.models import Avg, Max
     from django.utils import timezone
     from ..metrics_models import MetricRollup, MetricSample
 
     now = now or timezone.now()
-    MetricSample.objects.create(timestamp=now, cpu_percent=round(psutil.cpu_percent(interval=1), 1),
-                                memory_percent=round(psutil.virtual_memory().percent, 1))
+    if server is None:
+        cpu, memory = psutil.cpu_percent(interval=1), psutil.virtual_memory().percent
+    if cpu is None or memory is None:
+        return
+    MetricSample.objects.create(server=server, timestamp=now, cpu_percent=round(cpu, 1), memory_percent=round(memory, 1))
 
     hour_start = now.replace(minute=0, second=0, microsecond=0)
-    hour = MetricSample.objects.filter(timestamp__gte=hour_start, timestamp__lt=hour_start + timedelta(hours=1)).aggregate(
+    hour = MetricSample.objects.filter(server=server, timestamp__gte=hour_start, timestamp__lt=hour_start + timedelta(hours=1)).aggregate(
         cpu_avg=Avg('cpu_percent'), cpu_max=Max('cpu_percent'), memory_avg=Avg('memory_percent'), memory_max=Max('memory_percent'))
-    MetricRollup.objects.update_or_create(period='hour', start=hour_start, defaults=hour)
+    MetricRollup.objects.update_or_create(server=server, period='hour', start=hour_start, defaults=hour)
 
     day_start = hour_start.replace(hour=0)
-    day = MetricRollup.objects.filter(period='hour', start__gte=day_start, start__lt=day_start + timedelta(days=1)).aggregate(
+    day = MetricRollup.objects.filter(server=server, period='hour', start__gte=day_start, start__lt=day_start + timedelta(days=1)).aggregate(
         cpu_avg=Avg('cpu_avg'), cpu_max=Max('cpu_max'), memory_avg=Avg('memory_avg'), memory_max=Max('memory_max'))
-    MetricRollup.objects.update_or_create(period='day', start=day_start, defaults=day)
+    MetricRollup.objects.update_or_create(server=server, period='day', start=day_start, defaults=day)
 
     MetricSample.objects.filter(timestamp__lt=now - timedelta(hours=SAMPLE_RETENTION_HOURS)).delete()
     MetricRollup.objects.filter(period='hour', start__lt=now - timedelta(days=HOURLY_RETENTION_DAYS)).delete()
 
 
-def metrics_history(range_key, now=None):
-    """Points [{t, cpu, cpu_max, memory, memory_max}] for a range, averaged into fixed buckets."""
+def metrics_history(range_key, now=None, server=None):
+    """Points [{t, cpu, cpu_max, memory, memory_max}] of a server (None: this one) for a range, averaged into fixed buckets."""
     from datetime import timedelta
     from django.utils import timezone
     from ..metrics_models import MetricRollup, MetricSample
@@ -163,10 +207,10 @@ def metrics_history(range_key, now=None):
     since = now - timedelta(minutes=span_minutes)
     if source == 'sample':
         rows = [(s.timestamp, s.cpu_percent, s.cpu_percent, s.memory_percent, s.memory_percent)
-                for s in MetricSample.objects.filter(timestamp__gte=since)]
+                for s in MetricSample.objects.filter(server=server, timestamp__gte=since)]
     else:
         rows = [(r.start, r.cpu_avg, r.cpu_max, r.memory_avg, r.memory_max)
-                for r in MetricRollup.objects.filter(period=source, start__gte=since)]
+                for r in MetricRollup.objects.filter(server=server, period=source, start__gte=since)]
 
     bucket_seconds = bucket_minutes * 60
     buckets = {}
@@ -187,6 +231,13 @@ def metrics_history(range_key, now=None):
 
 
 DISK_CACHE_SECONDS = 600
+
+
+def _try(function, *args):
+    try:
+        return function(*args)
+    except Exception as e:
+        return e
 
 
 def _dir_size(path):
@@ -217,28 +268,49 @@ def instance_disk_usage(refresh=False):
         cached = cache.get('instance-disk-usage')
         if cached:
             return cached
-    client = docker.from_env()
-    volume_sizes = {v['Name']: max((v.get('UsageData') or {}).get('Size', 0), 0) for v in client.df().get('Volumes') or []}
-    instances = list(Instance.objects.select_related('project'))
+    from ..server_models import Server
+    from . import nodes
+    instances = list(Instance.objects.select_related('project', 'server'))
     names = {i.name for i in instances}
-    volumes_of = {}
-    for container in client.containers.list(all=True):
-        prefix, _, name = container.name.partition('_')
-        if prefix in ('odoo', 'db') and name in names:
-            volumes_of.setdefault(name, set()).update(
-                m['Name'] for m in container.attrs.get('Mounts', []) if m.get('Type') == 'volume' and m.get('Name'))
+
+    def measure(server):
+        """{volume: bytes} and {instance name: its volumes} on one server (a node through its Docker proxy)."""
+        client = docker.from_env() if server is None else nodes.quick_client(server, timeout=120)
+        sizes = {v['Name']: max((v.get('UsageData') or {}).get('Size', 0), 0) for v in client.df().get('Volumes') or []}
+        volumes_of = {}
+        for container in client.containers.list(all=True):
+            prefix, _, name = container.name.partition('_')
+            if prefix in ('odoo', 'db') and name in names:
+                volumes_of.setdefault(name, set()).update(
+                    m['Name'] for m in container.attrs.get('Mounts', []) if m.get('Type') == 'volume' and m.get('Name'))
+        return sizes, volumes_of
+
+    servers = [None] + list(Server.objects.filter(pk__in={i.server_id for i in instances if i.server_id},
+                                                  status=Server.Status.READY))
+    measured, errors = {}, []
+    with ThreadPoolExecutor(max_workers=min(len(servers), 8)) as pool:
+        for server, result in zip(servers, pool.map(lambda server: _try(measure, server), servers)):
+            if isinstance(result, Exception):
+                if server is None:
+                    raise result
+                errors.append(f'{server.name}: {result}')
+            else:
+                measured[server.pk if server else None] = result
     backups = dict(Backup.objects.values_list('instance__name').annotate(total=Sum('file_size')))
     rows = []
     for instance in instances:
+        volume_sizes, volumes_of = measured.get(instance.server_id, ({}, {}))
         volumes = volumes_of.get(instance.name, set()) | ({instance.data_volume} if instance.data_volume else set())
         data = sum(volume_sizes.get(v, 0) for v in volumes)
         code = _dir_size(os.path.join(settings.BASE_DIR, 'instances', instance.name))
         backup = backups.get(instance.name) or 0
         rows.append({
             'id': instance.pk, 'name': instance.name, 'project': instance.project.name if instance.project else '',
+            'server': instance.server.name if instance.server_id else '',
             'status': instance.status, 'disk_mb': round((data + code + backup) / MB), 'data_mb': round(data / MB),
             'code_mb': round(code / MB), 'backups_mb': round(backup / MB),
         })
-    result = {'rows': sorted(rows, key=lambda r: -r['disk_mb']), 'measured_at': timezone.now().isoformat()}
+    result = {'rows': sorted(rows, key=lambda r: -r['disk_mb']), 'measured_at': timezone.now().isoformat(),
+              'node_errors': errors}
     cache.set('instance-disk-usage', result, DISK_CACHE_SECONDS)
     return result

@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.110'
+VERSION = '1.0.111'
 
 CHANGELOG = [
+    {
+        'version': '1.0.111',
+        'date': '2026-11-20',
+        'notes': [
+            'Servidores, fase 2: los nodos en el Dashboard y Metrics. Dashboard: nuevo grupo Servidores (administradores) con una tarjeta por nodo: memoria y, debajo, CPU, disco e instancias; color según lo más usado de los tres, «Sin respuesta» en rojo si el worker no lo lee hace más de 15 minutos y «Error» si no se pudo preparar. Metrics: las muestras de CPU/RAM guardan su servidor (el worker graba la de cada nodo cada 5 minutos; su CPU es la carga entre sus CPU) y el historial tiene un selector de servidor; el uso por instancia, el disco por instancia y la tabla de contenedores leen también el Docker de los nodos (por su proxy, con un tiempo de espera corto) y muestran el servidor; un nodo que no responde sale como aviso en rojo. El uso en la ficha de una instancia remota también funciona ya. Migración 0084.',
+        ],
+    },
     {
         'version': '1.0.110',
         'date': '2026-11-20',

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 12:58+0000\n"
+"POT-Creation-Date: 2026-11-20 13:17+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,7 +21,7 @@ msgstr ""
 #: orchestrator/models.py:31 orchestrator/templates/orchestrator/home.html:196
 #: orchestrator/templates/orchestrator/instance_detail.html:253
 #: orchestrator/templates/orchestrator/instance_list.html:106
-#: orchestrator/templates/orchestrator/metrics.html:147
+#: orchestrator/templates/orchestrator/metrics.html:154
 msgid "Deploying"
 msgstr "Desplegando"
 
@@ -29,13 +29,13 @@ msgstr "Desplegando"
 #: orchestrator/templates/orchestrator/home.html:204
 #: orchestrator/templates/orchestrator/instance_detail.html:249
 #: orchestrator/templates/orchestrator/instance_list.html:96
-#: orchestrator/templates/orchestrator/metrics.html:143
-#: orchestrator/templates/orchestrator/metrics.html:281
+#: orchestrator/templates/orchestrator/metrics.html:150
+#: orchestrator/templates/orchestrator/metrics.html:294
 msgid "Running"
 msgstr "En ejecución"
 
 #: orchestrator/models.py:33
-#: orchestrator/templates/orchestrator/metrics.html:151
+#: orchestrator/templates/orchestrator/metrics.html:158
 msgid "Stopped"
 msgstr "Detenida"
 
@@ -133,7 +133,7 @@ msgid "Todos los proyectos"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/backup_list.html:67
-#: orchestrator/templates/orchestrator/metrics.html:204
+#: orchestrator/templates/orchestrator/metrics.html:211
 #: orchestrator/templates/orchestrator/project_detail.html:114
 msgid "Instancia"
 msgstr ""
@@ -1064,7 +1064,7 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:244
 #: orchestrator/templates/orchestrator/instance_list.html:35
-#: orchestrator/templates/orchestrator/metrics.html:269
+#: orchestrator/templates/orchestrator/metrics.html:279
 msgid "Status"
 msgstr "Estado"
 
@@ -1079,11 +1079,13 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:284
 #: orchestrator/templates/orchestrator/instance_list.html:57
+#: orchestrator/templates/orchestrator/metrics.html:54
 msgid "Servidor"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:289
 #: orchestrator/templates/orchestrator/instance_detail.html:299
+#: orchestrator/templates/orchestrator/metrics.html:56
 #: orchestrator/templates/orchestrator/server_list.html:15
 msgid "Este servidor (panel)"
 msgstr ""
@@ -1135,7 +1137,7 @@ msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:350
 #: orchestrator/templates/orchestrator/instance_list.html:34
-#: orchestrator/templates/orchestrator/metrics.html:170
+#: orchestrator/templates/orchestrator/metrics.html:177
 msgid "Version"
 msgstr "Versión"
 
@@ -1335,7 +1337,7 @@ msgid ""
 msgstr ""
 
 #: orchestrator/templates/orchestrator/instance_detail.html:502
-#: orchestrator/templates/orchestrator/metrics.html:272
+#: orchestrator/templates/orchestrator/metrics.html:282
 msgid "Memory Limit"
 msgstr "Límite de memoria"
 
@@ -2475,168 +2477,176 @@ msgstr ""
 msgid "Media por intervalo; el tooltip muestra también el pico."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:53
+#: orchestrator/templates/orchestrator/metrics.html:51
+msgid "En los nodos, la CPU es su carga entre sus CPU, medida cada 5 minutos."
+msgstr ""
+
+#: orchestrator/templates/orchestrator/metrics.html:60
 msgid "Rango"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:67
+#: orchestrator/templates/orchestrator/metrics.html:74
 msgid "Uso de CPU en el tiempo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:74
+#: orchestrator/templates/orchestrator/metrics.html:81
 msgid "Uso de RAM en el tiempo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:77
+#: orchestrator/templates/orchestrator/metrics.html:84
 msgid "Aún no hay datos: el worker toma una muestra por minuto."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:85
-#: orchestrator/templates/orchestrator/metrics.html:270
+#: orchestrator/templates/orchestrator/metrics.html:92
+#: orchestrator/templates/orchestrator/metrics.html:280
 msgid "CPU Usage"
 msgstr "Uso de CPU"
 
-#: orchestrator/templates/orchestrator/metrics.html:90
+#: orchestrator/templates/orchestrator/metrics.html:97
 msgid "núcleos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:97
+#: orchestrator/templates/orchestrator/metrics.html:104
 msgid "RAM Usage"
 msgstr "Uso de RAM"
 
-#: orchestrator/templates/orchestrator/metrics.html:110
+#: orchestrator/templates/orchestrator/metrics.html:117
 msgid "Disk Usage"
 msgstr "Uso de disco"
 
-#: orchestrator/templates/orchestrator/metrics.html:123
+#: orchestrator/templates/orchestrator/metrics.html:130
 msgid "Active Containers"
 msgstr "Contenedores activos"
 
-#: orchestrator/templates/orchestrator/metrics.html:128
+#: orchestrator/templates/orchestrator/metrics.html:135
 msgid "total"
 msgstr "en total"
 
-#: orchestrator/templates/orchestrator/metrics.html:136
+#: orchestrator/templates/orchestrator/metrics.html:143
 msgid "Instance Status"
 msgstr "Estado de las instancias"
 
-#: orchestrator/templates/orchestrator/metrics.html:137
+#: orchestrator/templates/orchestrator/metrics.html:144
 msgid "Distribution of instances by state"
 msgstr "Instancias por estado"
 
-#: orchestrator/templates/orchestrator/metrics.html:164
+#: orchestrator/templates/orchestrator/metrics.html:171
 msgid "Docker information"
 msgstr "Información de Docker"
 
-#: orchestrator/templates/orchestrator/metrics.html:165
+#: orchestrator/templates/orchestrator/metrics.html:172
 msgid "Docker environment details"
 msgstr "Detalles del entorno Docker"
 
-#: orchestrator/templates/orchestrator/metrics.html:174
+#: orchestrator/templates/orchestrator/metrics.html:181
 msgid "Images"
 msgstr "Imágenes"
 
-#: orchestrator/templates/orchestrator/metrics.html:178
+#: orchestrator/templates/orchestrator/metrics.html:185
 msgid "Networks"
 msgstr "Redes"
 
-#: orchestrator/templates/orchestrator/metrics.html:191
+#: orchestrator/templates/orchestrator/metrics.html:198
 msgid "Uso por instancia"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:192
+#: orchestrator/templates/orchestrator/metrics.html:199
 msgid ""
 "Qué instancia consume qué: CPU y RAM de su Odoo y su PostgreSQL ahora, y "
 "disco de sus datos, su código y sus backups. Pulsa una cabecera para ordenar."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:197
+#: orchestrator/templates/orchestrator/metrics.html:204
 msgid "Midiendo el disco…"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:197
+#: orchestrator/templates/orchestrator/metrics.html:204
 msgid "Medir el disco ahora"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:205
+#: orchestrator/templates/orchestrator/metrics.html:212
 #: orchestrator/templates/orchestrator/usage_list.html:21
 msgid "Disco"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:213
+#: orchestrator/templates/orchestrator/metrics.html:220
 msgid "Odoo / límite"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:220
+#: orchestrator/templates/orchestrator/metrics.html:227
 msgid "detenida"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:230
+#: orchestrator/templates/orchestrator/metrics.html:237
 msgid "datos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:230
+#: orchestrator/templates/orchestrator/metrics.html:237
 msgid "código"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:236
+#: orchestrator/templates/orchestrator/metrics.html:243
 msgid "sin límite"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:249
+#: orchestrator/templates/orchestrator/metrics.html:256
 msgid "Ninguna instancia en marcha"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:254
+#: orchestrator/templates/orchestrator/metrics.html:262
+msgid "Sin datos del servidor"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/metrics.html:264
 msgid "Disco medido a las"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:254
+#: orchestrator/templates/orchestrator/metrics.html:264
 msgid "se vuelve a medir cada 10 minutos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:260
+#: orchestrator/templates/orchestrator/metrics.html:270
 msgid "Container Resource Usage"
 msgstr "Recursos por contenedor"
 
-#: orchestrator/templates/orchestrator/metrics.html:261
+#: orchestrator/templates/orchestrator/metrics.html:271
 msgid "Real-time CPU and memory usage by container"
 msgstr "CPU y memoria de cada contenedor en tiempo real"
 
-#: orchestrator/templates/orchestrator/metrics.html:268
+#: orchestrator/templates/orchestrator/metrics.html:278
 msgid "Container"
 msgstr "Contenedor"
 
-#: orchestrator/templates/orchestrator/metrics.html:271
+#: orchestrator/templates/orchestrator/metrics.html:281
 msgid "Memory Usage"
 msgstr "Memoria"
 
-#: orchestrator/templates/orchestrator/metrics.html:273
+#: orchestrator/templates/orchestrator/metrics.html:283
 msgid "Network I/O"
 msgstr "Red E/S"
 
-#: orchestrator/templates/orchestrator/metrics.html:316
+#: orchestrator/templates/orchestrator/metrics.html:329
 msgid "Start some containers to see their resource usage"
 msgstr "Inicia algún contenedor para ver su consumo"
 
-#: orchestrator/templates/orchestrator/metrics.html:339
+#: orchestrator/templates/orchestrator/metrics.html:352
 msgid "7 días"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:340
+#: orchestrator/templates/orchestrator/metrics.html:353
 msgid "30 días"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:340
+#: orchestrator/templates/orchestrator/metrics.html:353
 msgid "12 meses"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:361
+#: orchestrator/templates/orchestrator/metrics.html:374
 msgid "media"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/metrics.html:361
-#: orchestrator/templates/orchestrator/metrics.html:384
+#: orchestrator/templates/orchestrator/metrics.html:374
+#: orchestrator/templates/orchestrator/metrics.html:397
 msgid "pico"
 msgstr ""
 

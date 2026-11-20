@@ -87,8 +87,31 @@ def proxy_client(server, timeout=60):
     return client
 
 
+_quick = {}
+
+
+def quick_client(server, timeout=10):
+    """
+    For reads that must not hang a page when a node is down (Metrics): a client with a short timeout, one per node,
+    timeout and process. The web container through the node's proxy; a worker over SSH (the shared client).
+    """
+    if not via_proxy():
+        return docker_client(server)
+    key = (server.pk, server.host, server.proxy_token, timeout)
+    with _lock:
+        client = _quick.get(key)
+        if client is None:
+            client = _quick[key] = proxy_client(server, timeout=timeout)
+        return client
+
+
 def forget_client(server):
     with _lock:
+        for key in [k for k in _quick if k[0] == server.pk]:
+            try:
+                _quick.pop(key).close()
+            except Exception:
+                pass
         for key in [k for k in _clients if k[0] == server.pk]:
             try:
                 _clients.pop(key).close()
@@ -304,6 +327,12 @@ def check_usage(force=False):
                          'Sus instancias pueden estar caídas: mira Servidores en el panel.')
             continue
         alerts.clear(f'node-down:{server.pk}')
+        # Its history on the Metrics page (CPU: load over CPUs)
+        from .metrics import record_sample
+        try:
+            record_sample(server=server, cpu=server.cpu_percent, memory=server.memory_percent)
+        except Exception:
+            logger.exception('Could not record the usage of %s', server.name)
         for kind, percent, label in (('disk', server.disk_percent, 'Disco'), ('memory', server.memory_percent, 'Memoria')):
             key = f'node-{kind}:{server.pk}'
             if percent is not None and percent >= HIGH_USAGE_PERCENT:

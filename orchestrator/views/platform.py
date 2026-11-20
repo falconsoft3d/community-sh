@@ -19,8 +19,9 @@ from ..reauth import recent_auth_required
 @login_required
 @superuser_required
 def metrics_view(request):
+    from ..server_models import Server
     from ..services.metrics import collect_metrics
-    return render(request, 'orchestrator/metrics.html', {'metrics': collect_metrics()})
+    return render(request, 'orchestrator/metrics.html', {'metrics': collect_metrics(), 'servers': list(Server.objects.all())})
 
 
 @login_required
@@ -397,7 +398,11 @@ def settings_ai_test(request):
 def metrics_history_data(request):
     from django.http import JsonResponse
     from ..services.metrics import RANGES, metrics_history
+    from ..server_models import Server
     range_key = request.GET.get('range', '24h')
     if range_key not in RANGES:
         range_key = '24h'
-    return JsonResponse({'range': range_key, 'points': metrics_history(range_key)})
+    # ?server=<id>: a node's history (empty: this server)
+    server = Server.objects.filter(pk=request.GET['server']).first() if request.GET.get('server', '').isdigit() else None
+    return JsonResponse({'range': range_key, 'server': server.pk if server else None,
+                         'points': metrics_history(range_key, server=server)})

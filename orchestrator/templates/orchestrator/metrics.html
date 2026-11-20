@@ -48,8 +48,15 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-4">
             <div>
                 <h3 class="font-semibold leading-none tracking-tight">{% translate "Historial del servidor" %}</h3>
-                <p class="mt-1 text-sm text-muted-foreground">{% translate "Media por intervalo; el tooltip muestra también el pico." %}</p>
+                <p class="mt-1 text-sm text-muted-foreground">{% translate "Media por intervalo; el tooltip muestra también el pico." %}{% if servers %} {% translate "En los nodos, la CPU es su carga entre sus CPU, medida cada 5 minutos." %}{% endif %}</p>
             </div>
+            {% if servers %}
+            <select x-model="server" @change="load()" aria-label="{% translate 'Servidor' %}"
+                class="h-9 rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">{% translate "Este servidor (panel)" %}</option>
+                {% for server in servers %}<option value="{{ server.pk }}">{{ server.name }}</option>{% endfor %}
+            </select>
+            {% endif %}
             <div class="inline-flex rounded-md border border-input p-0.5 text-sm" role="group" aria-label="{% translate 'Rango' %}">
                 <template x-for="option in ranges" :key="option.key">
                     <button type="button" @click="range = option.key; load()" x-text="option.label"
@@ -217,7 +224,7 @@
                                 <tr class="border-b last:border-0 hover:bg-muted/50">
                                     <td class="p-4 align-middle">
                                         <a :href="'/instance/' + row.id + '/'" class="font-medium hover:underline" x-text="row.name"></a>
-                                        <div class="text-xs text-muted-foreground" x-text="row.project + (row.running ? '' : ' · {% translate "detenida" %}')"></div>
+                                        <div class="text-xs text-muted-foreground" x-text="[row.project, row.server, row.running ? '' : '{% translate "detenida" %}'].filter(Boolean).join(' · ')"></div>
                                     </td>
                                     <td class="p-4 align-middle tabular-nums" :class="sort === 'cpu' && 'font-semibold'" x-text="row.running ? row.cpu_percent + ' %' : '—'"></td>
                                     <td class="p-4 align-middle tabular-nums" :class="sort === 'memory' && 'font-semibold'">
@@ -251,6 +258,9 @@
                         </tbody>
                     </table>
                 </div>
+                <template x-for="error in [...(m.node_errors || []), ...diskErrors]" :key="error">
+                    <p class="mt-3 text-xs text-red-600 dark:text-red-400" x-text="'{% translate "Sin datos del servidor" %} ' + error"></p>
+                </template>
                 <p class="mt-3 text-xs text-muted-foreground" x-show="diskMeasuredAt" x-text="'{% translate "Disco medido a las" %} ' + diskMeasuredAt + ' · {% translate "se vuelve a medir cada 10 minutos" %}'"></p>
             </div>
         </div>
@@ -274,9 +284,12 @@
                             </tr>
                         </thead>
                         <tbody class="[&_tr:last-child]:border-0">
-                            <template x-for="stat in (m.containers || [])" :key="stat.name">
+                            <template x-for="stat in (m.containers || [])" :key="(stat.server || '') + '/' + stat.name">
                                 <tr class="border-b transition-colors hover:bg-muted/50">
-                                    <td class="p-4 align-middle font-medium" x-text="stat.name"></td>
+                                    <td class="p-4 align-middle font-medium">
+                                        <span x-text="stat.name"></span>
+                                        <div class="text-xs font-normal text-muted-foreground" x-show="stat.server" x-text="stat.server"></div>
+                                    </td>
                                     <td class="p-4 align-middle">
                                         <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800">{% translate "Running" %}</span>
                                     </td>
@@ -339,7 +352,7 @@
                 { key: '24h', label: '24 h' }, { key: '7d', label: '{% translate "7 días" %}' },
                 { key: '30d', label: '{% translate "30 días" %}' }, { key: '12m', label: '{% translate "12 meses" %}' },
             ],
-            range: '24h', points: [], loading: true,
+            range: '24h', server: '', points: [], loading: true,
             // Axis ticks: hours and minutes (with the day beyond 24 h); daily points only need the date
             format(ms) {
                 const date = new Date(ms);
@@ -362,7 +375,7 @@
             },
             async load() {
                 this.loading = true;
-                const data = await (await fetch("{% url 'metrics-history' %}?range=" + this.range)).json();
+                const data = await (await fetch("{% url 'metrics-history' %}?range=" + this.range + "&server=" + this.server)).json();
                 this.points = data.points; this.loading = false;
                 this.draw('cpu', 'CPU'); this.draw('memory', 'RAM');
             },
@@ -402,7 +415,7 @@
             // ?tab=resources&sort=cpu|memory|disk: the CPU, memory and disk cards of the Dashboard
             activeTab: new URLSearchParams(location.search).get('tab') === 'resources' ? 'resources' : 'overview',
             sort: ['cpu', 'memory', 'disk'].includes(new URLSearchParams(location.search).get('sort')) ? new URLSearchParams(location.search).get('sort') : 'memory',
-            disk: {}, diskLoading: false, diskMeasuredAt: '',
+            disk: {}, diskLoading: false, diskMeasuredAt: '', diskErrors: [],
             m: JSON.parse(document.getElementById('metrics-initial').textContent),
             error: false,
             updatedAt: new Date().toLocaleTimeString(),
@@ -419,6 +432,7 @@
                     const data = await response.json();
                     this.disk = Object.fromEntries((data.rows || []).map(r => [r.name, r]));
                     this.diskMeasuredAt = data.measured_at ? new Date(data.measured_at).toLocaleTimeString() : '';
+                    this.diskErrors = data.node_errors || [];
                 } catch (e) {
                 } finally {
                     this.diskLoading = false;
@@ -429,7 +443,7 @@
                 const rows = {};
                 for (const r of (this.m.instances || [])) rows[r.name] = { ...r, running: true, disk_mb: null };
                 for (const d of Object.values(this.disk)) {
-                    rows[d.name] = Object.assign(rows[d.name] || { id: d.id, name: d.name, project: d.project, running: false,
+                    rows[d.name] = Object.assign(rows[d.name] || { id: d.id, name: d.name, project: d.project, server: d.server, running: false,
                         cpu_percent: 0, memory_mb: 0 }, { disk_mb: d.disk_mb, data_mb: d.data_mb, code_mb: d.code_mb, backups_mb: d.backups_mb });
                 }
                 const key = { cpu: 'cpu_percent', memory: 'memory_mb', disk: 'disk_mb' }[this.sort];

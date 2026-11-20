@@ -13,6 +13,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from .backup_models import Backup
 from .config_models import GitHubConfig
@@ -5677,3 +5678,109 @@ class ServerMoveTests(BaseTestCase):
         # One at a time
         self.client.post(url, {'server': self.node.pk, 'confirm': 'alice-odoo'})
         self.assertEqual(Task.objects.filter(kind=Task.Kind.MOVE_SERVER).count(), 1)
+
+
+class ServerMetricsTests(BaseTestCase):
+    """The nodes on the Dashboard and Metrics: their history, their instances' usage and disk."""
+
+    def setUp(self):
+        super().setUp()
+        from .server_models import Server
+        from .services import nodes
+        self.addCleanup(nodes._quick.clear)
+        self.node = Server.objects.create(name='nodo-1', host='10.0.0.3', status=Server.Status.READY,
+                                          cpus=4, load_1m=1.0, memory_mb=8000, memory_available_mb=2000,
+                                          disk_total_gb=100, disk_free_gb=60, usage_at=timezone.now())
+        self.remote = Instance.objects.create(name='remota', owner=self.alice, project=self.alice_project, server=self.node)
+
+    def test_history_per_server(self):
+        from .metrics_models import MetricRollup
+        from .services.metrics import metrics_history, record_sample
+        now = timezone.now()
+        with mock.patch('psutil.cpu_percent', return_value=10.0), \
+                mock.patch('psutil.virtual_memory', return_value=mock.MagicMock(percent=20.0)):
+            record_sample(now=now)
+        record_sample(now=now, server=self.node, cpu=80.0, memory=90.0)
+        record_sample(now=now, server=self.node, cpu=None, memory=None)  # not read: nothing stored
+        # One hour and one day rollup each, the panel's and the node's apart
+        self.assertEqual(MetricRollup.objects.filter(server=None).count(), 2)
+        self.assertEqual(MetricRollup.objects.filter(server=self.node).count(), 2)
+        self.assertEqual([p['cpu'] for p in metrics_history('24h', now=now)], [10.0])
+        self.assertEqual([p['memory'] for p in metrics_history('7d', now=now, server=self.node)], [90.0])
+        self.client.force_login(self.admin)
+        data = self.client.get(reverse('metrics-history'), {'range': '24h', 'server': self.node.pk}).json()
+        self.assertEqual((data['server'], [p['cpu'] for p in data['points']]), (self.node.pk, [80.0]))
+        self.assertEqual([p['cpu'] for p in self.client.get(reverse('metrics-history'), {'server': 'x'}).json()['points']], [10.0])
+
+    def test_check_usage_records_the_history_of_the_node(self):
+        from .metrics_models import MetricSample
+        from .services import nodes
+        with mock.patch('orchestrator.services.nodes.run_ssh', return_value='4\n8000000\n4000000\n2.00\n80G 40G\n'):
+            nodes.check_usage(force=True)
+        sample = MetricSample.objects.get(server=self.node)
+        self.assertEqual((sample.cpu_percent, sample.memory_percent), (50.0, 50.0))
+
+    def test_instance_usage_counts_the_containers_on_its_server(self):
+        from .services.metrics import instance_usage
+        stat = lambda name, mb, server='': {'name': name, 'cpu_percent': 1.0, 'memory_usage_mb': mb, 'server': server}  # noqa: E731
+        rows = instance_usage([stat('odoo_remota', 500, 'nodo-1'), stat('db_remota', 100, 'nodo-1'),
+                               stat('odoo_remota', 999),  # a leftover on the panel
+                               stat('odoo_alice-odoo', 300)])
+        by_name = {row['name']: row for row in rows}
+        self.assertEqual((by_name['remota']['memory_mb'], by_name['remota']['server']), (600, 'nodo-1'))
+        self.assertEqual((by_name['alice-odoo']['memory_mb'], by_name['alice-odoo']['server']), (300, ''))
+
+    def test_live_metrics_include_the_nodes(self):
+        from .services import metrics
+        panel, node = mock.MagicMock(), mock.MagicMock()
+        panel.containers.list.return_value = []
+        panel.version.return_value = {'Version': '27'}
+        container = mock.MagicMock()
+        container.name = 'odoo_remota'
+        node.containers.list.return_value = [container]
+        stats = {'name': 'odoo_remota', 'cpu_percent': 5.0, 'memory_usage_mb': 400, 'memory_percent': 5.0}
+        with mock.patch('docker.from_env', return_value=panel), \
+                mock.patch('orchestrator.services.nodes.quick_client', return_value=node), \
+                mock.patch.object(metrics, '_container_stats', side_effect=lambda c: dict(stats)):
+            data = metrics.collect_metrics(include_containers=True)
+        self.assertEqual([(c['name'], c['server']) for c in data['containers']], [('odoo_remota', 'nodo-1')])
+        self.assertEqual(data['instances'][0]['name'], 'remota')
+        self.assertEqual(data['node_errors'], [])
+        with mock.patch('docker.from_env', return_value=panel), \
+                mock.patch('orchestrator.services.nodes.quick_client', side_effect=ConnectionError('timed out')):
+            data = metrics.collect_metrics(include_containers=True)
+        self.assertEqual(data['node_errors'], ['nodo-1: timed out'])
+
+    def test_disk_usage_reads_each_server(self):
+        from .services import metrics
+        panel, node = mock.MagicMock(), mock.MagicMock()
+        panel.df.return_value = {'Volumes': [{'Name': 'odoo_data_remota', 'UsageData': {'Size': 999 * 1024 ** 2}}]}
+        panel.containers.list.return_value = []
+        node.df.return_value = {'Volumes': [{'Name': 'odoo_data_remota', 'UsageData': {'Size': 300 * 1024 ** 2}}]}
+        node.containers.list.return_value = []
+        self.remote.data_volume = 'odoo_data_remota'
+        self.remote.save()
+        with mock.patch('docker.from_env', return_value=panel), \
+                mock.patch('orchestrator.services.nodes.quick_client', return_value=node):
+            rows = {row['name']: row for row in metrics.instance_disk_usage(refresh=True)['rows']}
+        # Its volume on the node, not the one of the same name left on the panel
+        self.assertEqual((rows['remota']['data_mb'], rows['remota']['server']), (300, 'nodo-1'))
+
+    def test_dashboard_cards_per_node(self):
+        from datetime import timedelta
+        from .server_models import Server
+        from .services.dashboard import server_kpis
+        Server.objects.create(name='nodo-2', host='10.0.0.4', status=Server.Status.READY,
+                              usage_at=timezone.now() - timedelta(hours=1))
+        Server.objects.create(name='nodo-3', host='10.0.0.5', status=Server.Status.ERROR)
+        cards = {kpi['label']: kpi for kpi in server_kpis()}
+        self.assertEqual((cards['nodo-1']['value'], cards['nodo-1']['tone']), ('75 %', 'orange'))
+        self.assertIn('CPU 25 %', cards['nodo-1']['hint'])
+        self.assertIn('1 instancia', cards['nodo-1']['hint'])
+        self.assertEqual((cards['nodo-2']['value'], cards['nodo-2']['tone']), ('Sin respuesta', 'red'))
+        self.assertEqual((cards['nodo-3']['value'], cards['nodo-3']['tone']), ('Error', 'red'))
+        self.client.force_login(self.admin)
+        with mock.patch('orchestrator.services.metrics.collect_metrics', return_value={}):
+            self.assertContains(self.client.get(reverse('dashboard')), 'nodo-2')
+        self.client.force_login(self.alice)
+        self.assertNotContains(self.client.get(reverse('dashboard')), 'nodo-1')
