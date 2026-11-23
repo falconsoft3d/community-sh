@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.114**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.115**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.115 — 2026-11-23
+
+- App de escritorio de respaldos para macOS y Windows, descargable desde la web (nueva sección «App de escritorio» en communitysh.xyz) y desde el menú Backups. Hecha en C++ con DMarlon Studio, baja a tu equipo los respaldos de tus instancias con la API REST y un token personal (Configuración → API): eliges las instancias, la carpeta (una subcarpeta por instancia), la secuencia (cada hora, cada 2, 3, 4, 6 o 12 horas, cada día o cada semana, a una hora y un día), tras cuántos días se eliminan (3 por defecto) y si el panel hace antes un respaldo nuevo (con o sin adjuntos). También respalda las bases de PostgreSQL de tus servidores Linux por SSH (con clave o contraseña) con pg_dump. Vive en la barra de menús de macOS o junto al reloj de Windows, avisa al terminar, guarda un historial y puede abrirse al iniciar sesión. Probada contra un panel local: instancias, último respaldo, respaldo nuevo con su tarea, descarga idéntica byte a byte, token de solo lectura, token malo y panel apagado. Explicada en la Ayuda (Backups).
 
 ## 1.0.114 — 2026-11-20
 

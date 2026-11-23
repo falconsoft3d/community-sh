@@ -20,6 +20,14 @@
     </form>
 </div>
 
+<div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-card p-5 text-card-foreground shadow-sm">
+    <div class="max-w-2xl">
+        <p class="font-medium"><i data-lucide="hard-drive-download" class="mr-1 inline h-4 w-4"></i> {% translate "Lleva tus respaldos a tu equipo" %}</p>
+        <p class="mt-1 text-sm text-muted-foreground">{% translate "La app de escritorio baja los respaldos de tus instancias a una carpeta de tu ordenador, cada día o con la secuencia que elijas, y se queda en la barra de menús." %}</p>
+    </div>
+    <div>{% include "orchestrator/_backup_app.html" %}</div>
+</div>
+
 {% if managed_projects %}
 <details class="mt-4 rounded-xl border bg-card text-card-foreground shadow-sm" {% if not backups %}open{% endif %}>
     <summary class="cursor-pointer select-none px-5 py-3 text-sm font-medium">

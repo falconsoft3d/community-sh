@@ -642,6 +642,20 @@ ES_TO_EN = {
         "On a node, its port only listens on the private network: it is reached through its domain. Absolute host paths must be inside the node's work folder.",
     'En un nodo, su puerto solo escucha en la red privada: se entra por su dominio.':
         'On a node, its port only listens on the private network: it is reached through its domain.',
+    # The desktop backups app (home, Backups page)
+    "Descargar para macOS": "Download for macOS",
+    "Descargar para Windows": "Download for Windows",
+    "Descomprime el .zip y abre la app (la primera vez, en macOS: clic derecho › Abrir; en Windows: Más información › Ejecutar de todas formas). Para el panel necesita un token personal (Configuración → API).": "Unzip the .zip and open the app (the first time, on macOS: right-click › Open; on Windows: More info › Run anyway). For the panel it needs a personal token (Settings → API).",
+    "App de escritorio": "Desktop app",
+    "Tus respaldos, también en tu equipo": "Your backups, on your computer too",
+    "Una app para macOS y Windows que baja los respaldos de tus instancias a la carpeta que elijas, cada día o con la secuencia que quieras. Vive en la barra de menús (o junto al reloj de Windows) y trabaja sola.": "An app for macOS and Windows that downloads the backups of your instances to the folder you choose, every day or on the schedule you want. It lives in the menu bar (or next to the Windows clock) and works on its own.",
+    "Cada hora, cada pocas horas, cada día o cada semana, a la hora que elijas": "Every hour, every few hours, every day or every week, at the time you choose",
+    "En la carpeta que elijas, una por instancia, y se borran pasados unos días (3 por defecto)": "In the folder you choose, one per instance, deleted after a few days (3 by default)",
+    "El último respaldo del panel o uno nuevo en ese momento, con o sin adjuntos": "The panel's latest backup or a new one made right then, with or without attachments",
+    "También las bases de PostgreSQL de tus servidores Linux por SSH, con clave o contraseña": "Also the PostgreSQL databases of your Linux servers over SSH, with a key or a password",
+    "La app de respaldos con las instancias del panel": "The backups app with the panel's instances",
+    "Lleva tus respaldos a tu equipo": "Take your backups to your computer",
+    "La app de escritorio baja los respaldos de tus instancias a una carpeta de tu ordenador, cada día o con la secuencia que elijas, y se queda en la barra de menús.": "The desktop app downloads the backups of your instances to a folder on your computer, every day or on the schedule you choose, and stays in the menu bar.",
 }
 
 # Strings written in English in the code -> Spanish

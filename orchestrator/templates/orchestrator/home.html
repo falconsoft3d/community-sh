@@ -109,6 +109,7 @@
             <a href="#arquitectura" class="hover:text-brand-600">{% translate "Cómo funciona" %}</a>
             <a href="#instalacion" class="hover:text-brand-600">{% translate "Instalación" %}</a>
             <a href="#manual" class="hover:text-brand-600">{% translate "Manual" %}</a>
+            <a href="#app-respaldos" class="hover:text-brand-600">{% translate "App de escritorio" %}</a>
             <a href="#novedades" class="hover:text-brand-600">{% translate "Novedades" %}</a>
             <a href="{% url 'blog-list' %}" class="hover:text-brand-600">Blog</a>
         </div>
@@ -430,6 +431,32 @@
                 </div>
                 {% endfor %}
             </div>
+        </div>
+    </section>
+
+    <!-- Desktop backups app -->
+    <section id="app-respaldos" class="border-t border-slate-100 py-24 dark:border-slate-800">
+        <div class="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">{% translate "App de escritorio" %}</p>
+                <h2 class="mt-2 text-3xl font-bold tracking-tight text-ink dark:text-white">{% translate "Tus respaldos, también en tu equipo" %}</h2>
+                <p class="mt-4 text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+                    {% translate "Una app para macOS y Windows que baja los respaldos de tus instancias a la carpeta que elijas, cada día o con la secuencia que quieras. Vive en la barra de menús (o junto al reloj de Windows) y trabaja sola." %}
+                </p>
+                <ul class="mt-6 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                    <li class="flex gap-2"><i data-lucide="calendar-clock" class="mt-0.5 h-4 w-4 shrink-0 text-brand-600"></i> {% translate "Cada hora, cada pocas horas, cada día o cada semana, a la hora que elijas" %}</li>
+                    <li class="flex gap-2"><i data-lucide="folder-down" class="mt-0.5 h-4 w-4 shrink-0 text-brand-600"></i> {% translate "En la carpeta que elijas, una por instancia, y se borran pasados unos días (3 por defecto)" %}</li>
+                    <li class="flex gap-2"><i data-lucide="database-backup" class="mt-0.5 h-4 w-4 shrink-0 text-brand-600"></i> {% translate "El último respaldo del panel o uno nuevo en ese momento, con o sin adjuntos" %}</li>
+                    <li class="flex gap-2"><i data-lucide="key-round" class="mt-0.5 h-4 w-4 shrink-0 text-brand-600"></i> {% translate "También las bases de PostgreSQL de tus servidores Linux por SSH, con clave o contraseña" %}</li>
+                </ul>
+                <div class="mt-8">
+                    {% include "orchestrator/_backup_app.html" with primary="bg-brand-600 text-white hover:bg-brand-700" %}
+                </div>
+            </div>
+            {% get_current_language as LANG %}
+            <img src="{% if LANG == 'en' %}{% static 'img/backup-app-en.jpg' %}{% else %}{% static 'img/backup-app-es.jpg' %}{% endif %}"
+                alt="{% translate "La app de respaldos con las instancias del panel" %}" loading="lazy"
+                class="w-full rounded-xl border border-slate-200 shadow-lg dark:border-slate-800">
         </div>
     </section>
 

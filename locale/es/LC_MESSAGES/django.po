@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-20 14:01+0000\n"
+"POT-Creation-Date: 2026-11-23 08:51+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,15 +18,15 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
 
-#: orchestrator/models.py:31 orchestrator/templates/orchestrator/home.html:196
+#: orchestrator/models.py:31 orchestrator/templates/orchestrator/home.html:197
 #: orchestrator/templates/orchestrator/instance_detail.html:253
 #: orchestrator/templates/orchestrator/instance_list.html:106
 #: orchestrator/templates/orchestrator/metrics.html:154
 msgid "Deploying"
 msgstr "Desplegando"
 
-#: orchestrator/models.py:32 orchestrator/templates/orchestrator/home.html:188
-#: orchestrator/templates/orchestrator/home.html:204
+#: orchestrator/models.py:32 orchestrator/templates/orchestrator/home.html:189
+#: orchestrator/templates/orchestrator/home.html:205
 #: orchestrator/templates/orchestrator/instance_detail.html:249
 #: orchestrator/templates/orchestrator/instance_list.html:96
 #: orchestrator/templates/orchestrator/metrics.html:150
@@ -43,6 +43,21 @@ msgstr "Detenida"
 #: orchestrator/templates/orchestrator/server_list.html:33
 msgid "Error"
 msgstr "Error"
+
+#: orchestrator/templates/orchestrator/_backup_app.html:8
+msgid "Descargar para macOS"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/_backup_app.html:12
+msgid "Descargar para Windows"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/_backup_app.html:16
+msgid ""
+"Descomprime el .zip y abre la app (la primera vez, en macOS: clic derecho › "
+"Abrir; en Windows: Más información › Ejecutar de todas formas). Para el "
+"panel necesita un token personal (Configuración → API)."
+msgstr ""
 
 #: orchestrator/templates/orchestrator/activity_detail.html:7
 #: orchestrator/templates/orchestrator/activity_list.html:7
@@ -96,7 +111,7 @@ msgid "Filtrar"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/audit_list.html:28
-#: orchestrator/templates/orchestrator/backup_list.html:71
+#: orchestrator/templates/orchestrator/backup_list.html:79
 msgid "Fecha"
 msgstr ""
 
@@ -132,53 +147,64 @@ msgstr ""
 msgid "Todos los proyectos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:67
+#: orchestrator/templates/orchestrator/backup_list.html:25
+msgid "Lleva tus respaldos a tu equipo"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/backup_list.html:26
+msgid ""
+"La app de escritorio baja los respaldos de tus instancias a una carpeta de "
+"tu ordenador, cada día o con la secuencia que elijas, y se queda en la barra "
+"de menús."
+msgstr ""
+
+#: orchestrator/templates/orchestrator/backup_list.html:75
 #: orchestrator/templates/orchestrator/metrics.html:211
 #: orchestrator/templates/orchestrator/project_detail.html:114
 msgid "Instancia"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:68
+#: orchestrator/templates/orchestrator/backup_list.html:76
 msgid "Archivo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:69
+#: orchestrator/templates/orchestrator/backup_list.html:77
 msgid "Contenido"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:70
+#: orchestrator/templates/orchestrator/backup_list.html:78
 #: orchestrator/templates/orchestrator/instance_detail.html:1275
 msgid "Tamaño"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:72
+#: orchestrator/templates/orchestrator/backup_list.html:80
 msgid "Acciones"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:88
+#: orchestrator/templates/orchestrator/backup_list.html:96
 msgid "BD + filestore"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:90
+#: orchestrator/templates/orchestrator/backup_list.html:98
 #: orchestrator/templates/orchestrator/instance_detail.html:1085
 msgid "Solo BD"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:98
-#: orchestrator/templates/orchestrator/backup_list.html:100
+#: orchestrator/templates/orchestrator/backup_list.html:106
+#: orchestrator/templates/orchestrator/backup_list.html:108
 #: orchestrator/templates/orchestrator/instance_detail.html:1092
 msgid "Descargar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:106
-#: orchestrator/templates/orchestrator/backup_list.html:108
+#: orchestrator/templates/orchestrator/backup_list.html:114
+#: orchestrator/templates/orchestrator/backup_list.html:116
 #: orchestrator/templates/orchestrator/instance_detail.html:1013
 #: orchestrator/templates/orchestrator/instance_detail.html:1049
 #: orchestrator/templates/orchestrator/instance_detail.html:1105
 msgid "Restaurar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:114
+#: orchestrator/templates/orchestrator/backup_list.html:122
 #: orchestrator/templates/orchestrator/contact_detail.html:35
 #: orchestrator/templates/orchestrator/instance_detail.html:80
 #: orchestrator/templates/orchestrator/instance_detail.html:1114
@@ -188,11 +214,11 @@ msgstr ""
 msgid "Eliminar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:131
+#: orchestrator/templates/orchestrator/backup_list.html:139
 msgid "No hay backups"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/backup_list.html:132
+#: orchestrator/templates/orchestrator/backup_list.html:140
 msgid ""
 "Crea uno desde la pestaña Backups de una instancia, o activa los automáticos "
 "en Settings."
@@ -545,12 +571,12 @@ msgid "Cerrar sesión"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:95
-#: orchestrator/templates/orchestrator/home.html:142
+#: orchestrator/templates/orchestrator/home.html:143
 msgid "Ir al panel"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:100
-#: orchestrator/templates/orchestrator/home.html:146
+#: orchestrator/templates/orchestrator/home.html:147
 msgid "Iniciar sesión"
 msgstr ""
 
@@ -559,277 +585,282 @@ msgid "Secciones"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:108
-#: orchestrator/templates/orchestrator/home.html:223
+#: orchestrator/templates/orchestrator/home.html:224
 msgid "Funcionalidades"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:109
-#: orchestrator/templates/orchestrator/home.html:306
+#: orchestrator/templates/orchestrator/home.html:307
 msgid "Cómo funciona"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:110
-#: orchestrator/templates/orchestrator/home.html:352
+#: orchestrator/templates/orchestrator/home.html:353
 msgid "Instalación"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:111
-#: orchestrator/templates/orchestrator/home.html:409
+#: orchestrator/templates/orchestrator/home.html:410
 msgid "Manual"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:112
-#: orchestrator/templates/orchestrator/home.html:442
+#: orchestrator/templates/orchestrator/home.html:441
+msgid "App de escritorio"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:113
+#: orchestrator/templates/orchestrator/home.html:469
 msgid "Novedades"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:129
+#: orchestrator/templates/orchestrator/home.html:130
 #, python-format
 msgid "Open source · Licencia MIT · v%(version)s"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:132
+#: orchestrator/templates/orchestrator/home.html:133
 msgid "Tu propio hosting de Odoo,"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:133
+#: orchestrator/templates/orchestrator/home.html:134
 msgid "en tu servidor"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:136
+#: orchestrator/templates/orchestrator/home.html:137
 msgid ""
 "Community SH es un panel para desplegar y administrar instancias de Odoo y "
 "otras aplicaciones sobre Docker. Cada instancia tiene su propia base de "
 "datos, dominio, SSL y backups, y todo se gestiona desde el navegador."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:144
+#: orchestrator/templates/orchestrator/home.html:145
 msgid "Crear cuenta"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:161
+#: orchestrator/templates/orchestrator/home.html:162
 msgid "Apps listas"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:165
+#: orchestrator/templates/orchestrator/home.html:166
 msgid "Licencia"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:179
+#: orchestrator/templates/orchestrator/home.html:180
 #: orchestrator/templates/orchestrator/project_detail.html:107
 #: orchestrator/templates/orchestrator/usage_list.html:19
 msgid "Instancias"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:208
+#: orchestrator/templates/orchestrator/home.html:209
 #: orchestrator/templates/orchestrator/instance_detail.html:173
 #: orchestrator/templates/orchestrator/instance_detail.html:184
 msgid "Tareas recientes"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:224
+#: orchestrator/templates/orchestrator/home.html:225
 msgid "Todo lo que necesitas para operar Odoo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:225
+#: orchestrator/templates/orchestrator/home.html:226
 msgid "Del primer despliegue a los backups diarios, sin entrar al servidor."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:232
+#: orchestrator/templates/orchestrator/home.html:233
 msgid "Despliega en minutos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:234
+#: orchestrator/templates/orchestrator/home.html:235
 #, python-format
 msgid ""
 "Odoo %(first)s a %(last)s aislado, con su propio Postgres, red Docker y "
 "volumen de datos."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:239
+#: orchestrator/templates/orchestrator/home.html:240
 msgid "Uno o varios repositorios de GitHub por instancia"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:240
+#: orchestrator/templates/orchestrator/home.html:241
 msgid "Duplica para staging con sus datos y adjuntos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:241
+#: orchestrator/templates/orchestrator/home.html:242
 msgid "Entra como admin sin escribir la contraseña"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:246
+#: orchestrator/templates/orchestrator/home.html:247
 msgid "Tus datos, a salvo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:247
+#: orchestrator/templates/orchestrator/home.html:248
 msgid ""
 "Respaldos con base de datos y filestore, manuales o programados con "
 "retención."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:249
+#: orchestrator/templates/orchestrator/home.html:250
 msgid "Restaura o crea una instancia desde cualquier backup"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:250
+#: orchestrator/templates/orchestrator/home.html:251
 msgid "Importa los backups nativos de Odoo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:251
+#: orchestrator/templates/orchestrator/home.html:252
 msgid "Cada usuario ve solo lo suyo; 2FA y bloqueo por intentos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:256
+#: orchestrator/templates/orchestrator/home.html:257
 msgid "Dominios y HTTPS automáticos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:257
+#: orchestrator/templates/orchestrator/home.html:258
 msgid ""
 "Traefik enruta cada dominio y Let's Encrypt emite y renueva los certificados."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:259
+#: orchestrator/templates/orchestrator/home.html:260
 msgid "Un subdominio por instancia: cliente-20-bd.tudominio.com"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:260
+#: orchestrator/templates/orchestrator/home.html:261
 msgid "Dominios propios para instancias y apps"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:261
+#: orchestrator/templates/orchestrator/home.html:262
 #, python-format
 msgid "%(count)s apps listas para lanzar junto a tu ERP"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:266
+#: orchestrator/templates/orchestrator/home.html:267
 msgid "Automatiza con IA y API"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:267
+#: orchestrator/templates/orchestrator/home.html:268
 msgid ""
 "Pide cambios a la IA en el chat de cada instancia, conecta Claude por MCP o "
 "usa la API REST."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:269
+#: orchestrator/templates/orchestrator/home.html:270
 msgid "Módulos y cambios generados por IA, con deshacer"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:270
+#: orchestrator/templates/orchestrator/home.html:271
 msgid "Tareas en segundo plano con su progreso"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:271
+#: orchestrator/templates/orchestrator/home.html:272
 msgid "Logs, consola y métricas de CPU y RAM"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:285
+#: orchestrator/templates/orchestrator/home.html:286
 msgid "Catálogo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:286
+#: orchestrator/templates/orchestrator/home.html:287
 msgid "Apps a un clic"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:288
+#: orchestrator/templates/orchestrator/home.html:289
 msgid "Plantillas YAML que puedes ajustar o ampliar en"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:307
+#: orchestrator/templates/orchestrator/home.html:308
 msgid "Un servidor, todo en Docker"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:308
+#: orchestrator/templates/orchestrator/home.html:309
 msgid ""
 "El panel habla con Docker en tu servidor. No hay servicios externos ni "
 "agentes que instalar."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:315
+#: orchestrator/templates/orchestrator/home.html:316
 msgid ""
 "Recibe el tráfico en los puertos 80/443, aplica el SSL y lo dirige por "
 "dominio."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:321
+#: orchestrator/templates/orchestrator/home.html:322
 msgid "Interfaz web y API. Encola las operaciones largas."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:325
+#: orchestrator/templates/orchestrator/home.html:326
 msgid "Despliega, respalda y restaura. Lanza los backups programados."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:333
+#: orchestrator/templates/orchestrator/home.html:334
 msgid "Instancia «mi-empresa»"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:334
+#: orchestrator/templates/orchestrator/home.html:335
 msgid "Odoo + Postgres en su propia red, filestore en un volumen."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:341
+#: orchestrator/templates/orchestrator/home.html:342
 msgid ""
 "La base de datos del panel vive en una red interna a la que las instancias "
 "no tienen acceso."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:353
+#: orchestrator/templates/orchestrator/home.html:354
 msgid "En marcha en minutos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:361
+#: orchestrator/templates/orchestrator/home.html:362
 msgid "Un servidor Linux"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:362
+#: orchestrator/templates/orchestrator/home.html:363
 msgid ""
 "Con acceso root y los puertos 80 y 443 libres. El instalador se encarga de "
 "Docker."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:366
+#: orchestrator/templates/orchestrator/home.html:367
 msgid "Configura el DNS antes"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:367
+#: orchestrator/templates/orchestrator/home.html:368
 msgid ""
 "Crea los registros A de tudominio.com y *.tudominio.com apuntando a la IP "
 "del servidor. El instalador te pedirá el dominio y un email, y Traefik "
 "genera los certificados HTTPS."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:371
+#: orchestrator/templates/orchestrator/home.html:372
 msgid "Ejecuta el instalador"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:372
+#: orchestrator/templates/orchestrator/home.html:373
 msgid "Genera las claves, configura tu dominio y levanta todos los servicios."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:376
+#: orchestrator/templates/orchestrator/home.html:377
 msgid "Crea tu primera instancia"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:377
+#: orchestrator/templates/orchestrator/home.html:378
 msgid ""
 "La primera cuenta que se registra es la de administrador. Elige versión de "
 "Odoo y despliega."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:384
+#: orchestrator/templates/orchestrator/home.html:385
 msgid ""
 "Antes de ejecutarlo, comprueba que tu dominio ya apunta al servidor (por "
 "ejemplo con «dig +short tudominio.com»). El instalador lo verifica y te "
 "avisa si no es así."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:389
+#: orchestrator/templates/orchestrator/home.html:390
 msgid "Instalación rápida"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:392
-#: orchestrator/templates/orchestrator/home.html:584
+#: orchestrator/templates/orchestrator/home.html:393
+#: orchestrator/templates/orchestrator/home.html:611
 #: orchestrator/templates/orchestrator/instance_detail.html:836
 #: orchestrator/templates/orchestrator/instance_detail.html:841
 #: orchestrator/templates/orchestrator/project_detail.html:240
@@ -842,105 +873,142 @@ msgstr ""
 msgid "Copiar"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:398
+#: orchestrator/templates/orchestrator/home.html:399
 msgid "¿Prefieres revisarlo antes? Descarga"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:400
+#: orchestrator/templates/orchestrator/home.html:401
 msgid "y lee el"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:410
+#: orchestrator/templates/orchestrator/home.html:411
 msgid "Cómo funciona, paso a paso"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:412
+#: orchestrator/templates/orchestrator/home.html:413
 msgid ""
 "Un manual en PDF con capturas: proyectos, instancias, copias de seguridad, "
 "demos para tus clientes, la API, la configuración y la seguridad."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:417
+#: orchestrator/templates/orchestrator/home.html:418
 msgid "Manual en español"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:443
-msgid "Qué hay de nuevo en cada versión"
+#: orchestrator/templates/orchestrator/home.html:442
+msgid "Tus respaldos, también en tu equipo"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:444
+msgid ""
+"Una app para macOS y Windows que baja los respaldos de tus instancias a la "
+"carpeta que elijas, cada día o con la secuencia que quieras. Vive en la "
+"barra de menús (o junto al reloj de Windows) y trabaja sola."
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:447
-msgid "Historial completo"
+msgid ""
+"Cada hora, cada pocas horas, cada día o cada semana, a la hora que elijas"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:457
-msgid "Actual"
+#: orchestrator/templates/orchestrator/home.html:448
+msgid ""
+"En la carpeta que elijas, una por instancia, y se borran pasados unos días "
+"(3 por defecto)"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:468
-msgid "Páginas de novedades"
+#: orchestrator/templates/orchestrator/home.html:449
+msgid ""
+"El último respaldo del panel o uno nuevo en ese momento, con o sin adjuntos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:471
-msgid "Más recientes"
+#: orchestrator/templates/orchestrator/home.html:450
+msgid ""
+"También las bases de PostgreSQL de tus servidores Linux por SSH, con clave o "
+"contraseña"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:458
+msgid "La app de respaldos con las instancias del panel"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:470
+msgid "Qué hay de nuevo en cada versión"
 msgstr ""
 
 #: orchestrator/templates/orchestrator/home.html:474
+msgid "Historial completo"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:484
+msgid "Actual"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:495
+msgid "Páginas de novedades"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:498
+msgid "Más recientes"
+msgstr ""
+
+#: orchestrator/templates/orchestrator/home.html:501
 #, python-format
 msgid "Página %(page)s de %(pages)s"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:477
+#: orchestrator/templates/orchestrator/home.html:504
 msgid "Anteriores"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:493
+#: orchestrator/templates/orchestrator/home.html:520
 msgid "Guías y novedades"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:496
+#: orchestrator/templates/orchestrator/home.html:523
 msgid "Ver todo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:506
+#: orchestrator/templates/orchestrator/home.html:533
 #, python-format
 msgid "%(minutes)s min de lectura"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:518
+#: orchestrator/templates/orchestrator/home.html:545
 msgid "Libre, abierto y tuyo"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:520
+#: orchestrator/templates/orchestrator/home.html:547
 msgid ""
 "Community SH es gratuito y de código abierto. Instálalo en tu servidor, "
 "adáptalo a tu equipo o contribuye al proyecto."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:529
+#: orchestrator/templates/orchestrator/home.html:556
 msgid "Reportar un problema"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:540
+#: orchestrator/templates/orchestrator/home.html:567
 msgid "Mis proyectos"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:541
+#: orchestrator/templates/orchestrator/home.html:568
 msgid "Más proyectos de Marlon Falcón"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:542
+#: orchestrator/templates/orchestrator/home.html:569
 msgid "Otras herramientas y webs en las que trabajo."
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:567
+#: orchestrator/templates/orchestrator/home.html:594
 msgid "Hecho por Marlon Falcón Hernández · Licencia MIT ·"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:571
+#: orchestrator/templates/orchestrator/home.html:598
 msgid "Documentación"
 msgstr ""
 
-#: orchestrator/templates/orchestrator/home.html:583
+#: orchestrator/templates/orchestrator/home.html:610
 #: orchestrator/templates/orchestrator/server_list.html:130
 msgid "Copiado"
 msgstr ""

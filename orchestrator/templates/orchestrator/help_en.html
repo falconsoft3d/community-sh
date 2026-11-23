@@ -139,6 +139,7 @@ its section here and in help.html (and the index in views/public.py) in the same
                     <li><strong>Restore</strong> a backup over the instance (Odoo is stopped and its connections closed before the database is recreated) or «Restore from a file».</li>
                     <li><strong>Import</strong>: besides the panel's own backups, it accepts Odoo manager backups (.zip with dump.sql and filestore) and .dump files.</li>
                     <li><strong>Backups</strong> menu: every backup, download, and «Import a backup and create an instance».</li>
+                    <li><strong>Desktop app</strong> (macOS and Windows; download it from the Backups menu or the website): it downloads the backups to your computer with a personal token (Settings → API). You choose the instances, the folder (one subfolder per instance), the schedule (every hour, every 2, 3, 4, 6 or 12 hours, every day or every week, at a time and on a day), after how many days they are deleted (3 by default; the latest one of each instance always stays) and whether the panel makes a new backup first (with or without attachments; with a read-only token it only downloads the latest one). It also backs up the PostgreSQL databases of Linux servers over SSH (File → SSH servers: key or password) with pg_dump. It lives in the menu bar or next to the Windows clock, lets you know when it is done, keeps a history (File → View the history) and can open at login.</li>
                 </ul>
             </section>
 

@@ -1,0 +1,16 @@
+{% load i18n static %}
+{% comment %}The desktop backups app (macOS and Windows): built with DMarlon Studio (demo cpp_cshbackup) and served from static/apps.
+primary: classes of the main button (the public home uses brand-*, the panel primary).{% endcomment %}
+<div class="flex flex-wrap gap-3">
+    <a href="{% static 'apps/community-sh-backups-macOS.zip' %}" download rel="noopener"
+        class="inline-flex items-center gap-2 rounded-lg {{ primary|default:'bg-primary text-primary-foreground hover:bg-primary/90' }} px-5 py-3 text-sm font-semibold shadow-sm">
+        <i data-lucide="laptop" class="h-4 w-4"></i> {% translate "Descargar para macOS" %}
+    </a>
+    <a href="{% static 'apps/community-sh-backups-Windows.zip' %}" download rel="noopener"
+        class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">
+        <i data-lucide="monitor" class="h-4 w-4"></i> {% translate "Descargar para Windows" %}
+    </a>
+</div>
+<p class="mt-3 text-xs text-slate-500 dark:text-slate-400 text-muted-foreground">
+    {% translate "Descomprime el .zip y abre la app (la primera vez, en macOS: clic derecho › Abrir; en Windows: Más información › Ejecutar de todas formas). Para el panel necesita un token personal (Configuración → API)." %}
+</p>
