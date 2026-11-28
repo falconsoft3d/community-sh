@@ -3,9 +3,16 @@ Community SH version: bump the patch number (1.0.1 -> 1.0.2 ...) with every comm
 and document it here (shown in About) and in CHANGELOG.md, newest first.
 """
 
-VERSION = '1.0.115'
+VERSION = '1.0.116'
 
 CHANGELOG = [
+    {
+        'version': '1.0.116',
+        'date': '2026-11-28',
+        'notes': [
+            'KPI de la instancia en la pestaña Información: junto a la ficha, el tamaño de la base de datos, el número de tablas, el tamaño del filestore (con su número de ficheros), el total base de datos + filestore, la fecha de creación de la base de datos (la que guarda Odoo al crearla; sin ella, la de PostgreSQL: creación o última restauración) y la versión de PostgreSQL con sus conexiones, con «Actualizar» y «Ver todos» (abre Indicadores). La fecha de creación sale también en Indicadores. Usa los mismos datos que Indicadores (guardados 5 minutos) y solo lo ve quien puede ver los logs. Explicado en la Ayuda.',
+        ],
+    },
     {
         'version': '1.0.115',
         'date': '2026-11-23',

@@ -4968,6 +4968,7 @@ class ClientPermissionTests(BaseTestCase):
         page = self.client.get(f'/instance/{pk}/').content.decode()
         self.assertNotIn(reverse('instance-deploy', args=[pk]), page)
         self.assertNotIn("activeTab = 'logs'", page)
+        self.assertNotIn(reverse('instance-stats-api', args=[pk]), page)  # no KPIs on the Information tab either
         for url in (reverse('instance-deploy', args=[pk]), reverse('instance-backup', args=[pk]), reverse('instance-restart', args=[pk])):
             self.assertEqual(self.client.post(url).status_code, 403, url)
         self.assertEqual(self.client.get(reverse('backup-download', args=[self.backup.pk])).status_code, 403)
@@ -5243,6 +5244,34 @@ class InstanceStatsTests(BaseTestCase):
         url = reverse('instance-stats-api', args=[self.bob_instance.pk])
         self.assertEqual(self.client.get(url).status_code, 404)
 
+    def test_information_tab_shows_the_kpis(self):
+        # database size, tables and filestore next to the Information card, from the same (cached) stats JSON
+        self.client.force_login(self.alice)
+        page = self.client.get(reverse('instance-detail', args=[self.alice_instance.pk])).content.decode()
+        card = page.split('<!-- KPIs:')[1].split('<!-- Domains Tab -->')[0]
+        self.assertIn(reverse('instance-stats-api', args=[self.alice_instance.pk]), card)
+        self.assertIn("activeTab === 'info'", card)
+        for field in ('size_bytes', 'tables', 'filestore_bytes', 'filestore_files', 'total_bytes', 'created()',
+                      'postgres_version'):
+            self.assertIn(field, card)
+
+    def test_created_at_falls_back_to_postgres(self):
+        # no database.create_date (not an Odoo database, or an old one): the date PostgreSQL wrote its directory
+        from .services.instance_stats import _created_at
+
+        def exec_run(cmd, environment=None):
+            database, sql = cmd[4], cmd[-1]
+            if 'database.create_date' in sql:
+                return mock.Mock(exit_code=0, output=b'')
+            if database == 'postgres' and 'PG_VERSION' in sql and "datname = 'prod'" in sql:
+                return mock.Mock(exit_code=0, output=b'2026-11-28T02:47:53')
+            return mock.Mock(exit_code=1, output=b'ERROR')
+        db = mock.Mock()
+        db.exec_run.side_effect = exec_run
+        self.assertEqual(_created_at(db, 'prod'), ('2026-11-28T02:47:53', 'postgres'))
+        db.exec_run.side_effect = lambda cmd, environment=None: mock.Mock(exit_code=1, output=b'ERROR')
+        self.assertEqual(_created_at(db, 'prod'), (None, None))
+
     def test_stats_api_returns_figures(self):
         from django.core.cache import cache
         cache.clear()
@@ -5257,6 +5286,8 @@ class InstanceStatsTests(BaseTestCase):
                 "SELECT count(*) FROM ir_module_module WHERE state = 'installed'": '324',
                 "SELECT count(*) FROM res_users WHERE active AND NOT share": '45',
             }.get(sql)
+            if 'database.create_date' in sql:
+                text = '2026-11-27T20:41:15'
             if sql.startswith('du -sb "/var/lib/odoo/filestore/prod"'):
                 text = '28300000000'
             elif sql.startswith('find "/var/lib/odoo/filestore/prod"'):
@@ -5288,6 +5319,7 @@ class InstanceStatsTests(BaseTestCase):
         self.assertEqual(db['filestore_files'], 58337)
         self.assertEqual(db['tables'], 1341)
         self.assertEqual(db['cache_hit_percent'], 99.5)
+        self.assertEqual((db['created_at'], db['created_source']), ('2026-11-27T20:41:15', 'odoo'))
         self.assertEqual(db['odoo']['modules_installed'], 324)
         self.assertEqual(db['odoo']['users_internal'], 45)
         self.assertNotIn('partners', db['odoo'])  # a failing query is left out

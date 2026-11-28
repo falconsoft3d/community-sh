@@ -1,6 +1,10 @@
 # Changelog
 
-Versión actual: **1.0.115**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+Versión actual: **1.0.116**. Cada commit o mejora sube el número de parche (1.0.1 → 1.0.2 → …).
+
+## 1.0.116 — 2026-11-28
+
+- KPI de la instancia en la pestaña Información: junto a la ficha, el tamaño de la base de datos, el número de tablas, el tamaño del filestore (con su número de ficheros), el total base de datos + filestore, la fecha de creación de la base de datos (la que guarda Odoo al crearla; sin ella, la de PostgreSQL: creación o última restauración) y la versión de PostgreSQL con sus conexiones, con «Actualizar» y «Ver todos» (abre Indicadores). La fecha de creación sale también en Indicadores. Usa los mismos datos que Indicadores (guardados 5 minutos) y solo lo ve quien puede ver los logs. Explicado en la Ayuda.
 
 ## 1.0.115 — 2026-11-23
 

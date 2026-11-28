@@ -48,6 +48,20 @@ def _psql(db_container, database, sql):
     return result.output.decode(errors='replace').strip()
 
 
+def _created_at(db_container, database):
+    """When the database was created, ISO UTC, and where that comes from: Odoo's own database.create_date (set when
+    Odoo creates the database; a restored backup keeps the original one) or, without it, the date PostgreSQL wrote
+    the database's directory (its creation or last restore)."""
+    value = _psql(db_container, database, "SELECT to_char(value::timestamp, 'YYYY-MM-DD\"T\"HH24:MI:SS') "
+                                          "FROM ir_config_parameter WHERE key = 'database.create_date'")
+    if value:
+        return value, 'odoo'
+    value = _psql(db_container, 'postgres',
+                  "SELECT to_char((pg_stat_file('base/' || oid || '/PG_VERSION')).modification AT TIME ZONE 'UTC', "
+                  f"'YYYY-MM-DD\"T\"HH24:MI:SS') FROM pg_database WHERE datname = '{database}'")
+    return (value, 'postgres') if value else (None, None)
+
+
 def _number(value):
     try:
         return int(value)
@@ -120,6 +134,7 @@ def collect_instance_stats(instance, refresh=False):
                                         f"FROM pg_stat_database WHERE datname = '{name}'")
             entry['cache_hit_percent'] = float(hit) if hit not in (None, '') else None
             entry['tables'] = _number(_psql(db, name, "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'"))
+            entry['created_at'], entry['created_source'] = _created_at(db, name)
             odoo_values = {}
             for label, sql in ODOO_QUERIES.items():
                 value = _psql(db, name, sql)
